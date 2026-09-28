@@ -6,9 +6,10 @@ import { ArrowRight, Check } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
 import LeaderPortrait from "@/components/site/leader-portrait";
 import LeaderCarousel from "@/components/site/leader-carousel";
+import { rafLoop } from "@/lib/raf-loop";
 import { CASES, LEADERS, caseUrl } from "@/lib/cases";
 
-const IMG = "/images/parliament.jpg";
+const IMG = "/images/parliament.webp";
 
 const CHECKS = [
   "Official Partner in Andhra Pradesh, Telangana, Tamil Nadu, Bihar, Karnataka & Gujarat",
@@ -29,7 +30,7 @@ export default function Hero() {
   const layers = useRef<{ ambient?: HTMLDivElement | null; sharp?: HTMLDivElement | null; shift?: HTMLDivElement | null; content?: HTMLDivElement | null; people?: HTMLDivElement | null }>({});
 
   useEffect(() => {
-    let mx = 0, my = 0, sx = 0, sy = 0, raf = 0;
+    let mx = 0, my = 0, sx = 0, sy = 0;
     const cache = new Map<HTMLElement, string>();
     const setF = (el: HTMLElement, key: "filter" | "opacity", v: string) => {
       const id = key + v;
@@ -46,7 +47,7 @@ export default function Hero() {
       sx += (mx - sx) * 0.06;
       sy += (my - sy) * 0.06;
       const p = Math.min(1, Math.max(0, scrollY / innerHeight)); // 0 → 1 while leaving the hero
-      if (p >= 1) { raf = requestAnimationFrame(tick); return; } // hero is off-screen
+      if (p >= 1) return; // hero is off-screen
       const L = layers.current;
       const k = reduced ? 0 : 1;
       if (L.ambient) L.ambient.style.transform = `translate3d(${sx * -18 * k}px, ${sy * -12 * k + scrollY * 0.5}px, 0) scale(${1.25 + p * 0.2})`;
@@ -65,12 +66,11 @@ export default function Hero() {
         setF(L.people, "opacity", (1 - p * 1.3).toFixed(2));
       }
       if (root.current) setF(root.current, "opacity", (1 - Math.max(0, p - 0.55) / 0.45).toFixed(2));
-      raf = requestAnimationFrame(tick);
     };
     addEventListener("pointermove", onMove);
-    raf = requestAnimationFrame(tick);
+    const stopLoop = rafLoop(tick);
     return () => {
-      cancelAnimationFrame(raf);
+      stopLoop();
       removeEventListener("pointermove", onMove);
     };
   }, []);

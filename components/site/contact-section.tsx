@@ -6,6 +6,7 @@ import ShimmerButton from "@/components/ui/shimmer-button";
 import Globe from "@/components/site/globe";
 import { Logo } from "@/components/site/navbar";
 import { CONTACT } from "@/lib/cases";
+import { rafLoop } from "@/lib/raf-loop";
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -21,9 +22,10 @@ export default function ContactSection() {
   const flyer = useRef<HTMLDivElement>(null);
   const spin = useRef(0);
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    let raf = 0;
     const tick = () => {
       const s = section.current, sl = slot.current, fl = flyer.current;
       if (s && sl && fl) {
@@ -44,21 +46,19 @@ export default function ContactSection() {
         if (fl.style.filter !== fb) fl.style.filter = fb;
         spin.current = o > 0.01 ? 0.15 + e * 0.85 : -1;
       }
-      raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return rafLoop(tick);
   }, []);
 
   const field =
-    "w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[15px] text-white placeholder:text-white/30 outline-none transition focus:border-saffron/60 focus:bg-white/[0.07] focus:ring-4 focus:ring-saffron/10";
+    "w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[15px] text-white placeholder:text-white/30 outline-none transition focus:border-saffron/60 focus:bg-white/[0.07] focus:ring-4 focus:ring-saffron/10";
   const label = "mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45";
 
   return (
     <section
       ref={section}
       id="contact"
-      className="relative z-[2] min-h-[100svh] overflow-hidden bg-[linear-gradient(180deg,rgba(5,11,31,0)_0%,rgba(5,11,31,.85)_18%,#050b1f_40%)] px-6 pb-16 pt-36 sm:px-10"
+      className="relative z-[2] min-h-[100svh] overflow-hidden bg-[linear-gradient(180deg,rgba(5,11,31,0)_0%,rgba(5,11,31,.85)_18%,#050b1f_40%)] px-6 pb-2 pt-36 scroll-mt-24 sm:px-10 lg:pb-10"
     >
       {/* flying globe (fixed, follows the slot) */}
       <div ref={flyer} className="pointer-events-none fixed left-0 top-0 z-[1] invisible will-change-transform" aria-hidden>
@@ -104,15 +104,15 @@ export default function ContactSection() {
               ))}
             </div>
             {/* the globe lands here */}
-            <div ref={slot} className="mx-auto mt-10 aspect-square w-full max-w-[420px] lg:mx-0" />
+            <div ref={slot} className="mx-auto mt-4 aspect-square w-full max-w-[220px] lg:mx-0 lg:mt-2 lg:max-w-[180px]" />
           </div>
 
           {/* right: form */}
-          <div className="glass relative rounded-3xl p-7 sm:p-9">
+          <div className="glass relative rounded-3xl p-5 sm:p-7">
             <span className="tricolor-line absolute inset-x-8 top-0 h-px opacity-70" aria-hidden />
             <h3 className="font-display text-2xl font-semibold">Send a message</h3>
             <p className="mt-1.5 text-white/55">Fill out the form and we&apos;ll get back to you promptly.</p>
-            <div className="my-7 border-t border-dashed border-white/10" />
+            <div className="my-4 border-t border-dashed border-white/10 sm:my-5" />
             {sent ? (
               <div className="flex flex-col items-center py-16 text-center">
                 <CheckCircle2 className="size-12 text-[#2fbf4a]" />
@@ -121,13 +121,40 @@ export default function ContactSection() {
               </div>
             ) : (
               <form
-                className="space-y-5"
-                onSubmit={(e) => {
+                className="space-y-3 sm:space-y-4"
+                onSubmit={async (e) => {
                   e.preventDefault();
-                  // TODO: send the form to your email service / API route here.
-                  setSent(true);
+                  if (sending) return;
+                  setSending(true);
+                  setError("");
+                  const f = new FormData(e.currentTarget);
+                  try {
+                    const res = await fetch("/api/contact", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        name: f.get("name"),
+                        organisation: f.get("organisation"),
+                        email: f.get("email"),
+                        phone: f.get("phone"),
+                        message: f.get("message"),
+                        website: f.get("website"), // honeypot
+                      }),
+                    });
+                    if (!res.ok) {
+                      const d = await res.json().catch(() => ({}));
+                      throw new Error(d.error || "Something went wrong");
+                    }
+                    setSent(true);
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Something went wrong - please try again or email us.");
+                  } finally {
+                    setSending(false);
+                  }
                 }}
               >
+                {/* honeypot: hidden from humans, bots fill it */}
+                <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
                 <div className="grid gap-5 sm:grid-cols-2">
                   <label className="block"><span className={label}>Full name</span><input required name="name" className={field} placeholder="Your name" /></label>
                   <label className="block"><span className={label}>Party / organisation</span><input name="organisation" className={field} placeholder="Party or campaign" /></label>
@@ -136,14 +163,15 @@ export default function ContactSection() {
                   <label className="block"><span className={label}>Email</span><input required type="email" name="email" className={field} placeholder="you@example.com" /></label>
                   <label className="block"><span className={label}>Phone</span><input type="tel" name="phone" className={field} placeholder="+91" /></label>
                 </div>
-                <label className="block"><span className={label}>Message</span><textarea name="message" rows={5} className={`${field} resize-none`} placeholder="Tell us about your constituency, timeline and goals" /></label>
-                <ShimmerButton text="Send message" duration={1.6} className="w-full border-saffron/40 py-3.5 dark:bg-[#0a1a44]/80 backdrop-blur-xl" />
+                <label className="block"><span className={label}>Message</span><textarea name="message" rows={4} className={`${field} resize-none`} placeholder="Tell us about your constituency, timeline and goals" /></label>
+                {error && <p className="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-200">{error}</p>}
+                <ShimmerButton text={sending ? "Sending..." : "Send message"} duration={1.6} className="w-full border-saffron/40 py-3.5 dark:bg-[#0a1a44]/80 backdrop-blur-xl" />
               </form>
             )}
           </div>
         </div>
 
-        <footer className="mt-24 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-sm text-white/40 sm:flex-row">
+        <footer className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-4 text-sm text-white/40 sm:flex-row">
           <Logo />
           <span>© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</span>
         </footer>

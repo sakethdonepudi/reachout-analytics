@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type MutableRefObject } from "react";
+import { rafLoop } from "@/lib/raf-loop";
 import { geoOrthographic, geoPath, geoGraticule10, geoDistance } from "d3-geo";
 import { feature } from "topojson-client";
 import type { Topology, GeometryCollection } from "topojson-specification";
@@ -53,12 +54,12 @@ export default function Globe({ className, speed = 10, direction = "clockwise", 
     const sign = direction === "clockwise" ? -1 : 1;
     let lambda = -80; // start with India facing us
     const phi = -18;
-    let raf = 0, last = performance.now(), w = 0, h = 0, dpr = 1;
+    let last = performance.now(), w = 0, h = 0, dpr = 1;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const resize = () => {
       const r = canvas.getBoundingClientRect();
-      dpr = Math.min(devicePixelRatio || 1, 2);
+      dpr = Math.min(devicePixelRatio || 1, 1.5);
       w = r.width; h = r.height;
       canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
     };
@@ -70,7 +71,7 @@ export default function Globe({ className, speed = 10, direction = "clockwise", 
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       const k = spinRef ? spinRef.current : 1;
-      if (k < 0) { raf = requestAnimationFrame(draw); return; }
+      if (k < 0) return;
       if (!reduced) lambda += sign * speed * k * dt;
       const R = Math.min(w, h) / 2 - 2;
       projection.translate([w / 2, h / 2]).scale(R).rotate([lambda, phi]);
@@ -122,11 +123,9 @@ export default function Globe({ className, speed = 10, direction = "clockwise", 
 
       // outline
       ctx.beginPath(); path({ type: "Sphere" }); ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = 1.1; ctx.stroke();
-
-      raf = requestAnimationFrame(draw);
     };
-    raf = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+    const stopLoop = rafLoop(draw);
+    return () => { stopLoop(); ro.disconnect(); };
   }, [speed, direction, spinRef]);
 
   return <canvas ref={canvasRef} className={className} aria-label="Rotating globe with India highlighted" role="img" />;

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import LeaderPortrait from "@/components/site/leader-portrait";
 import { LEADERS } from "@/lib/cases";
+import { rafLoop } from "@/lib/raf-loop";
 
 /**
  * A slowly turning 3D ring of leader portraits. Cards further back get smaller,
@@ -16,7 +17,7 @@ export default function LeaderCarousel({ radius = 290 }: { radius?: number }) {
   useEffect(() => {
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const n = LEADERS.length;
-    let angle = 0, last = performance.now(), raf = 0, speed = 0;
+    let angle = 0, last = performance.now(), speed = 0;
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
@@ -39,10 +40,8 @@ export default function LeaderCarousel({ radius = 290 }: { radius?: number }) {
         el.style.pointerEvents = facing > 0.35 ? "auto" : "none";
         el.style.zIndex = String(Math.round(f * 100));
       });
-      raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return rafLoop(tick);
   }, [radius]);
 
   return (

@@ -32,7 +32,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
       <Navbar />
       <main className="relative min-h-screen overflow-hidden bg-[#050b1f]">
         {/* ambient backdrop */}
-        <div className="absolute inset-0 scale-110 bg-[url(/images/parliament.jpg)] bg-cover bg-center opacity-25 blur-3xl" aria-hidden />
+        <div className="absolute inset-0 scale-110 bg-[url(/images/parliament.webp)] bg-cover bg-center opacity-25 blur-3xl" aria-hidden />
         <div className="absolute inset-0 bg-[radial-gradient(80%_60%_at_70%_20%,rgba(255,153,51,.18),transparent_60%),radial-gradient(60%_60%_at_10%_90%,rgba(47,191,74,.12),transparent_60%),linear-gradient(180deg,rgba(5,11,31,.4),#050b1f_70%)]" aria-hidden />
         <div className="grain absolute inset-0 opacity-[0.06] mix-blend-overlay" aria-hidden />
 

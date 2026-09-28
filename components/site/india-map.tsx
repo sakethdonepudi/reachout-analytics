@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowUpRight, X } from "lucide-react";
 import * as THREE from "three";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
-import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { rafLoop } from "@/lib/raf-loop";
 import ShimmerButton from "@/components/ui/shimmer-button";
 import { CASES, UPCOMING, caseUrl, leaderById, type CaseStudy } from "@/lib/cases";
 import STATES from "@/lib/data/india-states.json";
@@ -78,10 +75,8 @@ export default function IndiaMap() {
     } catch {
       return;
     }
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
     renderer.setSize(innerWidth, innerHeight, false);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
 
@@ -95,9 +90,6 @@ export default function IndiaMap() {
     scene.add(new THREE.HemisphereLight(0xffffff, 0x0a1636, 1.0));
     const sun = new THREE.DirectionalLight(0xffffff, 2.2);
     sun.position.set(-380, 720, 460);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    Object.assign(sun.shadow.camera, { left: -520, right: 520, top: 520, bottom: -520, near: 10, far: 2200 });
     sun.shadow.bias = -0.0006;
     sun.shadow.radius = 4;
     scene.add(sun);
@@ -130,7 +122,6 @@ export default function IndiaMap() {
     /* ---------- ground ---------- */
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshStandardMaterial({ color: 0x0a1c48, roughness: 1 }));
     ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
     scene.add(ground);
     const grid = new THREE.GridHelper(9000, 300, 0x234c9a, 0x163777);
     grid.position.y = 0.05;
@@ -163,7 +154,6 @@ export default function IndiaMap() {
       const cap = new THREE.MeshStandardMaterial({ color: (partner ? C_PARTNER : C_BASE).clone(), roughness: 0.5, metalness: 0.25, emissive: 0xff6a00, emissiveIntensity: 0 });
       const side = new THREE.MeshStandardMaterial({ color: S_BASE.clone(), roughness: 0.7, metalness: 0.3 });
       const mesh = new THREE.Mesh(geo, [cap, side]);
-      mesh.castShadow = mesh.receiveShadow = true;
       mesh.userData.id = s.id;
       const g = new THREE.Group();
       g.add(mesh);
@@ -224,11 +214,6 @@ export default function IndiaMap() {
     scene.add(particles);
 
     /* ---------- post ---------- */
-    const composer = new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene, camera));
-    const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.55, 0.82);
-    composer.addPass(bloom);
-    composer.addPass(new OutputPass());
 
     /* ---------- stops ---------- */
     const STOPS: Stop[] = [
@@ -277,7 +262,7 @@ export default function IndiaMap() {
     addEventListener("click", onClick);
     const onResize = () => {
       camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-      renderer.setSize(innerWidth, innerHeight, false); composer.setSize(innerWidth, innerHeight); bloom.setSize(innerWidth, innerHeight);
+      renderer.setSize(innerWidth, innerHeight, false);
       readScroll();
     };
     addEventListener("resize", onResize);
@@ -285,7 +270,7 @@ export default function IndiaMap() {
     /* ---------- loop ---------- */
     const tgt = new THREE.Vector3(), tmp = new THREE.Vector3();
     const project = (v: THREE.Vector3) => { tmp.copy(v).project(camera); return { x: ((tmp.x + 1) / 2) * innerWidth, y: ((1 - tmp.y) / 2) * innerHeight }; };
-    let rendered = false, last = performance.now(), lastFilter = "", lastCardSlug: string | null = null, lastFinal = false, lastStop = -1, lastTip = "", raf = 0;
+    let rendered = false, last = performance.now(), lastFilter = "", lastCardSlug: string | null = null, lastFinal = false, lastStop = -1, lastTip = "";
 
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -432,13 +417,12 @@ export default function IndiaMap() {
 
       // skip GPU work while the opaque home screen fully covers the map, or once the contact page has taken over
       const visible = heroP > 0.35 && contactP < 0.999;
-      if (visible || !rendered) { composer.render(); rendered = true; }
-      raf = requestAnimationFrame(frame);
+      if (visible || !rendered) { renderer.render(scene, camera); rendered = true; }
     };
-    raf = requestAnimationFrame(frame);
+    const stopLoop = rafLoop(frame);
 
     return () => {
-      cancelAnimationFrame(raf);
+      stopLoop();
       removeEventListener("scroll", readScroll);
       removeEventListener("pointermove", onMove);
       removeEventListener("pointerdown", onDown);
@@ -446,7 +430,6 @@ export default function IndiaMap() {
       removeEventListener("click", onClick);
       removeEventListener("resize", onResize);
       document.body.style.cursor = "";
-      composer.dispose();
       renderer.dispose();
       scene.traverse((o) => {
         const m = o as THREE.Mesh;

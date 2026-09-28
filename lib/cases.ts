@@ -16,12 +16,12 @@ export type Leader = {
 };
 
 export const LEADERS: Leader[] = [
-  { id: "cbn", name: "N. Chandrababu Naidu", role: "Andhra Pradesh", party: "TDP", photo: "/leaders/chandrababu-naidu.png", initials: "CBN", caseSlug: "andhra-pradesh-2024" },
-  { id: "eps", name: "Edappadi K. Palaniswami", role: "Tamil Nadu", party: "AIADMK", photo: "/leaders/edappadi-palaniswami.png", initials: "EPS", caseSlug: "tamil-nadu" },
-  { id: "himanta", name: "Himanta Biswa Sarma", role: "Assam", party: "BJP", photo: "/leaders/himanta-biswa-sarma.png", initials: "HBS", caseSlug: "north-east-elections" },
-  { id: "bhupendra", name: "Bhupendra Patel", role: "Gujarat", party: "BJP", photo: "/leaders/bhupendra-patel.png", initials: "BP", caseSlug: "gujarat" },
-  { id: "nitish", name: "Nitish Kumar", role: "Bihar", party: "JD(U)", photo: "/leaders/nitish-kumar.png", initials: "NK", caseSlug: "bihar" },
-  { id: "dks", name: "D. K. Shivakumar", role: "Karnataka", party: "INC", photo: "/leaders/dk-shivakumar.png", initials: "DKS", caseSlug: "karnataka-2023" },
+  { id: "cbn", name: "N. Chandrababu Naidu", role: "Andhra Pradesh", party: "TDP", photo: "/leaders/chandrababu-naidu.webp", initials: "CBN", caseSlug: "andhra-pradesh-2024" },
+  { id: "eps", name: "Edappadi K. Palaniswami", role: "Tamil Nadu", party: "AIADMK", photo: "/leaders/edappadi-palaniswami.webp", initials: "EPS", caseSlug: "tamil-nadu" },
+  { id: "himanta", name: "Himanta Biswa Sarma", role: "Assam", party: "BJP", photo: "/leaders/himanta-biswa-sarma.webp", initials: "HBS", caseSlug: "north-east-elections" },
+  { id: "bhupendra", name: "Bhupendra Patel", role: "Gujarat", party: "BJP", photo: "/leaders/bhupendra-patel.webp", initials: "BP", caseSlug: "gujarat" },
+  { id: "nitish", name: "Nitish Kumar", role: "Bihar", party: "JD(U)", photo: "/leaders/nitish-kumar.webp", initials: "NK", caseSlug: "bihar" },
+  { id: "dks", name: "D. K. Shivakumar", role: "Karnataka", party: "INC", photo: "/leaders/dk-shivakumar.webp", initials: "DKS", caseSlug: "karnataka-2023" },
 ];
 
 export type CaseStudy = {
