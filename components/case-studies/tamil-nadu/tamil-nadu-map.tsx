@@ -6,10 +6,8 @@ import { geoIdentity } from "d3-geo";
 import { rafLoop } from "@/lib/raf-loop";
 import TN_GEO from "@/lib/data/tamil-nadu-districts.json";
 import {
-  PARTY_META,
   districtCentroid,
   districtRadius,
-  leadingParty,
   type DistrictPollResult,
   type PartyResult,
   type PollType,
@@ -49,11 +47,16 @@ type Props = {
   activeDistrict: string | null;
   hoveredDistrict: string | null;
   activePincode: string | null;
+  mode: MapMode;
+  layers: MapLayers;
   resetNonce?: number;
   onHoverDistrict: (name: string | null) => void;
   onSelectDistrict: (name: string | null) => void;
   onSelectPincode: (pincode: string | null) => void;
 };
+
+export type MapMode = "state" | "district" | "pincode";
+export type MapLayers = { boundaries: boolean; pins: boolean; labels: boolean; context: boolean };
 
 type DistrictState = {
   id: string;
@@ -77,6 +80,8 @@ export default function TamilNaduMap(props: Props) {
     activeDistrict,
     hoveredDistrict,
     activePincode,
+    mode,
+    layers,
     resetNonce,
     onHoverDistrict,
     onSelectDistrict,
@@ -86,16 +91,17 @@ export default function TamilNaduMap(props: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
+  const pinRef = useRef<HTMLDivElement>(null);
   const tipRef = useRef<{ x: number; y: number } | null>(null);
   const [tip, setTip] = useState<MapTooltipData | null>(null);
   const [ready, setReady] = useState(false);
 
   // latest props for the (stable) rAF frame
-  const live = useRef({ pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode, onHoverDistrict, onSelectDistrict, onSelectPincode });
-  live.current = { pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode, onHoverDistrict, onSelectDistrict, onSelectPincode };
+  const live = useRef({ pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode, mode, layers, onHoverDistrict, onSelectDistrict, onSelectPincode });
+  live.current = { pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode, mode, layers, onHoverDistrict, onSelectDistrict, onSelectPincode };
 
   const apiRef = useRef<{
-    rebuildMarkers: () => void;
+    rebuildPins: () => void;
     setSelection: (selected: string[]) => void;
     reset: () => void;
   } | null>(null);
@@ -173,27 +179,6 @@ export default function TamilNaduMap(props: Props) {
        read as survey areas rather than glowing dots.
        Pincode survey areas are visual approximations for UI and are not
        official postal boundary polygons. */
-    const zoneTex = (() => {
-      const c = document.createElement("canvas");
-      c.width = c.height = 128;
-      const g = c.getContext("2d")!;
-      const r = g.createRadialGradient(64, 64, 0, 64, 64, 50);
-      r.addColorStop(0, "rgba(255,255,255,.40)");
-      r.addColorStop(0.7, "rgba(255,255,255,.14)");
-      r.addColorStop(1, "rgba(255,255,255,0)");
-      g.fillStyle = r;
-      g.beginPath();
-      g.arc(64, 64, 50, 0, Math.PI * 2);
-      g.fill();
-      g.strokeStyle = "rgba(255,255,255,.85)";
-      g.lineWidth = 5;
-      g.beginPath();
-      g.arc(64, 64, 48, 0, Math.PI * 2);
-      g.stroke();
-      const t = new THREE.CanvasTexture(c);
-      t.colorSpace = THREE.SRGBColorSpace;
-      return t;
-    })();
 
     // ---- ground glow under the state ----
     const under = new THREE.Mesh(
@@ -293,41 +278,50 @@ export default function TamilNaduMap(props: Props) {
       states[name] = { id: name, name, mesh, cap, side, line, group: g, target: C_BASE.clone(), heat: 0, hover: 0, focus: 0 };
     }
 
-    // ---- survey point markers (rebuilt when data / poll type changes) ----
-    const markerGroup = new THREE.Group();
-    mapGroup.add(markerGroup);
-    let pincodeHits: THREE.Sprite[] = [];
-    let clusterHits: THREE.Sprite[] = [];
+    // ---- PIN-code markers: ordinary HTML map pins for the focused district ----
+    // Positions use real geographic coordinates of each survey point. Survey
+    // areas are visual approximations unless official polygon boundaries exist.
+    const pinRoot = pinRef.current;
+    type PinEl = { el: HTMLButtonElement; path: SVGPathElement; label: HTMLSpanElement; pincode: string; lng: number; lat: number; samples: number; results: PartyResult };
+    let pins: PinEl[] = [];
+    const pinHover = { current: null as string | null };
 
-    const makeSprite = (color: number, opacity: number) => {
-      const m = new THREE.SpriteMaterial({ map: zoneTex, color, transparent: true, opacity, blending: THREE.NormalBlending, depthWrite: false, depthTest: false });
-      return new THREE.Sprite(m);
+    const clearPins = () => {
+      for (const p of pins) { p.el.remove(); p.label.remove(); }
+      pins = [];
+      pinHover.current = null;
     };
 
-    const rebuildMarkers = () => {
-      // dispose old
-      markerGroup.clear();
-      pincodeHits.forEach((s) => s.material.dispose());
-      clusterHits.forEach((s) => s.material.dispose());
-      pincodeHits = [];
-      clusterHits = [];
-      const rows = live.current.districts;
+    const rebuildPins = () => {
+      clearPins();
+      if (!pinRoot) return;
+      const { mode: m, activeDistrict: act, districts: rows, layers: lay } = live.current;
+      if (m !== "pincode" || !act || !lay.pins) return;
+      const row = rows.find((r) => r.district === act);
+      if (!row) return;
+      for (const p of row.pincodes) {
+        const el = document.createElement("button");
+        el.type = "button";
+        el.setAttribute("aria-label", `PIN ${p.pincode}, ${p.district}`);
+        el.className = "pointer-events-auto absolute left-0 top-0 cursor-pointer outline-none will-change-transform";
+        el.innerHTML =
+          '<svg width="18" height="26" viewBox="0 0 18 26" fill="none"><path d="M9 1C4.58 1 1 4.58 1 9c0 5.6 8 16 8 16s8-10.4 8-16c0-4.42-3.58-8-8-8Z" fill="#3d8bfd" stroke="rgba(255,255,255,.9)" stroke-width="1"/><circle cx="9" cy="9" r="3.1" fill="#04091a"/></svg>';
+        const path = el.querySelector("path") as SVGPathElement;
+        el.addEventListener("mouseenter", () => (pinHover.current = p.pincode));
+        el.addEventListener("mouseleave", () => { if (pinHover.current === p.pincode) pinHover.current = null; });
+        el.addEventListener("click", (e) => { e.stopPropagation(); live.current.onSelectPincode(p.pincode); });
+        pinRoot.appendChild(el);
 
-      // Individual pincode pin points — revealed only for the focused district.
-      for (const row of rows) {
-        for (const p of row.pincodes) {
-          const lead = leadingParty(p.results);
-          const [x, z] = projectLngLat(p.lng, p.lat);
-          const s = makeSprite(new THREE.Color(PARTY_META[lead].color).getHex(), 0.85);
-          s.position.set(x, DEPTH + 3, z);
-          s.scale.setScalar(7 + Math.min(12, p.samples / 45));
-          s.userData = { kind: "pincode", pincode: p.pincode, district: p.district, samples: p.samples, results: p.results };
-          markerGroup.add(s);
-          pincodeHits.push(s);
-        }
+        const label = document.createElement("span");
+        label.textContent = p.pincode;
+        label.className = "pointer-events-none absolute left-0 top-0 whitespace-nowrap rounded bg-[#050b1f]/85 px-1 py-px text-[9.5px] font-medium tabular-nums text-white/85 will-change-transform";
+        label.style.opacity = "0";
+        pinRoot.appendChild(label);
+
+        pins.push({ el, path, label, pincode: p.pincode, lng: p.lng, lat: p.lat, samples: p.samples, results: p.results });
       }
     };
-    rebuildMarkers();
+    rebuildPins();
 
     // ---- camera state ----
     let theta = 0.1, phi = 1.0, dist = 1500;
@@ -338,7 +332,6 @@ export default function TamilNaduMap(props: Props) {
     // ---- HTML labels: district names, plus pincode labels for a focused district ----
     const labelRoot = labelRef.current;
     const districtLabels: Record<string, HTMLSpanElement> = {};
-    const pinLabels: Record<string, HTMLSpanElement[]> = {};
     if (labelRoot) {
       for (const row of live.current.districts) {
         const d = document.createElement("span");
@@ -351,20 +344,6 @@ export default function TamilNaduMap(props: Props) {
         d.style.textShadow = "0 1px 6px rgba(0,0,0,.85)";
         labelRoot.appendChild(d);
         districtLabels[row.district] = d;
-
-        const arr: HTMLSpanElement[] = [];
-        for (const p of row.pincodes) {
-          const s = document.createElement("span");
-          s.textContent = p.pincode;
-          s.className = "absolute left-0 top-0 whitespace-nowrap rounded px-1 py-px text-[9.5px] font-medium tabular-nums will-change-transform";
-          s.style.transform = "translate(-50%,-150%)";
-          s.style.opacity = "0";
-          s.style.background = "rgba(5,11,31,.72)";
-          s.style.color = "rgba(255,255,255,.8)";
-          labelRoot.appendChild(s);
-          arr.push(s);
-        }
-        pinLabels[row.district] = arr;
       }
     }
 
@@ -390,7 +369,6 @@ export default function TamilNaduMap(props: Props) {
         neighbourEls.push({ el, lng: n.lng, lat: n.lat });
       }
     }
-    let lastLabelActive: string | null = null;
 
     const applyCamera = () => {
       camera.position.set(
@@ -411,7 +389,10 @@ export default function TamilNaduMap(props: Props) {
         const { lng, lat } = districtCentroid(selected[0]);
         const [x, z] = projectLngLat(lng, lat);
         desired.tx = OX + x * 0.9; desired.tz = z * 0.9;
-        desired.dist = clamp(districtRadius(selected[0]) * 2800 + 650, 820, 1500);
+        const rr = districtRadius(selected[0]);
+        desired.dist = live.current.mode === "pincode"
+          ? clamp(rr * 2200 + 480, 560, 1300)
+          : clamp(rr * 2800 + 650, 820, 1500);
       } else {
         // fit the camera around the selected districts, keeping context
         let minx = 1e9, maxx = -1e9, minz = 1e9, maxz = -1e9;
@@ -433,7 +414,6 @@ export default function TamilNaduMap(props: Props) {
     let dragging = false, dragMoved = false, lastX = 0, lastY = 0, pinchDist = 0;
     const mouse = { x: 0, y: 0, px: -1, py: -1 };
     let hovered: string | null = null;
-    let hoveredPin: THREE.Sprite | null = null;
     const ray = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
 
@@ -486,11 +466,7 @@ export default function TamilNaduMap(props: Props) {
         dragging = false;
         dragMoved = false;
         if (!wasDrag) {
-          if (hoveredPin) {
-            const u = hoveredPin.userData as { kind: string; pincode?: string; district?: string };
-            if (u.kind === "pincode" && u.pincode) live.current.onSelectPincode(u.pincode);
-            else if (u.district) live.current.onSelectDistrict(u.district);
-          } else if (hovered) {
+          if (hovered) {
             live.current.onSelectDistrict(hovered);
           } else {
             live.current.onSelectPincode(null);
@@ -507,7 +483,6 @@ export default function TamilNaduMap(props: Props) {
     const onLeave = () => {
       mouse.px = -1; mouse.py = -1;
       hovered = null;
-      hoveredPin = null;
       tipRef.current = null;
     };
 
@@ -541,10 +516,10 @@ export default function TamilNaduMap(props: Props) {
       applyCamera();
 
       const { selectedDistricts: sel, activeDistrict: act, hoveredDistrict: hv, activePincode: pin } = live.current;
+      const lay = live.current.layers;
       const selSet = sel.length ? new Set(sel) : null;
-      const zoomedIn = dist < CLUSTER_DIST;
 
-      // district highlight
+      // district hover (raycast)
       let hoveredFound: string | null = null;
       if (mouse.px >= 0) {
         const r = canvas.getBoundingClientRect();
@@ -552,23 +527,12 @@ export default function TamilNaduMap(props: Props) {
         ray.setFromCamera(ndc, camera);
         const hit = ray.intersectObjects(pickables, false)[0];
         hoveredFound = hit ? (hit.object.userData.id as string) : null;
-        // survey-point hits take priority when zoomed in
-        if (zoomedIn) {
-          const pinHit = ray.intersectObjects(pincodeHits.filter((s) => s.visible), false)[0];
-          if (pinHit) hoveredPin = pinHit.object as THREE.Sprite;
-          else hoveredPin = null;
-        } else {
-          const clHit = ray.intersectObjects(clusterHits.filter((s) => s.visible), false)[0];
-          hoveredPin = clHit ? (clHit.object as THREE.Sprite) : null;
-        }
-      } else {
-        hoveredPin = null;
       }
       if (hoveredFound !== hovered) {
         hovered = hoveredFound;
         live.current.onHoverDistrict(hoveredFound);
       }
-      canvas.style.cursor = hoveredPin || hovered || dragging ? (dragging ? "grabbing" : "pointer") : "grab";
+      canvas.style.cursor = hovered || dragging ? (dragging ? "grabbing" : "pointer") : "grab";
 
       for (const id in states) {
         const st = states[id];
@@ -585,106 +549,104 @@ export default function TamilNaduMap(props: Props) {
         st.side.color.copy(S_BASE).lerp(S_ACTIVE, st.heat);
         st.side.emissive.copy(EMIS_BLUE).lerp(EMIS_ORANGE, st.heat);
         st.side.emissiveIntensity = 0.85 + st.heat * 0.7 + st.hover * 0.25;
-        st.line.opacity = (inSel ? 0.7 : 0.28) + st.hover * 0.3 + st.heat * 0.25;
+        st.line.opacity = lay.boundaries ? (inSel ? 0.7 : 0.28) + st.hover * 0.3 + st.heat * 0.25 : 0;
         st.group.position.y = st.heat * 6 + st.hover * 3;
       }
 
-      // survey points: district clusters when zoomed out; for a single focused
-      // district, reveal its pincodes as individual pin points
-      const pinDistrict = sel.length === 1 ? sel[0] : null;
-      const pinOp = zoomedIn ? clamp((CLUSTER_DIST - dist) / 240 + 0.15, 0, 1) : 0;
-      pincodeHits.forEach((s) => {
-        const u = s.userData as { district: string; pincode: string };
-        const isPinDistrict = pinDistrict === u.district;
-        const isSelPin = pin === u.pincode;
-        (s.material as THREE.SpriteMaterial).opacity = pinOp * (isPinDistrict ? 1 : 0) * (isSelPin ? 1 : 0.9);
-        s.visible = pinOp > 0.02 && isPinDistrict;
-        if (isSelPin) s.scale.setScalar(9 + Math.min(13, (u as { samples?: number }).samples ?? 0) / 40);
-      });
-
-      // tooltip
-      if ((hoveredPin || (hovered && zoomedIn)) && mouse.px >= 0 && !dragging) {
-        let data: MapTooltipData | null = null;
-        if (hoveredPin) {
-          const u = hoveredPin.userData as Record<string, unknown>;
-          if (u.kind === "pincode") data = { kind: "pincode", pincode: u.pincode as string, district: u.district as string, samples: u.samples as number, results: u.results as PartyResult, pollType: live.current.pollType };
-          else data = { kind: "cluster", count: u.count as number, district: u.district as string };
-        } else if (hovered) {
-          const row = live.current.districts.find((r) => r.district === hovered);
-          if (row) data = { kind: "district", name: hovered, samples: row.samples, results: row.results };
-        }
-        if (data) {
-          tipRef.current = { x: mouse.px, y: mouse.py };
-          setTip((prev) => (JSON.stringify(prev) === JSON.stringify(data) ? prev : data));
-        } else {
-          tipRef.current = null; setTip(null);
-        }
-      } else {
-        if (tipRef.current) { tipRef.current = null; setTip(null); }
-      }
-
-      // ---- HTML labels ----
+      // ---- screen projection helper ----
       const hostRect = host.getBoundingClientRect();
       const toScreen = (x: number, y: number, z: number) => {
         labelV.set(x, y, z).project(camera);
         return { x: (labelV.x * 0.5 + 0.5) * hostRect.width, y: (-labelV.y * 0.5 + 0.5) * hostRect.height, behind: labelV.z > 1 };
       };
 
-      // district names — all at state level, only the selected ones when filtering
-      for (const name in districtLabels) {
+      // ---- PIN-code pins (ordinary map pins for the focused district) ----
+      const pinDistrict = sel.length === 1 ? sel[0] : null;
+      const showPins = live.current.mode === "pincode" && !!pinDistrict && lay.pins;
+      const hoverRef: { pos: { x: number; y: number } | null } = { pos: null };
+      let cwx = 0, cwz = 0, spreadF = 1;
+      if (pinDistrict) {
+        const c = districtCentroid(pinDistrict);
+        [cwx, cwz] = projectLngLat(c.lng, c.lat);
+        // Tiny districts (e.g. Chennai) get a modest spread so their PINs stay
+        // separable. PIN survey areas are visual approximations.
+        spreadF = clamp(0.26 / districtRadius(pinDistrict), 1, 3);
+      }
+      if (pins.length) {
+        const step = Math.max(1, Math.ceil(pins.length / 10));
+        pins.forEach((mk, i) => {
+          if (!showPins) {
+            if (mk.el.style.display !== "none") mk.el.style.display = "none";
+            if (mk.label.style.opacity !== "0") mk.label.style.opacity = "0";
+            return;
+          }
+          const [rwx, rwz] = projectLngLat(mk.lng, mk.lat);
+          const p = toScreen(cwx + (rwx - cwx) * spreadF, DEPTH + 3, cwz + (rwz - cwz) * spreadF);
+          if (p.behind) { mk.el.style.display = "none"; mk.label.style.opacity = "0"; return; }
+          mk.el.style.display = "";
+          mk.el.style.transform = `translate(-50%,-100%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
+          const isSel = pin === mk.pincode;
+          const isHover = pinHover.current === mk.pincode;
+          mk.path.setAttribute("fill", isSel ? "#ff8a2b" : isHover ? "#79b0ff" : "#3d8bfd");
+          mk.el.style.zIndex = isSel ? "3" : isHover ? "2" : "1";
+          if (isHover) hoverRef.pos = { x: hostRect.left + p.x, y: hostRect.top + p.y };
+          const showLabel = isSel || isHover || (dist < 1100 && i % step === 0);
+          if (!showLabel) { if (mk.label.style.opacity !== "0") mk.label.style.opacity = "0"; return; }
+          mk.label.style.transform = `translate(-50%,-165%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
+          mk.label.style.opacity = isSel ? "1" : "0.8";
+          mk.label.style.color = isSel ? "#ffffff" : "rgba(255,255,255,.85)";
+          mk.label.style.background = isSel ? "rgba(255,122,26,.9)" : "rgba(5,11,31,.85)";
+        });
+      }
+
+      // ---- tooltip ----
+      if (hoverRef.pos) {
+        const mk = pins.find((x) => x.pincode === pinHover.current);
+        if (mk) {
+          const data = { kind: "pincode", pincode: mk.pincode, district: pinDistrict ?? "", samples: mk.samples, results: mk.results, pollType: live.current.pollType } as MapTooltipData;
+          tipRef.current = { x: hoverRef.pos.x, y: hoverRef.pos.y };
+          setTip((prev) => (JSON.stringify(prev) === JSON.stringify(data) ? prev : data));
+        }
+      } else if (hovered && mouse.px >= 0 && !dragging) {
+        const row = live.current.districts.find((r) => r.district === hovered);
+        if (row) {
+          const data = { kind: "district", name: hovered, samples: row.samples, results: row.results } as MapTooltipData;
+          tipRef.current = { x: mouse.px, y: mouse.py };
+          setTip((prev) => (JSON.stringify(prev) === JSON.stringify(data) ? prev : data));
+        } else if (tipRef.current) { tipRef.current = null; setTip(null); }
+      } else if (tipRef.current) {
+        tipRef.current = null; setTip(null);
+      }
+
+      // district names — collision-aware, hideable via Map Layers
+      const placed: { x: number; y: number }[] = [];
+      const labelOrder = live.current.districts.map((d) => d.district).sort((a, b) => districtRadius(b) - districtRadius(a));
+      for (const name of labelOrder) {
         const el = districtLabels[name];
+        if (!el) continue;
         const isSel = selSet ? selSet.has(name) : true;
-        if (!isSel) { if (el.style.opacity !== "0") el.style.opacity = "0"; continue; }
+        if (!isSel || !lay.labels) { if (el.style.opacity !== "0") el.style.opacity = "0"; continue; }
         const { lng, lat } = districtCentroid(name);
         const [wx, wz] = projectLngLat(lng, lat);
         const p = toScreen(wx, DEPTH + 7, wz);
         if (p.behind) { el.style.opacity = "0"; continue; }
-        el.style.transform = `translate(-50%,-50%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
         const focused = pinDistrict === name;
+        const collide = placed.some((q) => Math.abs(q.x - p.x) < 34 && Math.abs(q.y - p.y) < 15);
+        if (collide && !focused) { if (el.style.opacity !== "0") el.style.opacity = "0"; continue; }
+        placed.push({ x: p.x, y: p.y });
+        el.style.transform = `translate(-50%,-50%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
         el.style.opacity = focused ? "0.98" : "0.62";
         el.style.color = focused ? "#ffc078" : "rgba(226,236,255,.72)";
         el.style.fontSize = focused ? "13px" : "10px";
       }
 
-      // neighbouring geography labels
+      // neighbouring geography labels (hideable via Map Layers)
       for (const nb of neighbourEls) {
+        if (!lay.context) { if (nb.el.style.opacity !== "0") nb.el.style.opacity = "0"; continue; }
         const [wx, wz] = projectLngLat(nb.lng, nb.lat);
         const p = toScreen(wx, DEPTH - 3, wz);
         nb.el.style.transform = `translate(-50%,-50%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
         nb.el.style.opacity = p.behind ? "0" : "1";
-      }
-
-      // pincode labels — only for the focused (single) district, when zoomed in
-      if (pinDistrict !== lastLabelActive) {
-        if (lastLabelActive && pinLabels[lastLabelActive]) pinLabels[lastLabelActive].forEach((e) => (e.style.opacity = "0"));
-        lastLabelActive = pinDistrict;
-      }
-      if (pinDistrict) {
-        const row = live.current.districts.find((r) => r.district === pinDistrict);
-        const arr = pinLabels[pinDistrict];
-        if (row && arr) {
-          // Large districts show a sparse set of labels; tiny city districts
-          // (e.g. Chennai) show pin points only, with the label on hover/select.
-          const rr = districtRadius(pinDistrict);
-          const labelEvery = rr >= 0.15 ? Math.max(1, Math.ceil(arr.length / 8)) : 0;
-          const hoverPin = (hoveredPin?.userData as { pincode?: string } | undefined)?.pincode;
-          for (let i = 0; i < arr.length; i++) {
-            const pc = row.pincodes[i];
-            if (!pc || !zoomedIn) { arr[i].style.opacity = "0"; continue; }
-            const selected = pin === pc.pincode;
-            const hoveredThis = hoverPin === pc.pincode;
-            const show = selected || hoveredThis || (labelEvery > 0 && i % labelEvery === 0);
-            if (!show) { arr[i].style.opacity = "0"; continue; }
-            const [wx, wz] = projectLngLat(pc.lng, pc.lat);
-            const p = toScreen(wx, DEPTH + 9, wz);
-            if (p.behind) { arr[i].style.opacity = "0"; continue; }
-            const dy = selected ? "-150%" : i % 2 === 0 ? "-160%" : "55%";
-            arr[i].style.transform = `translate(-50%,${dy}) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
-            arr[i].style.opacity = selected ? "1" : hoveredThis ? "0.95" : "0.7";
-            arr[i].style.color = selected || hoveredThis ? "#ffffff" : "rgba(255,255,255,.8)";
-            arr[i].style.background = selected ? "rgba(217,96,10,.85)" : "rgba(5,11,31,.72)";
-          }
-        }
       }
 
       renderer.render(scene, camera);
@@ -693,7 +655,7 @@ export default function TamilNaduMap(props: Props) {
     setReady(true);
 
     apiRef.current = {
-      rebuildMarkers,
+      rebuildPins,
       setSelection,
       reset: () => {
         theta = 0.1; phi = 1.0; dist = 1500;
@@ -705,6 +667,7 @@ export default function TamilNaduMap(props: Props) {
     return () => {
       stop();
       ro.disconnect();
+      clearPins();
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
@@ -723,10 +686,10 @@ export default function TamilNaduMap(props: Props) {
     };
   }, [projection, projectLngLat]);
 
-  // rebuild survey markers when the poll type / district data changes
+  // rebuild PIN pins when the mode / focused district / poll type changes
   useEffect(() => {
-    apiRef.current?.rebuildMarkers();
-  }, [pollType, pollData]);
+    apiRef.current?.rebuildPins();
+  }, [mode, activeDistrict, pollType, pollData, layers.pins]);
 
   // camera framing whenever the district selection changes
   useEffect(() => {
@@ -742,6 +705,7 @@ export default function TamilNaduMap(props: Props) {
     <div ref={hostRef} className="relative h-full w-full">
       <canvas ref={canvasRef} className="block h-full w-full touch-none" aria-label="3D map of Tamil Nadu districts with survey points" role="img" />
       <div ref={labelRef} className="pointer-events-none absolute inset-0 z-[5] overflow-hidden" aria-hidden />
+      <div ref={pinRef} className="pointer-events-none absolute inset-0 z-[6] overflow-hidden" />
 
       {/* loading veil */}
       {!ready && (
