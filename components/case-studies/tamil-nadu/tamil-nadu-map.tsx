@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { geoIdentity } from "d3-geo";
 import { rafLoop } from "@/lib/raf-loop";
 import TN_GEO from "@/lib/data/tamil-nadu-districts.json";
+import INDIA_GEO from "@/lib/data/india-geo.json";
 import {
   districtCentroid,
   districtRadius,
@@ -66,6 +67,7 @@ type DistrictState = {
   side: THREE.MeshStandardMaterial;
   line: THREE.LineBasicMaterial;
   group: THREE.Group;
+  base: THREE.Color;
   target: THREE.Color;
   heat: number;
   hover: number;
@@ -180,20 +182,28 @@ export default function TamilNaduMap(props: Props) {
        Pincode survey areas are visual approximations for UI and are not
        official postal boundary polygons. */
 
-    // ---- ground glow under the state ----
+    // ---- ocean floor + soft ground glow + faint grid ----
+    const ocean = new THREE.Mesh(
+      new THREE.PlaneGeometry(9000, 9000),
+      new THREE.MeshStandardMaterial({ color: 0x08172b, roughness: 1, metalness: 0.05 }),
+    );
+    ocean.rotation.x = -Math.PI / 2;
+    ocean.position.y = -0.6;
+    scene.add(ocean);
+
     const under = new THREE.Mesh(
       new THREE.PlaneGeometry(1500, 1500),
-      new THREE.MeshBasicMaterial({ map: radialTex, color: 0x5b8fe0, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ map: radialTex, color: 0x5b8fe0, transparent: true, opacity: 0.08, blending: THREE.AdditiveBlending, depthWrite: false }),
     );
     under.rotation.x = -Math.PI / 2;
-    under.position.y = -DEPTH + 0.1;
+    under.position.y = 0.06;
     scene.add(under);
 
-    // faint cartographic grid on the "ocean" floor
-    const grid = new THREE.GridHelper(3600, 90, 0x24579f, 0x14335f);
-    grid.position.y = -DEPTH - 1.5;
+    // faint cartographic grid over the ocean
+    const grid = new THREE.GridHelper(4200, 105, 0x244f86, 0x14335f);
+    grid.position.y = -0.35;
     (grid.material as THREE.Material).transparent = true;
-    (grid.material as THREE.Material).opacity = 0.22;
+    (grid.material as THREE.Material).opacity = 0.16;
     scene.add(grid);
 
     // ---- districts ----
@@ -275,7 +285,59 @@ export default function TamilNaduMap(props: Props) {
       const g = new THREE.Group();
       g.add(mesh);
       mapGroup.add(g);
-      states[name] = { id: name, name, mesh, cap, side, line, group: g, target: C_BASE.clone(), heat: 0, hover: 0, focus: 0 };
+      const tone = 0.78 + (((name.charCodeAt(0) * 7 + name.length * 3) % 9) / 9) * 0.36;
+      const baseCol = C_BASE.clone().multiplyScalar(tone);
+      states[name] = { id: name, name, mesh, cap, side, line, group: g, base: baseCol, target: baseCol.clone(), heat: 0, hover: 0, focus: 0 };
+    }
+
+    // ---- geographic context: neighbouring states + Sri Lanka, flat on the ocean ----
+    const CONTEXT_Y = 0.03;
+    const landMat = new THREE.MeshStandardMaterial({ color: 0x1b3556, roughness: 0.9, metalness: 0.06, side: THREE.DoubleSide });
+    const landLineMat = new THREE.LineBasicMaterial({ color: 0x4a86c4, transparent: true, opacity: 0.6 });
+
+    const projRing = (ring: number[][]) =>
+      ring.map(([lng, lat]) => { const p = projection([lng, lat])!; return new THREE.Vector2(p[0] - CX, p[1] - CZ); });
+
+    const addFlatLand = (polys: number[][][][]) => {
+      const shapes: THREE.Shape[] = [];
+      for (const poly of polys) {
+        const outer = projRing(poly[0]);
+        if (outer.length < 3) continue;
+        if (signedArea(poly[0]) < 0) outer.reverse();
+        const sh = new THREE.Shape(outer);
+        for (let h = 1; h < poly.length; h++) {
+          const hole = projRing(poly[h]);
+          if (hole.length < 3) continue;
+          if (signedArea(poly[h]) > 0) hole.reverse();
+          sh.holes.push(new THREE.Path(hole));
+        }
+        shapes.push(sh);
+      }
+      if (!shapes.length) return;
+      const geo = new THREE.ShapeGeometry(shapes);
+      geo.rotateX(Math.PI / 2);
+      const m = new THREE.Mesh(geo, landMat);
+      m.position.y = CONTEXT_Y;
+      mapGroup.add(m);
+
+      const pts: number[] = [];
+      const y = CONTEXT_Y + 0.05;
+      for (const poly of polys) for (const ring of poly) {
+        for (let i = 0; i < ring.length; i++) {
+          const a = projection(ring[i] as [number, number])!; const b = projection(ring[(i + 1) % ring.length] as [number, number])!;
+          pts.push(a[0] - CX, y, a[1] - CZ, b[0] - CX, y, b[1] - CZ);
+        }
+      }
+      const lg = new THREE.BufferGeometry();
+      lg.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+      mapGroup.add(new THREE.LineSegments(lg, landLineMat));
+    };
+
+    // neighbouring Indian states — real outlines, projected from lng/lat
+    const indiaStates = INDIA_GEO as unknown as { id: string; rings: number[][][] }[];
+    for (const s of indiaStates) {
+      if (!["ka", "kl", "ap", "tg"].includes(s.id)) continue;
+      addFlatLand(s.rings.map((r) => [r]));
     }
 
     // ---- PIN-code markers: ordinary HTML map pins for the focused district ----
@@ -542,7 +604,7 @@ export default function TamilNaduMap(props: Props) {
         st.heat += ((isHighlighted ? 1 : 0) - st.heat) * 0.12;
         st.hover += ((isHover ? 1 : 0) - st.hover) * 0.18;
         st.focus += ((inSel ? 1 : 0) - st.focus) * 0.12;
-        const base = C_BASE.clone().lerp(C_DIM, 1 - st.focus);
+        const base = st.base.clone().lerp(C_DIM, 1 - st.focus);
         st.target.copy(base).lerp(C_SEL, st.focus * 0.5).lerp(C_HOVER, st.hover * (1 - st.heat) * (inSel ? 1 : 0.2)).lerp(C_ACTIVE, st.heat);
         st.cap.color.lerp(st.target, 0.2);
         st.cap.emissiveIntensity = st.heat * 0.5 + st.hover * 0.12;
