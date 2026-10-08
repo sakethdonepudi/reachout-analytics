@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState, type CSSProperties } from "react";
 import type { Leader } from "@/lib/cases";
 import { caseUrl } from "@/lib/cases";
+import { startRouteTransition } from "@/lib/route-transition";
 import { cn } from "@/lib/utils";
 
 type Props = {

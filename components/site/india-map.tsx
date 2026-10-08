@@ -8,6 +8,7 @@ import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 import { rafLoop } from "@/lib/raf-loop";
 import ShimmerButton from "@/components/ui/shimmer-button";
 import { CASES, UPCOMING, caseUrl, leaderById, type CaseStudy } from "@/lib/cases";
+import { startRouteTransition } from "@/lib/route-transition";
 import STATES from "@/lib/data/india-states.json";
 import { cn } from "@/lib/utils";
 
@@ -278,10 +279,14 @@ export default function IndiaMap() {
       const fr = (r: number) => 1 - Math.pow(1 - r, dt * 60);
       readScroll();
       tCur += (tTarget - tCur) * (reduced ? 1 : 1 - Math.pow(0.0015, dt));
-      const i = Math.min(Math.floor(tCur), N - 1);
+      const finite = Number.isFinite(tCur);
+      const iRaw = finite ? Math.floor(tCur) : 0;
+      const i = Math.max(0, Math.min(iRaw, N - 1));
       const f = ease(clamp((tCur - i - 0.22) / 0.56, 0, 1));
-      const A = STOPS[i], B = STOPS[i + 1];
-      const s = Math.round(tCur), S = STOPS[s];
+      const A = STOPS[i] ?? STOPS[0], B = STOPS[i + 1] ?? STOPS[N];
+      const sRaw = finite ? Math.round(tCur) : 0;
+      const s = Math.max(0, Math.min(sRaw, N));
+      const S = STOPS[s] ?? STOPS[N];
       const mobile = innerWidth <= 720;
       const cE = ease(contactP);
 
@@ -491,10 +496,9 @@ export default function IndiaMap() {
               </div>
               <div className="min-w-0">
                 <h3 className="font-display text-xl font-semibold leading-tight text-white">{cardCase.title}</h3>
-                <p className="truncate text-xs text-white/55">
-                  {cardCase.party && <b className="font-bold text-saffron-2">{cardCase.party}</b>}
-                  {cardCase.party && " · "}
-                  {cardCase.subtitle}
+                <p className="flex items-center gap-2 truncate text-xs">
+                  {cardCase.party && <b className="shrink-0 font-bold text-saffron-2">{cardCase.party}</b>}
+                  {cardCase.subtitle && <span className="truncate text-white/50">{cardCase.subtitle}</span>}
                 </p>
               </div>
             </div>

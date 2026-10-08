@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import RouteTransition from "@/components/site/route-transition";
 
 export const metadata: Metadata = {
   title: "ReachOut Analytics — Winning Elections with Data",
@@ -19,7 +20,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <RouteTransition />
+      </body>
     </html>
   );
 }

@@ -62,6 +62,9 @@ body {
 @keyframes pulse-dot { 0% { box-shadow: 0 0 0 0 rgba(255, 153, 51, 0.7); } 100% { box-shadow: 0 0 0 10px rgba(255, 153, 51, 0); } }
 @keyframes sweep { 0%, 100% { opacity: 0.35; transform: translate(-10%, 0) scale(1); } 50% { opacity: 0.6; transform: translate(6%, -4%) scale(1.1); } }
 @keyframes wheel { 0% { opacity: 0; transform: translateY(0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(12px); } }
+@keyframes rt-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rt-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes rt-line { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 .animate-marquee { animation: marquee 38s linear infinite; }
 .animate-float { animation: float-y 6s ease-in-out infinite; }

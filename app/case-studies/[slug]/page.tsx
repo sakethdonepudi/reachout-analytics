@@ -7,7 +7,11 @@ import CaseCta from "@/components/site/case-cta";
 import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl, leaderById } from "@/lib/cases";
 
 export function generateStaticParams() {
-  return [...CASES.map((c) => ({ slug: c.slug })), ...UPCOMING.map((u) => ({ slug: u.slug }))];
+  // Tamil Nadu has its own dedicated dashboard route (/case-studies/tamil-nadu).
+  return [
+    ...CASES.filter((c) => c.slug !== "tamil-nadu").map((c) => ({ slug: c.slug })),
+    ...UPCOMING.map((u) => ({ slug: u.slug })),
+  ];
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
