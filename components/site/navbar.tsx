@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
+import ThemeToggle from "@/components/site/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
@@ -17,14 +18,14 @@ const LINKS = [
 
 export function Logo({ className }: { className?: string }) {
   return (
-    <Link href="/#top" className={cn("flex items-center gap-2.5 font-display text-[17px] font-semibold tracking-tight text-white", className)}>
+    <Link href="/#top" className={cn("flex items-center gap-2.5 font-display text-[17px] font-semibold tracking-tight text-foreground", className)}>
       <span className="grid gap-[3px]" aria-hidden>
         <b className="block h-[3px] w-5 -skew-x-[20deg] rounded-full bg-saffron" />
-        <b className="block h-[3px] w-4 -skew-x-[20deg] rounded-full bg-white" />
+        <b className="block h-[3px] w-4 -skew-x-[20deg] rounded-full bg-foreground" />
         <b className="block h-[3px] w-3 -skew-x-[20deg] rounded-full bg-[#2fbf4a]" />
       </span>
       <span>
-        Reach<span className="text-saffron-2">Out</span> Analytics
+        Reach<span className="text-saffron">Out</span> Analytics
       </span>
     </Link>
   );
@@ -46,9 +47,9 @@ export default function Navbar() {
     <header className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-4">
       <div
         className={cn(
-          "pointer-events-auto relative flex w-full max-w-6xl items-center justify-between rounded-full border border-white/10 pl-5 pr-2 transition-all duration-500",
-          "bg-white/[0.06] shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)] backdrop-blur-2xl backdrop-saturate-150",
-          scrolled ? "bg-[#07122e]/70 py-1.5" : "py-2.5",
+          "pointer-events-auto relative flex w-full max-w-6xl items-center justify-between rounded-full border border-border/80 pl-5 pr-2 transition-all duration-500",
+          "bg-card/75 shadow-[0_20px_60px_-24px_rgba(15,20,30,0.45)] backdrop-blur-2xl backdrop-saturate-150",
+          scrolled ? "py-1.5" : "py-2.5",
         )}
       >
         <span className="tricolor-line pointer-events-none absolute inset-x-10 -bottom-px h-px opacity-60" aria-hidden />
@@ -59,7 +60,7 @@ export default function Navbar() {
             <a
               key={l.label}
               href={l.href}
-              className="rounded-full px-4 py-2 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
+              className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
             >
               {l.label}
             </a>
@@ -71,10 +72,11 @@ export default function Navbar() {
             text="Book a Consultation"
             duration={2}
             onClick={() => router.push("/#contact")}
-            className="hidden border-white/15 px-5 py-2 sm:block dark:bg-[#0a1a44]/80 backdrop-blur-xl"
+            className="hidden border-border px-5 py-2 sm:block"
           />
+          <ThemeToggle className="size-10 shrink-0" />
           <button
-            className="grid size-10 place-items-center rounded-full text-white/80 hover:bg-white/10 md:hidden"
+            className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-elevated hover:text-foreground md:hidden"
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Close menu" : "Open menu"}
           >
@@ -89,7 +91,7 @@ export default function Navbar() {
                 key={l.label}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="block rounded-2xl px-4 py-3 text-[15px] font-medium text-white/85 hover:bg-white/10"
+                className="block rounded-2xl px-4 py-3 text-[15px] font-medium text-foreground/85 hover:bg-elevated"
               >
                 {l.label}
               </a>

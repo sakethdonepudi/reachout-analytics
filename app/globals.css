@@ -1,23 +1,81 @@
 @import "tailwindcss";
 
-/* shadcn-style class-based dark mode (the site runs with <html class="dark">) */
+/* shadcn-style class-based theming. `<html class="dark">` = dark theme. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* =====================================================================
+   Design tokens. Light is the :root default; `.dark` overrides.
+   Semantic names only — components should not hardcode surfaces/text.
+   ===================================================================== */
 :root {
-  --background: #050b1f;
-  --foreground: #f4f7ff;
-  --saffron: #ff9933;
-  --saffron-2: #ffb866;
+  /* brand (constant across themes) */
+  --saffron: #f58a24;
+  --saffron-2: #b96a12;
   --india-green: #138808;
   --green-2: #2fbf4a;
   --navy: #0b1f4d;
-  --glass: rgba(12, 24, 58, 0.45);
-  --glass-line: rgba(255, 255, 255, 0.12);
+
+  /* semantic — light */
+  --bg: #f8f7f3;
+  --fg: #20242b;
+  --card: #ffffff;
+  --elevated: #ffffff;
+  --muted: #626b78;
+  --border: #dde1e6;
+  --accent: #f58a24;
+
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(20, 24, 31, 0.1);
+  --glass-shadow: 0 20px 48px -26px rgba(20, 24, 31, 0.35);
+
+  /* map */
+  --map-fill: #e7ebef;
+  --map-hover: #d9dee5;
+  --map-sel: #f7c894;
+  --map-sel-line: #e07617;
+  --map-line: #9aa6b4;
+  --map-state: #48525f;
+  --map-side: #d3d9e0;
+  --map-label: #20242b;
+  --map-halo: rgba(255, 255, 255, 0.92);
+}
+
+.dark {
+  --saffron-2: #ffb866;
+
+  --bg: #11151b;
+  --fg: #f3f5f7;
+  --card: #1b222c;
+  --elevated: #252f3c;
+  --muted: #adb7c4;
+  --border: #394656;
+  --accent: #f58a24;
+
+  --glass-bg: rgba(27, 34, 44, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.8);
+
+  --map-fill: #2b3746;
+  --map-hover: #3a4759;
+  --map-sel: #c2591a;
+  --map-sel-line: #f58a24;
+  --map-line: #a0adbc;
+  --map-state: #d5dce5;
+  --map-side: #1c2531;
+  --map-label: #e7ecf2;
+  --map-halo: rgba(0, 0, 0, 0.8);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-card: var(--card);
+  --color-card-foreground: var(--fg);
+  --color-elevated: var(--elevated);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
   --color-saffron: var(--saffron);
   --color-saffron-2: var(--saffron-2);
   --color-india-green: var(--india-green);
@@ -29,20 +87,29 @@
 
 html { scroll-behavior: smooth; }
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--fg);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
 
+/* theme change transition (150–250ms), disabled for reduced motion */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease,
+    fill 200ms ease, stroke 200ms ease, box-shadow 200ms ease !important;
+}
+
 /* ---------- shared utilities ---------- */
 @utility glass {
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.025));
-  border: 1px solid var(--glass-line);
-  backdrop-filter: blur(22px) saturate(150%);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
-  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: var(--glass-shadow);
 }
 @utility tricolor-line {
   background: linear-gradient(90deg, transparent, var(--saffron) 20%, #ffffff 50%, var(--green-2) 80%, transparent);
@@ -75,4 +142,5 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee, .animate-float, .animate-pulse-dot, .animate-sweep, .animate-wheel { animation: none; }
   html { scroll-behavior: auto; }
+  html.theme-transition, html.theme-transition * { transition: none !important; }
 }

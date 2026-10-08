@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import RouteTransition from "@/components/site/route-transition";
+import ThemeProvider, { ThemeScript } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
   title: "ReachOut Analytics — Winning Elections with Data",
@@ -10,8 +11,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <ThemeScript />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
@@ -21,8 +23,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body>
-        {children}
-        <RouteTransition />
+        <ThemeProvider>
+          {children}
+          <RouteTransition />
+        </ThemeProvider>
       </body>
     </html>
   );

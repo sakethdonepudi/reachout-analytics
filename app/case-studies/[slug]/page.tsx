@@ -34,14 +34,11 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
   return (
     <>
       <Navbar />
-      <main className="relative min-h-screen overflow-hidden bg-[#050b1f]">
-        {/* ambient backdrop */}
-        <div className="absolute inset-0 scale-110 bg-[url(/images/parliament.webp)] bg-cover bg-center opacity-25 blur-3xl" aria-hidden />
-        <div className="absolute inset-0 bg-[radial-gradient(80%_60%_at_70%_20%,rgba(255,153,51,.18),transparent_60%),radial-gradient(60%_60%_at_10%_90%,rgba(47,191,74,.12),transparent_60%),linear-gradient(180deg,rgba(5,11,31,.4),#050b1f_70%)]" aria-hidden />
-        <div className="grain absolute inset-0 opacity-[0.06] mix-blend-overlay" aria-hidden />
+      <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_75%_10%,rgba(245,138,36,0.08),transparent_60%)]" aria-hidden />
 
         <div className="relative mx-auto max-w-6xl px-6 pb-24 pt-36 sm:px-10">
-          <Link href="/#tour" className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white/80 hover:text-white">
+          <Link href="/#tour" className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-foreground/80 transition-colors hover:text-foreground">
             <ArrowLeft className="size-4" /> Back to the map
           </Link>
 
@@ -54,12 +51,12 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
                 {c?.title ?? upcoming!.title}
               </h1>
               {c && (
-                <p className="mt-4 flex items-center gap-2 text-white/60">
+                <p className="mt-4 flex items-center gap-2 text-muted-foreground">
                   <MapPin className="size-4 text-saffron-2" /> {c.region}
-                  {c.party && <> · <b className="text-white/85">{c.party}</b></>}
+                  {c.party && <> · <b className="text-foreground/85">{c.party}</b></>}
                 </p>
               )}
-              <p className="mt-8 max-w-xl text-xl leading-relaxed text-white/80">
+              <p className="mt-8 max-w-xl text-xl leading-relaxed text-foreground/80">
                 {c?.summary ?? "We're preparing for this election cycle. Get in touch to discuss how data can shape your campaign."}
               </p>
             </div>
@@ -78,23 +75,23 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
                   <div key={t} className="glass rounded-2xl p-6">
                     <span className="font-serif text-4xl italic text-saffron-2">{String(i + 1).padStart(2, "0")}</span>
                     <h3 className="mt-3 font-display text-lg font-semibold">{t}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-white/60">{CAPABILITIES[t] ?? ""}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{CAPABILITIES[t] ?? ""}</p>
                   </div>
                 ))}
               </div>
 
               {/* TODO: replace with verified results for this campaign */}
-              <div className="glass mt-6 rounded-2xl border-dashed p-6 text-white/55">
-                <b className="text-white/80">Results</b> — add verified outcomes for this campaign here (seats, vote share, accuracy of predictions).
+              <div className="mt-6 rounded-2xl border border-dashed border-border p-6 text-muted-foreground">
+                <b className="text-foreground/80">Results</b> — add verified outcomes for this campaign here (seats, vote share, accuracy of predictions).
               </div>
             </>
           )}
 
-          <div className="mt-20 flex flex-col items-start justify-between gap-6 border-t border-white/10 pt-10 sm:flex-row sm:items-center">
+          <div className="mt-20 flex flex-col items-start justify-between gap-6 border-t border-border pt-10 sm:flex-row sm:items-center">
             <CaseCta />
             {c && (
-              <Link href={caseUrl(next.slug)} className="group flex items-center gap-3 text-white/70 hover:text-white">
-                Next: <b className="font-display text-lg text-white">{next.title}</b>
+              <Link href={caseUrl(next.slug)} className="group flex items-center gap-3 text-muted-foreground transition-colors hover:text-foreground">
+                Next: <b className="font-display text-lg text-foreground">{next.title}</b>
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
               </Link>
             )}
