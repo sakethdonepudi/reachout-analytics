@@ -26,7 +26,6 @@ const FC = TN_GEO as unknown as { type: "FeatureCollection"; features: GeoFeatur
 const INDIA = INDIA_GEO as unknown as { id: string; rings: number[][][] }[];
 
 const BOX = 1000;
-const DEPTH = 8; // 2.5D plate height (subtle)
 const CX = BOX / 2;
 const CZ = BOX / 2;
 const CLUSTER_DIST = 1250;
@@ -83,7 +82,6 @@ type DistrictState = {
   name: string;
   mesh: THREE.Mesh;
   cap: THREE.MeshStandardMaterial;
-  side: THREE.MeshStandardMaterial;
   line: THREE.LineBasicMaterial;
   group: THREE.Group;
   tone: number;
@@ -178,19 +176,17 @@ export default function TamilNaduMap(props: Props) {
       }
       if (shapes.length === 0) continue;
 
-      const geo = new THREE.ExtrudeGeometry(shapes, { depth: DEPTH, bevelEnabled: false, curveSegments: 1 });
+      const geo = new THREE.ShapeGeometry(shapes, 1);
       geo.rotateX(Math.PI / 2);
-      geo.translate(0, DEPTH, 0);
 
-      const cap = new THREE.MeshStandardMaterial({ color: PAL.dark.fill.clone(), roughness: 0.9, metalness: 0.05, side: THREE.DoubleSide });
-      const side = new THREE.MeshStandardMaterial({ color: PAL.dark.side.clone(), roughness: 1, metalness: 0, side: THREE.DoubleSide });
-      const mesh = new THREE.Mesh(geo, [cap, side]);
+      const cap = new THREE.MeshStandardMaterial({ color: PAL.dark.fill.clone(), roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide });
+      const mesh = new THREE.Mesh(geo, cap);
       mesh.userData.id = name;
       pickables.push(mesh);
 
-      // crisp district boundary line on the top cap
+      // crisp district boundary line on the flat surface
       const pts: number[] = [];
-      const y = DEPTH + 0.08;
+      const y = 0.06;
       const addLoop = (ring: number[][]) => {
         for (let i = 0; i < ring.length; i++) {
           const p = projection(ring[i] as [number, number])!;
@@ -208,7 +204,7 @@ export default function TamilNaduMap(props: Props) {
       g.add(mesh);
       mapGroup.add(g);
       const tone = 0.96 + (((name.charCodeAt(0) * 7 + name.length * 3) % 9) / 9) * 0.08;
-      states[name] = { id: name, name, mesh, cap, side, line, group: g, tone, heat: 0, hover: 0 };
+      states[name] = { id: name, name, mesh, cap, line, group: g, tone, heat: 0, hover: 0 };
     }
 
     // strong state outline, from the real Tamil Nadu state geometry
@@ -216,7 +212,7 @@ export default function TamilNaduMap(props: Props) {
     const tn = INDIA.find((s) => s.id === "tn");
     if (tn) {
       const pts: number[] = [];
-      const y = DEPTH + 0.16;
+      const y = 0.1;
       for (const ring of tn.rings) {
         for (let i = 0; i < ring.length; i++) {
           const p = projection(ring[i] as [number, number])!;
@@ -283,10 +279,10 @@ export default function TamilNaduMap(props: Props) {
       }
     }
 
-    // ---- camera ----
-    let theta = 0.0, phi = 0.66, dist = 2050;
+    // ---- camera (flat, north-up top-down view) ----
+    let theta = 0.0, phi = 0.04, dist = 1700;
     const target = new THREE.Vector3(0, 0, 0);
-    const desired = { tx: 0, tz: 0, dist: 2050 };
+    const desired = { tx: 0, tz: 0, dist: 1700 };
     const labelV = new THREE.Vector3();
     const oxBase = () => (typeof window !== "undefined" && window.innerWidth > 1024 ? 150 : 0);
 
@@ -301,7 +297,7 @@ export default function TamilNaduMap(props: Props) {
 
     const setSelection = (selected: string[]) => {
       const OX = oxBase();
-      if (selected.length === 0) { desired.tx = OX; desired.tz = 0; desired.dist = 2050; }
+      if (selected.length === 0) { desired.tx = OX; desired.tz = 0; desired.dist = 1700; }
       else if (selected.length === 1) {
         const { lng, lat } = districtCentroid(selected[0]);
         const [x, z] = projectLngLat(lng, lat);
@@ -354,7 +350,7 @@ export default function TamilNaduMap(props: Props) {
         lastX = e.clientX; lastY = e.clientY;
         if (Math.abs(dx) + Math.abs(dy) > 2) dragMoved = true;
         theta = clamp(theta - dx * 0.005, -0.6, 0.6);
-        phi = clamp(phi - dy * 0.004, 0.2, 1.1);
+        phi = clamp(phi - dy * 0.004, 0.01, 1.1);
         desired.tx = target.x; desired.tz = target.z; desired.dist = dist;
       }
     };
@@ -425,10 +421,9 @@ export default function TamilNaduMap(props: Props) {
         const baseFill = P.fill.clone().multiplyScalar(st.tone);
         const target = baseFill.lerp(P.hover, st.hover * (1 - st.heat)).lerp(P.sel, st.heat);
         st.cap.color.lerp(target, 0.25);
-        st.side.color.lerp(P.side, 0.25);
         st.line.color.copy(P.line).lerp(P.selLine, st.heat);
         st.line.opacity = lay.boundaries ? 0.9 : 0;
-        st.group.position.y = st.heat * 5 + st.hover * 2.5;
+        st.group.position.y = st.heat * 1.5 + st.hover * 0.8;
       }
       if (stateMat) { stateMat.color.copy(P.state); stateMat.opacity = lay.boundaries ? 1 : 0; stateMat.transparent = true; }
 
@@ -454,7 +449,7 @@ export default function TamilNaduMap(props: Props) {
         pins.forEach((mk, i) => {
           if (!showPins) { if (mk.el.style.display !== "none") mk.el.style.display = "none"; if (mk.label.style.opacity !== "0") mk.label.style.opacity = "0"; return; }
           const [rwx, rwz] = projectLngLat(mk.lng, mk.lat);
-          const p = toScreen(cwx + (rwx - cwx) * spreadF, DEPTH + 3, cwz + (rwz - cwz) * spreadF);
+          const p = toScreen(cwx + (rwx - cwx) * spreadF, 0.5, cwz + (rwz - cwz) * spreadF);
           if (p.behind) { mk.el.style.display = "none"; mk.label.style.opacity = "0"; return; }
           mk.el.style.display = "";
           mk.el.style.transform = `translate(-50%,-100%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
@@ -501,7 +496,7 @@ export default function TamilNaduMap(props: Props) {
         if (!isSel || !lay.labels || (!zoomed && !big)) { if (el.style.opacity !== "0") el.style.opacity = "0"; continue; }
         const { lng, lat } = districtCentroid(name);
         const [wx, wz] = projectLngLat(lng, lat);
-        const p = toScreen(wx, DEPTH + 8, wz);
+        const p = toScreen(wx, 0.6, wz);
         if (p.behind) { el.style.opacity = "0"; continue; }
         const focused = pinDistrict === name;
         const collide = placed.some((q) => Math.abs(q.x - p.x) < 30 && Math.abs(q.y - p.y) < 14);
@@ -522,7 +517,7 @@ export default function TamilNaduMap(props: Props) {
     apiRef.current = {
       rebuildPins,
       setSelection,
-      reset: () => { theta = 0; phi = 0.66; dist = 2050; desired.tx = oxBase(); desired.tz = 0; desired.dist = 2050; },
+      reset: () => { theta = 0; phi = 0.04; dist = 1700; desired.tx = oxBase(); desired.tz = 0; desired.dist = 1700; },
     };
 
     return () => {
