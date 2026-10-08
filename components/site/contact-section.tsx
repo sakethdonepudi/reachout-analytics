@@ -58,7 +58,7 @@ export default function ContactSection() {
     <section
       ref={section}
       id="contact"
-      className="relative z-[2] min-h-[100svh] overflow-hidden bg-[linear-gradient(180deg,rgba(5,11,31,0)_0%,rgba(5,11,31,.85)_18%,#050b1f_40%)] px-6 pb-2 pt-36 scroll-mt-24 sm:px-10 lg:pb-10"
+      className="pointer-events-auto relative z-[2] min-h-[100svh] overflow-hidden bg-[linear-gradient(180deg,rgba(5,11,31,0)_0%,rgba(5,11,31,.85)_18%,#050b1f_40%)] px-6 pb-2 pt-36 scroll-mt-24 sm:px-10 lg:pb-10"
     >
       {/* flying globe (fixed, follows the slot) */}
       <div ref={flyer} className="pointer-events-none fixed left-0 top-0 z-[1] invisible will-change-transform" aria-hidden>

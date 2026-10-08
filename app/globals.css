@@ -132,15 +132,17 @@ html.theme-transition *::after {
 @keyframes rt-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rt-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes rt-line { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes drift { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -16px, 0); } }
 
 .animate-marquee { animation: marquee 38s linear infinite; }
 .animate-float { animation: float-y 6s ease-in-out infinite; }
 .animate-pulse-dot { animation: pulse-dot 1.8s ease-out infinite; }
 .animate-sweep { animation: sweep 12s ease-in-out infinite; }
 .animate-wheel { animation: wheel 1.8s ease-in-out infinite; }
+.animate-drift { animation: drift 20s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-marquee, .animate-float, .animate-pulse-dot, .animate-sweep, .animate-wheel { animation: none; }
+  .animate-marquee, .animate-float, .animate-pulse-dot, .animate-sweep, .animate-wheel, .animate-drift { animation: none; }
   html { scroll-behavior: auto; }
   html.theme-transition, html.theme-transition * { transition: none !important; }
 }
