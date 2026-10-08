@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { RotateCcw } from "lucide-react";
 import { geoIdentity } from "d3-geo";
 import { rafLoop } from "@/lib/raf-loop";
 import TN_GEO from "@/lib/data/tamil-nadu-districts.json";
@@ -28,7 +27,7 @@ type GeoFeature = { type: "Feature"; properties: { district: string }; geometry:
 const FC = TN_GEO as unknown as { type: "FeatureCollection"; features: GeoFeature[] };
 
 const BOX = 1000; // projected map is fitted into a 1000×1000 box
-const DEPTH = 4; // shallow 2.5D extrusion
+const DEPTH = 7; // 2.5D extrusion (visible glowing side walls)
 const CX = BOX / 2;
 const CZ = BOX / 2;
 const CLUSTER_DIST = 1250;
@@ -50,6 +49,7 @@ type Props = {
   activeDistrict: string | null;
   hoveredDistrict: string | null;
   activePincode: string | null;
+  resetNonce?: number;
   onHoverDistrict: (name: string | null) => void;
   onSelectDistrict: (name: string | null) => void;
   onSelectPincode: (pincode: string | null) => void;
@@ -77,6 +77,7 @@ export default function TamilNaduMap(props: Props) {
     activeDistrict,
     hoveredDistrict,
     activePincode,
+    resetNonce,
     onHoverDistrict,
     onSelectDistrict,
     onSelectPincode,
@@ -141,12 +142,12 @@ export default function TamilNaduMap(props: Props) {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(34, 1, 1, 9000);
 
-    // ---- lights (mirror the homepage India map) ----
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x0a1636, 1.0));
-    const sun = new THREE.DirectionalLight(0xffffff, 2.1);
+    // ---- lights (dark navy caps, glowing blue district walls) ----
+    scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x061027, 0.55));
+    const sun = new THREE.DirectionalLight(0xdfe9ff, 1.35);
     sun.position.set(-320, 640, 420);
     scene.add(sun);
-    const rim = new THREE.DirectionalLight(0x9cc6ff, 0.7);
+    const rim = new THREE.DirectionalLight(0x6fa8ff, 0.55);
     rim.position.set(460, 160, -560);
     scene.add(rim);
     const hub = new THREE.PointLight(0xffa640, 0, 180, 0);
@@ -203,17 +204,26 @@ export default function TamilNaduMap(props: Props) {
     under.position.y = -DEPTH + 0.1;
     scene.add(under);
 
+    // faint cartographic grid on the "ocean" floor
+    const grid = new THREE.GridHelper(3600, 90, 0x24579f, 0x14335f);
+    grid.position.y = -DEPTH - 1.5;
+    (grid.material as THREE.Material).transparent = true;
+    (grid.material as THREE.Material).opacity = 0.22;
+    scene.add(grid);
+
     // ---- districts ----
     const mapGroup = new THREE.Group();
     scene.add(mapGroup);
 
-    const C_BASE = new THREE.Color(0x1c3f86);
-    const C_DIM = new THREE.Color(0x1c3768);
-    const C_SEL = new THREE.Color(0x2f66c8);
-    const C_HOVER = new THREE.Color(0x4f8ff0);
-    const C_ACTIVE = new THREE.Color(0xd9600a);
-    const S_BASE = new THREE.Color(0x0b1c44);
-    const S_ACTIVE = new THREE.Color(0x8f3f00);
+    const C_BASE = new THREE.Color(0x0e2454);
+    const C_DIM = new THREE.Color(0x0a1a3e);
+    const C_SEL = new THREE.Color(0x1b3f8a);
+    const C_HOVER = new THREE.Color(0x3172d6);
+    const C_ACTIVE = new THREE.Color(0xe36310);
+    const S_BASE = new THREE.Color(0x0a1a3c);
+    const S_ACTIVE = new THREE.Color(0x9a3d00);
+    const EMIS_BLUE = new THREE.Color(0x1f6fff);
+    const EMIS_ORANGE = new THREE.Color(0xff7a1a);
 
     const states: Record<string, DistrictState> = {};
     const pickables: THREE.Mesh[] = [];
@@ -255,8 +265,8 @@ export default function TamilNaduMap(props: Props) {
       geo.rotateX(Math.PI / 2);
       geo.translate(0, DEPTH, 0);
 
-      const cap = new THREE.MeshStandardMaterial({ color: C_BASE.clone(), roughness: 0.5, metalness: 0.28, emissive: 0xff7a1a, emissiveIntensity: 0, side: THREE.DoubleSide });
-      const side = new THREE.MeshStandardMaterial({ color: S_BASE.clone(), roughness: 0.72, metalness: 0.3, side: THREE.DoubleSide });
+      const cap = new THREE.MeshStandardMaterial({ color: C_BASE.clone(), roughness: 0.62, metalness: 0.22, emissive: 0xff7a1a, emissiveIntensity: 0, side: THREE.DoubleSide });
+      const side = new THREE.MeshStandardMaterial({ color: S_BASE.clone(), roughness: 0.5, metalness: 0.12, emissive: EMIS_BLUE.clone(), emissiveIntensity: 0.9, side: THREE.DoubleSide });
       const mesh = new THREE.Mesh(geo, [cap, side]);
       mesh.userData.id = name;
       pickables.push(mesh);
@@ -274,7 +284,7 @@ export default function TamilNaduMap(props: Props) {
       for (const poly of polys) poly.forEach(addLoop);
       const lg = new THREE.BufferGeometry();
       lg.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-      const line = new THREE.LineBasicMaterial({ color: 0x6f95dd, transparent: true, opacity: 0.45 });
+      const line = new THREE.LineBasicMaterial({ color: 0x63b4ff, transparent: true, opacity: 0.7 });
       mapGroup.add(new THREE.LineSegments(lg, line));
 
       const g = new THREE.Group();
@@ -320,9 +330,9 @@ export default function TamilNaduMap(props: Props) {
     rebuildMarkers();
 
     // ---- camera state ----
-    let theta = 0.12, phi = 0.86, dist = 1850;
+    let theta = 0.1, phi = 1.0, dist = 1500;
     const target = new THREE.Vector3(0, 0, 0);
-    const desired = { tx: 0, tz: 0, dist: 1850 };
+    const desired = { tx: 0, tz: 0, dist: 1500 };
     const labelV = new THREE.Vector3();
 
     // ---- HTML labels: district names, plus pincode labels for a focused district ----
@@ -357,6 +367,29 @@ export default function TamilNaduMap(props: Props) {
         pinLabels[row.district] = arr;
       }
     }
+
+    // neighbouring geography labels (static, projected each frame)
+    const NEIGHBOURS: { text: string; lng: number; lat: number }[] = [
+      { text: "KARNATAKA", lng: 76.7, lat: 13.7 },
+      { text: "KERALA", lng: 76.1, lat: 10.1 },
+      { text: "BAY OF BENGAL", lng: 81.7, lat: 12.0 },
+      { text: "SRI LANKA", lng: 80.3, lat: 7.7 },
+    ];
+    const neighbourEls: { el: HTMLSpanElement; lng: number; lat: number }[] = [];
+    if (labelRoot) {
+      for (const n of NEIGHBOURS) {
+        const el = document.createElement("span");
+        el.textContent = n.text;
+        el.className = "absolute left-0 top-0 whitespace-nowrap font-semibold tracking-[0.3em] will-change-transform";
+        el.style.transform = "translate(-50%,-50%)";
+        el.style.opacity = "0";
+        el.style.fontSize = "11px";
+        el.style.color = "rgba(150,185,235,.42)";
+        el.style.textShadow = "0 1px 8px rgba(0,0,0,.9)";
+        labelRoot.appendChild(el);
+        neighbourEls.push({ el, lng: n.lng, lat: n.lat });
+      }
+    }
     let lastLabelActive: string | null = null;
 
     const applyCamera = () => {
@@ -369,12 +402,15 @@ export default function TamilNaduMap(props: Props) {
     };
 
     const setSelection = (selected: string[]) => {
+      // on desktop, nudge the framing left so the floating panels never sit on
+      // top of the state
+      const OX = typeof window !== "undefined" && window.innerWidth > 1024 ? 150 : 0;
       if (selected.length === 0) {
-        desired.tx = 0; desired.tz = 0; desired.dist = 1850;
+        desired.tx = OX; desired.tz = 0; desired.dist = 1500;
       } else if (selected.length === 1) {
         const { lng, lat } = districtCentroid(selected[0]);
         const [x, z] = projectLngLat(lng, lat);
-        desired.tx = x * 0.9; desired.tz = z * 0.9;
+        desired.tx = OX + x * 0.9; desired.tz = z * 0.9;
         desired.dist = clamp(districtRadius(selected[0]) * 2800 + 650, 820, 1500);
       } else {
         // fit the camera around the selected districts, keeping context
@@ -386,7 +422,7 @@ export default function TamilNaduMap(props: Props) {
           minz = Math.min(minz, z); maxz = Math.max(maxz, z);
         }
         const span = Math.max(maxx - minx, maxz - minz, 300);
-        desired.tx = ((minx + maxx) / 2) * 0.85;
+        desired.tx = OX + ((minx + maxx) / 2) * 0.85;
         desired.tz = ((minz + maxz) / 2) * 0.85;
         desired.dist = clamp(span * 2.9 + 700, 1250, 2750);
       }
@@ -545,10 +581,12 @@ export default function TamilNaduMap(props: Props) {
         const base = C_BASE.clone().lerp(C_DIM, 1 - st.focus);
         st.target.copy(base).lerp(C_SEL, st.focus * 0.5).lerp(C_HOVER, st.hover * (1 - st.heat) * (inSel ? 1 : 0.2)).lerp(C_ACTIVE, st.heat);
         st.cap.color.lerp(st.target, 0.2);
-        st.cap.emissiveIntensity = st.heat * 0.55 + st.hover * 0.15;
+        st.cap.emissiveIntensity = st.heat * 0.5 + st.hover * 0.12;
         st.side.color.copy(S_BASE).lerp(S_ACTIVE, st.heat);
-        st.line.opacity = (inSel ? 0.45 : 0.18) + st.hover * 0.4 + st.heat * 0.3;
-        st.group.position.y = st.heat * 5 + st.hover * 2.5;
+        st.side.emissive.copy(EMIS_BLUE).lerp(EMIS_ORANGE, st.heat);
+        st.side.emissiveIntensity = 0.85 + st.heat * 0.7 + st.hover * 0.25;
+        st.line.opacity = (inSel ? 0.7 : 0.28) + st.hover * 0.3 + st.heat * 0.25;
+        st.group.position.y = st.heat * 6 + st.hover * 3;
       }
 
       // survey points: district clusters when zoomed out; for a single focused
@@ -608,6 +646,14 @@ export default function TamilNaduMap(props: Props) {
         el.style.fontSize = focused ? "13px" : "10px";
       }
 
+      // neighbouring geography labels
+      for (const nb of neighbourEls) {
+        const [wx, wz] = projectLngLat(nb.lng, nb.lat);
+        const p = toScreen(wx, DEPTH - 3, wz);
+        nb.el.style.transform = `translate(-50%,-50%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
+        nb.el.style.opacity = p.behind ? "0" : "1";
+      }
+
       // pincode labels — only for the focused (single) district, when zoomed in
       if (pinDistrict !== lastLabelActive) {
         if (lastLabelActive && pinLabels[lastLabelActive]) pinLabels[lastLabelActive].forEach((e) => (e.style.opacity = "0"));
@@ -650,8 +696,9 @@ export default function TamilNaduMap(props: Props) {
       rebuildMarkers,
       setSelection,
       reset: () => {
-        theta = 0.12; phi = 0.86; dist = 1850;
-        desired.tx = 0; desired.tz = 0; desired.dist = 1850;
+        theta = 0.1; phi = 1.0; dist = 1500;
+        desired.tx = typeof window !== "undefined" && window.innerWidth > 1024 ? 150 : 0;
+        desired.tz = 0; desired.dist = 1500;
       },
     };
 
@@ -686,6 +733,11 @@ export default function TamilNaduMap(props: Props) {
     apiRef.current?.setSelection(selectedDistricts);
   }, [selectedDistricts]);
 
+  // external "reset view" trigger
+  useEffect(() => {
+    if (resetNonce) apiRef.current?.reset();
+  }, [resetNonce]);
+
   return (
     <div ref={hostRef} className="relative h-full w-full">
       <canvas ref={canvasRef} className="block h-full w-full touch-none" aria-label="3D map of Tamil Nadu districts with survey points" role="img" />
@@ -696,29 +748,11 @@ export default function TamilNaduMap(props: Props) {
         <div className="absolute inset-0 grid place-items-center text-sm text-white/45">Loading Tamil Nadu…</div>
       )}
 
-      {/* legend */}
-      <div className="pointer-events-none absolute bottom-4 left-4 z-10">
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">Survey nodes</p>
-        <div className="flex items-center gap-2 text-[10px] text-white/45">
-          <span className="size-2.5 rounded-full border border-white/60" />
-          <span>Pincode · size = samples</span>
-        </div>
-        <p className="mt-1 text-[10px] text-white/30">Select a district to reveal its pincodes</p>
+      {/* compass */}
+      <div className="pointer-events-none absolute left-[37%] top-5 z-10 hidden -translate-x-1/2 flex-col items-center text-white/55 lg:flex">
+        <span className="font-display text-[12px] font-semibold tracking-[0.2em]">N</span>
+        <span className="mt-1 h-7 w-px bg-gradient-to-b from-white/50 to-transparent" />
       </div>
-
-      {/* reset camera */}
-      <button
-        type="button"
-        onClick={() => apiRef.current?.reset()}
-        aria-label="Reset map view"
-        className="absolute right-4 top-4 z-10 grid size-9 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/70 backdrop-blur-xl transition hover:border-white/25 hover:text-white focus-visible:ring-2 focus-visible:ring-saffron/60 focus-visible:outline-none"
-      >
-        <RotateCcw className="size-4" />
-      </button>
-
-      <p className="pointer-events-none absolute bottom-4 right-4 z-10 hidden text-[10.5px] uppercase tracking-[0.14em] text-white/30 sm:block">
-        Drag to rotate · Scroll to zoom · Click a district
-      </p>
 
       {tip && tipRef.current && <MapTooltip data={tip} x={tipRef.current.x} y={tipRef.current.y} />}
     </div>

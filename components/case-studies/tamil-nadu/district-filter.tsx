@@ -35,7 +35,6 @@ export default function DistrictFilter({
     [rows, q],
   );
   const selectedSet = useMemo(() => new Set(selected), [selected]);
-  const allSelected = selected.length === 0;
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -73,7 +72,7 @@ export default function DistrictFilter({
       <div className="-mr-1 min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,.18)_transparent] [scrollbar-width:thin]">
         <ul className="space-y-0.5">
           {filtered.map((r) => {
-            const on = allSelected || selectedSet.has(r.name);
+            const on = selectedSet.has(r.name);
             const active = activeDistrict === r.name;
             return (
               <li key={r.name}>
