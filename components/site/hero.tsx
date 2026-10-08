@@ -4,6 +4,9 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, BarChart3, Compass, Users } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
+import LeaderPortrait from "@/components/site/leader-portrait";
+import LeaderCarousel from "@/components/site/leader-carousel";
+import { LEADERS } from "@/lib/cases";
 import { rafLoop } from "@/lib/raf-loop";
 
 const IMG = "/images/parliament.webp";
@@ -23,7 +26,7 @@ const FEATURES = [
 export default function Hero() {
   const router = useRouter();
   const root = useRef<HTMLElement>(null);
-  const layers = useRef<{ ambient?: HTMLDivElement | null; sharp?: HTMLDivElement | null; shift?: HTMLDivElement | null; content?: HTMLDivElement | null }>({});
+  const layers = useRef<{ ambient?: HTMLDivElement | null; sharp?: HTMLDivElement | null; shift?: HTMLDivElement | null; content?: HTMLDivElement | null; people?: HTMLDivElement | null }>({});
 
   useEffect(() => {
     let mx = 0, my = 0, sx = 0, sy = 0;
@@ -53,6 +56,10 @@ export default function Hero() {
         L.content.style.transform = `translate3d(0, ${-p * 70}px, 0)`;
         setF(L.content, "opacity", (1 - p * 1.3).toFixed(2));
         setF(L.content, "filter", p > 0.02 ? `blur(${(p * 6).toFixed(0)}px)` : "none");
+      }
+      if (L.people) {
+        L.people.style.transform = `rotateY(${sx * 8 * k}deg) rotateX(${-sy * 5 * k}deg) translate3d(0, ${-p * 140}px, ${-p * 260}px)`;
+        setF(L.people, "opacity", (1 - p * 1.3).toFixed(2));
       }
       if (root.current) setF(root.current, "opacity", (1 - Math.max(0, p - 0.6) / 0.4).toFixed(2));
     };
@@ -135,6 +142,23 @@ export default function Hero() {
               View case studies
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </a>
+          </div>
+
+          {/* portraits on small screens */}
+          <div className="-mx-6 mt-10 flex gap-4 overflow-x-auto px-6 pb-8 pt-1 [scrollbar-width:none] lg:hidden">
+            {LEADERS.map((l) => (
+              <LeaderPortrait key={l.id} leader={l} size="sm" className="shrink-0" />
+            ))}
+          </div>
+        </div>
+
+        {/* original circular ring of leader portraits */}
+        <div className="pointer-events-none absolute bottom-48 right-[-40px] hidden [perspective:1600px] lg:block xl:right-0">
+          <div
+            ref={(el) => { layers.current.people = el; }}
+            className="pointer-events-auto origin-center [transform-style:preserve-3d] will-change-transform"
+          >
+            <LeaderCarousel radius={250} />
           </div>
         </div>
       </div>
