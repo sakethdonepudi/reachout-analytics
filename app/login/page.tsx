@@ -21,7 +21,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
       const d = await res.json();
       if (!res.ok || !d.ok) throw new Error(d.error || "Sign-in failed");
-      router.push("/data");
+      router.push("/admin");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed");
     } finally {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import Navbar from "@/components/site/navbar";
+import AdminLink from "@/components/site/admin-link";
 import { CASES, UPCOMING, caseUrl, leaderById } from "@/lib/cases";
 
 export const metadata: Metadata = {
@@ -50,6 +51,11 @@ export default function CaseStudiesIndex() {
               </Link>
             ))}
           </div>
+
+          <footer className="mt-16 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-[13px] text-muted-foreground sm:flex-row">
+            <span>© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</span>
+            <AdminLink />
+          </footer>
         </div>
       </main>
     </>

@@ -5,6 +5,7 @@ import { Mail, Phone, MapPin, ArrowUpRight, CheckCircle2 } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
 import Globe from "@/components/site/globe";
 import { Logo } from "@/components/site/navbar";
+import AdminLink from "@/components/site/admin-link";
 import { CONTACT } from "@/lib/cases";
 import { rafLoop } from "@/lib/raf-loop";
 
@@ -174,7 +175,10 @@ export default function ContactSection() {
 
         <footer className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-4 text-sm text-white/40 sm:flex-row">
           <Logo />
-          <span>© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</span>
+          <div className="flex items-center gap-5">
+            <AdminLink />
+            <span>© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</span>
+          </div>
         </footer>
       </div>
     </section>

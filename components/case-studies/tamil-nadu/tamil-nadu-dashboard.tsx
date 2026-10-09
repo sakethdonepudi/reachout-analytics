@@ -14,6 +14,7 @@ import PollToggle from "./poll-toggle";
 import PollSummary from "./poll-summary";
 import PollChart from "./poll-chart";
 import DistrictFilter from "./district-filter";
+import PublishedSummary from "./published-summary";
 import type { MapLayers, MapMode } from "./tamil-nadu-map";
 
 const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
@@ -313,6 +314,11 @@ export default function TamilNaduDashboard() {
           </div>
         )}
       </section>
+
+      {/* published (real) dataset strip — renders only after the admin publishes */}
+      <div className="relative z-10 mx-auto max-w-[1720px] px-4 lg:px-6">
+        <PublishedSummary slug="tamil-nadu" />
+      </div>
 
       {/* bottom preview cards */}
       <section className="relative z-10 mx-auto max-w-[1720px] px-4 pb-16 pt-8 lg:px-6">

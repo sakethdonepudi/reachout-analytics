@@ -6,7 +6,7 @@ import { importDataset, isConfigured } from "@/lib/poll-store";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-/** Upload a workbook. confirm=0 → validate + preview; confirm=1 → commit. */
+/** Multipart import (small files). Scoped to a case study. */
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin(req);
   if ("deny" in auth) return auth.deny;
@@ -14,9 +14,10 @@ export async function POST(req: NextRequest) {
   let fd: FormData;
   try { fd = await req.formData(); } catch { return Response.json({ ok: false, error: "Expected a multipart upload" }, { status: 400 }); }
   const file = fd.get("file");
+  const caseStudyId = String(fd.get("caseStudyId") ?? "").trim();
   const mode = String(fd.get("mode") ?? "append") === "replace" ? "replace" : "append";
   const confirm = String(fd.get("confirm") ?? "0") === "1";
-
+  if (!caseStudyId) return Response.json({ ok: false, error: "caseStudyId is required" }, { status: 400 });
   if (!(file instanceof File)) return Response.json({ ok: false, error: "No file provided" }, { status: 400 });
   if (!/\.xlsx$/i.test(file.name)) return Response.json({ ok: false, error: "Only .xlsx workbooks are accepted" }, { status: 400 });
   const maxMB = Number(process.env.MAX_UPLOAD_MB || 20);
@@ -37,24 +38,22 @@ export async function POST(req: NextRequest) {
 
   if (!confirm) {
     return Response.json({
-      ok: true,
-      file: file.name,
+      ok: true, file: file.name,
       preview: {
-        opinion: { total: opinion.total, valid: opinion.valid, blank: opinion.blank, invalid: opinion.invalid, recorded: opinion.recorded, estimated: opinion.estimated, unknownDistrict: opinion.unknownDistrict },
-        exit: { total: exit.total, valid: exit.valid, blank: exit.blank, invalid: exit.invalid, recorded: exit.recorded, estimated: exit.estimated, unknownDistrict: exit.unknownDistrict },
+        opinion: { total: opinion.total, valid: opinion.valid, blank: opinion.blank, invalid: opinion.invalid, recorded: opinion.recorded, estimated: opinion.estimated },
+        exit: { total: exit.total, valid: exit.valid, blank: exit.blank, invalid: exit.invalid, recorded: exit.recorded, estimated: exit.estimated },
         warnings: [...opinion.issues, ...exit.issues].filter((i) => i.severity === "warning").slice(0, 200),
         errors: errors.slice(0, 200),
         canCommit: errors.length === 0,
       },
     });
   }
-
   if (errors.length) return Response.json({ ok: false, error: "Import blocked: resolve errors first", errors: errors.slice(0, 200) }, { status: 400 });
 
   const uploader = auth.session.sub;
   const results = [];
-  results.push(await importDataset({ pollType: "opinion", rows: parsed.sheets.opinion, filename: file.name, uploader, mode, headers: parsed.headers.opinion }));
-  results.push(await importDataset({ pollType: "exit", rows: parsed.sheets.exit, filename: file.name, uploader, mode, headers: parsed.headers.exit }));
+  results.push(await importDataset({ caseStudyId, pollType: "opinion", rows: parsed.sheets.opinion, filename: file.name, uploader, mode, headers: parsed.headers.opinion }));
+  results.push(await importDataset({ caseStudyId, pollType: "exit", rows: parsed.sheets.exit, filename: file.name, uploader, mode, headers: parsed.headers.exit }));
   const ok = results.every((r) => r.outcome === "success");
   return Response.json({ ok, results }, { status: ok ? 200 : 500 });
 }
