@@ -4,9 +4,8 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, BarChart3, Compass, Users } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
-import LeaderPortrait from "@/components/site/leader-portrait";
 import LeaderCarousel from "@/components/site/leader-carousel";
-import { LEADERS } from "@/lib/cases";
+import MobileLeaderStrip from "@/components/site/mobile-leader-strip";
 import { rafLoop } from "@/lib/raf-loop";
 
 const IMG = "/images/parliament.webp";
@@ -71,10 +70,10 @@ export default function Hero() {
   return (
     <section ref={root} id="top" className="pointer-events-auto relative isolate min-h-[100svh] overflow-hidden bg-[#050b1f]">
       {/* depth layers */}
-      <div ref={(el) => { layers.current.ambient = el; }} className="absolute inset-0 bg-cover bg-center will-change-transform"
-        style={{ backgroundImage: `url(${IMG})`, filter: "blur(30px) saturate(1.2) brightness(.55)" }} aria-hidden />
-      <div ref={(el) => { layers.current.sharp = el; }} className="absolute inset-0 bg-cover bg-[center_35%] will-change-transform"
-        style={{ backgroundImage: `url(${IMG})`, WebkitMaskImage: "radial-gradient(125% 100% at 64% 44%, #000 48%, transparent 88%)", maskImage: "radial-gradient(125% 100% at 64% 44%, #000 48%, transparent 88%)" }} aria-hidden />
+      <div ref={(el) => { layers.current.ambient = el; }} className="absolute inset-0 bg-cover bg-[position:60%_center] will-change-transform [filter:blur(14px)_saturate(1.15)_brightness(.62)] sm:[filter:blur(30px)_saturate(1.2)_brightness(.55)]"
+        style={{ backgroundImage: `url(${IMG})` }} aria-hidden />
+      <div ref={(el) => { layers.current.sharp = el; }} className="absolute inset-0 bg-cover bg-[center_38%] will-change-transform"
+        style={{ backgroundImage: `url(${IMG})`, WebkitMaskImage: "radial-gradient(150% 120% at 58% 40%, #000 62%, transparent 92%)", maskImage: "radial-gradient(150% 120% at 58% 40%, #000 62%, transparent 92%)" }} aria-hidden />
       <div ref={(el) => { layers.current.shift = el; }} className="absolute inset-0 bg-cover bg-[center_35%] will-change-transform"
         style={{ backgroundImage: `url(${IMG})`, filter: "blur(10px) saturate(1.1)", WebkitMaskImage: "linear-gradient(180deg,#000 0%,transparent 32%,transparent 64%,#000 90%)", maskImage: "linear-gradient(180deg,#000 0%,transparent 32%,transparent 64%,#000 90%)" }} aria-hidden />
 
@@ -107,14 +106,14 @@ export default function Hero() {
       <div className="grain absolute inset-0 opacity-[0.05] mix-blend-overlay" aria-hidden />
 
       {/* content */}
-      <div className="relative mx-auto flex min-h-[100svh] max-w-7xl flex-col justify-center px-6 pb-40 pt-32 sm:px-10">
-        <div ref={(el) => { layers.current.content = el; }} className="max-w-2xl origin-bottom will-change-transform">
-          <div className="animate-rise mb-7 inline-flex items-center gap-2.5 rounded-full border border-white/12 bg-white/[0.06] px-4 py-2 text-[12px] font-medium tracking-wide text-white/85 backdrop-blur-xl">
+      <div className="relative mx-auto flex min-h-[100svh] max-w-7xl flex-col justify-start px-5 pb-16 pt-28 sm:px-10 sm:pb-40 lg:justify-center lg:pt-32">
+        <div ref={(el) => { layers.current.content = el; }} className="w-full max-w-2xl origin-bottom will-change-transform">
+          <div className="animate-rise mb-6 inline-flex items-center gap-2.5 rounded-full border border-white/12 bg-white/[0.06] px-4 py-2 text-[12px] font-medium tracking-wide text-white/85 backdrop-blur-xl">
             <span className="animate-pulse-dot size-2 rounded-full bg-saffron" />
             Political analytics &amp; campaign strategy
           </div>
 
-          <h1 className="animate-rise font-display text-[clamp(40px,6vw,88px)] font-semibold leading-[1.03] tracking-[-0.03em] text-white [animation-delay:90ms] [text-shadow:0_10px_60px_rgba(0,0,0,.45)]">
+          <h1 className="animate-rise font-display text-[clamp(34px,9vw,88px)] font-semibold leading-[1.05] tracking-[-0.03em] text-white [animation-delay:90ms] [text-shadow:0_10px_60px_rgba(0,0,0,.45)]">
             Winning elections
             <br />
             with data,{" "}
@@ -123,32 +122,38 @@ export default function Hero() {
             </span>
           </h1>
 
-          <div className="animate-rise mt-10 grid gap-3 [animation-delay:180ms] sm:grid-cols-3">
-            {FEATURES.map(({ Icon, title, desc }) => (
-              <div key={title} className="group rounded-2xl border border-white/12 bg-white/[0.06] p-4 backdrop-blur-xl transition-transform duration-300 hover:-translate-y-1">
-                <span className="mb-3 grid size-9 place-items-center rounded-xl border border-white/15 bg-white/10 text-saffron-2 transition-transform duration-300 group-hover:scale-110">
-                  <Icon className="size-4" />
-                </span>
-                <h2 className="font-display text-[15px] font-semibold text-white">{title}</h2>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-white/65">{desc}</p>
-              </div>
-            ))}
-          </div>
+          <p className="animate-rise mt-5 max-w-xl text-[15px] leading-relaxed text-white/75 [animation-delay:140ms]">
+            Election analysis, voter insight and regional intelligence for parties and campaigns across India.
+          </p>
 
-          <div className="animate-rise mt-9 flex flex-wrap items-center gap-3 [animation-delay:270ms]">
-            <ShimmerButton text="Request Strategy Demo" duration={1.8} onClick={() => router.push("/#contact")}
-              className="border-saffron/40 px-7 py-3.5 shadow-[0_0_0_4px_rgba(245,138,36,.08),0_20px_50px_-10px_rgba(245,138,36,.4)] dark:bg-[#0a1a44]/80 backdrop-blur-xl" />
-            <a href="/case-studies" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 py-3.5 text-[15px] font-medium text-white/90 backdrop-blur-xl transition-colors hover:bg-white/10">
-              View case studies
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-            </a>
-          </div>
+          <div className="flex flex-col">
+            {/* primary CTA first on mobile; after the features on desktop */}
+            <div className="animate-rise order-1 mt-8 flex flex-wrap items-center gap-3 [animation-delay:220ms] lg:order-2 lg:mt-9">
+              <ShimmerButton text="Request Strategy Demo" duration={1.8} onClick={() => router.push("/#contact")}
+                className="border-saffron/40 px-7 py-3.5 shadow-[0_0_0_4px_rgba(245,138,36,.08),0_20px_50px_-10px_rgba(245,138,36,.4)] dark:bg-[#0a1a44]/80 backdrop-blur-xl" />
+              <a href="/case-studies" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 py-3.5 text-[15px] font-medium text-white/90 backdrop-blur-xl transition-colors hover:bg-white/10">
+                View case studies
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+              </a>
+            </div>
 
-          {/* portraits on small screens */}
-          <div className="-mx-6 mt-10 flex gap-4 overflow-x-auto px-6 pb-8 pt-1 [scrollbar-width:none] lg:hidden">
-            {LEADERS.map((l) => (
-              <LeaderPortrait key={l.id} leader={l} size="sm" className="shrink-0" />
-            ))}
+            {/* compact leader animation (mobile only) */}
+            <div className="order-2 mt-10 lg:hidden">
+              <MobileLeaderStrip />
+            </div>
+
+            {/* feature content — after the leader strip on mobile, first on desktop */}
+            <div className="animate-rise order-3 mt-10 grid gap-3 [animation-delay:180ms] sm:grid-cols-3 lg:order-1 lg:mt-10">
+              {FEATURES.map(({ Icon, title, desc }) => (
+                <div key={title} className="group rounded-2xl border border-white/12 bg-white/[0.06] p-4 backdrop-blur-xl transition-transform duration-300 hover:-translate-y-1">
+                  <span className="mb-3 grid size-9 place-items-center rounded-xl border border-white/15 bg-white/10 text-saffron-2 transition-transform duration-300 group-hover:scale-110">
+                    <Icon className="size-4" />
+                  </span>
+                  <h2 className="font-display text-[15px] font-semibold text-white">{title}</h2>
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-white/65">{desc}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

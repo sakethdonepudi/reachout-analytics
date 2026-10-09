@@ -45,12 +45,12 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-4">
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
       <div
         className={cn(
-          "pointer-events-auto relative flex w-full max-w-6xl items-center justify-between rounded-full border border-border/80 pl-5 pr-2 transition-all duration-500",
+          "pointer-events-auto relative flex w-full max-w-6xl items-center justify-between rounded-full border border-border/80 pl-4 pr-2 transition-all duration-500 sm:pl-5",
           "bg-card/75 shadow-[0_20px_60px_-24px_rgba(15,20,30,0.45)] backdrop-blur-2xl backdrop-saturate-150",
-          scrolled ? "py-1.5" : "py-2.5",
+          scrolled ? "py-1.5" : "py-2 sm:py-2.5",
         )}
       >
         <span className="tricolor-line pointer-events-none absolute inset-x-10 -bottom-px h-px opacity-60" aria-hidden />
