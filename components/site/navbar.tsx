@@ -13,7 +13,7 @@ const LINKS = [
   { label: "Home", href: "/#top" },
   { label: "Services", href: "https://www.reachoutanalytics.com/services/" },
   { label: "Case Studies", href: "/case-studies" },
-  { label: "About Us", href: "https://www.reachoutanalytics.com/about/" },
+  { label: "About Us", href: "/about" },
   { label: "Contact", href: "/#contact" },
 ];
 

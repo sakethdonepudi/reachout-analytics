@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Download, FileSpreadsheet, History, LayoutDashboard, LogOut, Loader2, Map as MapIcon, Settings, Table2, Upload, UserCog } from "lucide-react";
 import { Logo } from "@/components/site/navbar";
 import ThemeToggle from "@/components/site/theme-toggle";
+import AboutEditor from "@/components/admin/about-editor";
 import { cn } from "@/lib/utils";
 import type { Row as PollRow } from "@/lib/poll-data";
 
@@ -386,21 +387,11 @@ export default function AdminPortal() {
           {section === "content" && (
             <div>
               <h1 className="font-display text-2xl font-semibold">Website Content</h1>
-              <p className="mt-1 text-[13px] text-muted-foreground">Case-study titles and publication are editable in Case Studies. Verified contact details are configured via the site configuration.</p>
-              <div className="mt-5 max-w-xl space-y-3">
-                {[
-                  ["Email", "configured in lib/cases.ts (CONTACT.email)"],
-                  ["Phone", "configured in lib/cases.ts (CONTACT.phone)"],
-                  ["Address", "configured in lib/cases.ts (CONTACT.address)"],
-                  ["LinkedIn / Instagram", "configured in lib/cases.ts"],
-                ].map(([k, v]) => (
-                  <div key={k} className="rounded-xl border border-border bg-card/60 p-3">
-                    <p className="text-[12px] font-semibold text-foreground/80">{k}</p>
-                    <p className="text-[12px] text-muted-foreground">{v}</p>
-                  </div>
-                ))}
-                <p className="text-[11.5px] text-muted-foreground">⚠ The live contact email and phone are still placeholders — supply verified values and I’ll set them.</p>
-              </div>
+              <p className="mt-1 text-[13px] text-muted-foreground">Edit the public About page. Case-study titles and publication are managed in Case Studies.</p>
+              <div className="mt-5"><AboutEditor /></div>
+              <p className="mt-5 max-w-2xl rounded-xl border border-saffron/30 bg-saffron/10 px-3 py-2 text-[12px] text-saffron-2">
+                ⚠ The contact email and phone on the site are still placeholders (configured in <code>lib/cases.ts</code>). Supply verified values and they’ll be applied.
+              </p>
             </div>
           )}
 

@@ -147,8 +147,9 @@ html.theme-transition *::after {
 .animate-bob { animation: bob 5s ease-in-out infinite; }
 .animate-spin-slow { animation: spin-slow 40s linear infinite; }
 
-/* scroll reveal */
-.reveal { opacity: 0; transform: translateY(26px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+/* scroll reveal — visible by default; JS only hides elements below the fold */
+.reveal { transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+.reveal.reveal-hidden { opacity: 0; transform: translateY(26px); }
 .reveal.is-visible { opacity: 1; transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
