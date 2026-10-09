@@ -33,16 +33,17 @@ export default function ContactSection() {
         const p = clamp(1 - r.top / innerHeight, 0, 1); // 0 → section just below the fold, 1 → at the top
         const e = ease(clamp((p - 0.12) / 0.8, 0, 1));
         const end = sl.getBoundingClientRect();
-        const startSize = Math.min(innerWidth, innerHeight) * 1.7;
+        // Bound the decorative globe so it can never cover foreground content.
+        const startSize = Math.min(Math.min(innerWidth, innerHeight) * 0.9, 640);
         const sx = innerWidth / 2 - startSize / 2, sy = innerHeight / 2 - startSize / 2;
         const size = startSize + (end.width - startSize) * e;
         const x = sx + (end.left - sx) * e, y = sy + (end.top - sy) * e;
         fl.style.width = fl.style.height = `${size}px`;
         fl.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-        const o = clamp((p - 0.08) / 0.3, 0, 1);
+        const o = clamp((p - 0.18) / 0.32, 0, 1);
         fl.style.opacity = String(o);
         fl.style.visibility = o > 0.01 ? "visible" : "hidden";
-        const fb = e < 0.98 ? `blur(${((1 - e) * 4).toFixed(0)}px)` : "none";
+        const fb = e < 0.98 ? `blur(${((1 - e) * 3).toFixed(0)}px)` : "none";
         if (fl.style.filter !== fb) fl.style.filter = fb;
         spin.current = o > 0.01 ? 0.15 + e * 0.85 : -1;
       }
@@ -51,7 +52,7 @@ export default function ContactSection() {
   }, []);
 
   const field =
-    "w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[15px] text-white placeholder:text-white/30 outline-none transition focus:border-saffron/60 focus:bg-white/[0.07] focus:ring-4 focus:ring-saffron/10";
+    "w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-base text-white placeholder:text-white/30 outline-none transition focus:border-saffron/60 focus:bg-white/[0.07] focus:ring-4 focus:ring-saffron/10";
   const label = "mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45";
 
   return (
@@ -62,7 +63,7 @@ export default function ContactSection() {
     >
       {/* flying globe (fixed, follows the slot) */}
       <div ref={flyer} className="pointer-events-none fixed left-0 top-0 z-[1] invisible will-change-transform" aria-hidden>
-        <div className="absolute inset-[-12%] rounded-full bg-[radial-gradient(circle,rgba(40,90,200,.35),transparent_62%)] blur-2xl" />
+        <div className="absolute inset-[-10%] rounded-full bg-[radial-gradient(circle,rgba(40,90,200,.2),transparent_60%)] blur-2xl" />
         <Globe className="relative size-full" speed={12} direction="clockwise" spinRef={spin} />
       </div>
 

@@ -49,7 +49,7 @@ export default function LoginPage() {
                   autoFocus
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-elevated/60 px-3.5 py-2.5 pr-10 text-sm outline-none focus:border-saffron/60 focus:ring-2 focus:ring-saffron/20"
+                  className="w-full rounded-xl border border-border bg-elevated/60 px-3.5 py-2.5 pr-10 text-base outline-none focus:border-saffron/60 focus:ring-2 focus:ring-saffron/20"
                 />
                 <button
                   type="button"

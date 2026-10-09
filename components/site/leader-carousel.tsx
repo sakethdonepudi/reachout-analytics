@@ -39,6 +39,7 @@ export default function LeaderCarousel({ radius = 290 }: { radius?: number }) {
         }
         el.style.pointerEvents = facing > 0.35 ? "auto" : "none";
         el.style.zIndex = String(Math.round(f * 100));
+        el.style.visibility = facing > 0.02 ? "visible" : "hidden";
       });
     };
     return rafLoop(tick);
@@ -49,6 +50,8 @@ export default function LeaderCarousel({ radius = 290 }: { radius?: number }) {
       className="relative h-[330px] w-[560px] [perspective:1700px]"
       onPointerEnter={() => (paused.current = true)}
       onPointerLeave={() => (paused.current = false)}
+      onFocus={() => (paused.current = true)}
+      onBlur={() => (paused.current = false)}
     >
       {/* floor glow / reflection */}
       <div className="absolute bottom-[-30px] left-1/2 h-24 w-[520px] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,rgba(255,153,51,.35),rgba(47,191,74,.12)_60%,transparent)] blur-xl" aria-hidden />

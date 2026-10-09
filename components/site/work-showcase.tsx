@@ -66,7 +66,7 @@ export default function WorkShowcase() {
   }, [parties]);
 
   return (
-    <section id="work" className="pointer-events-auto relative overflow-hidden bg-background py-20 sm:py-24">
+    <section id="work" className="pointer-events-auto relative scroll-mt-24 overflow-hidden bg-background py-20 sm:py-24">
       {/* ambient motion */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="animate-drift absolute -left-24 top-10 size-[420px] rounded-full bg-[radial-gradient(circle,rgba(245,138,36,.12),transparent_65%)] blur-2xl" />

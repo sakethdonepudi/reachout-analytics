@@ -539,7 +539,7 @@ export default function TamilNaduMap(props: Props) {
       <div ref={labelRef} className="pointer-events-none absolute inset-0 z-[5] overflow-hidden" aria-hidden />
       <div ref={pinRef} className="pointer-events-none absolute inset-0 z-[6] overflow-hidden" />
 
-      {!ready && <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">Loading Tamil Nadu…</div>}
+      {!ready && !failed && <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">Loading Tamil Nadu…</div>}
 
       {/* legend */}
       <div className="pointer-events-none absolute bottom-4 left-[31%] z-10 hidden rounded-xl border border-border bg-card/80 px-3 py-2 backdrop-blur-md lg:block">

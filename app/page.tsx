@@ -13,7 +13,7 @@ export default function Home() {
       <main className="pointer-events-none relative z-[6]">
         <Hero />
         {/* scroll length that drives the 3D map tour */}
-        <div id="tour" className="pointer-events-none h-[600vh]" aria-hidden />
+        <div id="tour" className="pointer-events-none h-[600vh] scroll-mt-24" aria-hidden />
         <WorkShowcase />
         <ContactSection />
       </main>
