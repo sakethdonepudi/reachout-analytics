@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** Discreet footer link: "Admin Login" (anon) or "Admin Dashboard" (signed in). */
-export default function AdminLink({ className }: { className?: string }) {
+/**
+ * Auth-aware admin link: "Admin Login" (signed out) or "Dashboard" (signed in),
+ * routing to /login or /admin respectively.
+ */
+export default function AdminLink({ className, icon = false }: { className?: string; icon?: boolean }) {
   const [state, setState] = useState<"loading" | "auth" | "anon">("loading");
   useEffect(() => {
     let alive = true;
@@ -14,10 +18,15 @@ export default function AdminLink({ className }: { className?: string }) {
       .catch(() => alive && setState("anon"));
     return () => { alive = false; };
   }, []);
-  if (state === "loading") return null;
+  const authed = state === "auth";
   return (
-    <Link href={state === "auth" ? "/admin" : "/login"} className={cn("transition-colors hover:text-foreground", className)}>
-      {state === "auth" ? "Admin Dashboard" : "Admin Login"}
+    <Link
+      href={authed ? "/admin" : "/login"}
+      aria-label={authed ? "Admin dashboard" : "Admin login"}
+      className={cn("inline-flex items-center gap-1.5 transition-colors", className)}
+    >
+      {icon && <Lock className="size-3.5" aria-hidden />}
+      {authed ? "Dashboard" : "Admin Login"}
     </Link>
   );
 }

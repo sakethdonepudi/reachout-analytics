@@ -1,29 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/navbar";
 import ThemeToggle from "@/components/site/theme-toggle";
+import Turnstile from "@/components/site/turnstile";
+import { useTheme } from "@/components/theme-provider";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [token, setToken] = useState("");
+  const [resetNonce, setResetNonce] = useState(0);
+  const onVerify = useCallback((t: string) => setToken(t), []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true); setError("");
     try {
-      const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+      const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password, turnstileToken: token }) });
       const d = await res.json();
       if (!res.ok || !d.ok) throw new Error(d.error || "Sign-in failed");
       router.push("/admin");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed");
+      setResetNonce((n) => n + 1); // always reset the challenge after a failure
+      setToken("");
     } finally {
       setLoading(false);
     }
@@ -61,6 +69,10 @@ export default function LoginPage() {
                 </button>
               </span>
             </label>
+
+            <div className="flex justify-center">
+              <Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} />
+            </div>
 
             {error && <p role="alert" className="rounded-xl border border-saffron/30 bg-saffron/10 px-3 py-2 text-[12.5px] text-saffron-2">{error}</p>}
 

@@ -1,20 +1,27 @@
 import type { NextRequest } from "next/server";
 import { ensureAdmin, verifyPassword, createSession, COOKIE, cookieOptions, loginRateLimited, clearLoginAttempts } from "@/lib/auth";
+import { verifyTurnstile } from "@/lib/turnstile";
 import { getMongo } from "@/lib/mongodb";
 
 export const runtime = "nodejs";
 
-/** Password-only admin login. */
+/** Password-only admin login, gated by Cloudflare Turnstile. */
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
   if (loginRateLimited(ip)) {
     return Response.json({ ok: false, error: "Too many attempts — please try again later." }, { status: 429 });
   }
 
-  let body: { password?: string } = {};
+  let body: { password?: string; turnstileToken?: string } = {};
   try { body = await req.json(); } catch { /* ignore */ }
   const password = String(body.password ?? "");
   if (!password) return Response.json({ ok: false, error: "Password is required" }, { status: 400 });
+
+  // Verify the CAPTCHA before checking the password or creating a session.
+  const captcha = await verifyTurnstile(String(body.turnstileToken ?? ""), ip);
+  if (captcha.configured && !captcha.ok) {
+    return Response.json({ ok: false, error: "CAPTCHA verification failed. Please retry the challenge." }, { status: 400 });
+  }
 
   const ready = await ensureAdmin();
   if (!ready.ok) return Response.json({ ok: false, error: ready.reason || "Sign-in is not configured" }, { status: 503 });

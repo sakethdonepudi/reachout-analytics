@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
 import ThemeToggle from "@/components/site/theme-toggle";
+import AdminLink from "@/components/site/admin-link";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
@@ -74,6 +75,10 @@ export default function Navbar() {
             onClick={() => router.push("/#contact")}
             className="hidden border-border px-5 py-2 sm:block"
           />
+          <AdminLink
+            icon
+            className="hidden rounded-full border border-border px-3.5 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 sm:inline-flex"
+          />
           <ThemeToggle className="size-10 shrink-0" />
           <button
             className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-elevated hover:text-foreground md:hidden"
@@ -96,6 +101,10 @@ export default function Navbar() {
                 {l.label}
               </a>
             ))}
+            <AdminLink
+              icon
+              className="mt-1 flex items-center gap-2 rounded-2xl border border-border px-4 py-3 text-[15px] font-medium text-foreground/85 hover:bg-elevated"
+            />
           </div>
         )}
       </div>
