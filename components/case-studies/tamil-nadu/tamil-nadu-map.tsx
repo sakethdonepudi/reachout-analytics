@@ -102,6 +102,7 @@ export default function TamilNaduMap(props: Props) {
   const tipRef = useRef<{ x: number; y: number } | null>(null);
   const [tip, setTip] = useState<MapTooltipData | null>(null);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const live = useRef({ pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode, mode, layers, theme, onHoverDistrict, onSelectDistrict, onSelectPincode });
   live.current = { pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode, mode, layers, theme, onHoverDistrict, onSelectDistrict, onSelectPincode };
@@ -131,6 +132,7 @@ export default function TamilNaduMap(props: Props) {
     try {
       renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
     } catch {
+      setFailed(true);
       return;
     }
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
@@ -548,6 +550,19 @@ export default function TamilNaduMap(props: Props) {
       </div>
 
       {tip && tipRef.current && <MapTooltip data={tip} x={tipRef.current.x} y={tipRef.current.y} />}
+
+      {failed && (
+        <div className="absolute inset-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
+          3D map unavailable on this device. District information is listed below.
+        </div>
+      )}
+
+      {/* Accessible district information, kept outside the canvas */}
+      <ul className="sr-only" aria-label="Tamil Nadu districts and sample counts">
+        {pollData.map((d) => (
+          <li key={d.district}>{d.district}: {d.samples.toLocaleString("en-IN")} samples</li>
+        ))}
+      </ul>
     </div>
   );
 }
