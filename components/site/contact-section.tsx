@@ -60,7 +60,7 @@ export default function ContactSection() {
     <section
       ref={section}
       id="contact"
-      className="pointer-events-auto relative z-[2] min-h-[100svh] overflow-hidden bg-[linear-gradient(180deg,rgba(5,11,31,0)_0%,rgba(5,11,31,.85)_18%,#050b1f_40%)] px-6 pb-2 pt-36 scroll-mt-24 sm:px-10 lg:pb-10"
+      className="pointer-events-auto relative z-[2] min-h-[100svh] overflow-hidden bg-[linear-gradient(180deg,rgba(5,11,31,0)_0%,rgba(5,11,31,.5)_22%,#050b1f_55%)] px-6 pb-2 pt-36 text-white scroll-mt-24 sm:px-10 lg:pb-10"
     >
       {/* flying globe (fixed, follows the slot) */}
       <div ref={flyer} className="pointer-events-none fixed left-0 top-0 z-[1] invisible will-change-transform" aria-hidden>
@@ -110,7 +110,7 @@ export default function ContactSection() {
           </div>
 
           {/* right: form */}
-          <div className="glass relative rounded-3xl p-5 sm:p-7">
+          <div className="relative rounded-3xl border border-white/10 bg-[#0a1226]/70 p-5 backdrop-blur-2xl sm:p-7">
             <span className="tricolor-line absolute inset-x-8 top-0 h-px opacity-70" aria-hidden />
             <h3 className="font-display text-2xl font-semibold">Send a message</h3>
             <p className="mt-1.5 text-white/55">Fill out the form and we&apos;ll get back to you promptly.</p>
@@ -176,7 +176,7 @@ export default function ContactSection() {
         <footer className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-4 text-sm text-white/40 sm:flex-row">
           <Logo />
           <div className="flex items-center gap-5">
-            <AdminLink />
+            <AdminLink className="hover:text-white" />
             <span>© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</span>
           </div>
         </footer>
