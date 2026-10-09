@@ -18,9 +18,18 @@ export async function POST(req: NextRequest) {
   if (!password) return Response.json({ ok: false, error: "Password is required" }, { status: 400 });
 
   // Verify the CAPTCHA before checking the password or creating a session.
+  // Fail closed: a missing key or a failed verification blocks login.
   const captcha = await verifyTurnstile(String(body.turnstileToken ?? ""), ip);
-  if (captcha.configured && !captcha.ok) {
-    return Response.json({ ok: false, error: "CAPTCHA verification failed. Please retry the challenge." }, { status: 400 });
+  if (!captcha.ok) {
+    return Response.json(
+      {
+        ok: false,
+        error: captcha.configured
+          ? "CAPTCHA verification failed. Please retry the challenge."
+          : "Login is unavailable: CAPTCHA is not configured on this deployment.",
+      },
+      { status: captcha.configured ? 400 : 503 },
+    );
   }
 
   const ready = await ensureAdmin();

@@ -73,10 +73,11 @@ export default function LoginPage() {
             <div className="flex justify-center">
               <Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} />
             </div>
+            {!token && <p className="text-center text-[12px] text-muted-foreground">Complete the CAPTCHA to enable sign in.</p>}
 
             {error && <p role="alert" className="rounded-xl border border-saffron/30 bg-saffron/10 px-3 py-2 text-[12.5px] text-saffron-2">{error}</p>}
 
-            <button type="submit" disabled={loading}
+            <button type="submit" disabled={loading || !token}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-saffron px-4 py-2.5 text-sm font-semibold text-[#241203] transition hover:brightness-105 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50">
               {loading && <Loader2 className="size-4 animate-spin" />} Sign in
             </button>

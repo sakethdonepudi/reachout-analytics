@@ -4,7 +4,7 @@
  */
 export async function verifyTurnstile(token: string, ip: string): Promise<{ configured: boolean; ok: boolean; error?: string }> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return { configured: false, ok: true }; // not configured — see login notice
+  if (!secret) return { configured: false, ok: false, error: "CAPTCHA not configured" };
   if (!token) return { configured: true, ok: false, error: "Missing CAPTCHA token" };
   try {
     const body = new URLSearchParams({ secret, response: token });
