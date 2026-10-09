@@ -161,8 +161,10 @@ export async function summary(pollType: PollType) {
       estimated: { $sum: { $cond: [{ $and: [{ $eq: ["$status", "valid"] }, { $ne: ["$estimatedDistrict", ""] }] }, 1, 0] } },
     } },
   ]).toArray();
-  const counts = agg[0] ?? { total: 0, valid: 0, blank: 0, invalid: 0, recorded: 0, estimated: 0 };
-  delete (counts as { _id?: unknown })._id;
+  const counts = (agg[0] ?? { total: 0, valid: 0, blank: 0, invalid: 0, recorded: 0, estimated: 0 }) as {
+    total: number; valid: number; blank: number; invalid: number; recorded: number; estimated: number; _id?: unknown;
+  };
+  delete counts._id;
   const latest = await c.imports.find({ pollType, importId }).sort({ at: -1 }).limit(1).toArray();
   return { pollType, importId, counts, asOf: latest[0]?.at ?? null };
 }
@@ -203,4 +205,51 @@ export async function history(limit = 25) {
   const c = await cols();
   if (!c) return [];
   return c.imports.find({}).sort({ at: -1 }).limit(limit).project({ _id: 0 }).toArray();
+}
+
+/* ---- Chunked import (client parses the workbook; small JSON batches) ---- */
+
+export async function ensureIndexes() {
+  const c = await cols();
+  if (c) await c.responses.createIndex({ pollType: 1, importId: 1, responseId: 1 }, { unique: true, sparse: true }).catch(() => {});
+}
+
+export async function prepareImportId(pollType: PollType, mode: "append" | "replace", importId?: string): Promise<string> {
+  if (importId) return importId;
+  if (mode === "append") { const active = await getActiveImportId(pollType); if (active) return active; }
+  return randomUUID();
+}
+
+export async function insertRowsRaw(pollType: PollType, importId: string, rows: Row[]): Promise<number> {
+  const c = await cols();
+  if (!c || rows.length === 0) return 0;
+  const docs = rows.map((r, i) => {
+    const d = toDoc(r, pollType, importId);
+    if (!d.responseId) d.responseId = `${importId}-${i}`;
+    return d;
+  });
+  try {
+    const res = await c.responses.insertMany(docs, { ordered: false });
+    return res.insertedCount;
+  } catch (e) {
+    const err = e as { insertedCount?: number; result?: { nInserted?: number } };
+    return err.insertedCount ?? err.result?.nInserted ?? 0;
+  }
+}
+
+export async function finalizeImport(opts: {
+  pollType: PollType; importId: string; mode: "append" | "replace"; filename: string; uploader: string; headers: string[]; inserted: number;
+}): Promise<ImportMeta | null> {
+  const c = await cols();
+  if (!c) return null;
+  if (opts.mode === "replace") await c.state.updateOne({ _id: opts.pollType }, { $set: { activeImportId: opts.importId } }, { upsert: true });
+  const s = await summary(opts.pollType);
+  const meta: ImportMeta = {
+    importId: opts.importId, pollType: opts.pollType, filename: opts.filename, uploader: opts.uploader,
+    at: new Date().toISOString(), outcome: "success", mode: opts.mode, inserted: opts.inserted, skipped: 0,
+    counts: s?.counts ?? { total: 0, valid: 0, blank: 0, invalid: 0, recorded: 0, estimated: 0 },
+    headers: opts.headers,
+  };
+  await recordImport(meta);
+  return meta;
 }

@@ -1,12 +1,12 @@
 import type { NextRequest } from "next/server";
-import { requireRole } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { summary, partyShares, isConfigured } from "@/lib/poll-store";
 
 export const runtime = "nodejs";
 
 /** Compact dashboard summary for both datasets. */
 export async function GET(req: NextRequest) {
-  const auth = requireRole(req, ["admin", "viewer"]);
+  const auth = await requireAdmin(req);
   if ("deny" in auth) return auth.deny;
   if (!(await isConfigured())) return Response.json({ ok: false, error: "Database not configured" }, { status: 503 });
 

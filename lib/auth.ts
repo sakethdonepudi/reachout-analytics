@@ -3,20 +3,21 @@ import type { NextRequest } from "next/server";
 import { getMongo } from "@/lib/mongodb";
 
 /* =====================================================================
-   Admin/viewer authentication — real server-side sessions.
+   Single internal admin account — password-only login.
 
-   Env:
-     ADMIN_EMAIL, ADMIN_PASSWORD        (bootstrap admin, first run)
-     VIEWER_EMAIL, VIEWER_PASSWORD      (optional bootstrap viewer)
-     ADMIN_SESSION_SECRET               (HMAC key for the session cookie)
-     ADMIN_RESET_TOKEN                  (password-reset token)
-   Secrets live only in env; the session is an HMAC-signed httpOnly cookie.
+   Env (server-side only):
+     ADMIN_PASSWORD        the admin password (never hardcoded / committed)
+     ADMIN_SESSION_SECRET  HMAC key for the session cookie
+
+   Stored as a scrypt hash in MongoDB. The password is updated safely from
+   the env when it changes — datasets are never touched. Sessions are
+   HMAC-signed httpOnly cookies with an expiry.
    ===================================================================== */
 
-export type Role = "admin" | "viewer";
-export type Session = { sub: string; role: Role; exp: number };
+export type Session = { sub: string; role: "admin"; exp: number; sid?: string };
 export const COOKIE = "ro_session";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+const ADMIN_ID = "admin@reachout.local";
 
 const DB = process.env.MONGODB_DB || "reachout";
 const secret = process.env.ADMIN_SESSION_SECRET || "";
@@ -25,7 +26,16 @@ async function users() {
   const p = getMongo();
   if (!p) return null;
   const client = await p;
-  return client.db(DB).collection<{ email: string; role: Role; passwordHash: string; createdAt: string }>("users");
+  return client.db(DB).collection<{ email: string; role: "admin"; passwordHash: string; createdAt: string; updatedAt?: string }>("users");
+}
+
+async function sessions() {
+  const p = getMongo();
+  if (!p) return null;
+  const client = await p;
+  const db = client.db(DB);
+  await db.collection("sessions").createIndex({ exp: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
+  return db.collection<{ _id: string; sub: string; role: "admin"; exp: Date }>("sessions");
 }
 
 export function hashPassword(pw: string): string {
@@ -62,49 +72,78 @@ export function verifySessionToken(token: string | undefined): Session | null {
   }
 }
 
-export function getSession(req: NextRequest): Session | null {
-  return verifySessionToken(req.cookies.get(COOKIE)?.value);
+export function getSessionToken(req: NextRequest): string | undefined {
+  return req.cookies.get(COOKIE)?.value;
 }
 
-/** Returns null when authorized, or a Response to send back (401/403). */
-export function requireRole(req: NextRequest, roles: Role[]): { session: Session } | { deny: Response } {
-  const s = getSession(req);
-  if (!s) return { deny: Response.json({ ok: false, error: "Not authenticated" }, { status: 401 }) };
-  if (!roles.includes(s.role)) return { deny: Response.json({ ok: false, error: "Forbidden" }, { status: 403 }) };
+export async function createSession(sub: string, role: "admin"): Promise<string> {
+  const sid = randomBytes(24).toString("base64url");
+  const exp = Date.now() + MAX_AGE * 1000;
+  const col = await sessions();
+  if (col) await col.insertOne({ _id: sid, sub, role, exp: new Date(exp) });
+  return signSession({ sub, role, exp, sid });
+}
+
+/** Verifies the cookie signature AND that the server-side session still exists. */
+export async function getSession(req: NextRequest): Promise<Session | null> {
+  const s = verifySessionToken(getSessionToken(req));
+  if (!s) return null;
+  const col = await sessions();
+  if (!col) return null;
+  const doc = await col.findOne({ _id: s.sid ?? "" });
+  if (!doc) return null;
+  return s;
+}
+
+/** Revoke a session server-side (so logout invalidates the cookie immediately). */
+export async function revokeSession(token: string | undefined) {
+  const s = verifySessionToken(token);
+  if (s?.sid) { const col = await sessions(); if (col) await col.deleteOne({ _id: s.sid }); }
+}
+
+/** Returns null when authorized, or a Response to send back (401). */
+export async function requireAdmin(req: NextRequest): Promise<{ session: Session } | { deny: Response }> {
+  const s = await getSession(req);
+  if (!s || s.role !== "admin") return { deny: Response.json({ ok: false, error: "Not authenticated" }, { status: 401 }) };
   return { session: s };
 }
 
 export const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/", maxAge: MAX_AGE };
 
-/** Create the bootstrap admin/viewer from env if the user store is empty. */
-export async function ensureBootstrap() {
+/**
+ * Ensure the single admin account exists and matches ADMIN_PASSWORD.
+ * Only the users collection is touched — poll datasets are never modified.
+ */
+export async function ensureAdmin(): Promise<{ ok: boolean; reason?: string }> {
+  const pw = process.env.ADMIN_PASSWORD;
+  if (!pw) return { ok: false, reason: "ADMIN_PASSWORD is not configured" };
   const u = await users();
-  if (!u) return;
-  const count = await u.countDocuments();
-  if (count > 0) return;
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPw = process.env.ADMIN_PASSWORD;
-  const viewerEmail = process.env.VIEWER_EMAIL;
-  const viewerPw = process.env.VIEWER_PASSWORD;
-  const docs: { email: string; role: Role; passwordHash: string; createdAt: string }[] = [];
-  if (adminEmail && adminPw) docs.push({ email: adminEmail.toLowerCase(), role: "admin", passwordHash: hashPassword(adminPw), createdAt: new Date().toISOString() });
-  if (viewerEmail && viewerPw) docs.push({ email: viewerEmail.toLowerCase(), role: "viewer", passwordHash: hashPassword(viewerPw), createdAt: new Date().toISOString() });
-  if (docs.length) await u.insertMany(docs);
-}
-
-export async function findUser(email: string) {
-  const u = await users();
-  if (!u) return null;
-  return u.findOne({ email: email.toLowerCase() });
-}
-
-export async function setPassword(email: string, newPassword: string) {
-  const u = await users();
-  if (!u) return false;
-  const r = await u.updateOne({ email: email.toLowerCase() }, { $set: { passwordHash: hashPassword(newPassword) } });
-  return r.matchedCount > 0;
+  if (!u) return { ok: false, reason: "Database not configured (MONGODB_URI missing)" };
+  const existing = await u.findOne({ email: ADMIN_ID });
+  const now = new Date().toISOString();
+  if (!existing) {
+    await u.insertOne({ email: ADMIN_ID, role: "admin", passwordHash: hashPassword(pw), createdAt: now, updatedAt: now });
+    return { ok: true };
+  }
+  if (!verifyPassword(pw, existing.passwordHash)) {
+    await u.updateOne({ email: ADMIN_ID }, { $set: { passwordHash: hashPassword(pw), role: "admin", updatedAt: now } });
+  }
+  return { ok: true };
 }
 
 export async function authConfigured() {
-  return getMongo() !== null && !!secret && !!process.env.ADMIN_EMAIL && !!process.env.ADMIN_PASSWORD;
+  return getMongo() !== null && !!secret && !!process.env.ADMIN_PASSWORD;
 }
+
+/* ---- best-effort per-instance login rate limiting ---- */
+const attempts = new Map<string, { count: number; reset: number }>();
+const LIMIT = 5;
+const WINDOW = 15 * 60 * 1000;
+export function loginRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const a = attempts.get(ip);
+  if (!a || a.reset < now) { attempts.set(ip, { count: 1, reset: now + WINDOW }); return false; }
+  a.count += 1;
+  return a.count > LIMIT;
+}
+export function clearLoginAttempts(ip: string) { attempts.delete(ip); }

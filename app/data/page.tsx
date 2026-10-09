@@ -7,6 +7,7 @@ import { Download, FileSpreadsheet, LogOut, Loader2, Upload } from "lucide-react
 import { Logo } from "@/components/site/navbar";
 import ThemeToggle from "@/components/site/theme-toggle";
 import { cn } from "@/lib/utils";
+import type { Row as PollRow } from "@/lib/poll-data";
 
 type Counts = { total: number; valid: number; blank: number; invalid: number; recorded: number; estimated: number };
 type Summary = { pollType: "opinion" | "exit"; importId: string | null; counts: Counts; asOf: string | null };
@@ -19,7 +20,7 @@ const EMPTY: Counts = { total: 0, valid: 0, blank: 0, invalid: 0, recorded: 0, e
 
 export default function DataPortal() {
   const router = useRouter();
-  const [session, setSession] = useState<{ email: string; role: "admin" | "viewer" } | null>(null);
+  const [session, setSession] = useState<{ role: "admin" } | null>(null);
   const [ready, setReady] = useState(false);
 
   const [pollType, setPollType] = useState<"opinion" | "exit">("exit");
@@ -34,6 +35,7 @@ export default function DataPortal() {
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<"append" | "replace">("append");
   const [preview, setPreview] = useState<Preview["preview"] | null>(null);
+  const [parsed, setParsed] = useState<{ opinion: PollRow[]; exit: PollRow[]; headers: { opinion: string[]; exit: string[] } } | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [history, setHistory] = useState<Meta[]>([]);
@@ -42,7 +44,7 @@ export default function DataPortal() {
     fetch("/api/auth/session").then(async (r) => {
       if (!r.ok) { router.replace("/login"); return; }
       const d = await r.json();
-      setSession({ email: d.email, role: d.role });
+      setSession({ role: d.role });
       setReady(true);
     });
   }, [router]);
@@ -72,19 +74,74 @@ export default function DataPortal() {
 
   async function logout() { await fetch("/api/auth/logout", { method: "POST" }); router.replace("/login"); }
 
-  async function runImport(confirm: boolean) {
+  async function parseSelected() {
     if (!file) { setMessage("Choose an .xlsx file first."); return; }
+    if (!/\.xlsx$/i.test(file.name)) { setMessage("Only .xlsx workbooks are accepted."); return; }
     setBusy(true); setMessage("");
-    const fd = new FormData();
-    fd.set("file", file); fd.set("mode", mode); fd.set("confirm", confirm ? "1" : "0");
     try {
-      const r = await fetch("/api/data/import", { method: "POST", body: fd });
-      const d = await r.json();
-      if (!r.ok || !d.ok) { setMessage(d.error || "Import failed"); if (d.preview) setPreview(d.preview); if (d.errors) setPreview((p) => p && { ...p, errors: d.errors }); return; }
-      if (confirm) { setMessage(`Imported. Exit: +${d.results?.[1]?.inserted ?? 0}, Opinion: +${d.results?.[0]?.inserted ?? 0} rows.`); setPreview(null); await loadSummary(); await loadRecords(); }
-      else { setPreview(d.preview); setMessage(`Validated ${d.file}. ${d.preview.canCommit ? "Ready to import." : "Resolve errors before importing."}`); }
-    } catch { setMessage("Import failed"); }
-    finally { setBusy(false); }
+      const XLSX = await import("xlsx");
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const missing = ["Opinion Poll", "Exit Poll"].filter((n) => !wb.SheetNames.includes(n));
+      if (missing.length) throw new Error(`Missing required sheet(s): ${missing.join(", ")}`);
+      const opinion = XLSX.utils.sheet_to_json(wb.Sheets["Opinion Poll"], { defval: "", raw: true }) as PollRow[];
+      const exit = XLSX.utils.sheet_to_json(wb.Sheets["Exit Poll"], { defval: "", raw: true }) as PollRow[];
+      const { validateSheet } = await import("@/lib/poll-data");
+      const ov = validateSheet("Opinion Poll", opinion);
+      const ev = validateSheet("Exit Poll", exit);
+      const issues = [...ov.issues, ...ev.issues];
+      setParsed({ opinion, exit, headers: { opinion: opinion.length ? Object.keys(opinion[0]) : [], exit: exit.length ? Object.keys(exit[0]) : [] } });
+      setPreview({
+        opinion: { total: ov.total, valid: ov.valid, blank: ov.blank, invalid: ov.invalid, recorded: ov.recorded, estimated: ov.estimated },
+        exit: { total: ev.total, valid: ev.valid, blank: ev.blank, invalid: ev.invalid, recorded: ev.recorded, estimated: ev.estimated },
+        warnings: issues.filter((i) => i.severity === "warning").slice(0, 200),
+        errors: issues.filter((i) => i.severity === "error").slice(0, 200),
+        canCommit: !issues.some((i) => i.severity === "error"),
+      });
+      setMessage(`Parsed ${file.name}. ${!issues.some((i) => i.severity === "error") ? "Ready to import." : "Resolve errors before importing."}`);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Could not parse the workbook");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function commitImport() {
+    if (!parsed || !file) return;
+    setBusy(true); setMessage("Importing…");
+    const CHUNK = 1200;
+    try {
+      for (const pt of ["opinion", "exit"] as const) {
+        const rows = pt === "opinion" ? parsed.opinion : parsed.exit;
+        const headers = pt === "opinion" ? parsed.headers.opinion : parsed.headers.exit;
+        if (rows.length === 0) {
+          const r = await fetch("/api/data/import/rows", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pollType: pt, mode, headers, rows: [], final: true, filename: file.name, totalInserted: 0 }) });
+          const d = await r.json();
+          if (!r.ok || !d.ok) throw new Error(d.error || "Import failed");
+          continue;
+        }
+        let importId: string | undefined;
+        let inserted = 0;
+        for (let i = 0; i < rows.length; i += CHUNK) {
+          const chunk = rows.slice(i, i + CHUNK);
+          const final = i + CHUNK >= rows.length;
+          const r = await fetch("/api/data/import/rows", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pollType: pt, mode, importId, headers, rows: chunk, final, filename: file.name, totalInserted: inserted + chunk.length }) });
+          const d = await r.json();
+          if (!r.ok || !d.ok) throw new Error(d.error || "Import failed");
+          importId = d.importId;
+          inserted += d.inserted;
+          setMessage(`Importing… ${pt === "exit" ? "Exit" : "Opinion"} ${Math.min(i + CHUNK, rows.length).toLocaleString("en-IN")} / ${rows.length.toLocaleString("en-IN")}`);
+        }
+      }
+      setMessage("Import complete.");
+      setPreview(null); setParsed(null); setFile(null);
+      await loadSummary(); await loadRecords();
+      fetch("/api/data/history").then(async (r) => { if (r.ok) setHistory((await r.json()).history); });
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setBusy(false);
+    }
   }
 
   const pageCount = Math.max(1, Math.ceil(total / 50));
@@ -105,7 +162,7 @@ export default function DataPortal() {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3">
           <div className="flex items-center gap-4"><Logo /><span className="hidden text-[12px] text-muted-foreground sm:block">Data portal</span></div>
           <div className="flex items-center gap-2">
-            <span className="hidden text-[12px] text-muted-foreground sm:block">{session?.email} · {session?.role}</span>
+            <span className="hidden text-[12px] text-muted-foreground sm:block">Administrator</span>
             <Link href="/" className="rounded-full border border-border px-3 py-1.5 text-[12.5px] text-muted-foreground hover:text-foreground">Site</Link>
             <ThemeToggle className="size-9" />
             <button onClick={logout} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12.5px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60"><LogOut className="size-3.5" /> Sign out</button>
@@ -213,7 +270,7 @@ export default function DataPortal() {
             {session?.role === "admin" && (
               <div className="rounded-2xl border border-border bg-card/60 p-4">
                 <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><Upload className="size-4" /> Import Excel</h2>
-                <input type="file" accept=".xlsx" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); setMessage(""); }} className="mt-3 block w-full text-[12.5px] file:mr-3 file:rounded-lg file:border-0 file:bg-elevated file:px-3 file:py-1.5 file:text-foreground" />
+                <input type="file" accept=".xlsx" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); setParsed(null); setMessage(""); }} className="mt-3 block w-full text-[12.5px] file:mr-3 file:rounded-lg file:border-0 file:bg-elevated file:px-3 file:py-1.5 file:text-foreground" />
                 <div className="mt-3 flex gap-2 text-[12.5px]">
                   {(["append", "replace"] as const).map((m) => (
                     <label key={m} className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5", mode === m ? "border-saffron/60 bg-saffron/10" : "border-border")}>
@@ -223,8 +280,8 @@ export default function DataPortal() {
                 </div>
                 <p className="mt-2 text-[11.5px] text-muted-foreground">{mode === "replace" ? "Replaces the active dataset atomically (each poll type separately)." : "Adds new rows; duplicate Response IDs are rejected."}</p>
                 <div className="mt-3 flex gap-2">
-                  <button disabled={busy} onClick={() => runImport(false)} className="flex-1 rounded-xl border border-border px-3 py-2 text-[12.5px] font-medium hover:bg-elevated disabled:opacity-60">{busy ? "Validating…" : "Validate & preview"}</button>
-                  <button disabled={busy || !preview?.canCommit} onClick={() => runImport(true)} className="flex-1 rounded-xl bg-saffron px-3 py-2 text-[12.5px] font-semibold text-[#241203] disabled:opacity-50">Confirm import</button>
+                  <button disabled={busy} onClick={parseSelected} className="flex-1 rounded-xl border border-border px-3 py-2 text-[12.5px] font-medium hover:bg-elevated disabled:opacity-60">{busy ? "Working…" : "Validate & preview"}</button>
+                  <button disabled={busy || !preview?.canCommit} onClick={commitImport} className="flex-1 rounded-xl bg-saffron px-3 py-2 text-[12.5px] font-semibold text-[#241203] disabled:opacity-50">Confirm import</button>
                 </div>
                 {message && <p className="mt-3 rounded-lg border border-border bg-elevated/50 px-3 py-2 text-[12px]">{message}</p>}
                 {preview && (

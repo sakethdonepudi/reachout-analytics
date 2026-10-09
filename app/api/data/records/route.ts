@@ -1,11 +1,11 @@
 import type { NextRequest } from "next/server";
-import { requireRole } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { listRecords } from "@/lib/poll-store";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const auth = requireRole(req, ["admin", "viewer"]);
+  const auth = await requireAdmin(req);
   if ("deny" in auth) return auth.deny;
   const sp = new URL(req.url).searchParams;
   const pollType = sp.get("pollType") === "opinion" ? "opinion" : "exit";

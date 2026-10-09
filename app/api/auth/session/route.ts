@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const s = getSession(req);
+  const s = await getSession(req);
   if (!s) return Response.json({ ok: false }, { status: 401 });
-  return Response.json({ ok: true, email: s.sub, role: s.role });
+  return Response.json({ ok: true, role: s.role });
 }

@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { requireRole } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { buildWorkbook, type Row } from "@/lib/poll-data";
 import { getActiveImportId } from "@/lib/poll-store";
 import { getMongo } from "@/lib/mongodb";
@@ -23,7 +23,7 @@ async function allRows(pollType: "opinion" | "exit"): Promise<Row[]> {
 
 /** Export the full dataset (both sheets) as one .xlsx. */
 export async function GET(req: NextRequest) {
-  const auth = requireRole(req, ["admin", "viewer"]);
+  const auth = await requireAdmin(req);
   if ("deny" in auth) return auth.deny;
   if (!getMongo()) return Response.json({ ok: false, error: "Database not configured" }, { status: 503 });
 

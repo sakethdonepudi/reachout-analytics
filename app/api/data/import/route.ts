@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { requireRole } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { parseWorkbook, validateSheet, SHEET_OF, type RowIssue } from "@/lib/poll-data";
 import { importDataset, isConfigured } from "@/lib/poll-store";
 
@@ -8,7 +8,7 @@ export const maxDuration = 60;
 
 /** Upload a workbook. confirm=0 → validate + preview; confirm=1 → commit. */
 export async function POST(req: NextRequest) {
-  const auth = requireRole(req, ["admin"]);
+  const auth = await requireAdmin(req);
   if ("deny" in auth) return auth.deny;
 
   let fd: FormData;
