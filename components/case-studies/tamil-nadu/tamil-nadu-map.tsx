@@ -12,6 +12,7 @@ import {
   type PartyResult,
   type PollType,
 } from "@/lib/data/tamil-nadu-poll-data";
+import { BAND_COLORS, NO_DATA_COLOR, SELECTED_FILL, SELECTED_LINE, type ThemeName } from "@/lib/data/tamil-nadu-scale";
 import MapTooltip, { type MapTooltipData } from "./map-tooltip";
 
 /* =====================================================================
@@ -41,23 +42,23 @@ const signedArea = (r: number[][]) => {
 
 export type MapMode = "state" | "district" | "pincode";
 export type MapLayers = { boundaries: boolean; pins: boolean; labels: boolean; context: boolean };
-type ThemeName = "light" | "dark";
 
-/* Theme-aware cartographic palette (see globals.css tokens). */
+/* Theme-aware cartographic palette. Intensity/sel colours come from the
+   shared tamil-nadu-scale module so the legend always matches the fills. */
 const PAL: Record<ThemeName, {
   fill: THREE.Color; hover: THREE.Color; sel: THREE.Color; selLine: THREE.Color;
   line: THREE.Color; state: THREE.Color; side: THREE.Color; bands: THREE.Color[]; none: THREE.Color; label: string; halo: string;
 }> = {
   dark: {
-    fill: new THREE.Color(0x2b3746), hover: new THREE.Color(0x3c4a5d), sel: new THREE.Color(0xc2591a), selLine: new THREE.Color(0xf58a24),
+    fill: new THREE.Color(0x2b3746), hover: new THREE.Color(0x3c4a5d), sel: new THREE.Color(SELECTED_FILL.dark), selLine: new THREE.Color(SELECTED_LINE.dark),
     line: new THREE.Color(0xa0adbc), state: new THREE.Color(0xd5dce5), side: new THREE.Color(0x1c2531),
-    bands: [0x244066, 0x2f5686, 0x3b6ea8, 0x4d8fd0, 0x79b4f0].map((h) => new THREE.Color(h)), none: new THREE.Color(0x20293a),
+    bands: BAND_COLORS.dark.map((h) => new THREE.Color(h)), none: new THREE.Color(NO_DATA_COLOR.dark),
     label: "#e7ecf2", halo: "rgba(0,0,0,.82)",
   },
   light: {
-    fill: new THREE.Color(0xe7ebef), hover: new THREE.Color(0xd9dee5), sel: new THREE.Color(0xf7c894), selLine: new THREE.Color(0xe07617),
+    fill: new THREE.Color(0xe7ebef), hover: new THREE.Color(0xd9dee5), sel: new THREE.Color(SELECTED_FILL.light), selLine: new THREE.Color(SELECTED_LINE.light),
     line: new THREE.Color(0x9aa6b4), state: new THREE.Color(0x48525f), side: new THREE.Color(0xd3d9e0),
-    bands: [0xd8e3f1, 0xb9cbe4, 0x93b0d6, 0x5f88c2, 0x3566ad].map((h) => new THREE.Color(h)), none: new THREE.Color(0xe9edf1),
+    bands: BAND_COLORS.light.map((h) => new THREE.Color(h)), none: new THREE.Color(NO_DATA_COLOR.light),
     label: "#20242b", halo: "rgba(255,255,255,.92)",
   },
 };
@@ -66,13 +67,14 @@ type Props = {
   pollType: PollType;
   districts: DistrictPollResult[];
   selectedDistricts: string[];
-  activeDistrict: string | null;
   hoveredDistrict: string | null;
   activePincode: string | null;
   mode: MapMode;
   layers: MapLayers;
   theme: ThemeName;
-  /** district → intensity band (0–4); -1 = no responses. Present only when published data exists. */
+  /** True when a published dataset drives the fills (even if it has no rows). */
+  intensityActive?: boolean;
+  /** district → intensity band (0–4); -1 = no responses. */
   bandByName?: Record<string, number>;
   liveValid?: Record<string, number>;
   liveShare?: Record<string, number>;
@@ -99,8 +101,8 @@ type DistrictState = {
 
 export default function TamilNaduMap(props: Props) {
   const {
-    pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode,
-    mode, layers, theme, bandByName, liveValid, liveShare, pollLabel, basisLabel, resetNonce,
+    pollType, districts: pollData, selectedDistricts, hoveredDistrict, activePincode,
+    mode, layers, theme, intensityActive, bandByName, liveValid, liveShare, pollLabel, basisLabel, resetNonce,
     onHoverDistrict, onSelectDistrict, onSelectPincode,
   } = props;
 
@@ -113,8 +115,8 @@ export default function TamilNaduMap(props: Props) {
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const live = useRef({ pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode, mode, layers, theme, bandByName, liveValid, liveShare, pollLabel, basisLabel, onHoverDistrict, onSelectDistrict, onSelectPincode });
-  live.current = { pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode, mode, layers, theme, bandByName, liveValid, liveShare, pollLabel, basisLabel, onHoverDistrict, onSelectDistrict, onSelectPincode };
+  const live = useRef({ pollType, districts: pollData, selectedDistricts, hoveredDistrict, activePincode, mode, layers, theme, intensityActive, bandByName, liveValid, liveShare, pollLabel, basisLabel, onHoverDistrict, onSelectDistrict, onSelectPincode });
+  live.current = { pollType, districts: pollData, selectedDistricts, hoveredDistrict, activePincode, mode, layers, theme, intensityActive, bandByName, liveValid, liveShare, pollLabel, basisLabel, onHoverDistrict, onSelectDistrict, onSelectPincode };
 
   const apiRef = useRef<{ rebuildPins: () => void; setSelection: (selected: string[]) => void; reset: () => void } | null>(null);
 
@@ -228,36 +230,39 @@ export default function TamilNaduMap(props: Props) {
     // Pincode survey areas are visual approximations unless official polygon
     // boundaries are available.
     const pinRoot = pinRef.current;
-    type PinEl = { el: HTMLButtonElement; path: SVGPathElement; label: HTMLSpanElement; pincode: string; lng: number; lat: number; samples: number; results: PartyResult };
+    type PinEl = { el: HTMLButtonElement; path: SVGPathElement; label: HTMLSpanElement; pincode: string; district: string; lng: number; lat: number; samples: number; results: PartyResult };
     let pins: PinEl[] = [];
     const pinHover = { current: null as string | null };
     const clearPins = () => { for (const p of pins) { p.el.remove(); p.label.remove(); } pins = []; pinHover.current = null; };
     const rebuildPins = () => {
       clearPins();
       if (!pinRoot) return;
-      if (live.current.bandByName) return; // published dataset has no PIN-level records
-      const { mode: m, activeDistrict: act, districts: rows, layers: lay } = live.current;
-      if (m !== "pincode" || !act || !lay.pins) return;
-      const row = rows.find((r) => r.district === act);
-      if (!row) return;
-      for (const p of row.pincodes) {
-        const el = document.createElement("button");
-        el.type = "button";
-        el.setAttribute("aria-label", `PIN ${p.pincode}, ${p.district}`);
-        el.className = "pointer-events-auto absolute left-0 top-0 cursor-pointer outline-none will-change-transform";
-        el.innerHTML = '<svg width="16" height="22" viewBox="0 0 18 26" fill="none"><path d="M9 1C4.58 1 1 4.58 1 9c0 5.6 8 16 8 16s8-10.4 8-16c0-4.42-3.58-8-8-8Z" fill="#2f6fd0" stroke="currentColor" stroke-width="1.4"/><circle cx="9" cy="9" r="3" fill="var(--map-halo)"/></svg>';
-        const path = el.querySelector("path") as SVGPathElement;
-        el.style.color = "var(--map-sel-line)";
-        el.addEventListener("mouseenter", () => (pinHover.current = p.pincode));
-        el.addEventListener("mouseleave", () => { if (pinHover.current === p.pincode) pinHover.current = null; });
-        el.addEventListener("click", (e) => { e.stopPropagation(); live.current.onSelectPincode(p.pincode); });
-        pinRoot.appendChild(el);
-        const label = document.createElement("span");
-        label.textContent = p.pincode;
-        label.className = "pointer-events-none absolute left-0 top-0 whitespace-nowrap rounded px-1 py-px text-[9.5px] font-semibold tabular-nums will-change-transform";
-        label.style.opacity = "0";
-        pinRoot.appendChild(label);
-        pins.push({ el, path, label, pincode: p.pincode, lng: p.lng, lat: p.lat, samples: p.samples, results: p.results });
+      if (live.current.intensityActive) return; // published dataset has no PIN-level records
+      const { mode: m, selectedDistricts: sel, districts: rows, layers: lay } = live.current;
+      if (m !== "pincode" || !lay.pins) return;
+      // A single selected district shows only its pins; otherwise statewide.
+      const allowed = sel.length === 1 ? new Set([sel[0]]) : null;
+      for (const row of rows) {
+        if (allowed && !allowed.has(row.district)) continue;
+        for (const p of row.pincodes) {
+          const el = document.createElement("button");
+          el.type = "button";
+          el.setAttribute("aria-label", `PIN ${p.pincode}, ${p.district}`);
+          el.className = "pointer-events-auto absolute left-0 top-0 cursor-pointer outline-none will-change-transform";
+          el.innerHTML = '<svg width="16" height="22" viewBox="0 0 18 26" fill="none"><path d="M9 1C4.58 1 1 4.58 1 9c0 5.6 8 16 8 16s8-10.4 8-16c0-4.42-3.58-8-8-8Z" fill="#2f6fd0" stroke="currentColor" stroke-width="1.4"/><circle cx="9" cy="9" r="3" fill="var(--map-halo)"/></svg>';
+          const path = el.querySelector("path") as SVGPathElement;
+          el.style.color = "var(--map-sel-line)";
+          el.addEventListener("mouseenter", () => (pinHover.current = p.pincode));
+          el.addEventListener("mouseleave", () => { if (pinHover.current === p.pincode) pinHover.current = null; });
+          el.addEventListener("click", (e) => { e.stopPropagation(); live.current.onSelectPincode(p.pincode); });
+          pinRoot.appendChild(el);
+          const label = document.createElement("span");
+          label.textContent = p.pincode;
+          label.className = "pointer-events-none absolute left-0 top-0 whitespace-nowrap rounded px-1 py-px text-[9.5px] font-semibold tabular-nums will-change-transform";
+          label.style.opacity = "0";
+          pinRoot.appendChild(label);
+          pins.push({ el, path, label, pincode: p.pincode, district: row.district, lng: p.lng, lat: p.lat, samples: p.samples, results: p.results });
+        }
       }
     };
     rebuildPins();
@@ -279,11 +284,11 @@ export default function TamilNaduMap(props: Props) {
     }
 
     // ---- camera (3D, slightly above the plate) ----
-    let theta = 0.0, phi = 0.72, dist = 1950;
+    let theta = 0.0, phi = 0.6, dist = 2020;
     const target = new THREE.Vector3(0, 0, 0);
-    const desired = { tx: 0, tz: 0, dist: 1950 };
+    const desired = { tx: 0, tz: 0, dist: 2020 };
     const labelV = new THREE.Vector3();
-    const oxBase = () => (typeof window !== "undefined" && window.innerWidth > 1024 ? 150 : 0);
+    const oxBase = () => (typeof window !== "undefined" && window.innerWidth > 1280 ? 150 : typeof window !== "undefined" && window.innerWidth > 1024 ? 60 : 0);
 
     const applyCamera = () => {
       camera.position.set(
@@ -296,7 +301,7 @@ export default function TamilNaduMap(props: Props) {
 
     const setSelection = (selected: string[]) => {
       const OX = oxBase();
-      if (selected.length === 0) { desired.tx = OX; desired.tz = 0; desired.dist = 1950; }
+      if (selected.length === 0) { desired.tx = OX; desired.tz = 0; desired.dist = 2020; }
       else if (selected.length === 1) {
         const { lng, lat } = districtCentroid(selected[0]);
         const [x, z] = projectLngLat(lng, lat);
@@ -417,9 +422,10 @@ export default function TamilNaduMap(props: Props) {
         const isHover = hv === id || hovered === id;
         st.heat += ((isSelected ? 1 : 0) - st.heat) * 0.15;
         st.hover += ((isHover ? 1 : 0) - st.hover) * 0.2;
+        const useIntensity = live.current.intensityActive;
         const bands = live.current.bandByName;
         const band = bands ? bands[st.name] : undefined;
-        const baseFill = bands
+        const baseFill = useIntensity
           ? (band === undefined || band < 0 ? P.none.clone() : P.bands[Math.min(P.bands.length - 1, band)].clone())
           : P.fill.clone().multiplyScalar(st.tone);
         const target = baseFill.lerp(P.hover, st.hover * (1 - st.heat)).lerp(P.sel, st.heat);
@@ -436,20 +442,17 @@ export default function TamilNaduMap(props: Props) {
         return { x: (labelV.x * 0.5 + 0.5) * hostRect.width, y: (-labelV.y * 0.5 + 0.5) * hostRect.height, behind: labelV.z > 1 };
       };
 
-      // PIN pins (focused district)
+      // PIN pins — focused district, or statewide when nothing is selected
       const pinDistrict = sel.length === 1 ? sel[0] : null;
-      const showPins = live.current.mode === "pincode" && !!pinDistrict && lay.pins;
+      const showPins = live.current.mode === "pincode" && lay.pins;
       const hoverRef: { pos: { x: number; y: number } | null } = { pos: null };
-      let cwx = 0, cwz = 0, spreadF = 1;
-      if (pinDistrict) {
-        const c = districtCentroid(pinDistrict);
-        [cwx, cwz] = projectLngLat(c.lng, c.lat);
-        spreadF = clamp(0.26 / districtRadius(pinDistrict), 1, 3);
-      }
       if (pins.length) {
         const step = Math.max(1, Math.ceil(pins.length / 10));
         pins.forEach((mk, i) => {
           if (!showPins) { if (mk.el.style.display !== "none") mk.el.style.display = "none"; if (mk.label.style.opacity !== "0") mk.label.style.opacity = "0"; return; }
+          const c = districtCentroid(mk.district);
+          const [cwx, cwz] = projectLngLat(c.lng, c.lat);
+          const spreadF = clamp(0.26 / districtRadius(mk.district), 1, 3);
           const [rwx, rwz] = projectLngLat(mk.lng, mk.lat);
           const p = toScreen(cwx + (rwx - cwx) * spreadF, DEPTH + 3, cwz + (rwz - cwz) * spreadF);
           if (p.behind) { mk.el.style.display = "none"; mk.label.style.opacity = "0"; return; }
@@ -473,12 +476,12 @@ export default function TamilNaduMap(props: Props) {
       if (hoverRef.pos) {
         const mk = pins.find((x) => x.pincode === pinHover.current);
         if (mk) {
-          const data = { kind: "pincode", pincode: mk.pincode, district: pinDistrict ?? "", samples: mk.samples, results: mk.results, pollType: live.current.pollType } as MapTooltipData;
+          const data = { kind: "pincode", pincode: mk.pincode, district: mk.district, samples: mk.samples, results: mk.results, pollType: live.current.pollType } as MapTooltipData;
           tipRef.current = { x: hoverRef.pos.x, y: hoverRef.pos.y };
           setTip((prev) => (JSON.stringify(prev) === JSON.stringify(data) ? prev : data));
         }
       } else if (hovered && mouse.px >= 0 && !dragging) {
-        const liveBands = live.current.bandByName;
+        const liveBands = live.current.intensityActive;
         const row = live.current.districts.find((r) => r.district === hovered);
         let data: MapTooltipData | null = null;
         if (liveBands) {
@@ -493,27 +496,33 @@ export default function TamilNaduMap(props: Props) {
         } else if (tipRef.current) { tipRef.current = null; setTip(null); }
       } else if (tipRef.current) { tipRef.current = null; setTip(null); }
 
-      // district labels — collision-aware; more revealed as you zoom in
+      // district labels — collision-aware, priority: hover/focus > selected > area
       const zoomed = dist < 1500;
-      const placed: { x: number; y: number }[] = [];
-      const order = live.current.districts.map((d) => d.district).sort((a, b) => districtRadius(b) - districtRadius(a));
+      const placed: { x: number; y: number; w: number; h: number }[] = [];
+      const priority = (n: string) => (hv === n || pinDistrict === n ? 3 : selSet?.has(n) ? 2 : 0);
+      const order = live.current.districts.map((d) => d.district).sort((a, b) => {
+        const pa = priority(a), pb = priority(b);
+        return pa !== pb ? pb - pa : districtRadius(b) - districtRadius(a);
+      });
       for (const name of order) {
         const el = districtLabels[name];
         if (!el) continue;
-        const isSel = selSet ? selSet.has(name) : true;
+        const focused = hv === name || pinDistrict === name;
+        const isSel = selSet ? selSet.has(name) : false;
         const big = districtRadius(name) >= 0.18;
-        if (!isSel || !lay.labels || (!zoomed && !big)) { if (el.style.opacity !== "0") el.style.opacity = "0"; continue; }
+        const want = lay.labels && (focused || isSel || zoomed || (!selSet && big));
+        if (!want) { if (el.style.opacity !== "0") el.style.opacity = "0"; continue; }
         const { lng, lat } = districtCentroid(name);
         const [wx, wz] = projectLngLat(lng, lat);
         const p = toScreen(wx, DEPTH + 8, wz);
         if (p.behind) { el.style.opacity = "0"; continue; }
-        const focused = pinDistrict === name;
-        const collide = placed.some((q) => Math.abs(q.x - p.x) < 30 && Math.abs(q.y - p.y) < 14);
-        if (collide && !focused) { if (el.style.opacity !== "0") el.style.opacity = "0"; continue; }
-        placed.push({ x: p.x, y: p.y });
+        const lw = name.length * 6.4 + 8, lh = 14;
+        const collide = placed.some((q) => Math.abs(q.x - p.x) < (q.w + lw) / 2 && Math.abs(q.y - p.y) < (q.h + lh) / 2);
+        if (collide && !focused && !isSel) { if (el.style.opacity !== "0") el.style.opacity = "0"; continue; }
+        placed.push({ x: p.x, y: p.y, w: lw, h: lh });
         el.style.transform = `translate(-50%,-50%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
         el.style.opacity = focused ? "1" : "0.82";
-        el.style.color = focused ? "var(--map-sel-line)" : P.label;
+        el.style.color = focused ? "var(--map-sel-line)" : isSel ? "var(--saffron-2)" : P.label;
         el.style.textShadow = `0 1px 3px ${P.halo}, 0 0 6px ${P.halo}`;
         el.style.fontSize = focused ? "12.5px" : "11px";
       }
@@ -526,7 +535,7 @@ export default function TamilNaduMap(props: Props) {
     apiRef.current = {
       rebuildPins,
       setSelection,
-      reset: () => { theta = 0; phi = 0.72; dist = 1950; desired.tx = oxBase(); desired.tz = 0; desired.dist = 1950; },
+      reset: () => { theta = 0; phi = 0.6; dist = 2020; desired.tx = oxBase(); desired.tz = 0; desired.dist = 2020; },
     };
 
     return () => {
@@ -550,7 +559,7 @@ export default function TamilNaduMap(props: Props) {
     };
   }, [projection, projectLngLat]);
 
-  useEffect(() => { apiRef.current?.rebuildPins(); }, [mode, activeDistrict, pollType, pollData, layers.pins, bandByName]);
+  useEffect(() => { apiRef.current?.rebuildPins(); }, [mode, selectedDistricts, pollType, pollData, layers.pins, intensityActive]);
   useEffect(() => { apiRef.current?.setSelection(selectedDistricts); }, [selectedDistricts]);
   useEffect(() => { if (resetNonce) apiRef.current?.reset(); }, [resetNonce]);
 
@@ -571,10 +580,11 @@ export default function TamilNaduMap(props: Props) {
       )}
 
       {/* Accessible district information, kept outside the canvas */}
-      <ul className="sr-only" aria-label="Tamil Nadu districts and sample counts">
-        {pollData.map((d) => (
-          <li key={d.district}>{d.district}: {d.samples.toLocaleString("en-IN")} samples</li>
-        ))}
+      <ul className="sr-only" aria-label="Tamil Nadu districts and survey response counts">
+        {pollData.map((d) => {
+          const n = liveValid?.[d.district];
+          return <li key={d.district}>{d.district}: {(n ?? d.samples).toLocaleString("en-IN")} {n !== undefined ? "valid survey responses" : "samples"}</li>;
+        })}
       </ul>
     </div>
   );

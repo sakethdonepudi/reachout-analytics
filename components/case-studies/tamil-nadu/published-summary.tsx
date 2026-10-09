@@ -38,9 +38,9 @@ export default function PublishedSummary({ slug }: { slug: string }) {
       {shares.length > 0 && (
         <ul className="mt-3 space-y-1 text-[12px]">
           {shares.map((s) => (
-            <li key={s.party} className="flex items-center gap-2">
-              <span className="min-w-0 flex-1 truncate text-foreground/80">{s.party}</span>
-              <span className="tabular-nums text-muted-foreground">{s.count.toLocaleString("en-IN")} · {s.pct}%</span>
+            <li key={s.party} className="flex items-baseline gap-2" title={s.party}>
+              <span className="min-w-0 flex-1 break-words text-foreground/80">{s.party}</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">{s.count.toLocaleString("en-IN")} · {s.pct}%</span>
             </li>
           ))}
         </ul>
