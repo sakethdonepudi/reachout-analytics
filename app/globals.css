@@ -133,6 +133,9 @@ html.theme-transition *::after {
 @keyframes rt-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes rt-line { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes drift { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -16px, 0); } }
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes spin-slow { to { transform: rotate(360deg); } }
 
 .animate-marquee { animation: marquee 38s linear infinite; }
 .animate-float { animation: float-y 6s ease-in-out infinite; }
@@ -140,9 +143,17 @@ html.theme-transition *::after {
 .animate-sweep { animation: sweep 12s ease-in-out infinite; }
 .animate-wheel { animation: wheel 1.8s ease-in-out infinite; }
 .animate-drift { animation: drift 20s ease-in-out infinite; }
+.animate-rise { animation: rise 0.7s cubic-bezier(.2,.7,.2,1) both; }
+.animate-bob { animation: bob 5s ease-in-out infinite; }
+.animate-spin-slow { animation: spin-slow 40s linear infinite; }
+
+/* scroll reveal */
+.reveal { opacity: 0; transform: translateY(26px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+.reveal.is-visible { opacity: 1; transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-marquee, .animate-float, .animate-pulse-dot, .animate-sweep, .animate-wheel, .animate-drift { animation: none; }
+  .animate-marquee, .animate-float, .animate-pulse-dot, .animate-sweep, .animate-wheel, .animate-drift, .animate-rise, .animate-bob, .animate-spin-slow { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
   html { scroll-behavior: auto; }
   html.theme-transition, html.theme-transition * { transition: none !important; }
 }

@@ -109,12 +109,12 @@ export default function Hero() {
       {/* content */}
       <div className="relative mx-auto flex min-h-[100svh] max-w-7xl flex-col justify-center px-6 pb-40 pt-32 sm:px-10">
         <div ref={(el) => { layers.current.content = el; }} className="max-w-2xl origin-bottom will-change-transform">
-          <div className="glass mb-7 inline-flex items-center gap-2.5 rounded-full px-4 py-2 text-[12px] font-medium tracking-wide text-white/80">
-            <span className="size-2 rounded-full bg-saffron" />
+          <div className="glass animate-rise mb-7 inline-flex items-center gap-2.5 rounded-full px-4 py-2 text-[12px] font-medium tracking-wide text-white/80">
+            <span className="animate-pulse-dot size-2 rounded-full bg-saffron" />
             Political analytics &amp; campaign strategy
           </div>
 
-          <h1 className="font-display text-[clamp(40px,6vw,88px)] font-semibold leading-[1.03] tracking-[-0.03em] text-white [text-shadow:0_10px_60px_rgba(0,0,0,.45)]">
+          <h1 className="animate-rise font-display text-[clamp(40px,6vw,88px)] font-semibold leading-[1.03] tracking-[-0.03em] text-white [animation-delay:90ms] [text-shadow:0_10px_60px_rgba(0,0,0,.45)]">
             Winning elections
             <br />
             with data,{" "}
@@ -123,10 +123,10 @@ export default function Hero() {
             </span>
           </h1>
 
-          <div className="mt-10 grid gap-3 sm:grid-cols-3">
+          <div className="animate-rise mt-10 grid gap-3 [animation-delay:180ms] sm:grid-cols-3">
             {FEATURES.map(({ Icon, title, desc }) => (
-              <div key={title} className="glass rounded-2xl p-4">
-                <span className="mb-3 grid size-9 place-items-center rounded-xl border border-white/15 bg-white/5 text-saffron-2">
+              <div key={title} className="glass group rounded-2xl p-4 transition-transform duration-300 hover:-translate-y-1">
+                <span className="mb-3 grid size-9 place-items-center rounded-xl border border-white/15 bg-white/5 text-saffron-2 transition-transform duration-300 group-hover:scale-110">
                   <Icon className="size-4" />
                 </span>
                 <h2 className="font-display text-[15px] font-semibold text-white">{title}</h2>
@@ -135,7 +135,7 @@ export default function Hero() {
             ))}
           </div>
 
-          <div className="mt-9 flex flex-wrap items-center gap-3">
+          <div className="animate-rise mt-9 flex flex-wrap items-center gap-3 [animation-delay:270ms]">
             <ShimmerButton text="Request Strategy Demo" duration={1.8} onClick={() => router.push("/#contact")}
               className="border-saffron/40 px-7 py-3.5 shadow-[0_0_0_4px_rgba(245,138,36,.08),0_20px_50px_-10px_rgba(245,138,36,.4)] dark:bg-[#0a1a44]/80 backdrop-blur-xl" />
             <a href="#tour" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 py-3.5 text-[15px] font-medium text-white/90 backdrop-blur-xl transition-colors hover:bg-white/10">
