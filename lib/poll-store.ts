@@ -261,3 +261,48 @@ export async function history(caseStudyId: string | null, limit = 25) {
   const q = caseStudyId ? { caseStudyId } : {};
   return c.imports.find(q).sort({ at: -1 }).limit(limit).project({ _id: 0 }).toArray();
 }
+
+export type DistrictAgg = { district: string; total: number; valid: number; parties: Record<string, number> };
+
+/**
+ * Per-district aggregates for the selected case study + poll type.
+ * Recorded geography uses `District`; the estimated scenario groups valid
+ * responses by `District for Scenario`. Party counts use valid responses only.
+ */
+export async function districtAggregates(caseStudyId: string, pollType: PollType, scenario = false) {
+  const c = await cols();
+  const empty = { districts: [] as DistrictAgg[], total: 0, valid: 0, byParty: {} as Record<string, number> };
+  if (!c) return empty;
+  const importId = await getActiveImportId(caseStudyId, pollType);
+  if (!importId) return empty;
+
+  const groupField = scenario ? { $ifNull: ["$scenarioDistrict", "$estimatedDistrict"] } : "$district";
+  const match: Record<string, unknown> = { caseStudyId, pollType, importId };
+  if (!scenario) match.recorded = true;
+
+  const rows = await c.responses.aggregate([
+    { $match: match },
+    { $group: { _id: { d: groupField, status: "$status", party: "$party" }, n: { $sum: 1 } } },
+  ]).toArray();
+
+  const map = new Map<string, DistrictAgg>();
+  let total = 0, valid = 0;
+  const byParty: Record<string, number> = {};
+  for (const r of rows) {
+    const g = r._id as { d?: string; status?: string; party?: string };
+    const n = r.n as number;
+    total += n;
+    const name = (g.d ?? "").trim();
+    const key = name || "__unmapped__";
+    const d = map.get(key) ?? { district: name, total: 0, valid: 0, parties: {} };
+    d.total += n;
+    if (g.status === "valid") {
+      d.valid += n; valid += n;
+      const p = g.party || "Unknown";
+      d.parties[p] = (d.parties[p] ?? 0) + n;
+      byParty[p] = (byParty[p] ?? 0) + n;
+    }
+    map.set(key, d);
+  }
+  return { districts: [...map.values()], total, valid, byParty };
+}

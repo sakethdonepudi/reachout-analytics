@@ -38,6 +38,12 @@
   --map-side: #d3d9e0;
   --map-label: #20242b;
   --map-halo: rgba(255, 255, 255, 0.92);
+  --map-none: #e9edf1;
+  --band-0: #d8e3f1;
+  --band-1: #b9cbe4;
+  --band-2: #93b0d6;
+  --band-3: #5f88c2;
+  --band-4: #3566ad;
 }
 
 .dark {
@@ -64,6 +70,12 @@
   --map-side: #1c2531;
   --map-label: #e7ecf2;
   --map-halo: rgba(0, 0, 0, 0.8);
+  --map-none: #20293a;
+  --band-0: #244066;
+  --band-1: #2f5686;
+  --band-2: #3b6ea8;
+  --band-3: #4d8fd0;
+  --band-4: #79b4f0;
 }
 
 @theme inline {

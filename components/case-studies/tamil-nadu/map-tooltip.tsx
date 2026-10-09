@@ -3,11 +3,12 @@
 import { PARTY_META, PARTY_ORDER, type PartyResult } from "@/lib/data/tamil-nadu-poll-data";
 
 export type MapTooltipData =
-  | { kind: "district"; name: string; samples: number; results: PartyResult }
+  | { kind: "district"; name: string; samples: number; results: PartyResult; valid?: number; sharePct?: number; pollLabel?: string; basisLabel?: string }
   | { kind: "pincode"; pincode: string; district: string; samples: number; results: PartyResult; pollType: "exit" | "opinion" };
 
 /** Glass tooltip anchored to the pointer. Always spells out party names + %. */
 export default function MapTooltip({ data, x, y }: { data: MapTooltipData; x: number; y: number }) {
+  const live = data.kind === "district" && data.valid !== undefined;
   return (
     <div
       className="pointer-events-none fixed left-0 top-0 z-[60] w-[220px]"
@@ -22,23 +23,44 @@ export default function MapTooltip({ data, x, y }: { data: MapTooltipData; x: nu
         <p className="font-display text-base font-semibold leading-tight text-foreground">
           {data.kind === "pincode" ? data.pincode : data.name}
         </p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
-          Samples: <b className="font-semibold text-foreground">{data.samples.toLocaleString("en-IN")}</b>
-        </p>
-        {data.kind === "pincode" && (
-          <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-saffron-2">
-            {data.pollType === "exit" ? "Exit Poll" : "Opinion Poll"}
-          </p>
+
+        {data.kind === "district" && live ? (
+          <>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Valid responses: <b className="font-semibold text-foreground">{(data.valid ?? 0).toLocaleString("en-IN")}</b>
+            </p>
+            {data.sharePct !== undefined && (
+              <p className="text-[11px] text-muted-foreground">
+                Share of state: <b className="font-semibold text-foreground">{data.sharePct.toFixed(1)}%</b>
+              </p>
+            )}
+            {data.pollLabel && (
+              <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-saffron-2">
+                {data.pollLabel}{data.basisLabel ? ` · ${data.basisLabel}` : ""}
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Samples: <b className="font-semibold text-foreground">{data.samples.toLocaleString("en-IN")}</b>
+            </p>
+            {data.kind === "pincode" && (
+              <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-saffron-2">
+                {data.pollType === "exit" ? "Exit Poll" : "Opinion Poll"}
+              </p>
+            )}
+            <ul className="mt-2 space-y-1 border-t border-border pt-2">
+              {PARTY_ORDER.map((k) => (
+                <li key={k} className="flex items-center gap-2 text-[12px]">
+                  <span className="size-2 rounded-sm" style={{ background: PARTY_META[k].color }} aria-hidden />
+                  <span className="text-muted-foreground">{PARTY_META[k].label}</span>
+                  <span className="ml-auto tabular-nums font-semibold text-foreground">{data.results[k]}%</span>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
-        <ul className="mt-2 space-y-1 border-t border-border pt-2">
-          {PARTY_ORDER.map((k) => (
-            <li key={k} className="flex items-center gap-2 text-[12px]">
-              <span className="size-2 rounded-sm" style={{ background: PARTY_META[k].color }} aria-hidden />
-              <span className="text-muted-foreground">{PARTY_META[k].label}</span>
-              <span className="ml-auto tabular-nums font-semibold text-foreground">{data.results[k]}%</span>
-            </li>
-          ))}
-        </ul>
       </div>
     </div>
   );

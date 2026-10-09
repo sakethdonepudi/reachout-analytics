@@ -46,16 +46,18 @@ type ThemeName = "light" | "dark";
 /* Theme-aware cartographic palette (see globals.css tokens). */
 const PAL: Record<ThemeName, {
   fill: THREE.Color; hover: THREE.Color; sel: THREE.Color; selLine: THREE.Color;
-  line: THREE.Color; state: THREE.Color; side: THREE.Color; label: string; halo: string;
+  line: THREE.Color; state: THREE.Color; side: THREE.Color; bands: THREE.Color[]; none: THREE.Color; label: string; halo: string;
 }> = {
   dark: {
     fill: new THREE.Color(0x2b3746), hover: new THREE.Color(0x3c4a5d), sel: new THREE.Color(0xc2591a), selLine: new THREE.Color(0xf58a24),
     line: new THREE.Color(0xa0adbc), state: new THREE.Color(0xd5dce5), side: new THREE.Color(0x1c2531),
+    bands: [0x244066, 0x2f5686, 0x3b6ea8, 0x4d8fd0, 0x79b4f0].map((h) => new THREE.Color(h)), none: new THREE.Color(0x20293a),
     label: "#e7ecf2", halo: "rgba(0,0,0,.82)",
   },
   light: {
     fill: new THREE.Color(0xe7ebef), hover: new THREE.Color(0xd9dee5), sel: new THREE.Color(0xf7c894), selLine: new THREE.Color(0xe07617),
     line: new THREE.Color(0x9aa6b4), state: new THREE.Color(0x48525f), side: new THREE.Color(0xd3d9e0),
+    bands: [0xd8e3f1, 0xb9cbe4, 0x93b0d6, 0x5f88c2, 0x3566ad].map((h) => new THREE.Color(h)), none: new THREE.Color(0xe9edf1),
     label: "#20242b", halo: "rgba(255,255,255,.92)",
   },
 };
@@ -70,6 +72,12 @@ type Props = {
   mode: MapMode;
   layers: MapLayers;
   theme: ThemeName;
+  /** district → intensity band (0–4); -1 = no responses. Present only when published data exists. */
+  bandByName?: Record<string, number>;
+  liveValid?: Record<string, number>;
+  liveShare?: Record<string, number>;
+  pollLabel?: string;
+  basisLabel?: string;
   resetNonce?: number;
   onHoverDistrict: (name: string | null) => void;
   onSelectDistrict: (name: string | null) => void;
@@ -92,7 +100,8 @@ type DistrictState = {
 export default function TamilNaduMap(props: Props) {
   const {
     pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode,
-    mode, layers, theme, resetNonce, onHoverDistrict, onSelectDistrict, onSelectPincode,
+    mode, layers, theme, bandByName, liveValid, liveShare, pollLabel, basisLabel, resetNonce,
+    onHoverDistrict, onSelectDistrict, onSelectPincode,
   } = props;
 
   const hostRef = useRef<HTMLDivElement>(null);
@@ -104,8 +113,8 @@ export default function TamilNaduMap(props: Props) {
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const live = useRef({ pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode, mode, layers, theme, onHoverDistrict, onSelectDistrict, onSelectPincode });
-  live.current = { pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode, mode, layers, theme, onHoverDistrict, onSelectDistrict, onSelectPincode };
+  const live = useRef({ pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode, mode, layers, theme, bandByName, liveValid, liveShare, pollLabel, basisLabel, onHoverDistrict, onSelectDistrict, onSelectPincode });
+  live.current = { pollType, districts: pollData, selectedDistricts, activeDistrict, hoveredDistrict, activePincode, mode, layers, theme, bandByName, liveValid, liveShare, pollLabel, basisLabel, onHoverDistrict, onSelectDistrict, onSelectPincode };
 
   const apiRef = useRef<{ rebuildPins: () => void; setSelection: (selected: string[]) => void; reset: () => void } | null>(null);
 
@@ -226,6 +235,7 @@ export default function TamilNaduMap(props: Props) {
     const rebuildPins = () => {
       clearPins();
       if (!pinRoot) return;
+      if (live.current.bandByName) return; // published dataset has no PIN-level records
       const { mode: m, activeDistrict: act, districts: rows, layers: lay } = live.current;
       if (m !== "pincode" || !act || !lay.pins) return;
       const row = rows.find((r) => r.district === act);
@@ -407,7 +417,11 @@ export default function TamilNaduMap(props: Props) {
         const isHover = hv === id || hovered === id;
         st.heat += ((isSelected ? 1 : 0) - st.heat) * 0.15;
         st.hover += ((isHover ? 1 : 0) - st.hover) * 0.2;
-        const baseFill = P.fill.clone().multiplyScalar(st.tone);
+        const bands = live.current.bandByName;
+        const band = bands ? bands[st.name] : undefined;
+        const baseFill = bands
+          ? (band === undefined || band < 0 ? P.none.clone() : P.bands[Math.min(P.bands.length - 1, band)].clone())
+          : P.fill.clone().multiplyScalar(st.tone);
         const target = baseFill.lerp(P.hover, st.hover * (1 - st.heat)).lerp(P.sel, st.heat);
         st.cap.color.lerp(target, 0.25);
         st.side.color.lerp(P.side, 0.25);
@@ -464,9 +478,16 @@ export default function TamilNaduMap(props: Props) {
           setTip((prev) => (JSON.stringify(prev) === JSON.stringify(data) ? prev : data));
         }
       } else if (hovered && mouse.px >= 0 && !dragging) {
+        const liveBands = live.current.bandByName;
         const row = live.current.districts.find((r) => r.district === hovered);
-        if (row) {
-          const data = { kind: "district", name: hovered, samples: row.samples, results: row.results } as MapTooltipData;
+        let data: MapTooltipData | null = null;
+        if (liveBands) {
+          const v = live.current.liveValid?.[hovered] ?? 0;
+          data = { kind: "district", name: hovered, samples: v, results: { aiadmk: 0, dmk: 0, tvk: 0, others: 0 }, valid: v, sharePct: live.current.liveShare?.[hovered] ?? 0, pollLabel: live.current.pollLabel, basisLabel: live.current.basisLabel };
+        } else if (row) {
+          data = { kind: "district", name: hovered, samples: row.samples, results: row.results };
+        }
+        if (data) {
           tipRef.current = { x: mouse.px, y: mouse.py };
           setTip((prev) => (JSON.stringify(prev) === JSON.stringify(data) ? prev : data));
         } else if (tipRef.current) { tipRef.current = null; setTip(null); }
@@ -529,7 +550,7 @@ export default function TamilNaduMap(props: Props) {
     };
   }, [projection, projectLngLat]);
 
-  useEffect(() => { apiRef.current?.rebuildPins(); }, [mode, activeDistrict, pollType, pollData, layers.pins]);
+  useEffect(() => { apiRef.current?.rebuildPins(); }, [mode, activeDistrict, pollType, pollData, layers.pins, bandByName]);
   useEffect(() => { apiRef.current?.setSelection(selectedDistricts); }, [selectedDistricts]);
   useEffect(() => { if (resetNonce) apiRef.current?.reset(); }, [resetNonce]);
 
@@ -540,14 +561,6 @@ export default function TamilNaduMap(props: Props) {
       <div ref={pinRef} className="pointer-events-none absolute inset-0 z-[6] overflow-hidden" />
 
       {!ready && !failed && <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">Loading Tamil Nadu…</div>}
-
-      {/* legend */}
-      <div className="pointer-events-none absolute bottom-4 left-[31%] z-10 hidden rounded-xl border border-border bg-card/80 px-3 py-2 backdrop-blur-md lg:block">
-        <ul className="space-y-1 text-[10.5px] text-muted-foreground">
-          <li className="flex items-center gap-2"><span className="size-3 rounded-[3px] border" style={{ background: "var(--map-sel)", borderColor: "var(--map-sel-line)" }} /> Selected district</li>
-          <li className="flex items-center gap-2"><span className="size-3 rounded-[3px] border" style={{ background: "var(--map-fill)", borderColor: "var(--map-line)" }} /> District</li>
-        </ul>
-      </div>
 
       {tip && tipRef.current && <MapTooltip data={tip} x={tipRef.current.x} y={tipRef.current.y} />}
 
