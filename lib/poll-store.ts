@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getMongo } from "@/lib/mongodb";
 import { partyStatus, isRecordedDistrict, estimatedDistrictOf, recordedDistrictOf, scenarioDistrictOf, type PollType, type Row } from "@/lib/poll-data";
+import { resolveRowPin, pinLocationRef, normalizePin, isSixDigitPin } from "@/lib/pin";
 
 /* =====================================================================
    Persistent poll datasets in MongoDB, scoped by caseStudyId + pollType.
@@ -68,7 +69,9 @@ export async function migrateLegacyToCase(caseStudyId: string) {
 
 export async function ensureIndexes() {
   const c = await cols();
-  if (c) await c.responses.createIndex({ caseStudyId: 1, pollType: 1, importId: 1, responseId: 1 }, { unique: true, sparse: true }).catch(() => {});
+  if (!c) return;
+  await c.responses.createIndex({ caseStudyId: 1, pollType: 1, importId: 1, responseId: 1 }, { unique: true, sparse: true }).catch(() => {});
+  await c.responses.createIndex({ caseStudyId: 1, pollType: 1, importId: 1, pinNormalized: 1 }).catch(() => {});
 }
 
 export async function getActiveImportId(caseStudyId: string, pollType: PollType): Promise<string | null> {
@@ -83,8 +86,13 @@ async function recordImport(meta: ImportMeta) {
   if (c) await c.imports.insertOne(meta);
 }
 
-function toDoc(row: Row, caseStudyId: string, pollType: PollType, importId: string) {
+/** Exported for the PIN audit test — the exact mapper used when storing rows. */
+export function toDoc(row: Row, caseStudyId: string, pollType: PollType, importId: string) {
   const status = partyStatus(row["Party"]);
+  // Canonical PIN resolution is repeated server-side so the chunked
+  // (browser-parsed) path can never diverge from the multipart path.
+  const pin = resolveRowPin(row);
+  const pinRef = pin.format === "ok" ? pinLocationRef(pin.normalized) : { known: false, district: null as string | null };
   return {
     caseStudyId,
     pollType,
@@ -94,7 +102,13 @@ function toDoc(row: Row, caseStudyId: string, pollType: PollType, importId: stri
     state: String(row["State"] ?? ""),
     district: recordedDistrictOf(row),
     ac: String(row["Assembly Constituency"] ?? ""),
-    pin: String(row["PIN Code"] ?? ""),
+    // PIN is always stored as text; raw (cleaned) value + normalised digits + format.
+    pin: pin.value,
+    pinNormalized: pin.normalized,
+    pinFormat: pin.format,
+    pinConflict: pin.conflict,
+    pinRefDistrict: pinRef.district ?? "",
+    pinLocationKnown: pinRef.known,
     party: String(row["Party"] ?? ""),
     status,
     partyValid: status === "valid",
@@ -239,17 +253,24 @@ export async function partyShares(caseStudyId: string, pollType: PollType, scena
   return { denominator, shares };
 }
 
+/** Pure Mongo query builder for the admin records list (PIN filter included). */
+export function buildRecordsQuery(caseStudyId: string, pollType: PollType, importId: string, filters: Record<string, string>) {
+  const q: Record<string, unknown> = { caseStudyId, pollType, importId };
+  if (filters.party) q.party = filters.party;
+  if (filters.status) q.status = filters.status;
+  if (filters.geographyBasis) q.geographyBasis = filters.geographyBasis;
+  if (filters.pin) q.pinNormalized = normalizePin(filters.pin);
+  if (filters.district) q.$or = [{ district: filters.district }, { estimatedDistrict: filters.district }, { scenarioDistrict: filters.district }];
+  if (filters.q) q.responseId = { $regex: filters.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+  return q;
+}
+
 export async function listRecords(caseStudyId: string, pollType: PollType, filters: Record<string, string>, limit = 100, skip = 0) {
   const c = await cols();
   if (!c) return { records: [] as Row[], total: 0 };
   const importId = await getActiveImportId(caseStudyId, pollType);
   if (!importId) return { records: [], total: 0 };
-  const q: Record<string, unknown> = { caseStudyId, pollType, importId };
-  if (filters.party) q.party = filters.party;
-  if (filters.status) q.status = filters.status;
-  if (filters.geographyBasis) q.geographyBasis = filters.geographyBasis;
-  if (filters.district) q.$or = [{ district: filters.district }, { estimatedDistrict: filters.district }, { scenarioDistrict: filters.district }];
-  if (filters.q) q.responseId = { $regex: filters.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+  const q = buildRecordsQuery(caseStudyId, pollType, importId, filters);
   const total = await c.responses.countDocuments(q);
   const docs = await c.responses.find(q).skip(skip).limit(limit).toArray();
   return { records: docs.map((d) => d.row as Row), total };
@@ -305,4 +326,73 @@ export async function districtAggregates(caseStudyId: string, pollType: PollType
     map.set(key, d);
   }
   return { districts: [...map.values()], total, valid, byParty };
+}
+
+/* =====================================================================
+   PIN-code aggregates — scoped to case study + poll type + active
+   (published) import + geography basis. Only six-digit-valid PINs become
+   filter buckets; responses without a PIN stay in the totals.
+   ===================================================================== */
+
+export type PinAgg = {
+  pin: string;
+  total: number;
+  valid: number;
+  parties: Record<string, number>;
+  districts: Record<string, number>;
+};
+export type PinGroupRow = { _id: { pin?: string; status?: string; party?: string; district?: string }; n: number };
+export type PinAggregates = {
+  pins: PinAgg[];
+  total: number;
+  valid: number;
+  withPin: number;
+  withoutPin: number;
+  invalidPinResponses: number;
+};
+
+/** Pure assembly step — unit-testable without a database. */
+export function assemblePinAggregates(rows: PinGroupRow[]): PinAggregates {
+  let total = 0, valid = 0, withPin = 0, invalidPinResponses = 0;
+  const map = new Map<string, PinAgg>();
+  for (const r of rows) {
+    const g = r._id ?? {};
+    const n = r.n;
+    total += n;
+    const isValid = g.status === "valid";
+    if (isValid) valid += n;
+    const pin = normalizePin(g.pin ?? "");
+    if (!pin) continue; // no PIN — stays in totals, not in any bucket
+    withPin += n;
+    if (!isSixDigitPin(pin)) { invalidPinResponses += n; continue; }
+    const d = map.get(pin) ?? { pin, total: 0, valid: 0, parties: {}, districts: {} };
+    d.total += n;
+    if (isValid) {
+      d.valid += n;
+      const p = g.party || "Unknown";
+      d.parties[p] = (d.parties[p] ?? 0) + n;
+      if (g.district) d.districts[g.district] = (d.districts[g.district] ?? 0) + n;
+    }
+    map.set(pin, d);
+  }
+  const pins = [...map.values()].sort((a, b) => b.valid - a.valid || b.total - a.total || a.pin.localeCompare(b.pin));
+  return { pins, total, valid, withPin, withoutPin: total - withPin, invalidPinResponses };
+}
+
+export async function pinAggregates(caseStudyId: string, pollType: PollType, scenario = false): Promise<PinAggregates> {
+  const c = await cols();
+  const empty: PinAggregates = { pins: [], total: 0, valid: 0, withPin: 0, withoutPin: 0, invalidPinResponses: 0 };
+  if (!c) return empty;
+  const importId = await getActiveImportId(caseStudyId, pollType);
+  if (!importId) return empty;
+
+  const groupDistrict = scenario ? { $ifNull: ["$scenarioDistrict", "$estimatedDistrict"] } : "$district";
+  const match: Record<string, unknown> = { caseStudyId, pollType, importId };
+  if (!scenario) match.recorded = true;
+
+  const rows = (await c.responses.aggregate([
+    { $match: match },
+    { $group: { _id: { pin: "$pinNormalized", status: "$status", party: "$party", district: groupDistrict }, n: { $sum: 1 } } },
+  ]).toArray()) as PinGroupRow[];
+  return assemblePinAggregates(rows);
 }

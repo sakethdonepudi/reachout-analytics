@@ -39,6 +39,8 @@ const LAYER_LABELS: { id: keyof MapLayers; label: string }[] = [
 
 const LABEL = "text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground";
 
+type PubPin = { pin: string; total: number; valid: number; parties: Record<string, number>; district: string | null; locationAvailable: boolean };
+
 export default function TamilNaduDashboard() {
   const { theme } = useTheme();
 
@@ -54,6 +56,7 @@ export default function TamilNaduDashboard() {
   const [pinQuery, setPinQuery] = useState("");
   const [resetNonce, setResetNonce] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   const dataset = useMemo(() => datasetFor(pollType), [pollType]);
   const focusDistrict = selectedDistricts.length === 1 ? selectedDistricts[0] : null;
@@ -77,7 +80,32 @@ export default function TamilNaduDashboard() {
       })
       .catch(() => { if (!ctrl.signal.aborted) setLive({ published: false, districts: [], valid: 0, total: 0 }); });
     return () => ctrl.abort();
-  }, [pollType, view]);
+  }, [pollType, view, refreshNonce]);
+
+  /* ---- published per-PIN survey aggregates (live) ---- */
+  const [pinData, setPinData] = useState<{ usablePins: number; pins: PubPin[]; message: string | null; withPin: number; withoutPin: number } | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch(`/api/public/case-studies/tamil-nadu/pins?pollType=${pollType}&basis=${view}`, { cache: "no-store", signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (ctrl.signal.aborted) return;
+        setPinData(d && d.published ? { usablePins: d.usablePins ?? 0, pins: d.pins ?? [], message: d.message ?? null, withPin: d.withPin ?? 0, withoutPin: d.withoutPin ?? 0 } : null);
+      })
+      .catch(() => { if (!ctrl.signal.aborted) setPinData(null); });
+    return () => ctrl.abort();
+  }, [pollType, view, refreshNonce]);
+
+  // Auto-refresh filters/counts/markers when a new dataset is published
+  // (tab focus + visibility + a light poll), matching the districts fetch.
+  useEffect(() => {
+    const bump = () => setRefreshNonce((n) => n + 1);
+    const onVis = () => { if (document.visibilityState === "visible") bump(); };
+    window.addEventListener("focus", bump);
+    document.addEventListener("visibilitychange", onVis);
+    const id = window.setInterval(bump, 60000);
+    return () => { window.removeEventListener("focus", bump); document.removeEventListener("visibilitychange", onVis); window.clearInterval(id); };
+  }, []);
 
   const intensityActive = !!live?.published;
 
@@ -107,7 +135,23 @@ export default function TamilNaduDashboard() {
 
   const pollLabel = pollType === "exit" ? "Exit Poll" : "Opinion Poll";
   const basisLabel = view === "estimated" ? "Estimated" : "Recorded";
-  const pincodeDisabled = intensityActive; // published dataset has no PIN-level records
+
+  /* PIN availability comes from the published dataset; the demo path is used
+     only when no dataset is published. */
+  const publishedPins = intensityActive ? pinData?.pins ?? [] : [];
+  const pinDisabled = intensityActive && (pinData ? pinData.usablePins === 0 : true);
+  const pinMessage = intensityActive && pinDisabled ? "This uploaded dataset contains no PIN codes" : null;
+  const realPin = intensityActive && activePincode ? publishedPins.find((p) => p.pin === activePincode) : undefined;
+  const realShares = realPin
+    ? Object.entries(realPin.parties)
+        .map(([party, count]) => ({ party, count, pct: realPin.valid ? +((count / realPin.valid) * 100).toFixed(2) : 0 }))
+        .sort((a, b) => b.count - a.count)
+    : [];
+  const filteredPublishedPins = (() => {
+    const base = focusDistrict ? publishedPins.filter((p) => p.district === focusDistrict) : publishedPins;
+    const q = pinQuery.trim();
+    return q ? base.filter((p) => p.pin.includes(q)) : base;
+  })();
 
   // District filter rows use live valid counts when published, else demonstration data.
   const allRows = useMemo(() => {
@@ -155,8 +199,8 @@ export default function TamilNaduDashboard() {
     setHoveredDistrict(null);
     if (m === "state") { setGeoMode("state"); setSelectedDistricts([]); setActivePincode(null); return; }
     if (m === "district") { setGeoMode("district"); setActivePincode(null); return; }
-    // pincode: unavailable without PIN-level records
-    if (pincodeDisabled) { setNotice("PIN-code data is not available for this dataset."); return; }
+    // pincode: unavailable without usable PIN codes in the dataset
+    if (pinDisabled) { setNotice("This uploaded dataset contains no PIN codes"); return; }
     // retain a single district context, clear the PIN selection
     setGeoMode("pincode");
     setActivePincode(null);
@@ -164,16 +208,16 @@ export default function TamilNaduDashboard() {
       if (prev.length > 1) { setNotice("Kept one district for PIN-code view."); return [prev[0]]; }
       return prev;
     });
-  }, [pincodeDisabled]);
+  }, [pinDisabled]);
 
-  // If a published dataset has no PIN codes, never sit in PIN view.
+  // If the published dataset has no usable PIN codes, never sit in PIN view.
   useEffect(() => {
-    if (pincodeDisabled && geoMode === "pincode") {
+    if (pinDisabled && geoMode === "pincode") {
       setGeoMode(selectedDistricts.length ? "district" : "state");
       setActivePincode(null);
-      setNotice("PIN-code data is not available for this dataset.");
+      setNotice("This uploaded dataset contains no PIN codes");
     }
-  }, [pincodeDisabled, geoMode, selectedDistricts]);
+  }, [pinDisabled, geoMode, selectedDistricts]);
 
   const toggleDistrict = useCallback((name: string) => {
     setHoveredDistrict(null);
@@ -220,10 +264,11 @@ export default function TamilNaduDashboard() {
     setNotice(null);
   }, []);
 
-  const pinDistrict = activePin?.district ?? focusDistrict;
+  const pinDistrict = realPin?.district ?? activePin?.district ?? focusDistrict;
+  const activePinCode = realPin?.pin ?? activePin?.pincode ?? null;
   const crumbs: { label: string; onClick?: () => void }[] = [{ label: "Tamil Nadu", onClick: () => applyMode("state") }];
   if (pinDistrict) crumbs.push({ label: pinDistrict, onClick: () => { setSelectedDistricts([pinDistrict]); setActivePincode(null); setGeoMode("district"); } });
-  if (activePin) crumbs.push({ label: activePin.pincode });
+  if (activePinCode) crumbs.push({ label: activePinCode });
 
   const analysisDistrictPrompt = geoMode === "district" && selectedDistricts.length === 0;
 
@@ -256,7 +301,7 @@ export default function TamilNaduDashboard() {
 
         {/* left: geography controls (above the map on mobile) */}
         <aside className="relative z-20 mt-4 w-full space-y-2.5 lg:absolute lg:left-8 lg:top-[348px] lg:mt-0 lg:w-[236px] lg:max-h-[calc(100svh-368px)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
-          <ExploreGeography mode={geoMode} onChange={applyMode} pincodeDisabled={pincodeDisabled} />
+          <ExploreGeography mode={geoMode} onChange={applyMode} pincodeDisabled={pinDisabled} />
           {notice && <p className="rounded-xl border border-saffron/30 bg-saffron/10 px-3 py-2 text-[11px] leading-relaxed text-saffron-2">{notice}</p>}
 
           <div className="flex items-center gap-2 rounded-2xl border border-border bg-card/60 px-3.5 py-2.5">
@@ -339,7 +384,35 @@ export default function TamilNaduDashboard() {
           <div className="my-3.5 border-t border-dashed border-border" />
 
           {geoMode === "pincode" ? (
-            activePin ? (
+            pinDisabled ? (
+              <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">{pinMessage}</p>
+            ) : realPin ? (
+              <div>
+                <p className={LABEL}>PIN code · {realPin.district ?? "district not stated"}</p>
+                <div className="mt-1 flex items-end justify-between gap-3">
+                  <span className="font-display text-2xl font-semibold tabular-nums text-foreground">{realPin.pin}</span>
+                  <span className="text-[11.5px] text-muted-foreground">Valid: <b className="tabular-nums text-foreground/85">{realPin.valid.toLocaleString("en-IN")}</b></span>
+                </div>
+                <ul className="mt-3 space-y-2">
+                  {realShares.length === 0 ? (
+                    <li className="text-[12px] text-muted-foreground">No valid party responses for this PIN.</li>
+                  ) : (
+                    realShares.map((s) => (
+                      <li key={s.party} className="text-[12px]">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="min-w-0 break-words text-foreground/85">{s.party}</span>
+                          <span className="shrink-0 tabular-nums text-muted-foreground">{s.count.toLocaleString("en-IN")} · {s.pct}%</span>
+                        </div>
+                        <span className="mt-1 block h-2 overflow-hidden rounded-full bg-elevated"><span className="block h-full rounded-full bg-saffron" style={{ width: `${s.pct}%` }} /></span>
+                      </li>
+                    ))
+                  )}
+                </ul>
+                <p className="mt-2 text-[10px] leading-relaxed text-saffron-2">
+                  {realPin.locationAvailable ? "Marker plotted from the uploaded location reference." : "Map location unavailable — no reliable postal-location reference for this PIN."}
+                </p>
+              </div>
+            ) : activePin ? (
               <div>
                 <p className={LABEL}>PIN code · {activePin.district}</p>
                 <div className="mt-1 flex items-end justify-between gap-3">
@@ -439,7 +512,49 @@ export default function TamilNaduDashboard() {
 
         {/* right: filters */}
         <section id="geo-panel" role="region" aria-label="Geography details" className="relative z-20 mx-auto mt-4 flex max-w-xl flex-col rounded-2xl border border-border bg-card/85 p-4 shadow-[0_18px_50px_-30px_rgba(15,20,30,0.45)] backdrop-blur-2xl lg:absolute lg:bottom-8 lg:right-8 lg:top-24 lg:mt-0 lg:w-[240px] lg:max-w-none">
-          {geoMode === "pincode" && !pincodeDisabled ? (
+          {geoMode !== "pincode" ? (
+            <DistrictFilter
+              rows={allRows}
+              selected={selectedDistricts}
+              onToggle={toggleDistrict}
+              onSelectAll={() => applyMode("state")}
+              onClear={() => applyMode("state")}
+              onHover={setHoveredDistrict}
+            />
+          ) : pinDisabled ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <p className={cn("mb-2", LABEL)}>{pollLabel} · PIN codes</p>
+              <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">{pinMessage}</p>
+            </div>
+          ) : intensityActive ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <p className={cn("mb-3", LABEL)}>
+                {focusDistrict ? `${focusDistrict} · ` : "Statewide · "}{filteredPublishedPins.length.toLocaleString("en-IN")} PIN {filteredPublishedPins.length === 1 ? "code" : "codes"}
+              </p>
+              <label className="relative mb-3 block">
+                <input value={pinQuery} onChange={(e) => setPinQuery(e.target.value)} placeholder="Search PIN code..." aria-label="Search PIN codes" className="w-full rounded-xl border border-border bg-elevated/60 px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground outline-none focus:border-saffron/60 focus:ring-2 focus:ring-saffron/20" />
+              </label>
+              <div className="-mr-1 min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                <ul className="space-y-0.5">
+                  {filteredPublishedPins.map((p) => {
+                    const on = activePincode === p.pin;
+                    return (
+                      <li key={p.pin}>
+                        <button type="button" title={`${p.pin}${p.district ? ` · ${p.district}` : ""}`} aria-pressed={on} onMouseEnter={() => setHoveredDistrict(null)} onClick={() => onSelectPincode(p.pin)}
+                          className={cn("flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60", on ? "bg-saffron/15 text-foreground" : "text-foreground/75 hover:bg-elevated hover:text-foreground")}>
+                          <span className="tabular-nums font-medium">{p.pin}</span>
+                          {!p.locationAvailable && <span className="rounded border border-border px-1 py-px text-[9px] uppercase tracking-wide text-muted-foreground" title="No reliable map location reference">no map ref</span>}
+                          <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">{p.valid.toLocaleString("en-IN")}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                  {filteredPublishedPins.length === 0 && <li className="px-2 py-6 text-center text-[12.5px] text-muted-foreground">No PIN codes found.</li>}
+                </ul>
+              </div>
+              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">From the uploaded responses. Markers appear only where a reliable postal-location reference exists.</p>
+            </div>
+          ) : (
             <div className="flex min-h-0 flex-1 flex-col">
               <p className={cn("mb-3", LABEL)}>{focusDistrict ? `${focusDistrict} · PIN codes` : "Statewide · PIN codes"}</p>
               <label className="relative mb-3 block">
@@ -464,17 +579,8 @@ export default function TamilNaduDashboard() {
                   {pinRows.length === 0 && <li className="px-2 py-6 text-center text-[12.5px] text-muted-foreground">No PIN codes found.</li>}
                 </ul>
               </div>
-              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">PIN codes are representative sample areas, not exact geolocations.</p>
+              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Demonstration PIN codes — not from an uploaded dataset.</p>
             </div>
-          ) : (
-            <DistrictFilter
-              rows={allRows}
-              selected={selectedDistricts}
-              onToggle={toggleDistrict}
-              onSelectAll={() => applyMode("state")}
-              onClear={() => applyMode("state")}
-              onHover={setHoveredDistrict}
-            />
           )}
         </section>
       </section>

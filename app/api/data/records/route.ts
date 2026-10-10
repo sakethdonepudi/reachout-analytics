@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const skip = Math.max(0, Number(sp.get("skip") ?? 0));
   const filters = {
     party: sp.get("party") ?? "", status: sp.get("status") ?? "", geographyBasis: sp.get("geographyBasis") ?? "",
-    district: sp.get("district") ?? "", q: sp.get("q") ?? "",
+    district: sp.get("district") ?? "", pin: sp.get("pin") ?? "", q: sp.get("q") ?? "",
   };
   const { records, total } = await listRecords(caseStudyId, pollType, filters, limit, skip);
   return Response.json({ ok: true, total, limit, skip, records });

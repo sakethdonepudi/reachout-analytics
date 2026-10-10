@@ -33,8 +33,8 @@ export default function ExploreGeography({
       : mode === "district"
         ? "Pick districts on the map or in the list. Results combine."
         : pincodeDisabled
-          ? "PIN-code data is not available for this dataset."
-          : "Select a district, then choose a PIN code.";
+          ? "This uploaded dataset contains no PIN codes."
+          : "Select a PIN code from the uploaded responses.";
 
   const enabled = TABS.map((_, i) => i).filter((i) => TABS[i].id !== "pincode" || !pincodeDisabled);
   const move = (from: number, dir: number) => {

@@ -108,9 +108,12 @@ export default function AdminPortal() {
       const wb = XLSX.read(buf, { type: "array" });
       const missing = ["Opinion Poll", "Exit Poll"].filter((n) => !wb.SheetNames.includes(n));
       if (missing.length) throw new Error(`Missing required sheet(s): ${missing.join(", ")}`);
-      const opinion = XLSX.utils.sheet_to_json(wb.Sheets["Opinion Poll"], { defval: "", raw: true }) as PollRow[];
-      const exit = XLSX.utils.sheet_to_json(wb.Sheets["Exit Poll"], { defval: "", raw: true }) as PollRow[];
       const { validateSheet } = await import("@/lib/poll-data");
+      const { applyCanonicalPin } = await import("@/lib/pin");
+      // Canonicalise recognised PIN header aliases into "PIN Code" (text preserved)
+      // before chunking, so the browser path matches the server path exactly.
+      const opinion = (XLSX.utils.sheet_to_json(wb.Sheets["Opinion Poll"], { defval: "", raw: true }) as PollRow[]).map((r) => applyCanonicalPin(r));
+      const exit = (XLSX.utils.sheet_to_json(wb.Sheets["Exit Poll"], { defval: "", raw: true }) as PollRow[]).map((r) => applyCanonicalPin(r));
       const ov = validateSheet("Opinion Poll", opinion);
       const ev = validateSheet("Exit Poll", exit);
       const issues = [...ov.issues, ...ev.issues];
@@ -122,7 +125,8 @@ export default function AdminPortal() {
         errors: issues.filter((i) => i.severity === "error").slice(0, 200),
         canCommit: !issues.some((i) => i.severity === "error"),
       });
-      setMessage(`Parsed ${file.name}. ${!issues.some((i) => i.severity === "error") ? "Ready to import." : "Resolve errors before importing."}`);
+      const pinLine = `PIN codes — exit: ${ev.pinOk.toLocaleString("en-IN")} ok, ${ev.pinBlank.toLocaleString("en-IN")} blank, ${ev.pinInvalid.toLocaleString("en-IN")} not six digits${ev.pinConflicts ? `, ${ev.pinConflicts} conflicting` : ""}.`;
+      setMessage(`Parsed ${file.name}. ${pinLine} ${!issues.some((i) => i.severity === "error") ? "Ready to import." : "Resolve errors before importing."}`);
     } catch (e) { setMessage(e instanceof Error ? e.message : "Could not parse the workbook"); }
     finally { setBusy(false); }
   }

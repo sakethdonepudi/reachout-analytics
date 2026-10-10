@@ -1,5 +1,8 @@
 import * as XLSX from "xlsx";
 import { TN_DISTRICTS } from "@/lib/data/tamil-nadu-districts";
+import {
+  PIN_CANONICAL, applyCanonicalPin, pinHeadersOf, resolveRowPin, pinLocationRef, pinMatchesDistrict,
+} from "@/lib/pin";
 
 /* =====================================================================
    Poll workbook format + validation.
@@ -68,6 +71,14 @@ export type SheetValidation = {
   recorded: number;
   estimated: number;
   unknownDistrict: number;
+  /** PIN audit (see lib/pin.ts). */
+  pinOk: number;
+  pinBlank: number;
+  pinInvalid: number;
+  pinConflicts: number;
+  pinLocationKnown: number;
+  pinLocationUnknown: number;
+  pinMismatch: number;
   issues: RowIssue[];
   headers: string[];
 };
@@ -93,7 +104,28 @@ export function parseWorkbook(buf: ArrayBuffer | Buffer): { sheets: Record<PollT
     for (const req of REQUIRED) {
       if (!header.includes(req)) errors.push({ sheet: name, row: 1, field: req, reason: "Required column missing", severity: "error" });
     }
-    out[type] = rows;
+
+    // Canonicalise "PIN Code" from any recognised alias, preserving the text.
+    // Conflicting PIN columns are flagged (errors block the import) and the
+    // row is left untouched so no value is silently overwritten.
+    const pinHeaders = pinHeadersOf(header);
+    if (pinHeaders.length > 1) {
+      errors.push({ sheet: name, row: 1, field: PIN_CANONICAL, reason: `Multiple PIN columns present: ${pinHeaders.join(", ")}`, severity: "warning" });
+    }
+    const canonicalRows = rows.map((r) => applyCanonicalPin(r));
+    let conflicts = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const res = resolveRowPin(rows[i]);
+      if (!res.conflict) continue;
+      conflicts++;
+      if (conflicts <= 50) {
+        errors.push({ sheet: name, row: i + 2, field: PIN_CANONICAL, reason: `Conflicting PIN columns: ${res.conflictDetail}`, severity: "error" });
+      }
+    }
+    if (conflicts > 50) {
+      errors.push({ sheet: name, row: 1, field: PIN_CANONICAL, reason: `${conflicts} rows have conflicting PIN columns`, severity: "error" });
+    }
+    out[type] = canonicalRows;
   }
   return { sheets: out, headers, errors };
 }
@@ -103,12 +135,39 @@ export function validateSheet(sheetName: string, rows: Row[]): SheetValidation {
   const seen = new Set<string>();
   const issues: RowIssue[] = [];
   let valid = 0, blank = 0, invalid = 0, recorded = 0, estimated = 0, unknownDistrict = 0;
+  let pinOk = 0, pinBlank = 0, pinInvalid = 0, pinConflicts = 0, pinLocationKnown = 0, pinLocationUnknown = 0, pinMismatch = 0;
   rows.forEach((row, i) => {
     const rowNo = i + 2; // Excel row (1 = header)
     const status = partyStatus(row["Party"]);
     if (status === "valid") valid++;
     else if (status === "blank") blank++;
     else invalid++;
+
+    // ---- PIN audit (all rows, independent of party status) ----
+    const pin = resolveRowPin(row);
+    if (pin.conflict) {
+      pinConflicts++;
+      issues.push({ sheet: sheetName, row: rowNo, field: PIN_CANONICAL, reason: `Conflicting PIN columns: ${pin.conflictDetail}`, severity: "error" });
+    } else if (pin.format === "ok") {
+      pinOk++;
+      const ref = pinLocationRef(pin.normalized);
+      if (ref.known) pinLocationKnown++; else pinLocationUnknown++;
+      // Geographic-mapping validation (separate from the 6-digit format check).
+      const stated = recordedDistrictOf(row) || estimatedDistrictOf(row);
+      if (stated && pinMatchesDistrict(pin.normalized, stated) === "mismatch") {
+        pinMismatch++;
+        if (pinMismatch <= 50) {
+          issues.push({ sheet: sheetName, row: rowNo, field: PIN_CANONICAL, reason: `PIN "${pin.normalized}" reference district differs from "${stated}"`, severity: "warning" });
+        }
+      }
+    } else if (pin.format === "invalid") {
+      pinInvalid++;
+      if (pinInvalid <= 50) {
+        issues.push({ sheet: sheetName, row: rowNo, field: PIN_CANONICAL, reason: `PIN "${pin.value}" is not six digits`, severity: "warning" });
+      }
+    } else {
+      pinBlank++;
+    }
 
     if (status !== "valid") return;
 
@@ -133,7 +192,11 @@ export function validateSheet(sheetName: string, rows: Row[]): SheetValidation {
     const iso = String(row["Entry Datetime ISO"] ?? "").trim();
     if (iso && Number.isNaN(Date.parse(iso))) issues.push({ sheet: sheetName, row: rowNo, field: "Entry Datetime ISO", reason: `Unparseable date "${iso}"`, severity: "warning" });
   });
-  return { total: rows.length, valid, blank, invalid, recorded, estimated, unknownDistrict, issues, headers: rows.length ? Object.keys(rows[0]) : [] };
+  return {
+    total: rows.length, valid, blank, invalid, recorded, estimated, unknownDistrict,
+    pinOk, pinBlank, pinInvalid, pinConflicts, pinLocationKnown, pinLocationUnknown, pinMismatch,
+    issues, headers: rows.length ? Object.keys(rows[0]) : [],
+  };
 }
 
 /** Build a workbook buffer with both sheets (headers always present). */
@@ -144,7 +207,12 @@ export function buildWorkbook(opinion: Row[], exit: Row[], headerUnion?: string[
 
   const wb = XLSX.utils.book_new();
   for (const [rows, name] of [[opinion, SHEET_OF.opinion], [exit, SHEET_OF.exit]] as [Row[], string][]) {
-    const aoa = [cols, ...rows.map((r) => cols.map((c) => r[c] ?? ""))];
+    // Preserve supplied PIN codes under the canonical column (never invent one):
+    // prefer the row's own canonical value, else any recognised PIN alias.
+    const aoa = [cols, ...rows.map((r) => {
+      const pin = resolveRowPin(r).value;
+      return cols.map((c) => (c === PIN_CANONICAL ? (pin || String(r[c] ?? "")) : (r[c] ?? "")));
+    })];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     // Force every data cell to a literal string so user text can never be a formula.
     for (const addr of Object.keys(ws)) {
