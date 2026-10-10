@@ -114,6 +114,22 @@ export default function TamilNaduDashboard() {
     return () => ctrl.abort();
   }, [pollType, view, refreshNonce]);
 
+  /* ---- committed assumed-PIN scenario status (independent of the recorded
+     PIN count). Always fetched so the UI can tell "not generated" from
+     "generated but empty" and offer the admin path. ---- */
+  const [assumedStatus, setAssumedStatus] = useState<{ usablePins: number; assigned: number; allocationVersion: string | null } | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch(`/api/public/case-studies/tamil-nadu/pins?pollType=${pollType}&basis=assumed`, { cache: "no-store", signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (ctrl.signal.aborted) return;
+        setAssumedStatus(d && d.published ? { usablePins: d.usablePins ?? 0, assigned: d.scenario?.assigned ?? 0, allocationVersion: d.allocationVersion ?? null } : null);
+      })
+      .catch(() => { if (!ctrl.signal.aborted) setAssumedStatus(null); });
+    return () => ctrl.abort();
+  }, [pollType, refreshNonce]);
+
   // Auto-refresh filters/counts/markers when a new dataset is published
   // (tab focus + visibility + a light poll), matching the districts fetch.
   useEffect(() => {
@@ -164,21 +180,23 @@ export default function TamilNaduDashboard() {
     return m;
   }, [mapScenario, live]);
 
-  /* PIN availability comes from the published dataset; the demo path is used
-     only when no dataset is published. */
-  const publishedPins = intensityActive ? pinData?.pins ?? [] : [];
-  const pinDisabled = intensityActive && (pinData ? pinData.usablePins === 0 : true);
-  const pinMessage = intensityActive && pinDisabled
-    ? (pinData?.message ?? (assumedScenario ? "No assumed PINs are available yet — run the Assumed PIN scenario in the admin portal." : "This uploaded dataset contains no PIN codes"))
-    : null;
-  const realPin = intensityActive && activePincode ? publishedPins.find((p) => p.pin === activePincode) : undefined;
+  /* PIN availability. Assumed availability is derived from the committed
+     scenario's assigned-PIN counts — never from the recorded-PIN count. */
+  const currentPins = intensityActive ? pinData?.pins ?? [] : [];
+  const currentPinsAvailable = (pinData?.usablePins ?? 0) > 0;
+  const assumedAvailable = (assumedStatus?.usablePins ?? 0) > 0;
+  const pinViewState: "recorded-list" | "recorded-empty" | "assumed-list" | "assumed-empty" =
+    assumedScenario
+      ? (currentPinsAvailable ? "assumed-list" : "assumed-empty")
+      : (currentPinsAvailable ? "recorded-list" : "recorded-empty");
+  const realPin = intensityActive && activePincode ? currentPins.find((p) => p.pin === activePincode) : undefined;
   const realShares = realPin
     ? Object.entries(realPin.parties)
         .map(([party, count]) => ({ party, count, pct: realPin.valid ? +((count / realPin.valid) * 100).toFixed(2) : 0 }))
         .sort((a, b) => b.count - a.count)
     : [];
   const filteredPublishedPins = (() => {
-    const base = focusDistrict ? publishedPins.filter((p) => p.district === focusDistrict) : publishedPins;
+    const base = focusDistrict ? currentPins.filter((p) => p.district === focusDistrict) : currentPins;
     const q = pinQuery.trim();
     return q ? base.filter((p) => p.pin.includes(q)) : base;
   })();
@@ -229,25 +247,15 @@ export default function TamilNaduDashboard() {
     setHoveredDistrict(null);
     if (m === "state") { setGeoMode("state"); setSelectedDistricts([]); setActivePincode(null); return; }
     if (m === "district") { setGeoMode("district"); setActivePincode(null); return; }
-    // pincode: unavailable without usable PIN codes in the dataset
-    if (pinDisabled) { setNotice(pinMessage ?? "This uploaded dataset contains no PIN codes"); return; }
-    // retain a single district context, clear the PIN selection
+    // pincode: always openable. The panel shows the recorded explanation, the
+    // "not generated" notice, or the assigned PIN list depending on state.
     setGeoMode("pincode");
     setActivePincode(null);
     setSelectedDistricts((prev) => {
       if (prev.length > 1) { setNotice("Kept one district for PIN-code view."); return [prev[0]]; }
       return prev;
     });
-  }, [pinDisabled, pinMessage]);
-
-  // If the published dataset has no usable PIN codes, never sit in PIN view.
-  useEffect(() => {
-    if (pinDisabled && geoMode === "pincode") {
-      setGeoMode(selectedDistricts.length ? "district" : "state");
-      setActivePincode(null);
-      setNotice(pinMessage ?? "This uploaded dataset contains no PIN codes");
-    }
-  }, [pinDisabled, pinMessage, geoMode, selectedDistricts]);
+  }, []);
 
   const toggleDistrict = useCallback((name: string) => {
     setHoveredDistrict(null);
@@ -332,7 +340,7 @@ export default function TamilNaduDashboard() {
 
         {/* left: geography controls (above the map on mobile) */}
         <aside className="relative z-20 mt-4 w-full space-y-2.5 lg:absolute lg:left-8 lg:top-[348px] lg:mt-0 lg:w-[236px] lg:max-h-[calc(100svh-368px)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
-          <ExploreGeography mode={geoMode} onChange={applyMode} pincodeDisabled={pinDisabled} />
+          <ExploreGeography mode={geoMode} onChange={applyMode} pincodeDisabled={false} />
           {notice && <p className="rounded-xl border border-saffron/30 bg-saffron/10 px-3 py-2 text-[11px] leading-relaxed text-saffron-2">{notice}</p>}
 
           <div className="flex items-center gap-2 rounded-2xl border border-border bg-card/60 px-3.5 py-2.5">
@@ -422,8 +430,25 @@ export default function TamilNaduDashboard() {
           <div className="my-3.5 border-t border-dashed border-border" />
 
           {geoMode === "pincode" ? (
-            pinDisabled ? (
-              <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">{pinMessage}</p>
+            intensityActive && pinViewState === "assumed-empty" ? (
+              <div>
+                <p className={LABEL}>Assumed PIN scenario</p>
+                <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">Assumed PIN allocation has not been generated.</p>
+                <Link href="/admin" className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-saffron/50 bg-saffron/10 px-3 py-1.5 text-[12px] font-semibold text-saffron-2 transition-colors hover:bg-saffron/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                  Open admin portal to preview &amp; commit
+                </Link>
+                <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">The assumed-PIN allocation is generated and versioned in the admin portal, then enabled here.</p>
+              </div>
+            ) : intensityActive && pinViewState === "recorded-empty" ? (
+              <div>
+                <p className={LABEL}>Recorded PIN codes</p>
+                <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">This uploaded dataset contains no supplied PIN codes, so recorded PIN-level analysis isn’t available.</p>
+                <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">You can explore an assumed-PIN allocation instead.</p>
+                <button type="button" onClick={() => changeView("assumed")} className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-saffron/50 bg-saffron/10 px-3 py-1.5 text-[12px] font-semibold text-saffron-2 transition-colors hover:bg-saffron/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                  Switch to Assumed PIN scenario
+                </button>
+                <p className="mt-1.5 text-[10.5px] text-muted-foreground">{assumedAvailable ? "An assumed-PIN allocation is available." : "No assumed-PIN allocation has been generated yet."}</p>
+              </div>
             ) : realPin ? (
               <div>
                 {assumedScenario && (
@@ -569,10 +594,18 @@ export default function TamilNaduDashboard() {
               onClear={() => applyMode("state")}
               onHover={setHoveredDistrict}
             />
-          ) : pinDisabled ? (
+          ) : intensityActive && pinViewState === "assumed-empty" ? (
             <div className="flex min-h-0 flex-1 flex-col">
-              <p className={cn("mb-2", LABEL)}>{pollLabel} · PIN codes</p>
-              <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">{pinMessage}</p>
+              <p className={cn("mb-2", LABEL)}>Assumed PIN scenario</p>
+              <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">Assumed PIN allocation has not been generated.</p>
+              <Link href="/admin" className="inline-flex w-fit items-center gap-1.5 rounded-full border border-saffron/50 bg-saffron/10 px-3 py-1.5 text-[12px] font-semibold text-saffron-2 transition-colors hover:bg-saffron/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">Open admin portal</Link>
+            </div>
+          ) : intensityActive && pinViewState === "recorded-empty" ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <p className={cn("mb-2", LABEL)}>Recorded PIN codes</p>
+              <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">No supplied PIN codes in this dataset.</p>
+              <button type="button" onClick={() => changeView("assumed")} className="inline-flex w-fit items-center gap-1.5 rounded-full border border-saffron/50 bg-saffron/10 px-3 py-1.5 text-[12px] font-semibold text-saffron-2 transition-colors hover:bg-saffron/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">Switch to Assumed PIN scenario</button>
+              <p className="mt-1.5 text-[10.5px] text-muted-foreground">{assumedAvailable ? "An assumed-PIN allocation is available." : "No assumed-PIN allocation has been generated yet."}</p>
             </div>
           ) : intensityActive ? (
             <div className="flex min-h-0 flex-1 flex-col">
