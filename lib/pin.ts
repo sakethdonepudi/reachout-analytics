@@ -11,7 +11,7 @@
      "unknown location" simply means no reliable location reference.
    ===================================================================== */
 
-import { TN_DISTRICT_PINCODES, DISTRICT_ALIASES, PIN_COORDINATES } from "./data/tamil-nadu-pincodes";
+import { TN_DISTRICT_PINCODES, DISTRICT_ALIASES, PIN_COORDINATES, POSTAL_REFERENCE } from "./data/tamil-nadu-pincodes";
 
 export const PIN_CANONICAL = "PIN Code";
 
@@ -154,10 +154,14 @@ export function canonicalDistrictKey(name: string): string {
 
 const DISTRICT_TO_PINS = new Map<string, { name: string; pins: Set<string> }>();
 const PIN_DISTRICTS = new Map<string, Set<string>>();
+let DUPLICATE_PINS = 0; // codes listed more than once within the same district
+let RAW_PINS = 0;
 for (const [district, pins] of Object.entries(TN_DISTRICT_PINCODES)) {
   const key = canonDist(district);
   const entry = DISTRICT_TO_PINS.get(key) ?? { name: district, pins: new Set<string>() };
   for (const p of pins) {
+    RAW_PINS++;
+    if (entry.pins.has(p)) DUPLICATE_PINS++;
     entry.pins.add(p);
     const set = PIN_DISTRICTS.get(p) ?? new Set<string>();
     set.add(key);
@@ -195,8 +199,14 @@ export function coordinatesForPin(pin: string): { lat: number; lng: number } | n
 export function referenceAudit() {
   return {
     referenceDistricts: DISTRICT_TO_PINS.size,
+    /** Distinct, deduplicated PIN codes. */
     referencePins: PIN_DISTRICTS.size,
+    rawPins: RAW_PINS,
+    duplicatePins: DUPLICATE_PINS,
     ambiguousPins: [...AMBIGUOUS_PINS].sort(),
+    completeness: POSTAL_REFERENCE.completeness,
+    version: POSTAL_REFERENCE.version,
+    source: POSTAL_REFERENCE.source,
   };
 }
 

@@ -27,7 +27,7 @@ export default function MapTooltip({ data, x, y }: { data: MapTooltipData; x: nu
         {data.kind === "district" && live ? (
           <>
             {(data.valid ?? 0) === 0 ? (
-              <p className="mt-0.5 text-[11px] text-muted-foreground">No recorded responses</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">No survey responses</p>
             ) : data.scenario && data.recorded !== undefined ? (
               <>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">Recorded: <b className="font-semibold text-foreground">{data.recorded.toLocaleString("en-IN")}</b></p>

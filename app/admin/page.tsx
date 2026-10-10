@@ -33,7 +33,7 @@ type PinScenarioSummary = {
   districtsWithoutCandidates: string[];
   unresolvedGeography: { noDistrict: number; noCandidates: string[] };
   ambiguousPins: string[];
-  reference: { name: string; source: string; version: string; note: string };
+  reference: { name: string; source: string; version: string; note: string; completeness: "subset" | "complete" };
   crosswalk: { constituencies: number; version: string; source: string };
   allocationVersion: string;
   reconcile: { assignedPlusUnresolved: number; eligible: number; ok: boolean; partyOk: boolean; pinDistrictOk: boolean };
@@ -441,8 +441,9 @@ export default function AdminPortal() {
 
                 {pinPreview?.ok ? (
                   <>
-                    <p className="mt-2 text-[11.5px] text-muted-foreground">Reference: {pinPreview.summary.reference.name} · <span className="break-all">{pinPreview.summary.reference.source}</span> · <b>version {pinPreview.summary.reference.version}</b></p>
+                    <p className="mt-2 text-[11.5px] text-muted-foreground">Reference: {pinPreview.summary.reference.name} · <span className="break-all">{pinPreview.summary.reference.source}</span> · <b>version {pinPreview.summary.reference.version}</b> · <b>{pinPreview.summary.reference.completeness}</b></p>
                     <p className="mt-1 text-[11.5px] text-muted-foreground">Constituency crosswalk: {pinPreview.summary.crosswalk.constituencies} entries · {pinPreview.summary.crosswalk.version}{pinPreview.summary.crosswalk.constituencies === 0 ? " — none bundled, district-candidate fallback used" : ""}</p>
+                    <p className="mt-1 text-[11.5px] text-muted-foreground">Binding: {pinPreview.appliedImportId && pinPreview.appliedImportId === pinPreview.importId ? "✓ committed scenario is bound to the active published import" : pinPreview.appliedImportId ? "⚠ last commit is bound to a different import — regenerate" : "not committed yet"}</p>
                     {pinPreview.datasetChanged && (
                       <p className="mt-2 rounded-lg border border-saffron/40 bg-saffron/10 px-3 py-2 text-[12px] text-saffron-2">The active dataset changed since the last allocation — regenerate the preview before committing.</p>
                     )}

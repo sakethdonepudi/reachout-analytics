@@ -46,9 +46,9 @@ export default function SurveyLegend({
             );
           })
         ) : (
-          <li className="flex items-center gap-2">{swatch(NO_DATA_COLOR[theme])} No recorded responses</li>
+          <li className="flex items-center gap-2">{swatch(NO_DATA_COLOR[theme])} No survey responses</li>
         )}
-        {hasData && <li className="flex items-center gap-2">{swatch(NO_DATA_COLOR[theme])} No recorded responses</li>}
+        {hasData && <li className="flex items-center gap-2">{swatch(NO_DATA_COLOR[theme])} No survey responses</li>}
         <li className="flex items-center gap-2">{swatch(SELECTED_FILL[theme], SELECTED_LINE[theme])} Selected district</li>
       </ul>
       <p className="mt-2 border-t border-border pt-2 text-[10px] leading-relaxed text-muted-foreground">

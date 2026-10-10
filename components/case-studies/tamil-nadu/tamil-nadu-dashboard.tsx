@@ -168,7 +168,7 @@ export default function TamilNaduDashboard() {
   }, [live]);
 
   const pollLabel = pollType === "exit" ? "Exit Poll" : "Opinion Poll";
-  const basisLabel = view === "assumed" ? "Assumed PIN" : view === "estimated" ? "Estimated" : "Recorded";
+  const basisLabel = view === "assumed" ? "Assumed PIN distribution" : view === "estimated" ? "Estimated" : "Recorded";
   const assumedScenario = view === "assumed";
   const mapScenario = assumedScenario;
 
@@ -291,7 +291,7 @@ export default function TamilNaduDashboard() {
     setView(v);
     setActivePincode(null);
     if (v === "estimated") setNotice("Estimated scenario enabled — allocated districts, not verified respondent locations.");
-    if (v === "assumed") setNotice("Assumed PIN scenario — respondent PINs are district-based assumptions, not measured local coverage.");
+    if (v === "assumed") setNotice("Assumed PIN distribution — respondent PINs are district-based assumptions, not measured local coverage.");
   };
 
   const resetView = useCallback(() => {
@@ -410,11 +410,11 @@ export default function TamilNaduDashboard() {
         <section className="relative z-20 mx-auto mt-4 max-w-xl rounded-2xl border border-border bg-card/85 p-4 shadow-[0_18px_50px_-30px_rgba(15,20,30,0.45)] backdrop-blur-2xl lg:absolute lg:right-[292px] lg:top-24 lg:mt-0 lg:w-[276px] lg:max-w-none">
           <PollToggle value={pollType} onChange={changePollType} />
 
-          <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl border border-border bg-elevated/50 p-1 text-[11.5px] font-semibold">
+          <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl border border-border bg-elevated/50 p-1 text-[10.5px] font-semibold leading-tight">
             {(["recorded", "estimated", "assumed"] as const).map((b) => (
               <button key={b} type="button" onClick={() => changeView(b)}
                 className={cn("rounded-lg px-1 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60", view === b ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-                {b === "recorded" ? "Recorded" : b === "estimated" ? "Estimated" : "Assumed PIN"}
+                {b === "recorded" ? "Recorded" : b === "estimated" ? "Estimated" : "Assumed PIN distribution"}
               </button>
             ))}
           </div>
@@ -423,7 +423,7 @@ export default function TamilNaduDashboard() {
           )}
           {assumedScenario && (
             <p className="mt-2 text-[10.5px] leading-relaxed text-saffron-2">
-              Assumed PIN scenario — for records without a usable PIN, a representative PIN was assigned from the district. These are scenario PINs, not measured local survey coverage.
+              Assumed PIN distribution — for records without a PIN, each district’s responses are divided evenly across its eligible PINs (integer remainder allocated deterministically by Response-ID order). Shares reflect this even division of district responses, not independently measured PIN-level voting.
             </p>
           )}
 
@@ -432,7 +432,7 @@ export default function TamilNaduDashboard() {
           {geoMode === "pincode" ? (
             intensityActive && pinViewState === "assumed-empty" ? (
               <div>
-                <p className={LABEL}>Assumed PIN scenario</p>
+                <p className={LABEL}>Assumed PIN distribution</p>
                 <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">Assumed PIN allocation has not been generated.</p>
                 <Link href="/admin" className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-saffron/50 bg-saffron/10 px-3 py-1.5 text-[12px] font-semibold text-saffron-2 transition-colors hover:bg-saffron/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
                   Open admin portal to preview &amp; commit
@@ -445,7 +445,7 @@ export default function TamilNaduDashboard() {
                 <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">This uploaded dataset contains no supplied PIN codes, so recorded PIN-level analysis isn’t available.</p>
                 <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">You can explore an assumed-PIN allocation instead.</p>
                 <button type="button" onClick={() => changeView("assumed")} className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-saffron/50 bg-saffron/10 px-3 py-1.5 text-[12px] font-semibold text-saffron-2 transition-colors hover:bg-saffron/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
-                  Switch to Assumed PIN scenario
+                  Switch to Assumed PIN distribution
                 </button>
                 <p className="mt-1.5 text-[10.5px] text-muted-foreground">{assumedAvailable ? "An assumed-PIN allocation is available." : "No assumed-PIN allocation has been generated yet."}</p>
               </div>
@@ -453,7 +453,7 @@ export default function TamilNaduDashboard() {
               <div>
                 {assumedScenario && (
                   <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-saffron/40 bg-saffron/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-saffron-2">
-                    Assumed PIN scenario{pinData?.allocationVersion ? ` · ${pinData.allocationVersion}` : ""}
+                    Assumed PIN distribution{pinData?.allocationVersion ? ` · ${pinData.allocationVersion}` : ""}
                   </span>
                 )}
                 <p className={LABEL}>PIN code · {realPin.district ?? "district not stated"}{realPin.districtBasis === "estimated" ? " (estimated district)" : ""}</p>
@@ -478,7 +478,7 @@ export default function TamilNaduDashboard() {
                   )}
                 </ul>
                 {assumedScenario && (
-                  <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">PIN locations are assumed from district information. These figures illustrate an allocation scenario and do not measure actual PIN-level voting patterns.</p>
+                  <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">PIN locations are assumed from district information; each district’s responses are divided evenly across its eligible PINs. These figures illustrate an allocation scenario and do not measure actual PIN-level voting patterns.</p>
                 )}
                 <p className="mt-2 text-[10px] leading-relaxed text-saffron-2">
                   {assumedScenario ? "Assumed PIN (district-based) — not measured local survey coverage. " : ""}
@@ -596,7 +596,7 @@ export default function TamilNaduDashboard() {
             />
           ) : intensityActive && pinViewState === "assumed-empty" ? (
             <div className="flex min-h-0 flex-1 flex-col">
-              <p className={cn("mb-2", LABEL)}>Assumed PIN scenario</p>
+              <p className={cn("mb-2", LABEL)}>Assumed PIN distribution</p>
               <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">Assumed PIN allocation has not been generated.</p>
               <Link href="/admin" className="inline-flex w-fit items-center gap-1.5 rounded-full border border-saffron/50 bg-saffron/10 px-3 py-1.5 text-[12px] font-semibold text-saffron-2 transition-colors hover:bg-saffron/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">Open admin portal</Link>
             </div>
@@ -604,7 +604,7 @@ export default function TamilNaduDashboard() {
             <div className="flex min-h-0 flex-1 flex-col">
               <p className={cn("mb-2", LABEL)}>Recorded PIN codes</p>
               <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">No supplied PIN codes in this dataset.</p>
-              <button type="button" onClick={() => changeView("assumed")} className="inline-flex w-fit items-center gap-1.5 rounded-full border border-saffron/50 bg-saffron/10 px-3 py-1.5 text-[12px] font-semibold text-saffron-2 transition-colors hover:bg-saffron/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">Switch to Assumed PIN scenario</button>
+              <button type="button" onClick={() => changeView("assumed")} className="inline-flex w-fit items-center gap-1.5 rounded-full border border-saffron/50 bg-saffron/10 px-3 py-1.5 text-[12px] font-semibold text-saffron-2 transition-colors hover:bg-saffron/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">Switch to Assumed PIN distribution</button>
               <p className="mt-1.5 text-[10.5px] text-muted-foreground">{assumedAvailable ? "An assumed-PIN allocation is available." : "No assumed-PIN allocation has been generated yet."}</p>
             </div>
           ) : intensityActive ? (

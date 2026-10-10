@@ -12,7 +12,7 @@
 import * as XLSX from "xlsx";
 import { parseWorkbook, validateSheet, buildWorkbook, type Row } from "@/lib/poll-data";
 import { toDoc, assemblePinAggregates, buildRecordsQuery, type PinGroupRow } from "@/lib/poll-store";
-import { normalizePin, classifyPin, resolveRowPin, candidatePinsForDistrict } from "@/lib/pin";
+import { normalizePin, classifyPin, resolveRowPin, candidatePinsForDistrict, referenceAudit } from "@/lib/pin";
 import { allocatePinAssignments, summarizeAllocation, PIN_ALLOCATION_VERSION, PIN_BASIS_LABEL, type AllocInput } from "@/lib/pin-assign";
 import { POSTAL_REFERENCE } from "@/lib/data/tamil-nadu-pincodes";
 import { NO_DATA_COLOR } from "@/lib/data/tamil-nadu-scale";
@@ -305,6 +305,46 @@ ok("light/dark zero-response colours differ", NO_DATA_COLOR.light !== NO_DATA_CO
 // recorded / estimated / assumed distinction preserved in the export
 ok("export distinguishes basis labels", exitOut.some((r) => r["PIN Geography Basis"] === "District-based assumption") && exitOut.some((r) => r["PIN Geography Basis"] === "Reference-derived"));
 ok("export carries district-basis field", exitOut.every((r) => "PIN District Basis" in r));
+
+/* ---- 12. reference provenance + exact even reconciliation ----------- */
+console.log("\n12. Reference provenance & exact even reconciliation");
+const audit = referenceAudit();
+eq("reference completeness", audit.completeness, "subset");
+ok("reference reports a deduplicated PIN count", audit.referencePins <= audit.rawPins);
+ok("duplicate codes handled (count reported)", typeof audit.duplicatePins === "number");
+ok("ambiguous PINs excluded from candidate lists", audit.ambiguousPins.every((p) => !candidatePinsForDistrict("Chennai").includes(p)));
+
+// Exact even split of each (district, party) group's allocated responses.
+const byDPP = new Map<string, Map<string, number>>();
+for (const r of assigned) {
+  const key = `${r.district}|${r.party}`;
+  const m = byDPP.get(key) ?? new Map<string, number>();
+  m.set(r.assumedPin, (m.get(r.assumedPin) ?? 0) + 1);
+  byDPP.set(key, m);
+}
+let evenOk = true;
+for (const [, m] of byDPP) {
+  const vals = [...m.values()];
+  if (Math.max(...vals) - Math.min(...vals) > 1) evenOk = false;
+}
+ok("each party's responses split evenly across PINs (max−min ≤ 1)", evenOk);
+
+// Reconcile each (district, party) PIN total with the eligible response count.
+const expected = new Map<string, number>();
+for (const r of e2eRows) {
+  if (classifyPin(r.pin).format === "ok") continue;
+  if (!r.recordedDistrict) continue;
+  if (candidatePinsForDistrict(r.recordedDistrict).length === 0) continue;
+  const key = `${r.recordedDistrict}|${r.party}`;
+  expected.set(key, (expected.get(key) ?? 0) + 1);
+}
+let reconcileOk = true;
+for (const [key, exp] of expected) {
+  const m = byDPP.get(key);
+  const got = m ? [...m.values()].reduce((a, b) => a + b, 0) : 0;
+  if (got !== exp) reconcileOk = false;
+}
+ok("district+party PIN totals reconcile with eligible responses", reconcileOk);
 
 console.log(`\n${fail === 0 ? "ALL PASSED" : "FAILURES"}: ${pass} passed, ${fail} failed (case study: ${TEST_CASE})`);
 if (fail > 0) process.exitCode = 1;

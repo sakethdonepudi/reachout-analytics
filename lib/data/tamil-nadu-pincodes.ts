@@ -19,10 +19,12 @@ export const POSTAL_REFERENCE = {
   shortName: "India Post PIN directory",
   source: "https://data.gov.in (India Post PIN codes)",
   version: "assumed-pin-ref-2026-02.1 (bundled TN subset)",
+  /** "subset" = a representative selection, not the full postal directory. */
+  completeness: "subset" as "subset" | "complete",
   note:
-    "Verified PIN↔district pairs, bundled as a representative subset of the India Post PIN directory. " +
-    "Used only to choose candidate PINs for the assumed-PIN scenario; it is not a complete postal directory " +
-    "and does not represent a respondent's real location.",
+    "Verified PIN↔district pairs, bundled as a representative SUBSET of the India Post PIN directory " +
+    "(not the full directory). Used only to choose candidate PINs for the assumed-PIN scenario; it does not " +
+    "represent a respondent's real location.",
 } as const;
 
 /**
