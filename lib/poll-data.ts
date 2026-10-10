@@ -18,7 +18,9 @@ export const SHEET_OF: Record<PollType, (typeof SHEETS)[number]> = { opinion: "O
 
 /** Canonical column order (as supplied). Extra columns are kept on export. */
 export const HEADERS = [
-  "Response ID", "Survey", "State", "District", "Assembly Constituency", "PIN Code", "Party", "Entry Date",
+  "Response ID", "Survey", "State", "District", "Assembly Constituency", "PIN Code",
+  "Assumed PIN Code", "PIN Geography Basis", "PIN Mapping Source", "PIN Assignment Method",
+  "Party", "Entry Date",
   "Response Status", "Form ID", "Zone", "District Original", "Assembly Constituency Original", "Party Original",
   "Entry Date Original", "Month", "Source Row", "District Key", "PIN Status", "Entry Datetime ISO", "Timing Group",
   "District Status", "AC Status", "Signature Frequency", "Repeat Status", "AC Number", "Geography Action",

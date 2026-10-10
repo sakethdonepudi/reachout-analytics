@@ -10,7 +10,9 @@
 import * as XLSX from "xlsx";
 import { parseWorkbook, validateSheet, buildWorkbook, type Row } from "@/lib/poll-data";
 import { toDoc, assemblePinAggregates, buildRecordsQuery, type PinGroupRow } from "@/lib/poll-store";
-import { normalizePin, classifyPin, resolveRowPin } from "@/lib/pin";
+import { normalizePin, classifyPin, resolveRowPin, candidatePinsForDistrict } from "@/lib/pin";
+import { assignPinForRecord, summarizeAssignments } from "@/lib/pin-assign";
+import { POSTAL_REFERENCE } from "@/lib/data/tamil-nadu-pincodes";
 
 let pass = 0, fail = 0;
 function ok(name: string, cond: boolean, detail = "") {
@@ -155,6 +157,48 @@ eq("pin filter normalised on query", rq.pinNormalized, "600001");
 eq("status filter passed through", rq.status, "valid");
 const rqEmpty = buildRecordsQuery("tamil-nadu", "exit", "imp1", {}) as Record<string, unknown>;
 ok("no pin constraint when filter empty", !("pinNormalized" in rqEmpty));
+
+/* ---- 9. assumed-PIN scenario ---------------------------------------- */
+console.log("\n9. Assumed-PIN assignment (deterministic, non-mutating)");
+const r1 = assignPinForRecord({ responseId: "R1", pin: "600001", recordedDistrict: "Chennai", estimatedDistrict: "", scenarioDistrict: "Chennai" });
+eq("confirmed supplied PIN → reference-derived", r1.basis, "reference-derived");
+eq("reference-derived preserves supplied PIN", r1.assumedPin, "600001");
+eq("reference-derived source is the postal reference", r1.source, POSTAL_REFERENCE.name);
+
+const r2 = assignPinForRecord({ responseId: "R2", pin: "999999", recordedDistrict: "Salem", estimatedDistrict: "", scenarioDistrict: "Salem" });
+eq("unconfirmed supplied PIN kept but basis=recorded", r2.basis, "recorded");
+eq("recorded keeps the PIN", r2.assumedPin, "999999");
+
+const r3 = assignPinForRecord({ responseId: "R3", pin: "", recordedDistrict: "Madurai", estimatedDistrict: "", scenarioDistrict: "Madurai" });
+eq("district-only basis label", r3.basisLabel, "District-based assumption");
+ok("assigned PIN is a Madurai candidate", candidatePinsForDistrict("Madurai").includes(r3.assumedPin));
+eq("source is the postal reference", r3.source, POSTAL_REFERENCE.name);
+eq("deterministic across calls", assignPinForRecord({ responseId: "R3", pin: "", recordedDistrict: "Madurai", estimatedDistrict: "", scenarioDistrict: "Madurai" }).assumedPin, r3.assumedPin);
+
+const r4 = assignPinForRecord({ responseId: "R4", pin: "", recordedDistrict: "", estimatedDistrict: "Kallakurichi", scenarioDistrict: "Kallakurichi" });
+eq("estimated district basis label", r4.basisLabel, "Estimated district-based assumption");
+ok("estimated retains a candidate PIN", candidatePinsForDistrict("Kallakurichi").includes(r4.assumedPin));
+
+const r5 = assignPinForRecord({ responseId: "R5", pin: "", recordedDistrict: "", estimatedDistrict: "", scenarioDistrict: "" });
+eq("no usable district → unassigned", r5.basis, "unassigned");
+eq("unassigned assumed PIN empty", r5.assumedPin, "");
+
+const rows: Parameters<typeof summarizeAssignments>[0] = [
+  { responseId: "A1", pin: "", recordedDistrict: "Madurai", estimatedDistrict: "", scenarioDistrict: "Madurai", status: "valid", party: "TVK" },
+  { responseId: "A2", pin: "", recordedDistrict: "Madurai", estimatedDistrict: "", scenarioDistrict: "Madurai", status: "valid", party: "DMK+INC+VCK" },
+  { responseId: "A3", pin: "", recordedDistrict: "", estimatedDistrict: "", scenarioDistrict: "", status: "valid", party: "NTK" },
+  { responseId: "A4", pin: "", recordedDistrict: "", estimatedDistrict: "", scenarioDistrict: "", status: "blank", party: "" },
+];
+const s = summarizeAssignments(rows);
+eq("total unchanged", s.total, 4);
+eq("valid unchanged", s.valid, 3);
+eq("party counts unchanged", s.byParty, { TVK: 1, "DMK+INC+VCK": 1, NTK: 1 });
+eq("district-assumption count", s.byBasis["district-assumption"], 2);
+eq("unassigned count", s.byBasis.unassigned, 2);
+eq("reference name surfaced", s.reference.name, POSTAL_REFERENCE.name);
+
+const s2 = summarizeAssignments([{ responseId: "Z", pin: "", recordedDistrict: "Nowhere", estimatedDistrict: "", scenarioDistrict: "Nowhere", status: "valid", party: "TVK" }]);
+ok("district without reference candidates is listed as unresolved", s2.districtsWithoutCandidates.includes("Nowhere"));
 
 console.log(`\n${fail === 0 ? "ALL PASSED" : "FAILURES"}: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exitCode = 1;

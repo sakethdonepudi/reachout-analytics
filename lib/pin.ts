@@ -143,10 +143,22 @@ export function applyCanonicalPin(row: Record<string, unknown>): Record<string, 
 /* ---- geographic-mapping validation (separate from format) ----------- */
 
 const PIN_TO_DISTRICT = new Map<string, string>();
+const DISTRICT_TO_PINS = new Map<string, string[]>();
 for (const [district, pins] of Object.entries(TN_DISTRICT_PINCODES)) {
   for (const p of pins) {
     if (!PIN_TO_DISTRICT.has(p)) PIN_TO_DISTRICT.set(p, district);
   }
+  DISTRICT_TO_PINS.set(district.trim().toLowerCase(), [...pins].sort());
+}
+
+/** Candidate PINs for a district from the bundled reference (empty if none). */
+export function candidatePinsForDistrict(district: string): string[] {
+  return DISTRICT_TO_PINS.get(String(district ?? "").trim().toLowerCase()) ?? [];
+}
+
+/** Reference district for a PIN, or null when the reference has no entry. */
+export function districtForPin(pin: string): string | null {
+  return PIN_TO_DISTRICT.get(normalizePin(pin)) ?? null;
 }
 
 export type PinLocationRef = { known: boolean; district: string | null };

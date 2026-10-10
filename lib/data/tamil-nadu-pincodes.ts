@@ -10,6 +10,21 @@
    Keys match TN_DISTRICTS names in ./tamil-nadu-districts.ts.
    ===================================================================== */
 
+/**
+ * Provenance descriptor for the bundled postal reference.
+ * Used to label "PIN Mapping Source" on the assumed-PIN scenario.
+ */
+export const POSTAL_REFERENCE = {
+  name: "India Post PIN directory (data.gov.in) — bundled TN district↔PIN reference",
+  shortName: "India Post PIN directory",
+  source: "https://data.gov.in (India Post PIN codes)",
+  version: "bundled subset",
+  note:
+    "Verified PIN↔district pairs, bundled as a representative subset of the India Post PIN directory. " +
+    "Used only to pick candidate PINs for the assumed-PIN scenario; it is not a complete postal directory " +
+    "and does not represent a respondent's real location.",
+} as const;
+
 export const TN_DISTRICT_PINCODES: Record<string, string[]> = {
   Ariyalur: ["621704", "621705", "621707", "621708", "621709"],
   Chengalpattu: ["603001", "603002", "603003", "603004", "603109", "603110"],

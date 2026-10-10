@@ -17,6 +17,28 @@ type CaseRecord = { id: string; slug: string; title: string; state: string; elec
 type Meta = { importId: string; caseStudyId: string; pollType: string; filename: string; uploader: string; at: string; outcome: string; mode: string; inserted: number; skipped: number; counts: Counts; error?: string };
 type Preview = { opinion: Counts; exit: Counts; warnings: { sheet: string; row: number; field: string; reason: string }[]; errors: { sheet: string; row: number; field: string; reason: string }[]; canCommit: boolean };
 type Row_ = Record<string, unknown>;
+type PinScenarioSummary = {
+  total: number; valid: number;
+  byBasis: Record<string, number>;
+  byParty: Record<string, number>;
+  districtsWithoutCandidates: string[];
+  reference: { name: string; source: string; note: string };
+};
+type PinScenarioPreview = {
+  ok: boolean; reason?: string; importId: string | null;
+  summary: PinScenarioSummary;
+  baseline: { total: number; valid: number; shares: { party: string; count: number; pct: number }[] };
+  asOf: string | null;
+};
+type PinScenarioInfo = { appliedAt?: string; importId?: string; summary?: PinScenarioSummary } | null;
+
+const PIN_BASIS_ROWS: { key: string; label: string }[] = [
+  { key: "recorded", label: "Recorded PIN" },
+  { key: "reference-derived", label: "Reference-derived" },
+  { key: "district-assumption", label: "District-based assumption" },
+  { key: "estimated-district-assumption", label: "Estimated district-based assumption" },
+  { key: "unassigned", label: "Unassigned" },
+];
 
 const EMPTY: Counts = { total: 0, valid: 0, blank: 0, invalid: 0, recorded: 0, estimated: 0 };
 const SECTIONS = [
@@ -52,6 +74,10 @@ export default function AdminPortal() {
   const [parsed, setParsed] = useState<{ opinion: PollRow[]; exit: PollRow[]; headers: { opinion: string[]; exit: string[] } } | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [pinPreview, setPinPreview] = useState<PinScenarioPreview | null>(null);
+  const [pinScenario, setPinScenario] = useState<PinScenarioInfo>(null);
+  const [pinBusy, setPinBusy] = useState(false);
+  const [pinMsg, setPinMsg] = useState("");
 
   const activeCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
 
@@ -78,9 +104,13 @@ export default function AdminPortal() {
     const r = await fetch(`/api/data/history?caseStudyId=${encodeURIComponent(caseId)}`);
     if (r.ok) setHistory((await r.json()).history);
   }, [caseId]);
+  const loadPinScenario = useCallback(async () => {
+    const r = await fetch(`/api/data/pin-scenario?caseStudyId=${encodeURIComponent(caseId)}&pollType=${pollType}`);
+    if (r.ok) { const d = await r.json(); setPinPreview(d.preview ?? null); setPinScenario(d.scenario ?? null); }
+  }, [caseId, pollType]);
 
   useEffect(() => { if (ready) loadSummary(); }, [ready, loadSummary]);
-  useEffect(() => { if (ready && section === "poll") loadRecords(); }, [ready, section, loadRecords]);
+  useEffect(() => { if (ready && section === "poll") { loadRecords(); loadPinScenario(); } }, [ready, section, loadRecords, loadPinScenario]);
   useEffect(() => { if (ready && (section === "history" || section === "overview")) loadHistory(); }, [ready, section, loadHistory]);
   useEffect(() => { setSkip(0); }, [caseId, pollType]);
 
@@ -158,6 +188,18 @@ export default function AdminPortal() {
       await loadSummary(); await loadHistory();
     } catch (e) { setMessage(e instanceof Error ? e.message : "Import failed"); }
     finally { setBusy(false); }
+  }
+
+  async function applyPinScenario() {
+    setPinBusy(true); setPinMsg("Applying…");
+    try {
+      const r = await fetch("/api/data/pin-scenario", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ caseStudyId: caseId, pollType }) });
+      const d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(d.error || "Apply failed");
+      setPinPreview(d.preview); setPinMsg("Assumed-PIN scenario applied to storage and Excel export.");
+      await loadPinScenario();
+    } catch (e) { setPinMsg(e instanceof Error ? e.message : "Apply failed"); }
+    finally { setPinBusy(false); }
   }
 
   const card = (label: string, value: number) => (
@@ -364,6 +406,44 @@ export default function AdminPortal() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Assumed PIN scenario */}
+              <div className="mt-5 rounded-2xl border border-border bg-card/60 p-4">
+                <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><MapIcon className="size-4" /> Assumed PIN scenario</h2>
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  Optional. The original “PIN Code” field and every party response are preserved. For records without a usable PIN, a representative PIN is chosen <b>deterministically</b> from the district’s candidates in the bundled postal reference and stored in a separate “Assumed PIN Code” field. This is a <b>scenario assignment, not a recovered respondent location</b>, and it never changes party counts.
+                </p>
+
+                {pinPreview?.ok ? (
+                  <>
+                    <p className="mt-2 text-[11.5px] text-muted-foreground">Reference: {pinPreview.summary.reference.name} · <span className="break-all">{pinPreview.summary.reference.source}</span></p>
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                      {PIN_BASIS_ROWS.map(({ key, label }) => (
+                        <div key={key} className="rounded-xl border border-border bg-elevated/40 px-3 py-2">
+                          <p className="font-display text-lg font-semibold tabular-nums text-foreground">{(pinPreview.summary.byBasis[key] ?? 0).toLocaleString("en-IN")}</p>
+                          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-[12px] text-muted-foreground">
+                      <span>Responses: <b className="tabular-nums text-foreground/85">{pinPreview.summary.total.toLocaleString("en-IN")}</b> (unchanged from {pinPreview.baseline.total.toLocaleString("en-IN")})</span>
+                      <span>Valid party: <b className="tabular-nums text-foreground/85">{pinPreview.summary.valid.toLocaleString("en-IN")}</b> (unchanged from {pinPreview.baseline.valid.toLocaleString("en-IN")})</span>
+                      <span>{pinPreview.summary.total === pinPreview.baseline.total && pinPreview.summary.valid === pinPreview.baseline.valid ? "✓ totals unchanged" : "⚠ totals differ"}</span>
+                    </div>
+                    {pinPreview.summary.districtsWithoutCandidates.length > 0 && (
+                      <p className="mt-2 text-[11.5px] text-saffron-2">Unresolved (no reference candidates): {pinPreview.summary.districtsWithoutCandidates.join(", ")}</p>
+                    )}
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button onClick={loadPinScenario} className="rounded-xl border border-border px-3 py-2 text-[12.5px] hover:bg-elevated">Refresh preview</button>
+                      <button disabled={pinBusy} onClick={applyPinScenario} className="rounded-xl bg-saffron px-3 py-2 text-[12.5px] font-semibold text-[#241203] disabled:opacity-50">{pinBusy ? "Applying…" : "Apply assumed-PIN scenario"}</button>
+                      {pinScenario?.appliedAt && <span className="text-[11.5px] text-muted-foreground">Last applied {new Date(pinScenario.appliedAt).toLocaleString()}</span>}
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-2 text-[12.5px] text-muted-foreground">{pinPreview?.reason ?? "No active dataset for this poll type."}</p>
+                )}
+                {pinMsg && <p className="mt-2 rounded-lg border border-border bg-elevated/50 px-3 py-2 text-[12px]">{pinMsg}</p>}
               </div>
             </div>
           )}
