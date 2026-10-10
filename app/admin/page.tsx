@@ -17,20 +17,32 @@ type CaseRecord = { id: string; slug: string; title: string; state: string; elec
 type Meta = { importId: string; caseStudyId: string; pollType: string; filename: string; uploader: string; at: string; outcome: string; mode: string; inserted: number; skipped: number; counts: Counts; error?: string };
 type Preview = { opinion: Counts; exit: Counts; warnings: { sheet: string; row: number; field: string; reason: string }[]; errors: { sheet: string; row: number; field: string; reason: string }[]; canCommit: boolean };
 type Row_ = Record<string, unknown>;
+type PinDistrictBlock = {
+  district: string; districtBasis: string; total: number; valid: number;
+  recordedPin: number; assigned: number; unresolved: number;
+  byParty: Record<string, number>;
+  byPin: { pin: string; total: number; valid: number; parties: Record<string, number> }[];
+};
 type PinScenarioSummary = {
   total: number; valid: number;
+  recordedPin: number; eligible: number; assigned: number; unresolved: number;
   byBasis: Record<string, number>;
   byParty: Record<string, number>;
+  byDistrict: PinDistrictBlock[];
   districtsWithoutCandidates: string[];
-  reference: { name: string; source: string; note: string };
+  ambiguousPins: string[];
+  reference: { name: string; source: string; version: string; note: string };
+  allocationVersion: string;
+  reconcile: { assignedPlusUnresolved: number; eligible: number; ok: boolean; partyOk: boolean };
 };
 type PinScenarioPreview = {
-  ok: boolean; reason?: string; importId: string | null;
+  ok: boolean; reason?: string; importId: string | null; includeEstimated: boolean;
   summary: PinScenarioSummary;
   baseline: { total: number; valid: number; shares: { party: string; count: number; pct: number }[] };
-  asOf: string | null;
+  appliedImportId: string | null; appliedAt: string | null; datasetChanged: boolean;
+  allocationVersion: string; asOf: string | null;
 };
-type PinScenarioInfo = { appliedAt?: string; importId?: string; summary?: PinScenarioSummary } | null;
+type PinScenarioInfo = { appliedAt?: string; importId?: string; includeEstimated?: boolean; allocationVersion?: string; summary?: PinScenarioSummary } | null;
 
 const PIN_BASIS_ROWS: { key: string; label: string }[] = [
   { key: "recorded", label: "Recorded PIN" },
@@ -78,6 +90,8 @@ export default function AdminPortal() {
   const [pinScenario, setPinScenario] = useState<PinScenarioInfo>(null);
   const [pinBusy, setPinBusy] = useState(false);
   const [pinMsg, setPinMsg] = useState("");
+  const [pinIncludeEstimated, setPinIncludeEstimated] = useState(true);
+  const [pinConfirm, setPinConfirm] = useState(false);
 
   const activeCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
 
@@ -105,9 +119,9 @@ export default function AdminPortal() {
     if (r.ok) setHistory((await r.json()).history);
   }, [caseId]);
   const loadPinScenario = useCallback(async () => {
-    const r = await fetch(`/api/data/pin-scenario?caseStudyId=${encodeURIComponent(caseId)}&pollType=${pollType}`);
+    const r = await fetch(`/api/data/pin-scenario?caseStudyId=${encodeURIComponent(caseId)}&pollType=${pollType}&includeEstimated=${pinIncludeEstimated ? 1 : 0}`);
     if (r.ok) { const d = await r.json(); setPinPreview(d.preview ?? null); setPinScenario(d.scenario ?? null); }
-  }, [caseId, pollType]);
+  }, [caseId, pollType, pinIncludeEstimated]);
 
   useEffect(() => { if (ready) loadSummary(); }, [ready, loadSummary]);
   useEffect(() => { if (ready && section === "poll") { loadRecords(); loadPinScenario(); } }, [ready, section, loadRecords, loadPinScenario]);
@@ -191,12 +205,13 @@ export default function AdminPortal() {
   }
 
   async function applyPinScenario() {
+    if (!pinConfirm) { setPinMsg("Tick the confirmation box to commit the allocation."); return; }
     setPinBusy(true); setPinMsg("Applying…");
     try {
-      const r = await fetch("/api/data/pin-scenario", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ caseStudyId: caseId, pollType }) });
+      const r = await fetch("/api/data/pin-scenario", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ caseStudyId: caseId, pollType, includeEstimated: pinIncludeEstimated, confirm: true }) });
       const d = await r.json();
       if (!r.ok || !d.ok) throw new Error(d.error || "Apply failed");
-      setPinPreview(d.preview); setPinMsg("Assumed-PIN scenario applied to storage and Excel export.");
+      setPinPreview(d.preview); setPinMsg("Assumed-PIN allocation committed to storage and the two-sheet Excel export."); setPinConfirm(false);
       await loadPinScenario();
     } catch (e) { setPinMsg(e instanceof Error ? e.message : "Apply failed"); }
     finally { setPinBusy(false); }
@@ -412,32 +427,103 @@ export default function AdminPortal() {
               <div className="mt-5 rounded-2xl border border-border bg-card/60 p-4">
                 <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><MapIcon className="size-4" /> Assumed PIN scenario</h2>
                 <p className="mt-1 text-[12px] text-muted-foreground">
-                  Optional. The original “PIN Code” field and every party response are preserved. For records without a usable PIN, a representative PIN is chosen <b>deterministically</b> from the district’s candidates in the bundled postal reference and stored in a separate “Assumed PIN Code” field. This is a <b>scenario assignment, not a recovered respondent location</b>, and it never changes party counts.
+                  Optional. The original “PIN Code”, district fields, party choices and Response IDs are preserved. Records without a PIN are distributed <b>evenly</b> across the district’s verified candidate PINs, separately within each party group, using a stable Response-ID order — <b>a neutral illustrative allocation, not a recovered respondent location</b>, never calibrated to results. A versioned allocation is stored in separate fields and the two-sheet Excel export.
                 </p>
+
+                <label className="mt-3 flex items-center gap-2 text-[12.5px] text-muted-foreground">
+                  <input type="checkbox" checked={pinIncludeEstimated} onChange={(e) => { setPinIncludeEstimated(e.target.checked); setPinConfirm(false); }} />
+                  Include estimated districts (fallback when there is no recorded district)
+                </label>
 
                 {pinPreview?.ok ? (
                   <>
-                    <p className="mt-2 text-[11.5px] text-muted-foreground">Reference: {pinPreview.summary.reference.name} · <span className="break-all">{pinPreview.summary.reference.source}</span></p>
+                    <p className="mt-2 text-[11.5px] text-muted-foreground">Reference: {pinPreview.summary.reference.name} · <span className="break-all">{pinPreview.summary.reference.source}</span> · <b>version {pinPreview.summary.reference.version}</b></p>
+                    {pinPreview.datasetChanged && (
+                      <p className="mt-2 rounded-lg border border-saffron/40 bg-saffron/10 px-3 py-2 text-[12px] text-saffron-2">The active dataset changed since the last allocation — regenerate the preview before committing.</p>
+                    )}
+
                     <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-                      {PIN_BASIS_ROWS.map(({ key, label }) => (
-                        <div key={key} className="rounded-xl border border-border bg-elevated/40 px-3 py-2">
-                          <p className="font-display text-lg font-semibold tabular-nums text-foreground">{(pinPreview.summary.byBasis[key] ?? 0).toLocaleString("en-IN")}</p>
-                          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
+                      {[
+                        ["Recorded PIN", pinPreview.summary.recordedPin],
+                        ["Eligible (no PIN)", pinPreview.summary.eligible],
+                        ["Assigned", pinPreview.summary.assigned],
+                        ["Unresolved", pinPreview.summary.unresolved],
+                        ["Total", pinPreview.summary.total],
+                        ["Valid party", pinPreview.summary.valid],
+                      ].map(([label, value]) => (
+                        <div key={String(label)} className="rounded-xl border border-border bg-elevated/40 px-3 py-2">
+                          <p className="font-display text-lg font-semibold tabular-nums text-foreground">{Number(value).toLocaleString("en-IN")}</p>
+                          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{String(label)}</p>
                         </div>
                       ))}
                     </div>
                     <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-[12px] text-muted-foreground">
-                      <span>Responses: <b className="tabular-nums text-foreground/85">{pinPreview.summary.total.toLocaleString("en-IN")}</b> (unchanged from {pinPreview.baseline.total.toLocaleString("en-IN")})</span>
-                      <span>Valid party: <b className="tabular-nums text-foreground/85">{pinPreview.summary.valid.toLocaleString("en-IN")}</b> (unchanged from {pinPreview.baseline.valid.toLocaleString("en-IN")})</span>
-                      <span>{pinPreview.summary.total === pinPreview.baseline.total && pinPreview.summary.valid === pinPreview.baseline.valid ? "✓ totals unchanged" : "⚠ totals differ"}</span>
+                      <span>Responses {pinPreview.summary.total === pinPreview.baseline.total ? "✓ unchanged" : "⚠ changed"} ({pinPreview.baseline.total.toLocaleString("en-IN")})</span>
+                      <span>Valid party {pinPreview.summary.valid === pinPreview.baseline.valid ? "✓ unchanged" : "⚠ changed"} ({pinPreview.baseline.valid.toLocaleString("en-IN")})</span>
+                      <span>{pinPreview.summary.reconcile.ok ? "✓ assigned + unresolved = eligible" : "⚠ reconciliation failed"}</span>
+                      <span>{pinPreview.summary.reconcile.partyOk ? "✓ party totals reconcile" : "⚠ party totals differ"}</span>
+                      <span>Allocation version: <b className="text-foreground/85">{pinPreview.allocationVersion}</b></span>
                     </div>
-                    {pinPreview.summary.districtsWithoutCandidates.length > 0 && (
-                      <p className="mt-2 text-[11.5px] text-saffron-2">Unresolved (no reference candidates): {pinPreview.summary.districtsWithoutCandidates.join(", ")}</p>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                      {PIN_BASIS_ROWS.map(({ key, label }) => (
+                        <div key={key} className="rounded-xl border border-border bg-elevated/40 px-3 py-2">
+                          <p className="font-display text-base font-semibold tabular-nums text-foreground">{(pinPreview.summary.byBasis[key] ?? 0).toLocaleString("en-IN")}</p>
+                          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {pinPreview.summary.byDistrict.length > 0 && (
+                      <details className="mt-3 rounded-xl border border-border bg-elevated/30 p-3">
+                        <summary className="cursor-pointer text-[12.5px] font-semibold text-foreground/85">Totals by district and PIN ({pinPreview.summary.byDistrict.length} districts)</summary>
+                        <div className="mt-2 max-h-72 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                          <ul className="space-y-1.5 text-[12px]">
+                            {pinPreview.summary.byDistrict.map((d) => (
+                              <li key={d.district || "unassigned"} className="rounded-lg border border-border/60 p-2">
+                                <details>
+                                  <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-0.5">
+                                    <b className="text-foreground/85">{d.district || "Unassigned district"}</b>
+                                    <span className="text-muted-foreground">{d.districtBasis}</span>
+                                    <span className="text-muted-foreground">total {d.total.toLocaleString("en-IN")}</span>
+                                    <span className="text-muted-foreground">assigned {d.assigned.toLocaleString("en-IN")}</span>
+                                    <span className="text-muted-foreground">unresolved {d.unresolved.toLocaleString("en-IN")}</span>
+                                    <span className="text-muted-foreground">{d.byPin.length} PINs</span>
+                                  </summary>
+                                  {d.byPin.length > 0 && (
+                                    <ul className="mt-1.5 space-y-0.5 pl-3">
+                                      {d.byPin.map((p) => (
+                                        <li key={p.pin} className="flex items-center gap-3 text-muted-foreground">
+                                          <span className="tabular-nums text-foreground/75">{p.pin}</span>
+                                          <span>total {p.total.toLocaleString("en-IN")}</span>
+                                          <span>valid {p.valid.toLocaleString("en-IN")}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </details>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </details>
                     )}
+
+                    {(pinPreview.summary.districtsWithoutCandidates.length > 0 || pinPreview.summary.ambiguousPins.length > 0) && (
+                      <div className="mt-2 space-y-1 text-[11.5px] text-saffron-2">
+                        {pinPreview.summary.districtsWithoutCandidates.length > 0 && <p>Unresolved districts (no reference candidates): {pinPreview.summary.districtsWithoutCandidates.join(", ")}</p>}
+                        {pinPreview.summary.ambiguousPins.length > 0 && <p>Ambiguous PIN↔district mappings excluded from candidates: {pinPreview.summary.ambiguousPins.join(", ")}</p>}
+                      </div>
+                    )}
+
+                    <label className="mt-3 flex items-center gap-2 text-[12.5px] text-foreground/85">
+                      <input type="checkbox" checked={pinConfirm} onChange={(e) => setPinConfirm(e.target.checked)} />
+                      I confirm I want to commit this assumed-PIN allocation (storage + Excel export).
+                    </label>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <button onClick={loadPinScenario} className="rounded-xl border border-border px-3 py-2 text-[12.5px] hover:bg-elevated">Refresh preview</button>
-                      <button disabled={pinBusy} onClick={applyPinScenario} className="rounded-xl bg-saffron px-3 py-2 text-[12.5px] font-semibold text-[#241203] disabled:opacity-50">{pinBusy ? "Applying…" : "Apply assumed-PIN scenario"}</button>
-                      {pinScenario?.appliedAt && <span className="text-[11.5px] text-muted-foreground">Last applied {new Date(pinScenario.appliedAt).toLocaleString()}</span>}
+                      <button disabled={pinBusy || !pinConfirm} onClick={applyPinScenario} className="rounded-xl bg-saffron px-3 py-2 text-[12.5px] font-semibold text-[#241203] disabled:opacity-50">{pinBusy ? "Applying…" : "Apply assumed-PIN scenario"}</button>
+                      {pinScenario?.appliedAt && <span className="text-[11.5px] text-muted-foreground">Last applied {new Date(pinScenario.appliedAt).toLocaleString()}{pinScenario.allocationVersion ? ` · ${pinScenario.allocationVersion}` : ""}</span>}
                     </div>
                   </>
                 ) : (

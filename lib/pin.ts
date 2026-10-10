@@ -11,7 +11,7 @@
      "unknown location" simply means no reliable location reference.
    ===================================================================== */
 
-import { TN_DISTRICT_PINCODES } from "./data/tamil-nadu-pincodes";
+import { TN_DISTRICT_PINCODES, DISTRICT_ALIASES, PIN_COORDINATES } from "./data/tamil-nadu-pincodes";
 
 export const PIN_CANONICAL = "PIN Code";
 
@@ -142,23 +142,62 @@ export function applyCanonicalPin(row: Record<string, unknown>): Record<string, 
 
 /* ---- geographic-mapping validation (separate from format) ----------- */
 
-const PIN_TO_DISTRICT = new Map<string, string>();
-const DISTRICT_TO_PINS = new Map<string, string[]>();
+const canonDist = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const ALIAS: Record<string, string> = {};
+for (const [k, v] of Object.entries(DISTRICT_ALIASES)) ALIAS[canonDist(k)] = canonDist(v);
+
+/** Canonical district key — reconciles renamed / misspelled district names. */
+export function canonicalDistrictKey(name: string): string {
+  const c = canonDist(String(name ?? ""));
+  return ALIAS[c] ?? c;
+}
+
+const DISTRICT_TO_PINS = new Map<string, { name: string; pins: Set<string> }>();
+const PIN_DISTRICTS = new Map<string, Set<string>>();
 for (const [district, pins] of Object.entries(TN_DISTRICT_PINCODES)) {
+  const key = canonDist(district);
+  const entry = DISTRICT_TO_PINS.get(key) ?? { name: district, pins: new Set<string>() };
   for (const p of pins) {
-    if (!PIN_TO_DISTRICT.has(p)) PIN_TO_DISTRICT.set(p, district);
+    entry.pins.add(p);
+    const set = PIN_DISTRICTS.get(p) ?? new Set<string>();
+    set.add(key);
+    PIN_DISTRICTS.set(p, set);
   }
-  DISTRICT_TO_PINS.set(district.trim().toLowerCase(), [...pins].sort());
+  DISTRICT_TO_PINS.set(key, entry);
 }
+const AMBIGUOUS_PINS = new Set<string>();
+for (const [p, set] of PIN_DISTRICTS) if (set.size > 1) AMBIGUOUS_PINS.add(p);
 
-/** Candidate PINs for a district from the bundled reference (empty if none). */
+/** Candidate PINs for a district (alias-aware); ambiguous PINs are excluded. */
 export function candidatePinsForDistrict(district: string): string[] {
-  return DISTRICT_TO_PINS.get(String(district ?? "").trim().toLowerCase()) ?? [];
+  const entry = DISTRICT_TO_PINS.get(canonicalDistrictKey(district));
+  if (!entry) return [];
+  return [...entry.pins].filter((p) => !AMBIGUOUS_PINS.has(p)).sort();
 }
 
-/** Reference district for a PIN, or null when the reference has no entry. */
+/** Reference district for a PIN, or null when unknown/ambiguous. */
 export function districtForPin(pin: string): string | null {
-  return PIN_TO_DISTRICT.get(normalizePin(pin)) ?? null;
+  const set = PIN_DISTRICTS.get(normalizePin(pin));
+  if (!set || set.size !== 1) return null;
+  return DISTRICT_TO_PINS.get([...set][0])?.name ?? null;
+}
+
+/** Whether a PIN is ambiguous (appears under more than one reference district). */
+export function isAmbiguousPin(pin: string): boolean {
+  return AMBIGUOUS_PINS.has(normalizePin(pin));
+}
+
+/** Verified coordinates for a PIN, or null when none are bundled. */
+export function coordinatesForPin(pin: string): { lat: number; lng: number } | null {
+  return PIN_COORDINATES[normalizePin(pin)] ?? null;
+}
+
+export function referenceAudit() {
+  return {
+    referenceDistricts: DISTRICT_TO_PINS.size,
+    referencePins: PIN_DISTRICTS.size,
+    ambiguousPins: [...AMBIGUOUS_PINS].sort(),
+  };
 }
 
 export type PinLocationRef = { known: boolean; district: string | null };
@@ -169,7 +208,7 @@ export type PinLocationRef = { known: boolean; district: string | null };
  * is invalid, and it must never be used to fabricate coordinates.
  */
 export function pinLocationRef(pin: string): PinLocationRef {
-  const d = PIN_TO_DISTRICT.get(normalizePin(pin));
+  const d = districtForPin(pin);
   return d ? { known: true, district: d } : { known: false, district: null };
 }
 
@@ -177,7 +216,7 @@ export function pinLocationRef(pin: string): PinLocationRef {
 export function pinMatchesDistrict(pin: string, district: string): "match" | "mismatch" | "unknown" {
   const ref = pinLocationRef(pin);
   if (!ref.known || !ref.district) return "unknown";
-  const stated = String(district ?? "").trim();
+  const stated = canonicalDistrictKey(district);
   if (!stated) return "unknown";
-  return ref.district.toLowerCase() === stated.toLowerCase() ? "match" : "mismatch";
+  return canonicalDistrictKey(ref.district) === stated ? "match" : "mismatch";
 }

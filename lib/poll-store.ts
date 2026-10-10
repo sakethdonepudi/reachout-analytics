@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getMongo } from "@/lib/mongodb";
 import { partyStatus, isRecordedDistrict, estimatedDistrictOf, recordedDistrictOf, scenarioDistrictOf, type PollType, type Row } from "@/lib/poll-data";
 import { resolveRowPin, pinLocationRef, normalizePin, isSixDigitPin } from "@/lib/pin";
-import { assignPinForRecord, summarizeAssignments, type PinAssignmentRow, type PinAssignmentSummary } from "@/lib/pin-assign";
+import { allocatePinAssignments, summarizeAllocation, PIN_ALLOCATION_VERSION, type AllocInput, type PinAllocationSummary } from "@/lib/pin-assign";
 
 /* =====================================================================
    Persistent poll datasets in MongoDB, scoped by caseStudyId + pollType.
@@ -380,18 +380,71 @@ export function assemblePinAggregates(rows: PinGroupRow[]): PinAggregates {
   return { pins, total, valid, withPin, withoutPin: total - withPin, invalidPinResponses };
 }
 
-/** Assumed-PIN aggregates (grouped by the scenario "Assumed PIN Code"). */
-export async function assumedPinAggregates(caseStudyId: string, pollType: PollType): Promise<PinAggregates> {
+export type AssumedPinDetail = {
+  pin: string;
+  total: number;
+  valid: number;
+  parties: Record<string, number>;
+  district: string | null;
+  districtBasis: string;
+  basis: string;
+  basisLabel: string;
+  source: string;
+  method: string;
+  allocationVersion: string;
+};
+export type AssumedPinResult = {
+  pins: AssumedPinDetail[];
+  total: number;
+  valid: number;
+  scenario: Awaited<ReturnType<typeof getPinScenario>>;
+};
+
+type AssumedGroupRow = { _id: { pin?: string; status?: string; party?: string; district?: string; basis?: string; method?: string; source?: string; version?: string; districtBasis?: string }; n: number };
+
+/** Assumed-PIN details (grouped by the scenario "Assumed PIN Code"). */
+export async function assumedPinDetails(caseStudyId: string, pollType: PollType): Promise<AssumedPinResult> {
   const c = await cols();
-  const empty: PinAggregates = { pins: [], total: 0, valid: 0, withPin: 0, withoutPin: 0, invalidPinResponses: 0 };
+  const empty: AssumedPinResult = { pins: [], total: 0, valid: 0, scenario: null };
   if (!c) return empty;
   const importId = await getActiveImportId(caseStudyId, pollType);
   if (!importId) return empty;
   const rows = (await c.responses.aggregate([
     { $match: { caseStudyId, pollType, importId, assumedPin: { $ne: "" } } },
-    { $group: { _id: { pin: "$assumedPin", status: "$status", party: "$party", district: { $ifNull: ["$district", "$scenarioDistrict"] } }, n: { $sum: 1 } } },
-  ]).toArray()) as PinGroupRow[];
-  return assemblePinAggregates(rows);
+    { $group: { _id: {
+      pin: "$assumedPin", status: "$status", party: "$party",
+      district: { $ifNull: ["$district", "$scenarioDistrict"] },
+      basis: "$pinGeographyBasis", method: "$pinAssignmentMethod", source: "$pinMappingSource",
+      version: "$pinAllocationVersion", districtBasis: "$pinDistrictBasis",
+    }, n: { $sum: 1 } } },
+  ]).toArray()) as AssumedGroupRow[];
+
+  const map = new Map<string, AssumedPinDetail>();
+  let total = 0, valid = 0;
+  for (const r of rows) {
+    const g = r._id ?? {};
+    const pin = String(g.pin ?? "").trim();
+    if (!pin) continue;
+    total += r.n;
+    const d = map.get(pin) ?? { pin, total: 0, valid: 0, parties: {}, district: null, districtBasis: "", basis: "", basisLabel: "", source: "", method: "", allocationVersion: "" };
+    d.total += r.n;
+    if (g.status === "valid") {
+      valid += r.n;
+      d.valid += r.n;
+      const p = g.party || "Unknown";
+      d.parties[p] = (d.parties[p] ?? 0) + r.n;
+    }
+    if (!d.district && g.district) d.district = String(g.district);
+    if (!d.basis && g.basis) { d.basis = String(g.basis); d.basisLabel = String(g.basis); }
+    if (!d.method && g.method) d.method = String(g.method);
+    if (!d.source && g.source) d.source = String(g.source);
+    if (!d.allocationVersion && g.version) d.allocationVersion = String(g.version);
+    if (!d.districtBasis && g.districtBasis) d.districtBasis = String(g.districtBasis);
+    map.set(pin, d);
+  }
+  const pins = [...map.values()].sort((a, b) => b.valid - a.valid || b.total - a.total || a.pin.localeCompare(b.pin));
+  const scenario = await getPinScenario(caseStudyId, pollType);
+  return { pins, total, valid, scenario };
 }
 
 /* =====================================================================
@@ -402,10 +455,10 @@ async function scenarioCol() {
   const p = getMongo();
   if (!p) return null;
   const client = await p;
-  return client.db(DB).collection<{ _id: string; caseStudyId: string; pollType: PollType; importId: string; appliedAt: string; summary: PinAssignmentSummary }>("poll_scenarios");
+  return client.db(DB).collection<{ _id: string; caseStudyId: string; pollType: PollType; importId: string; includeEstimated: boolean; appliedAt: string; allocationVersion: string; summary: PinAllocationSummary }>("poll_scenarios");
 }
 
-async function assignmentRows(caseStudyId: string, pollType: PollType, importId: string): Promise<PinAssignmentRow[]> {
+async function assignmentRows(caseStudyId: string, pollType: PollType, importId: string): Promise<AllocInput[]> {
   const c = await cols();
   if (!c) return [];
   const docs = await c.responses
@@ -427,70 +480,85 @@ export type PinAssignmentPreview = {
   ok: boolean;
   reason?: string;
   importId: string | null;
-  summary: PinAssignmentSummary;
+  includeEstimated: boolean;
+  summary: PinAllocationSummary;
   /** Current statewide counts — shown alongside to prove they are unchanged. */
   baseline: { total: number; valid: number; shares: { party: string; count: number; pct: number }[] };
+  /** Version linkage to the source import. */
+  appliedImportId: string | null;
+  appliedAt: string | null;
+  datasetChanged: boolean;
+  allocationVersion: string;
   asOf: string | null;
 };
 
-/** Read-only preview of the assumed-PIN assignment (writes nothing). */
-export async function previewPinAssignment(caseStudyId: string, pollType: PollType): Promise<PinAssignmentPreview> {
+/** Read-only preview of the assumed-PIN allocation (writes nothing). */
+export async function previewPinAssignment(caseStudyId: string, pollType: PollType, includeEstimated = true): Promise<PinAssignmentPreview> {
   const c = await cols();
-  if (!c) return { ok: false, reason: "Database not configured", importId: null, summary: summarizeAssignments([]), baseline: { total: 0, valid: 0, shares: [] }, asOf: null };
+  const emptySummary = summarizeAllocation([]);
+  if (!c) return { ok: false, reason: "Database not configured", importId: null, includeEstimated, summary: emptySummary, baseline: { total: 0, valid: 0, shares: [] }, appliedImportId: null, appliedAt: null, datasetChanged: false, allocationVersion: PIN_ALLOCATION_VERSION, asOf: null };
   const importId = await getActiveImportId(caseStudyId, pollType);
-  if (!importId) return { ok: false, reason: "No active import", importId: null, summary: summarizeAssignments([]), baseline: { total: 0, valid: 0, shares: [] }, asOf: null };
-  const [rows, sum, shares] = await Promise.all([
+  if (!importId) return { ok: false, reason: "No active import", importId: null, includeEstimated, summary: emptySummary, baseline: { total: 0, valid: 0, shares: [] }, appliedImportId: null, appliedAt: null, datasetChanged: false, allocationVersion: PIN_ALLOCATION_VERSION, asOf: null };
+  const [rows, sum, shares, scenario] = await Promise.all([
     assignmentRows(caseStudyId, pollType, importId),
     summary(caseStudyId, pollType),
     partyShares(caseStudyId, pollType),
+    getPinScenario(caseStudyId, pollType),
   ]);
   return {
     ok: true,
     importId,
-    summary: summarizeAssignments(rows),
+    includeEstimated,
+    summary: summarizeAllocation(allocatePinAssignments(rows, { includeEstimated })),
     baseline: { total: sum?.counts.total ?? 0, valid: sum?.counts.valid ?? 0, shares: shares.shares },
+    appliedImportId: scenario?.importId ?? null,
+    appliedAt: scenario?.appliedAt ?? null,
+    datasetChanged: !!scenario && scenario.importId !== importId,
+    allocationVersion: PIN_ALLOCATION_VERSION,
     asOf: sum?.asOf ?? null,
   };
 }
 
-/** Commit the assumed-PIN scenario to storage and the embedded export row. */
-export async function applyPinAssignment(caseStudyId: string, pollType: PollType): Promise<PinAssignmentPreview> {
+/** Commit the assumed-PIN allocation to storage and the embedded export row. */
+export async function applyPinAssignment(caseStudyId: string, pollType: PollType, includeEstimated = true): Promise<PinAssignmentPreview> {
   const c = await cols();
-  const preview = await previewPinAssignment(caseStudyId, pollType);
+  const preview = await previewPinAssignment(caseStudyId, pollType, includeEstimated);
   if (!c || !preview.ok || !preview.importId) return preview;
   const importId = preview.importId;
 
   const docs = await c.responses
     .find({ caseStudyId, pollType, importId })
-    .project({ _id: 1, responseId: 1, pin: 1, district: 1, estimatedDistrict: 1, scenarioDistrict: 1 })
+    .project({ _id: 1, responseId: 1, pin: 1, district: 1, estimatedDistrict: 1, scenarioDistrict: 1, status: 1, party: 1 })
     .toArray();
+  const inputs: AllocInput[] = docs.map((d) => ({
+    responseId: String(d.responseId ?? ""),
+    pin: d.pin,
+    recordedDistrict: String(d.district ?? ""),
+    estimatedDistrict: String(d.estimatedDistrict ?? ""),
+    scenarioDistrict: String(d.scenarioDistrict ?? ""),
+    status: d.status,
+    party: d.party,
+  }));
+  const records = allocatePinAssignments(inputs, { includeEstimated });
 
-  const ops = docs.map((d) => {
-    const a = assignPinForRecord({
-      responseId: String(d.responseId ?? ""),
-      pin: d.pin,
-      recordedDistrict: String(d.district ?? ""),
-      estimatedDistrict: String(d.estimatedDistrict ?? ""),
-      scenarioDistrict: String(d.scenarioDistrict ?? ""),
-    });
-    return {
-      updateOne: {
-        filter: { _id: d._id },
-        update: {
-          $set: {
-            assumedPin: a.assumedPin,
-            pinBasis: a.basis,
-            pinGeographyBasis: a.basisLabel,
-            pinMappingSource: a.source,
-            pinAssignmentMethod: a.method,
-            "row.Assumed PIN Code": a.assumedPin,
-            "row.PIN Geography Basis": a.basisLabel,
-            "row.PIN Mapping Source": a.source,
-            "row.PIN Assignment Method": a.method,
-          },
-        },
-      },
+  const ops = docs.map((d, i) => {
+    const a = records[i];
+    const patch: Record<string, unknown> = {
+      assumedPin: a.assumedPin,
+      pinBasis: a.basis,
+      pinGeographyBasis: a.basisLabel,
+      pinMappingSource: a.source,
+      pinAssignmentMethod: a.method,
+      pinAllocationVersion: a.allocationVersion,
+      pinDistrictBasis: a.districtBasis,
+      "row.Assumed PIN Code": a.assumedPin,
+      "row.PIN Geography Basis": a.basisLabel,
+      "row.PIN Mapping Source": a.source,
+      "row.PIN Assignment Method": a.method,
+      "row.PIN Allocation Version": a.allocationVersion,
+      "row.PIN District Basis": a.districtBasis,
     };
+    return { updateOne: { filter: { _id: d._id }, update: { $set: patch } } };
   });
   for (let i = 0; i < ops.length; i += 1000) {
     await c.responses.bulkWrite(ops.slice(i, i + 1000), { ordered: false });
@@ -499,7 +567,7 @@ export async function applyPinAssignment(caseStudyId: string, pollType: PollType
   if (sc) {
     await sc.updateOne(
       { _id: `${caseStudyId}:${pollType}` },
-      { $set: { caseStudyId, pollType, importId, appliedAt: new Date().toISOString(), summary: preview.summary } },
+      { $set: { caseStudyId, pollType, importId, includeEstimated, appliedAt: new Date().toISOString(), allocationVersion: preview.allocationVersion, summary: preview.summary } },
       { upsert: true },
     );
   }

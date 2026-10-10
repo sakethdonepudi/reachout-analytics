@@ -39,7 +39,11 @@ const LAYER_LABELS: { id: keyof MapLayers; label: string }[] = [
 
 const LABEL = "text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground";
 
-type PubPin = { pin: string; total: number; valid: number; parties: Record<string, number>; district: string | null; locationAvailable: boolean };
+type PubPin = {
+  pin: string; total: number; valid: number; parties: Record<string, number>;
+  district: string | null; locationAvailable: boolean;
+  basis?: string; basisKey?: string; source?: string; method?: string; allocationVersion?: string; districtBasis?: string;
+};
 
 export default function TamilNaduDashboard() {
   const { theme } = useTheme();
@@ -83,14 +87,26 @@ export default function TamilNaduDashboard() {
   }, [pollType, view, refreshNonce]);
 
   /* ---- published per-PIN survey aggregates (live) ---- */
-  const [pinData, setPinData] = useState<{ usablePins: number; pins: PubPin[]; message: string | null; withPin: number; withoutPin: number; assumed: boolean; scenarioNote: string | null } | null>(null);
+  const [pinData, setPinData] = useState<{
+    usablePins: number; pins: PubPin[]; message: string | null; withPin: number; withoutPin: number;
+    assumed: boolean; scenarioNote: string | null; allocationVersion: string | null;
+    reference: { name: string; source: string; version: string } | null;
+    scenario: { assigned: number; unresolved: number; eligible: number; recordedPin: number; appliedAt: string | null } | null;
+  } | null>(null);
   useEffect(() => {
     const ctrl = new AbortController();
     fetch(`/api/public/case-studies/tamil-nadu/pins?pollType=${pollType}&basis=${view}`, { cache: "no-store", signal: ctrl.signal })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (ctrl.signal.aborted) return;
-        setPinData(d && d.published ? { usablePins: d.usablePins ?? 0, pins: d.pins ?? [], message: d.message ?? null, withPin: d.withPin ?? 0, withoutPin: d.withoutPin ?? 0, assumed: !!d.assumed, scenarioNote: d.scenarioNote ?? null } : null);
+        setPinData(d && d.published ? {
+          usablePins: d.usablePins ?? 0, pins: d.pins ?? [], message: d.message ?? null,
+          withPin: d.withPin ?? 0, withoutPin: d.withoutPin ?? 0, assumed: !!d.assumed,
+          scenarioNote: d.scenarioNote ?? null,
+          allocationVersion: d.allocationVersion ?? null,
+          reference: d.reference ? { name: d.reference.name, source: d.reference.source, version: d.reference.version } : null,
+          scenario: d.scenario ? { assigned: d.scenario.assigned ?? 0, unresolved: d.scenario.unresolved ?? 0, eligible: d.scenario.eligible ?? 0, recordedPin: d.scenario.recordedPin ?? 0, appliedAt: d.scenario.appliedAt ?? null } : null,
+        } : null);
       })
       .catch(() => { if (!ctrl.signal.aborted) setPinData(null); });
     return () => ctrl.abort();
@@ -397,12 +413,18 @@ export default function TamilNaduDashboard() {
               <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">{pinMessage}</p>
             ) : realPin ? (
               <div>
-                <p className={LABEL}>PIN code · {realPin.district ?? "district not stated"}</p>
+                {assumedScenario && (
+                  <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-saffron/40 bg-saffron/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-saffron-2">
+                    Assumed PIN scenario{pinData?.allocationVersion ? ` · ${pinData.allocationVersion}` : ""}
+                  </span>
+                )}
+                <p className={LABEL}>PIN code · {realPin.district ?? "district not stated"}{realPin.districtBasis === "estimated" ? " (estimated district)" : ""}</p>
                 <div className="mt-1 flex items-end justify-between gap-3">
                   <span className="font-display text-2xl font-semibold tabular-nums text-foreground">{realPin.pin}</span>
-                  <span className="text-[11.5px] text-muted-foreground">Valid: <b className="tabular-nums text-foreground/85">{realPin.valid.toLocaleString("en-IN")}</b></span>
+                  <span className="text-[11.5px] text-muted-foreground">{assumedScenario ? "Assigned valid" : "Valid"}: <b className="tabular-nums text-foreground/85">{realPin.valid.toLocaleString("en-IN")}</b></span>
                 </div>
-                <ul className="mt-3 space-y-2">
+                <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Modelled survey share</p>
+                <ul className="mt-1.5 space-y-2">
                   {realShares.length === 0 ? (
                     <li className="text-[12px] text-muted-foreground">No valid party responses for this PIN.</li>
                   ) : (
@@ -417,6 +439,9 @@ export default function TamilNaduDashboard() {
                     ))
                   )}
                 </ul>
+                {assumedScenario && (
+                  <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">PIN locations are assumed from district information. These figures illustrate an allocation scenario and do not measure actual PIN-level voting patterns.</p>
+                )}
                 <p className="mt-2 text-[10px] leading-relaxed text-saffron-2">
                   {assumedScenario ? "Assumed PIN (district-based) — not measured local survey coverage. " : ""}
                   {realPin.locationAvailable ? "Marker plotted from the uploaded location reference." : "Map location unavailable — no reliable postal-location reference for this PIN."}
@@ -551,7 +576,9 @@ export default function TamilNaduDashboard() {
                     const on = activePincode === p.pin;
                     return (
                       <li key={p.pin}>
-                        <button type="button" title={`${p.pin}${p.district ? ` · ${p.district}` : ""}`} aria-pressed={on} onMouseEnter={() => setHoveredDistrict(null)} onClick={() => onSelectPincode(p.pin)}
+                        <button type="button"
+                          title={`PIN ${p.pin} · ${p.district ?? "district unknown"}${p.districtBasis ? ` (${p.districtBasis} district)` : ""} · ${assumedScenario ? "assigned" : "valid"} ${p.valid.toLocaleString("en-IN")}${p.basis ? ` · ${p.basis}` : ""}${p.source ? ` · ${p.source}` : ""} · ${p.locationAvailable ? "location available" : "no reliable postal location"}`}
+                          aria-pressed={on} onMouseEnter={() => setHoveredDistrict(null)} onClick={() => onSelectPincode(p.pin)}
                           className={cn("flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60", on ? "bg-saffron/15 text-foreground" : "text-foreground/75 hover:bg-elevated hover:text-foreground")}>
                           <span className="tabular-nums font-medium">{p.pin}</span>
                           {assumedScenario && <span className="rounded border border-saffron/40 bg-saffron/10 px-1 py-px text-[9px] uppercase tracking-wide text-saffron-2" title="PIN assigned by district-based assumption — not a measured location">assumed</span>}

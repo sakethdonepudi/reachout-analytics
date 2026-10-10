@@ -15,9 +15,10 @@ export async function GET(req: NextRequest) {
   const caseStudyId = (sp.get("caseStudyId") ?? "").trim();
   if (!caseStudyId) return Response.json({ ok: false, error: "caseStudyId is required" }, { status: 400 });
   const pollType = sp.get("pollType") === "opinion" ? "opinion" : "exit";
+  const includeEstimated = sp.get("includeEstimated") !== "0";
 
   const [preview, scenario] = await Promise.all([
-    previewPinAssignment(caseStudyId, pollType),
+    previewPinAssignment(caseStudyId, pollType, includeEstimated),
     getPinScenario(caseStudyId, pollType),
   ]);
   return Response.json({ ok: preview.ok, preview, scenario }, { headers: { "Cache-Control": "no-store" } });
@@ -29,12 +30,15 @@ export async function POST(req: NextRequest) {
   if ("deny" in auth) return auth.deny;
   if (!(await isConfigured())) return Response.json({ ok: false, error: "Database not configured" }, { status: 503 });
 
-  let body: { caseStudyId?: string; pollType?: string } = {};
+  let body: { caseStudyId?: string; pollType?: string; includeEstimated?: boolean; confirm?: boolean } = {};
   try { body = await req.json(); } catch { return Response.json({ ok: false, error: "Invalid JSON" }, { status: 400 }); }
   const caseStudyId = String(body.caseStudyId ?? "").trim();
   if (!caseStudyId) return Response.json({ ok: false, error: "caseStudyId is required" }, { status: 400 });
   const pollType = body.pollType === "opinion" ? "opinion" : "exit";
+  // Explicit confirmation is required before committing.
+  if (body.confirm !== true) return Response.json({ ok: false, error: "Confirmation required (confirm: true)" }, { status: 400 });
+  const includeEstimated = body.includeEstimated !== false;
 
-  const preview = await applyPinAssignment(caseStudyId, pollType);
+  const preview = await applyPinAssignment(caseStudyId, pollType, includeEstimated);
   return Response.json({ ok: preview.ok, preview }, { status: preview.ok ? 200 : 500 });
 }

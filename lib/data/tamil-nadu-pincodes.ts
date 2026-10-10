@@ -18,12 +18,91 @@ export const POSTAL_REFERENCE = {
   name: "India Post PIN directory (data.gov.in) — bundled TN district↔PIN reference",
   shortName: "India Post PIN directory",
   source: "https://data.gov.in (India Post PIN codes)",
-  version: "bundled subset",
+  version: "assumed-pin-ref-2026-02.1 (bundled TN subset)",
   note:
     "Verified PIN↔district pairs, bundled as a representative subset of the India Post PIN directory. " +
-    "Used only to pick candidate PINs for the assumed-PIN scenario; it is not a complete postal directory " +
+    "Used only to choose candidate PINs for the assumed-PIN scenario; it is not a complete postal directory " +
     "and does not represent a respondent's real location.",
 } as const;
+
+/**
+ * District-name reconciliation. The survey data uses shortened/renamed
+ * spellings for some districts; these map a data spelling (lowercased,
+ * alphanumerics only) to the canonical reference district.
+ */
+export const DISTRICT_ALIASES: Record<string, string> = {
+  kanniyakumari: "Kanyakumari",
+  kanyakumari: "Kanyakumari",
+  tirunelveli: "Tirunelveli",
+  nellai: "Tirunelveli",
+  thoothukudi: "Thoothukkudi",
+  tuticorin: "Thoothukkudi",
+  thoothukkudi: "Thoothukkudi",
+  tiruchirappalli: "Tiruchirappalli",
+  trichy: "Tiruchirappalli",
+  trichinopoly: "Tiruchirappalli",
+  nilgiri: "Nilgiris",
+  nilgiris: "Nilgiris",
+  thenilgiris: "Nilgiris",
+  villupuram: "Viluppuram",
+  viluppuram: "Viluppuram",
+  vizhupuram: "Viluppuram",
+  tirupattur: "Tirupathur",
+  tirupathur: "Tirupathur",
+  kanchipuram: "Kancheepuram",
+  kancheepuram: "Kancheepuram",
+  sivagangai: "Sivaganga",
+  sivaganga: "Sivaganga",
+  ramnad: "Ramanathapuram",
+  ramanathapuram: "Ramanathapuram",
+  pudukkottai: "Pudukkottai",
+  thiruvarur: "Thiruvarur",
+  tiruvarur: "Thiruvarur",
+  nagapattinam: "Nagapattinam",
+  nagappattinam: "Nagapattinam",
+  mayiladuthurai: "Mayiladuthurai",
+  mayiladuthurai_: "Mayiladuthurai",
+  mayavaram: "Mayiladuthurai",
+  krishnagiri: "Krishnagiri",
+  dharmapuri: "Dharmapuri",
+  namakkal: "Namakkal",
+  perambalur: "Perambalur",
+  karur: "Karur",
+  erode: "Erode",
+  salem: "Salem",
+  coimbatore: "Coimbatore",
+  kovai: "Coimbatore",
+  tiruppur: "Tiruppur",
+  tirupur: "Tiruppur",
+  cuddalore: "Cuddalore",
+  chengalpattu: "Chengalpattu",
+  chengalpet: "Chengalpattu",
+  kallakurichi: "Kallakurichi",
+  tenkasi: "Tenkasi",
+  chennai: "Chennai",
+  madras: "Chennai",
+  madurai: "Madurai",
+  vellore: "Vellore",
+  ranipet: "Ranipet",
+  ranipettai: "Ranipet",
+  tiruvannamalai: "Tiruvannamalai",
+  tiruvannamalai_: "Tiruvannamalai",
+  ariyalur: "Ariyalur",
+  dindigul: "Dindigul",
+  theni: "Theni",
+  virudhunagar: "Virudhunagar",
+  thanjavur: "Thanjavur",
+  tanjore: "Thanjavur",
+  thiruvallur: "Thiruvallur",
+  tiruvallur: "Thiruvallur",
+  tiruvallur_: "Thiruvallur",
+};
+
+/**
+ * Verified coordinates are not bundled in this repository, so no markers are
+ * fabricated. Keys are canonical (normalised) PIN codes; empty by design.
+ */
+export const PIN_COORDINATES: Record<string, { lat: number; lng: number }> = {};
 
 export const TN_DISTRICT_PINCODES: Record<string, string[]> = {
   Ariyalur: ["621704", "621705", "621707", "621708", "621709"],

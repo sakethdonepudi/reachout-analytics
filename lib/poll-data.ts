@@ -20,6 +20,7 @@ export const SHEET_OF: Record<PollType, (typeof SHEETS)[number]> = { opinion: "O
 export const HEADERS = [
   "Response ID", "Survey", "State", "District", "Assembly Constituency", "PIN Code",
   "Assumed PIN Code", "PIN Geography Basis", "PIN Mapping Source", "PIN Assignment Method",
+  "PIN Allocation Version", "PIN District Basis",
   "Party", "Entry Date",
   "Response Status", "Form ID", "Zone", "District Original", "Assembly Constituency Original", "Party Original",
   "Entry Date Original", "Month", "Source Row", "District Key", "PIN Status", "Entry Datetime ISO", "Timing Group",
