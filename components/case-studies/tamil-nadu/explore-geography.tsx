@@ -8,7 +8,7 @@ import type { MapMode } from "./tamil-nadu-map";
 const TABS: { id: MapMode; label: string; Icon: typeof MapIcon }[] = [
   { id: "state", label: "State", Icon: MapIcon },
   { id: "district", label: "District", Icon: MapPin },
-  { id: "pincode", label: "PIN Code", Icon: Navigation },
+  { id: "pincode", label: "PIN Codes", Icon: Navigation },
 ];
 
 /**
