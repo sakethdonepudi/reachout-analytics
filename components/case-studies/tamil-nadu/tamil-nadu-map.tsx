@@ -74,10 +74,14 @@ type Props = {
   theme: ThemeName;
   /** True when a published dataset drives the fills (even if it has no rows). */
   intensityActive?: boolean;
+  /** True when the combined assumed-PIN scenario drives the fills. */
+  mapScenario?: boolean;
   /** district → intensity band (0–4); -1 = no responses. */
   bandByName?: Record<string, number>;
   liveValid?: Record<string, number>;
   liveShare?: Record<string, number>;
+  /** Recorded counts per district (scenario mode) for recorded-vs-allocated tooltips. */
+  scenarioRecorded?: Record<string, number>;
   pollLabel?: string;
   basisLabel?: string;
   resetNonce?: number;
@@ -102,7 +106,7 @@ type DistrictState = {
 export default function TamilNaduMap(props: Props) {
   const {
     pollType, districts: pollData, selectedDistricts, hoveredDistrict, activePincode,
-    mode, layers, theme, intensityActive, bandByName, liveValid, liveShare, pollLabel, basisLabel, resetNonce,
+    mode, layers, theme, intensityActive, mapScenario, bandByName, liveValid, liveShare, scenarioRecorded, pollLabel, basisLabel, resetNonce,
     onHoverDistrict, onSelectDistrict, onSelectPincode,
   } = props;
 
@@ -115,8 +119,8 @@ export default function TamilNaduMap(props: Props) {
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const live = useRef({ pollType, districts: pollData, selectedDistricts, hoveredDistrict, activePincode, mode, layers, theme, intensityActive, bandByName, liveValid, liveShare, pollLabel, basisLabel, onHoverDistrict, onSelectDistrict, onSelectPincode });
-  live.current = { pollType, districts: pollData, selectedDistricts, hoveredDistrict, activePincode, mode, layers, theme, intensityActive, bandByName, liveValid, liveShare, pollLabel, basisLabel, onHoverDistrict, onSelectDistrict, onSelectPincode };
+  const live = useRef({ pollType, districts: pollData, selectedDistricts, hoveredDistrict, activePincode, mode, layers, theme, intensityActive, mapScenario, bandByName, liveValid, liveShare, scenarioRecorded, pollLabel, basisLabel, onHoverDistrict, onSelectDistrict, onSelectPincode });
+  live.current = { pollType, districts: pollData, selectedDistricts, hoveredDistrict, activePincode, mode, layers, theme, intensityActive, mapScenario, bandByName, liveValid, liveShare, scenarioRecorded, pollLabel, basisLabel, onHoverDistrict, onSelectDistrict, onSelectPincode };
 
   const apiRef = useRef<{ rebuildPins: () => void; setSelection: (selected: string[]) => void; reset: () => void } | null>(null);
 
@@ -486,7 +490,13 @@ export default function TamilNaduMap(props: Props) {
         let data: MapTooltipData | null = null;
         if (liveBands) {
           const v = live.current.liveValid?.[hovered] ?? 0;
-          data = { kind: "district", name: hovered, samples: v, results: { aiadmk: 0, dmk: 0, tvk: 0, others: 0 }, valid: v, sharePct: live.current.liveShare?.[hovered] ?? 0, pollLabel: live.current.pollLabel, basisLabel: live.current.basisLabel };
+          const rec = live.current.scenarioRecorded?.[hovered];
+          data = {
+            kind: "district", name: hovered, samples: v, results: { aiadmk: 0, dmk: 0, tvk: 0, others: 0 },
+            valid: v, sharePct: live.current.liveShare?.[hovered] ?? 0, pollLabel: live.current.pollLabel, basisLabel: live.current.basisLabel,
+            scenario: live.current.mapScenario || undefined,
+            recorded: rec, allocated: rec === undefined ? undefined : Math.max(0, v - rec),
+          };
         } else if (row) {
           data = { kind: "district", name: hovered, samples: row.samples, results: row.results };
         }

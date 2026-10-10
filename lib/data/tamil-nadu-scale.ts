@@ -17,10 +17,13 @@ export const BAND_COLORS: Record<ThemeName, string[]> = {
   dark: ["#244066", "#2f5686", "#3b6ea8", "#4d8fd0", "#79b4f0"],
 };
 
-/** Districts with no survey responses. */
+/**
+ * Districts with no recorded responses. Neutral slate / light grey so the
+ * fill stays readable (never black) while boundaries and labels remain visible.
+ */
 export const NO_DATA_COLOR: Record<ThemeName, string> = {
-  light: "#e9edf1",
-  dark: "#20293a",
+  light: "#e6e9ee",
+  dark: "#41506a",
 };
 
 /** Selected-district fill + its outline (brand orange family). */

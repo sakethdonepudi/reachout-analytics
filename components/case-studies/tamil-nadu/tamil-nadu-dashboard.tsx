@@ -73,14 +73,16 @@ export default function TamilNaduDashboard() {
   }, [notice]);
 
   /* ---- published per-district survey aggregates (live) ---- */
-  const [live, setLive] = useState<{ published: boolean; districts: { district: string; total: number; valid: number; parties: Record<string, number> }[]; valid: number; total: number } | null>(null);
+  const [live, setLive] = useState<{ published: boolean; assumed?: boolean; districts: { district: string; total: number; valid: number; parties?: Record<string, number>; recorded?: number; allocated?: number }[]; valid: number; total: number } | null>(null);
   useEffect(() => {
     const ctrl = new AbortController();
-    fetch(`/api/public/case-studies/tamil-nadu/districts?pollType=${pollType}&basis=${view === "assumed" ? "recorded" : view}`, { cache: "no-store", signal: ctrl.signal })
+    fetch(`/api/public/case-studies/tamil-nadu/districts?pollType=${pollType}&basis=${view}`, { cache: "no-store", signal: ctrl.signal })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (ctrl.signal.aborted) return;
-        setLive(d && d.published ? { published: true, districts: d.districts ?? [], valid: d.valid ?? 0, total: d.total ?? 0 } : { published: false, districts: [], valid: 0, total: 0 });
+        setLive(d && d.published
+          ? { published: true, assumed: !!d.assumed, districts: (d.districts ?? []).map((x: { district: string; total?: number; valid?: number; parties?: Record<string, number>; recorded?: number; allocated?: number }) => ({ district: x.district, total: x.total ?? 0, valid: x.valid ?? 0, parties: x.parties, recorded: x.recorded, allocated: x.allocated })), valid: d.valid ?? 0, total: d.total ?? 0 }
+          : { published: false, districts: [], valid: 0, total: 0 });
       })
       .catch(() => { if (!ctrl.signal.aborted) setLive({ published: false, districts: [], valid: 0, total: 0 }); });
     return () => ctrl.abort();
@@ -152,6 +154,15 @@ export default function TamilNaduDashboard() {
   const pollLabel = pollType === "exit" ? "Exit Poll" : "Opinion Poll";
   const basisLabel = view === "assumed" ? "Assumed PIN" : view === "estimated" ? "Estimated" : "Recorded";
   const assumedScenario = view === "assumed";
+  const mapScenario = assumedScenario;
+
+  // Recorded counts per district (scenario mode) for the recorded-vs-allocated tooltip.
+  const scenarioRecorded = useMemo(() => {
+    if (!mapScenario || !live?.published) return undefined;
+    const m: Record<string, number> = {};
+    for (const d of live.districts) m[d.district] = d.recorded ?? 0;
+    return m;
+  }, [mapScenario, live]);
 
   /* PIN availability comes from the published dataset; the demo path is used
      only when no dataset is published. */
@@ -186,7 +197,7 @@ export default function TamilNaduDashboard() {
     const rows = selectedDistricts.length ? live.districts.filter((d) => selectedDistricts.includes(d.district)) : live.districts;
     const denom = rows.reduce((a, d) => a + d.valid, 0);
     const parties: Record<string, number> = {};
-    for (const d of rows) for (const [p, c] of Object.entries(d.parties)) parties[p] = (parties[p] ?? 0) + c;
+    for (const d of rows) for (const [p, c] of Object.entries(d.parties ?? {})) parties[p] = (parties[p] ?? 0) + c;
     const shares = Object.entries(parties)
       .map(([party, count]) => ({ party, count, pct: denom ? +((count / denom) * 100).toFixed(2) : 0 }))
       .sort((a, b) => b.count - a.count);
@@ -368,9 +379,11 @@ export default function TamilNaduDashboard() {
             layers={layers}
             theme={theme}
             intensityActive={intensityActive}
+            mapScenario={mapScenario}
             bandByName={intensity?.bandByName}
             liveValid={intensity?.liveValid}
             liveShare={intensity?.liveShare}
+            scenarioRecorded={scenarioRecorded}
             pollLabel={pollLabel}
             basisLabel={basisLabel}
             resetNonce={resetNonce}

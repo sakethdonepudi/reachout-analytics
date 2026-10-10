@@ -200,6 +200,11 @@ export function referenceAudit() {
   };
 }
 
+/** Canonical reference district names (for the coverage-scenario pool). */
+export function referenceDistrictNames(): string[] {
+  return [...DISTRICT_TO_PINS.values()].map((e) => e.name).sort();
+}
+
 export type PinLocationRef = { known: boolean; district: string | null };
 
 /**

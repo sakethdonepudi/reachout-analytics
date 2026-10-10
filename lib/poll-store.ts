@@ -380,6 +380,53 @@ export function assemblePinAggregates(rows: PinGroupRow[]): PinAggregates {
   return { pins, total, valid, withPin, withoutPin: total - withPin, invalidPinResponses };
 }
 
+export type ScenarioDistrictCount = { district: string; recorded: number; allocated: number; total: number };
+export type ScenarioDistrictResult = {
+  districts: ScenarioDistrictCount[];
+  total: number;
+  recordedTotal: number;
+  allocatedTotal: number;
+  unassigned: number;
+  allocationVersion: string | null;
+};
+
+/** Per-district recorded vs allocated counts for the combined scenario map. */
+export async function scenarioDistrictCounts(caseStudyId: string, pollType: PollType): Promise<ScenarioDistrictResult> {
+  const c = await cols();
+  const empty: ScenarioDistrictResult = { districts: [], total: 0, recordedTotal: 0, allocatedTotal: 0, unassigned: 0, allocationVersion: null };
+  if (!c) return empty;
+  const importId = await getActiveImportId(caseStudyId, pollType);
+  if (!importId) return empty;
+  const rows = (await c.responses.aggregate([
+    { $match: { caseStudyId, pollType, importId } },
+    { $group: { _id: { recorded: "$district", allocated: "$pinDistrict", status: "$status" }, n: { $sum: 1 } } },
+  ]).toArray()) as { _id: { recorded?: string; allocated?: string }; n: number }[];
+
+  const map = new Map<string, ScenarioDistrictCount>();
+  const bump = (district: string, key: "recorded" | "allocated", n: number) => {
+    const d = map.get(district) ?? { district, recorded: 0, allocated: 0, total: 0 };
+    d[key] += n;
+    d.total += n;
+    map.set(district, d);
+  };
+  let total = 0, recordedTotal = 0, allocatedTotal = 0, unassigned = 0;
+  for (const r of rows) {
+    const n = r.n;
+    total += n;
+    const rec = String(r._id.recorded ?? "").trim();
+    const alloc = String(r._id.allocated ?? "").trim();
+    if (rec) { recordedTotal += n; bump(rec, "recorded", n); }
+    else if (alloc) { allocatedTotal += n; bump(alloc, "allocated", n); }
+    else unassigned += n;
+  }
+  const scenario = await getPinScenario(caseStudyId, pollType);
+  return {
+    districts: [...map.values()].sort((a, b) => a.district.localeCompare(b.district)),
+    total, recordedTotal, allocatedTotal, unassigned,
+    allocationVersion: scenario?.allocationVersion ?? null,
+  };
+}
+
 export type AssumedPinDetail = {
   pin: string;
   total: number;
@@ -463,7 +510,11 @@ async function assignmentRows(caseStudyId: string, pollType: PollType, importId:
   if (!c) return [];
   const docs = await c.responses
     .find({ caseStudyId, pollType, importId })
-    .project({ _id: 0, responseId: 1, pin: 1, district: 1, estimatedDistrict: 1, scenarioDistrict: 1, status: 1, party: 1 })
+    .project({
+      _id: 0, responseId: 1, pin: 1, district: 1, estimatedDistrict: 1, scenarioDistrict: 1,
+      ac: 1, zone: 1, status: 1, party: 1,
+      assumedPin: 1, pinBasis: 1, pinMappingSource: 1, pinAssignmentMethod: 1, pinAllocationVersion: 1, pinDistrictBasis: 1, pinDistrict: 1,
+    })
     .toArray();
   return docs.map((d) => ({
     responseId: String(d.responseId ?? ""),
@@ -471,8 +522,17 @@ async function assignmentRows(caseStudyId: string, pollType: PollType, importId:
     recordedDistrict: String(d.district ?? ""),
     estimatedDistrict: String(d.estimatedDistrict ?? ""),
     scenarioDistrict: String(d.scenarioDistrict ?? ""),
+    assemblyConstituency: String(d.ac ?? ""),
+    zone: String(d.zone ?? ""),
     status: d.status,
     party: d.party,
+    existingAssumedPin: String(d.assumedPin ?? ""),
+    existingBasis: String(d.pinBasis ?? ""),
+    existingSource: String(d.pinMappingSource ?? ""),
+    existingMethod: String(d.pinAssignmentMethod ?? ""),
+    existingVersion: String(d.pinAllocationVersion ?? ""),
+    existingDistrictBasis: String(d.pinDistrictBasis ?? ""),
+    existingDistrict: String(d.pinDistrict ?? ""),
   }));
 }
 
@@ -528,7 +588,7 @@ export async function applyPinAssignment(caseStudyId: string, pollType: PollType
 
   const docs = await c.responses
     .find({ caseStudyId, pollType, importId })
-    .project({ _id: 1, responseId: 1, pin: 1, district: 1, estimatedDistrict: 1, scenarioDistrict: 1, status: 1, party: 1 })
+    .project({ _id: 1, responseId: 1, pin: 1, district: 1, estimatedDistrict: 1, scenarioDistrict: 1, ac: 1, zone: 1, status: 1, party: 1 })
     .toArray();
   const inputs: AllocInput[] = docs.map((d) => ({
     responseId: String(d.responseId ?? ""),
@@ -536,6 +596,8 @@ export async function applyPinAssignment(caseStudyId: string, pollType: PollType
     recordedDistrict: String(d.district ?? ""),
     estimatedDistrict: String(d.estimatedDistrict ?? ""),
     scenarioDistrict: String(d.scenarioDistrict ?? ""),
+    assemblyConstituency: String(d.ac ?? ""),
+    zone: String(d.zone ?? ""),
     status: d.status,
     party: d.party,
   }));
@@ -551,6 +613,8 @@ export async function applyPinAssignment(caseStudyId: string, pollType: PollType
       pinAssignmentMethod: a.method,
       pinAllocationVersion: a.allocationVersion,
       pinDistrictBasis: a.districtBasis,
+      pinEligibleSource: a.assignmentSource,
+      pinDistrict: a.district,
       "row.Assumed PIN Code": a.assumedPin,
       "row.PIN Geography Basis": a.basisLabel,
       "row.PIN Mapping Source": a.source,

@@ -3,7 +3,7 @@
 import { PARTY_META, PARTY_ORDER, type PartyResult } from "@/lib/data/tamil-nadu-poll-data";
 
 export type MapTooltipData =
-  | { kind: "district"; name: string; samples: number; results: PartyResult; valid?: number; sharePct?: number; pollLabel?: string; basisLabel?: string }
+  | { kind: "district"; name: string; samples: number; results: PartyResult; valid?: number; sharePct?: number; pollLabel?: string; basisLabel?: string; scenario?: boolean; recorded?: number; allocated?: number }
   | { kind: "pincode"; pincode: string; district: string; samples: number; results: PartyResult; pollType: "exit" | "opinion" };
 
 /** Glass tooltip anchored to the pointer. Always spells out party names + %. */
@@ -26,10 +26,20 @@ export default function MapTooltip({ data, x, y }: { data: MapTooltipData; x: nu
 
         {data.kind === "district" && live ? (
           <>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Valid responses: <b className="font-semibold text-foreground">{(data.valid ?? 0).toLocaleString("en-IN")}</b>
-            </p>
-            {data.sharePct !== undefined && (
+            {(data.valid ?? 0) === 0 ? (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">No recorded responses</p>
+            ) : data.scenario && data.recorded !== undefined ? (
+              <>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">Recorded: <b className="font-semibold text-foreground">{data.recorded.toLocaleString("en-IN")}</b></p>
+                <p className="text-[11px] text-muted-foreground">Allocated: <b className="font-semibold text-foreground">{(data.allocated ?? 0).toLocaleString("en-IN")}</b></p>
+                <p className="text-[11px] text-muted-foreground">Scenario total: <b className="font-semibold text-foreground">{(data.valid ?? 0).toLocaleString("en-IN")}</b></p>
+              </>
+            ) : (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Valid responses: <b className="font-semibold text-foreground">{(data.valid ?? 0).toLocaleString("en-IN")}</b>
+              </p>
+            )}
+            {data.sharePct !== undefined && (data.valid ?? 0) > 0 && (
               <p className="text-[11px] text-muted-foreground">
                 Share of state: <b className="font-semibold text-foreground">{data.sharePct.toFixed(1)}%</b>
               </p>

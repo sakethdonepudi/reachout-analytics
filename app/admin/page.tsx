@@ -25,15 +25,18 @@ type PinDistrictBlock = {
 };
 type PinScenarioSummary = {
   total: number; valid: number;
-  recordedPin: number; eligible: number; assigned: number; unresolved: number;
+  recordedPin: number; eligible: number; assigned: number; unresolved: number; coverageAssigned: number;
   byBasis: Record<string, number>;
+  byEligibleSource: Record<string, number>;
   byParty: Record<string, number>;
   byDistrict: PinDistrictBlock[];
   districtsWithoutCandidates: string[];
+  unresolvedGeography: { noDistrict: number; noCandidates: string[] };
   ambiguousPins: string[];
   reference: { name: string; source: string; version: string; note: string };
+  crosswalk: { constituencies: number; version: string; source: string };
   allocationVersion: string;
-  reconcile: { assignedPlusUnresolved: number; eligible: number; ok: boolean; partyOk: boolean };
+  reconcile: { assignedPlusUnresolved: number; eligible: number; ok: boolean; partyOk: boolean; pinDistrictOk: boolean };
 };
 type PinScenarioPreview = {
   ok: boolean; reason?: string; importId: string | null; includeEstimated: boolean;
@@ -49,6 +52,7 @@ const PIN_BASIS_ROWS: { key: string; label: string }[] = [
   { key: "reference-derived", label: "Reference-derived" },
   { key: "district-assumption", label: "District-based assumption" },
   { key: "estimated-district-assumption", label: "Estimated district-based assumption" },
+  { key: "coverage-zone-assumption", label: "Coverage/zone-based assumption" },
   { key: "unassigned", label: "Unassigned" },
 ];
 
@@ -438,6 +442,7 @@ export default function AdminPortal() {
                 {pinPreview?.ok ? (
                   <>
                     <p className="mt-2 text-[11.5px] text-muted-foreground">Reference: {pinPreview.summary.reference.name} · <span className="break-all">{pinPreview.summary.reference.source}</span> · <b>version {pinPreview.summary.reference.version}</b></p>
+                    <p className="mt-1 text-[11.5px] text-muted-foreground">Constituency crosswalk: {pinPreview.summary.crosswalk.constituencies} entries · {pinPreview.summary.crosswalk.version}{pinPreview.summary.crosswalk.constituencies === 0 ? " — none bundled, district-candidate fallback used" : ""}</p>
                     {pinPreview.datasetChanged && (
                       <p className="mt-2 rounded-lg border border-saffron/40 bg-saffron/10 px-3 py-2 text-[12px] text-saffron-2">The active dataset changed since the last allocation — regenerate the preview before committing.</p>
                     )}
@@ -462,6 +467,8 @@ export default function AdminPortal() {
                       <span>Valid party {pinPreview.summary.valid === pinPreview.baseline.valid ? "✓ unchanged" : "⚠ changed"} ({pinPreview.baseline.valid.toLocaleString("en-IN")})</span>
                       <span>{pinPreview.summary.reconcile.ok ? "✓ assigned + unresolved = eligible" : "⚠ reconciliation failed"}</span>
                       <span>{pinPreview.summary.reconcile.partyOk ? "✓ party totals reconcile" : "⚠ party totals differ"}</span>
+                      <span>{pinPreview.summary.reconcile.pinDistrictOk ? "✓ PIN totals = district totals" : "⚠ PIN/district mismatch"}</span>
+                      <span>Coverage-assigned: <b className="tabular-nums text-foreground/85">{pinPreview.summary.coverageAssigned.toLocaleString("en-IN")}</b></span>
                       <span>Allocation version: <b className="text-foreground/85">{pinPreview.allocationVersion}</b></span>
                     </div>
 
@@ -509,8 +516,9 @@ export default function AdminPortal() {
                       </details>
                     )}
 
-                    {(pinPreview.summary.districtsWithoutCandidates.length > 0 || pinPreview.summary.ambiguousPins.length > 0) && (
+                    {(pinPreview.summary.unresolvedGeography.noDistrict > 0 || pinPreview.summary.districtsWithoutCandidates.length > 0 || pinPreview.summary.ambiguousPins.length > 0) && (
                       <div className="mt-2 space-y-1 text-[11.5px] text-saffron-2">
+                        {pinPreview.summary.unresolvedGeography.noDistrict > 0 && <p>Unresolved geography (no district and no zone): {pinPreview.summary.unresolvedGeography.noDistrict.toLocaleString("en-IN")} responses</p>}
                         {pinPreview.summary.districtsWithoutCandidates.length > 0 && <p>Unresolved districts (no reference candidates): {pinPreview.summary.districtsWithoutCandidates.join(", ")}</p>}
                         {pinPreview.summary.ambiguousPins.length > 0 && <p>Ambiguous PIN↔district mappings excluded from candidates: {pinPreview.summary.ambiguousPins.join(", ")}</p>}
                       </div>

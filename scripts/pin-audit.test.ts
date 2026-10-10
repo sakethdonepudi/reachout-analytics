@@ -15,6 +15,7 @@ import { toDoc, assemblePinAggregates, buildRecordsQuery, type PinGroupRow } fro
 import { normalizePin, classifyPin, resolveRowPin, candidatePinsForDistrict } from "@/lib/pin";
 import { allocatePinAssignments, summarizeAllocation, PIN_ALLOCATION_VERSION, PIN_BASIS_LABEL, type AllocInput } from "@/lib/pin-assign";
 import { POSTAL_REFERENCE } from "@/lib/data/tamil-nadu-pincodes";
+import { NO_DATA_COLOR } from "@/lib/data/tamil-nadu-scale";
 
 let pass = 0, fail = 0;
 function ok(name: string, cond: boolean, detail = "") {
@@ -262,6 +263,48 @@ eq("export preserves original PIN for recorded row", exitOut[0]["PIN Code"], can
 eq("export assumed PIN matches allocation", exitOut[0]["Assumed PIN Code"], byId.get(String(exitOut[0]["Response ID"]))!.assumedPin);
 eq("exported allocation version", exitOut[0]["PIN Allocation Version"], PIN_ALLOCATION_VERSION);
 ok("opinion sheet stays empty until real data", XLSX.utils.sheet_to_json(e2eWb.Sheets["Opinion Poll"], { defval: "", raw: true }).length === 0);
+
+/* ---- 11. v2: coverage scenario, reuse, reconciliation, colours ------ */
+console.log("\n11. Coverage scenario, reuse & reconciliation");
+ok("each response appears exactly once in scenario totals", (() => { const ids = committed.map((r) => r.responseId); return ids.length === new Set(ids).size; })());
+ok("PIN totals reconcile with district totals", e2eSummary.reconcile.pinDistrictOk);
+ok("crosswalk empty → district-reference source", recs[1].assignmentSource === "district-reference");
+eq("district fallback label", recs[1].basisLabel, "District-based assumption");
+
+// coverage scenario (zone only, no district)
+const covRows: AllocInput[] = Array.from({ length: 12 }, (_, i) => ({
+  responseId: `COV-${String(i).padStart(2, "0")}`, pin: "", recordedDistrict: "", estimatedDistrict: "", scenarioDistrict: "",
+  zone: "Zone A", party: i % 2 ? "TVK" : "DMK+INC+VCK", status: "valid",
+}));
+const cov = allocatePinAssignments(covRows, { includeEstimated: true });
+ok("zone-only records get coverage assignments", cov.every((r) => r.basis === "coverage-zone-assumption" && candidatePinsForDistrict(r.district).includes(r.assumedPin)));
+ok("coverage spreads across multiple districts (incl. zero-count)", new Set(cov.map((r) => r.district)).size > 1);
+ok("coverage source labelled", cov.every((r) => r.assignmentSource === "coverage-zone" && r.districtBasis === "coverage"));
+ok("deterministic coverage", JSON.stringify(allocatePinAssignments(covRows, { includeEstimated: true })) === JSON.stringify(cov));
+
+// reuse existing versioned assignment (not allocated twice)
+const reused = allocatePinAssignments([{
+  responseId: "RE-1", pin: "", recordedDistrict: "", estimatedDistrict: "Salem", scenarioDistrict: "Salem",
+  existingAssumedPin: "636001", existingBasis: "estimated-district-assumption", existingVersion: "assumed-pin-v1",
+  existingSource: "India Post PIN directory", existingMethod: "previous run", existingDistrictBasis: "estimated",
+  party: "TVK", status: "valid",
+}]);
+eq("existing versioned assignment reused", reused[0].assumedPin, "636001");
+eq("reuse keeps prior version", reused[0].allocationVersion, "assumed-pin-v1");
+eq("reuse marked as reused", reused[0].assignmentSource, "reused");
+
+// no district and no zone → unassigned, modelled method visible
+const nz = allocatePinAssignments([{ responseId: "NZ-1", pin: "", recordedDistrict: "", estimatedDistrict: "", scenarioDistrict: "", party: "TVK", status: "valid" }]);
+eq("no district + no zone → unassigned", nz[0].basis, "unassigned");
+ok("unassigned keeps a visible method", nz[0].method === "Insufficient geographic information");
+
+// zero-response colour is a readable slate, never black
+ok("dark zero-response colour is not black", NO_DATA_COLOR.dark.toLowerCase() !== "#000000" && NO_DATA_COLOR.dark.toLowerCase() !== "#000");
+ok("light/dark zero-response colours differ", NO_DATA_COLOR.light !== NO_DATA_COLOR.dark);
+
+// recorded / estimated / assumed distinction preserved in the export
+ok("export distinguishes basis labels", exitOut.some((r) => r["PIN Geography Basis"] === "District-based assumption") && exitOut.some((r) => r["PIN Geography Basis"] === "Reference-derived"));
+ok("export carries district-basis field", exitOut.every((r) => "PIN District Basis" in r));
 
 console.log(`\n${fail === 0 ? "ALL PASSED" : "FAILURES"}: ${pass} passed, ${fail} failed (case study: ${TEST_CASE})`);
 if (fail > 0) process.exitCode = 1;
