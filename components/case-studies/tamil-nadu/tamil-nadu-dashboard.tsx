@@ -62,6 +62,8 @@ export default function TamilNaduDashboard() {
   const [view, setView] = useState<"recorded" | "estimated" | "assumed">("recorded");
   const [layers, setLayers] = useState<MapLayers>({ boundaries: true, pins: true, labels: true, context: false });
   const [pinQuery, setPinQuery] = useState("");
+  /** Clearly-labelled demo mode: shows the original synthetic PIN markers. */
+  const [demoPins, setDemoPins] = useState(false);
   const [resetNonce, setResetNonce] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
@@ -146,6 +148,9 @@ export default function TamilNaduDashboard() {
   }, []);
 
   const intensityActive = !!live?.published;
+  // When demo mode is on, the PIN experience uses the labelled demonstration
+  // dataset (synthetic positions + sample results) instead of uploaded data.
+  const liveActive = intensityActive && !demoPins;
 
   /* Five data-driven intensity bands over valid survey responses. */
   const intensity = useMemo(() => {
@@ -373,6 +378,14 @@ export default function TamilNaduDashboard() {
             </div>
           </details>
 
+          {intensityActive && (
+            <label className="flex items-center gap-2 rounded-2xl border border-border bg-card/60 px-3.5 py-2.5 text-[11.5px] text-muted-foreground">
+              <input type="checkbox" checked={demoPins} onChange={(e) => setDemoPins(e.target.checked)} />
+              Demonstration PIN markers
+              <span className="ml-auto rounded border border-border px-1 py-px text-[9px] uppercase tracking-wide">demo</span>
+            </label>
+          )}
+
           {intensity && (
             <SurveyLegend theme={theme} ranges={intensity.ranges} hasData={intensity.hasData} pollLabel={pollLabel} basisLabel={basisLabel} className="hidden lg:block" />
           )}
@@ -391,6 +404,7 @@ export default function TamilNaduDashboard() {
             theme={theme}
             intensityActive={intensityActive}
             mapScenario={mapScenario}
+            forceDemo={demoPins}
             bandByName={intensity?.bandByName}
             liveValid={intensity?.liveValid}
             liveShare={intensity?.liveShare}
@@ -429,7 +443,7 @@ export default function TamilNaduDashboard() {
           <div className="my-3.5 border-t border-dashed border-border" />
 
           {geoMode === "pincode" ? (
-            intensityActive && pinViewState === "assumed-empty" ? (
+            liveActive && pinViewState === "assumed-empty" ? (
               <div>
                 <p className={LABEL}>Assumed PIN distribution</p>
                 <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">Assumed PIN allocation has not been generated.</p>
@@ -438,7 +452,7 @@ export default function TamilNaduDashboard() {
                 </Link>
                 <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">The assumed-PIN allocation is generated and versioned in the admin portal, then enabled here.</p>
               </div>
-            ) : intensityActive && pinViewState === "recorded-empty" ? (
+            ) : liveActive && pinViewState === "recorded-empty" ? (
               <div>
                 <p className={LABEL}>Recorded PIN codes</p>
                 <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">This uploaded dataset contains no supplied PIN codes, so recorded PIN-level analysis isn’t available.</p>
@@ -591,20 +605,20 @@ export default function TamilNaduDashboard() {
               onClear={() => applyMode("state")}
               onHover={setHoveredDistrict}
             />
-          ) : intensityActive && pinViewState === "assumed-empty" ? (
+          ) : liveActive && pinViewState === "assumed-empty" ? (
             <div className="flex min-h-0 flex-1 flex-col">
               <p className={cn("mb-2", LABEL)}>Assumed PIN distribution</p>
               <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">Assumed PIN allocation has not been generated.</p>
               <Link href="/admin" className="inline-flex w-fit items-center gap-1.5 rounded-full border border-saffron/50 bg-saffron/10 px-3 py-1.5 text-[12px] font-semibold text-saffron-2 transition-colors hover:bg-saffron/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">Open admin portal</Link>
             </div>
-          ) : intensityActive && pinViewState === "recorded-empty" ? (
+          ) : liveActive && pinViewState === "recorded-empty" ? (
             <div className="flex min-h-0 flex-1 flex-col">
               <p className={cn("mb-2", LABEL)}>Recorded PIN codes</p>
               <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">No supplied PIN codes in this dataset.</p>
               <button type="button" onClick={() => changeView("assumed")} className="inline-flex w-fit items-center gap-1.5 rounded-full border border-saffron/50 bg-saffron/10 px-3 py-1.5 text-[12px] font-semibold text-saffron-2 transition-colors hover:bg-saffron/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">Switch to Assumed PIN distribution</button>
               <p className="mt-1.5 text-[10.5px] text-muted-foreground">{assumedAvailable ? "An assumed-PIN allocation is available." : "No assumed-PIN allocation has been generated yet."}</p>
             </div>
-          ) : intensityActive ? (
+          ) : liveActive ? (
             <div className="flex min-h-0 flex-1 flex-col">
               <p className={cn("mb-3", LABEL)}>
                 {focusDistrict ? `${focusDistrict} · ` : "Statewide · "}{filteredPublishedPins.length.toLocaleString("en-IN")} PIN {filteredPublishedPins.length === 1 ? "code" : "codes"}
@@ -636,6 +650,7 @@ export default function TamilNaduDashboard() {
           ) : (
             <div className="flex min-h-0 flex-1 flex-col">
               <p className={cn("mb-3", LABEL)}>{focusDistrict ? `${focusDistrict} · PIN codes` : "Statewide · PIN codes"}</p>
+              {demoPins && <p className="mb-2 rounded-lg border border-saffron/30 bg-saffron/10 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-saffron-2">Demonstration PIN data — synthetic positions and sample shares, not uploaded survey data.</p>}
               <label className="relative mb-3 block">
                 <input value={pinQuery} onChange={(e) => setPinQuery(e.target.value)} placeholder="Search PIN code..." aria-label="Search PIN codes" className="w-full rounded-xl border border-border bg-elevated/60 px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground outline-none focus:border-saffron/60 focus:ring-2 focus:ring-saffron/20" />
               </label>
