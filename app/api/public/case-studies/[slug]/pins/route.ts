@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { getCase } from "@/lib/case-registry";
 import { pinAggregates, assumedPinDetails, isConfigured } from "@/lib/poll-store";
+import { coordinatesForPin } from "@/lib/pin";
 
 export const runtime = "nodejs";
 
@@ -25,21 +26,27 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   if (basis === "assumed") {
     const res = await assumedPinDetails(rec.id, pollType);
-    const pins = res.pins.map((p) => ({
-      pin: p.pin,
-      total: p.total,
-      valid: p.valid,
-      parties: p.parties,
-      district: p.district,
-      districtBasis: p.districtBasis,
-      basis: p.basisLabel,
-      basisKey: p.basis,
-      source: p.source,
-      method: p.method,
-      allocationVersion: p.allocationVersion,
-      // Verified coordinates are not bundled, so no markers are fabricated.
-      locationAvailable: false,
-    }));
+    const pins = res.pins.map((p) => {
+      const coord = coordinatesForPin(p.pin);
+      return {
+        pin: p.pin,
+        total: p.total,
+        valid: p.valid,
+        parties: p.parties,
+        district: p.district,
+        districtBasis: p.districtBasis,
+        basis: p.basisLabel,
+        basisKey: p.basis,
+        source: p.source,
+        method: p.method,
+        allocationVersion: p.allocationVersion,
+        // Postal-area reference coordinate (post-office locality), not a respondent location.
+        locationAvailable: !!coord,
+        lat: coord?.lat ?? null,
+        lng: coord?.lng ?? null,
+        postalPlace: coord?.place ?? null,
+      };
+    });
     const s = res.scenario;
     return Response.json(
       {
@@ -72,7 +79,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const agg = await pinAggregates(rec.id, pollType, basis === "estimated");
   const pins = agg.pins.map((p) => {
     const district = Object.entries(p.districts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-    return { pin: p.pin, total: p.total, valid: p.valid, parties: p.parties, district, locationAvailable: false };
+    const coord = coordinatesForPin(p.pin);
+    return { pin: p.pin, total: p.total, valid: p.valid, parties: p.parties, district, locationAvailable: !!coord, lat: coord?.lat ?? null, lng: coord?.lng ?? null, postalPlace: coord?.place ?? null };
   });
 
   return Response.json(

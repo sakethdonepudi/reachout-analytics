@@ -12,7 +12,8 @@
 import * as XLSX from "xlsx";
 import { parseWorkbook, validateSheet, buildWorkbook, type Row } from "@/lib/poll-data";
 import { toDoc, assemblePinAggregates, buildRecordsQuery, type PinGroupRow } from "@/lib/poll-store";
-import { normalizePin, classifyPin, resolveRowPin, candidatePinsForDistrict, referenceAudit } from "@/lib/pin";
+import { normalizePin, classifyPin, resolveRowPin, candidatePinsForDistrict, referenceAudit, coordinatesForPin } from "@/lib/pin";
+import { PIN_COORDINATE_COVERAGE, PIN_COORDINATE_REFERENCE } from "@/lib/data/tamil-nadu-pin-coordinates";
 import { allocatePinAssignments, summarizeAllocation, PIN_ALLOCATION_VERSION, PIN_BASIS_LABEL, type AllocInput } from "@/lib/pin-assign";
 import { POSTAL_REFERENCE } from "@/lib/data/tamil-nadu-pincodes";
 import { NO_DATA_COLOR } from "@/lib/data/tamil-nadu-scale";
@@ -345,6 +346,19 @@ for (const [key, exp] of expected) {
   if (got !== exp) reconcileOk = false;
 }
 ok("district+party PIN totals reconcile with eligible responses", reconcileOk);
+
+/* ---- 13. survey-view postal markers (from the committed allocation) --- */
+console.log("\n13. Survey-view postal markers");
+eq("coordinate reference source", PIN_COORDINATE_REFERENCE.source, "https://api.zippopotam.us (GeoNames)");
+ok("coordinate coverage is disclosed and partial", PIN_COORDINATE_COVERAGE.withCoordinates > 0 && PIN_COORDINATE_COVERAGE.withCoordinates < PIN_COORDINATE_COVERAGE.total);
+eq("coordinate coverage totals reconcile", PIN_COORDINATE_COVERAGE.withCoordinates + PIN_COORDINATE_COVERAGE.withoutCoordinates, PIN_COORDINATE_COVERAGE.total);
+ok("coordinates are PIN-level postal areas, labelled", PIN_COORDINATE_REFERENCE.kind === "postal-reference" && /not respondent/i.test(PIN_COORDINATE_REFERENCE.note));
+const assignedPins = [...new Set(committed.filter((r) => r.assumedPin).map((r) => r.assumedPin))];
+const plottedPins = assignedPins.filter((p) => coordinatesForPin(p));
+const unplottedPins = assignedPins.filter((p) => !coordinatesForPin(p));
+ok("some assigned PINs have a postal reference coordinate (plotted)", plottedPins.length > 0, `assigned ${assignedPins.length}, plotted ${plottedPins.length}`);
+ok("plotted + unplotted reconcile with assigned PINs", plottedPins.length + unplottedPins.length === assignedPins.length);
+ok("unplotted PINs remain available (no coordinate dropped from allocation)", unplottedPins.every((p) => assignedPins.includes(p)));
 
 console.log(`\n${fail === 0 ? "ALL PASSED" : "FAILURES"}: ${pass} passed, ${fail} failed (case study: ${TEST_CASE})`);
 if (fail > 0) process.exitCode = 1;

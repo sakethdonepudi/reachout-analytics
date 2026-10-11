@@ -11,7 +11,8 @@
      "unknown location" simply means no reliable location reference.
    ===================================================================== */
 
-import { TN_DISTRICT_PINCODES, DISTRICT_ALIASES, PIN_COORDINATES, POSTAL_REFERENCE } from "./data/tamil-nadu-pincodes";
+import { TN_DISTRICT_PINCODES, DISTRICT_ALIASES, POSTAL_REFERENCE } from "./data/tamil-nadu-pincodes";
+import { PIN_COORDINATES } from "./data/tamil-nadu-pin-coordinates";
 
 export const PIN_CANONICAL = "PIN Code";
 
@@ -191,8 +192,8 @@ export function isAmbiguousPin(pin: string): boolean {
   return AMBIGUOUS_PINS.has(normalizePin(pin));
 }
 
-/** Verified coordinates for a PIN, or null when none are bundled. */
-export function coordinatesForPin(pin: string): { lat: number; lng: number } | null {
+/** Postal-area reference coordinate for a PIN, or null when none is available. */
+export function coordinatesForPin(pin: string): { lat: number; lng: number; place: string } | null {
   return PIN_COORDINATES[normalizePin(pin)] ?? null;
 }
 

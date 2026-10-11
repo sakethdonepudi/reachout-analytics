@@ -100,12 +100,6 @@ export const DISTRICT_ALIASES: Record<string, string> = {
   tiruvallur_: "Thiruvallur",
 };
 
-/**
- * Verified coordinates are not bundled in this repository, so no markers are
- * fabricated. Keys are canonical (normalised) PIN codes; empty by design.
- */
-export const PIN_COORDINATES: Record<string, { lat: number; lng: number }> = {};
-
 export const TN_DISTRICT_PINCODES: Record<string, string[]> = {
   Ariyalur: ["621704", "621705", "621707", "621708", "621709"],
   Chengalpattu: ["603001", "603002", "603003", "603004", "603109", "603110"],

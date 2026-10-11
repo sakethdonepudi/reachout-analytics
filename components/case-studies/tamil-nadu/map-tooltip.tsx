@@ -4,7 +4,7 @@ import { PARTY_META, PARTY_ORDER, type PartyResult } from "@/lib/data/tamil-nadu
 
 export type MapTooltipData =
   | { kind: "district"; name: string; samples: number; results: PartyResult; valid?: number; sharePct?: number; pollLabel?: string; basisLabel?: string; scenario?: boolean; recorded?: number; allocated?: number }
-  | { kind: "pincode"; pincode: string; district: string; samples: number; results: PartyResult; pollType: "exit" | "opinion" };
+  | { kind: "pincode"; pincode: string; district: string; samples: number; results: PartyResult; pollType: "exit" | "opinion"; survey?: boolean; valid?: number; postalPlace?: string | null };
 
 /** Glass tooltip anchored to the pointer. Always spells out party names + %. */
 export default function MapTooltip({ data, x, y }: { data: MapTooltipData; x: number; y: number }) {
@@ -49,6 +49,14 @@ export default function MapTooltip({ data, x, y }: { data: MapTooltipData; x: nu
                 {data.pollLabel}{data.basisLabel ? ` · ${data.basisLabel}` : ""}
               </p>
             )}
+          </>
+        ) : data.kind === "pincode" && data.survey ? (
+          <>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Assigned valid: <b className="font-semibold text-foreground">{(data.valid ?? 0).toLocaleString("en-IN")}</b>
+            </p>
+            <p className="text-[11px] text-muted-foreground">District: <b className="font-semibold text-foreground">{data.district || "—"}</b></p>
+            <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">Postal-area reference{data.postalPlace ? ` · ${data.postalPlace}` : ""} — not a respondent location.</p>
           </>
         ) : (
           <>

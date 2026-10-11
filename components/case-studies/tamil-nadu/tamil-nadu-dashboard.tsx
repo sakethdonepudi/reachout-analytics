@@ -30,11 +30,13 @@ const MODES: { id: MapMode; title: string; desc: string; Icon: typeof MapIcon }[
   { id: "pincode", title: "PIN Code View", desc: "Explore postal codes", Icon: Navigation },
 ];
 
+// NOTE: "Geographic Context" (neighbouring-geography labels) was removed from
+// the map at 8cd7899 and is currently a no-op, so its control is not shown
+// until it is functional again (per the no-dead-toggle requirement).
 const LAYER_LABELS: { id: keyof MapLayers; label: string }[] = [
   { id: "boundaries", label: "District Boundaries" },
   { id: "pins", label: "PIN Code Markers" },
   { id: "labels", label: "District Labels" },
-  { id: "context", label: "Geographic Context" },
 ];
 
 const LABEL = "text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground";
@@ -46,6 +48,7 @@ const ALLOCATION_METHOD =
 type PubPin = {
   pin: string; total: number; valid: number; parties: Record<string, number>;
   district: string | null; locationAvailable: boolean;
+  lat?: number | null; lng?: number | null; postalPlace?: string | null;
   basis?: string; basisKey?: string; source?: string; method?: string; allocationVersion?: string; districtBasis?: string;
 };
 
@@ -209,6 +212,15 @@ export default function TamilNaduDashboard() {
     const q = pinQuery.trim();
     return q ? base.filter((p) => p.pin.includes(q)) : base;
   })();
+
+  // Survey markers: assigned PINs that have a POSTAL-AREA reference coordinate.
+  // Pins without a coordinate stay in the list but are not plotted.
+  const surveyPins = useMemo(
+    () => currentPins
+      .filter((p) => p.lat != null && p.lng != null)
+      .map((p) => ({ pin: p.pin, lat: p.lat as number, lng: p.lng as number, district: p.district ?? "", valid: p.valid, place: p.postalPlace ?? null })),
+    [currentPins],
+  );
 
   // District filter rows use live valid counts when published, else demonstration data.
   const allRows = useMemo(() => {
@@ -405,6 +417,7 @@ export default function TamilNaduDashboard() {
             intensityActive={intensityActive}
             mapScenario={mapScenario}
             forceDemo={demoPins}
+            surveyPins={surveyPins}
             bandByName={intensity?.bandByName}
             liveValid={intensity?.liveValid}
             liveShare={intensity?.liveShare}
