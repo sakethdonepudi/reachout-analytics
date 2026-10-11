@@ -429,7 +429,7 @@ export default function AdminPortal() {
 
               {/* Assumed PIN scenario */}
               <div className="mt-5 rounded-2xl border border-border bg-card/60 p-4">
-                <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><MapIcon className="size-4" /> Assumed PIN scenario</h2>
+                <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><MapIcon className="size-4" /> Generate PIN breakdown</h2>
                 <p className="mt-1 text-[12px] text-muted-foreground">
                   Optional. The original “PIN Code”, district fields, party choices and Response IDs are preserved. Records without a PIN are distributed <b>evenly</b> across the district’s verified candidate PINs, separately within each party group, using a stable Response-ID order — <b>a neutral illustrative allocation, not a recovered respondent location</b>, never calibrated to results. A versioned allocation is stored in separate fields and the two-sheet Excel export.
                 </p>
@@ -531,7 +531,7 @@ export default function AdminPortal() {
                     </label>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <button onClick={loadPinScenario} className="rounded-xl border border-border px-3 py-2 text-[12.5px] hover:bg-elevated">Refresh preview</button>
-                      <button disabled={pinBusy || !pinConfirm} onClick={applyPinScenario} className="rounded-xl bg-saffron px-3 py-2 text-[12.5px] font-semibold text-[#241203] disabled:opacity-50">{pinBusy ? "Applying…" : "Apply assumed-PIN scenario"}</button>
+                      <button disabled={pinBusy || !pinConfirm} onClick={applyPinScenario} className="rounded-xl bg-saffron px-3 py-2 text-[12.5px] font-semibold text-[#241203] disabled:opacity-50">{pinBusy ? "Generating…" : "Generate PIN breakdown"}</button>
                       {pinScenario?.appliedAt && <span className="text-[11.5px] text-muted-foreground">Last applied {new Date(pinScenario.appliedAt).toLocaleString()}{pinScenario.allocationVersion ? ` · ${pinScenario.allocationVersion}` : ""}</span>}
                     </div>
                   </>

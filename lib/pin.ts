@@ -193,7 +193,7 @@ export function isAmbiguousPin(pin: string): boolean {
 }
 
 /** Postal-area reference coordinate for a PIN, or null when none is available. */
-export function coordinatesForPin(pin: string): { lat: number; lng: number; place: string } | null {
+export function coordinatesForPin(pin: string): { lat: number; lng: number; place: string; src: string } | null {
   return PIN_COORDINATES[normalizePin(pin)] ?? null;
 }
 

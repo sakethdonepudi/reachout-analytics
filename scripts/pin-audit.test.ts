@@ -349,7 +349,7 @@ ok("district+party PIN totals reconcile with eligible responses", reconcileOk);
 
 /* ---- 13. survey-view postal markers (from the committed allocation) --- */
 console.log("\n13. Survey-view postal markers");
-eq("coordinate reference source", PIN_COORDINATE_REFERENCE.source, "https://api.zippopotam.us (GeoNames)");
+ok("coordinate reference cites a real source", /zippopotam|openstreetmap|nominatim/i.test(PIN_COORDINATE_REFERENCE.source));
 ok("coordinate coverage is disclosed and partial", PIN_COORDINATE_COVERAGE.withCoordinates > 0 && PIN_COORDINATE_COVERAGE.withCoordinates < PIN_COORDINATE_COVERAGE.total);
 eq("coordinate coverage totals reconcile", PIN_COORDINATE_COVERAGE.withCoordinates + PIN_COORDINATE_COVERAGE.withoutCoordinates, PIN_COORDINATE_COVERAGE.total);
 ok("coordinates are PIN-level postal areas, labelled", PIN_COORDINATE_REFERENCE.kind === "postal-reference" && /not respondent/i.test(PIN_COORDINATE_REFERENCE.note));

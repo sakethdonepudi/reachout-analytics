@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server";
 import { getCase } from "@/lib/case-registry";
 import { pinAggregates, assumedPinDetails, isConfigured } from "@/lib/poll-store";
-import { coordinatesForPin } from "@/lib/pin";
+import { coordinatesForPin, candidatePinsForDistrict, referenceDistrictNames } from "@/lib/pin";
+import { PIN_COORDINATE_COVERAGE } from "@/lib/data/tamil-nadu-pin-coordinates";
 
 export const runtime = "nodejs";
 
@@ -26,35 +27,66 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   if (basis === "assumed") {
     const res = await assumedPinDetails(rec.id, pollType);
-    const pins = res.pins.map((p) => {
-      const coord = coordinatesForPin(p.pin);
+    const allocated = new Map(res.pins.map((p) => [p.pin, p]));
+
+    const buildPin = (pin: string, district: string | null) => {
+      const a = allocated.get(pin);
+      const coord = coordinatesForPin(pin);
       return {
-        pin: p.pin,
-        total: p.total,
-        valid: p.valid,
-        parties: p.parties,
-        district: p.district,
-        districtBasis: p.districtBasis,
-        basis: p.basisLabel,
-        basisKey: p.basis,
-        source: p.source,
-        method: p.method,
-        allocationVersion: p.allocationVersion,
+        pin,
+        district: a?.district ?? district ?? null,
+        total: a?.total ?? 0,
+        valid: a?.valid ?? 0,
+        parties: a?.parties ?? {},
+        districtBasis: a?.districtBasis ?? "",
+        basis: a?.basisLabel ?? "",
+        basisKey: a?.basis ?? "",
+        source: a?.source ?? "",
+        method: a?.method ?? "",
+        allocationVersion: a?.allocationVersion ?? null,
+        allocated: !!a && a.total > 0,
         // Postal-area reference coordinate (post-office locality), not a respondent location.
         locationAvailable: !!coord,
         lat: coord?.lat ?? null,
         lng: coord?.lng ?? null,
         postalPlace: coord?.place ?? null,
+        coordSource: coord?.src ?? null,
       };
-    });
+    };
+
+    // Every bundled reference PIN appears in its district list, including
+    // zero-allocation ones (the bundled set is a subset, not the full directory).
+    const pins: ReturnType<typeof buildPin>[] = [];
+    const seen = new Set<string>();
+    if (rec.id === "tamil-nadu") {
+      for (const district of referenceDistrictNames()) {
+        for (const pin of candidatePinsForDistrict(district)) {
+          if (seen.has(pin)) continue;
+          seen.add(pin);
+          pins.push(buildPin(pin, district));
+        }
+      }
+    }
+    for (const p of res.pins) if (!seen.has(p.pin)) pins.push(buildPin(p.pin, p.district));
+
+    const allocatedPins = pins.filter((p) => p.allocated).length;
+    const withCoordinates = pins.filter((p) => p.locationAvailable).length;
     const s = res.scenario;
+    const committed = !!s;
     return Response.json(
       {
         ok: true, published: true, caseStudyId: rec.id, pollType, basis, assumed: true,
-        scenarioNote:
-          "PIN locations are assumed from district information. These figures illustrate an allocation scenario and do not measure actual PIN-level voting patterns.",
+        committed,
+        // The list contains every bundled reference PIN; usablePins counts only
+        // those with allocated/recorded responses; allocatedPins is the same.
+        usablePins: allocatedPins,
+        allocatedPins,
+        referencePinsTotal: pins.length,
+        referenceComplete: false,
+        withCoordinates,
+        coordinateCoverage: PIN_COORDINATE_COVERAGE,
         reference: s?.summary?.reference ?? null,
-        allocationVersion: s?.allocationVersion ?? res.pins[0]?.allocationVersion ?? null,
+        allocationVersion: s?.allocationVersion ?? null,
         scenario: s
           ? {
               appliedAt: s.appliedAt,
@@ -67,10 +99,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
             }
           : null,
         pins,
-        usablePins: pins.length,
         total: res.total,
         valid: res.valid,
-        message: pins.length === 0 ? "No assumed PINs are available yet — run the Assumed PIN scenario in the admin portal." : null,
+        message: !committed && allocatedPins === 0 ? "PIN breakdown not generated yet." : null,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

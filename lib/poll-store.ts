@@ -457,9 +457,11 @@ export async function assumedPinDetails(caseStudyId: string, pollType: PollType)
   const importId = await getActiveImportId(caseStudyId, pollType);
   if (!importId) return empty;
   const rows = (await c.responses.aggregate([
-    { $match: { caseStudyId, pollType, importId, assumedPin: { $ne: "" } } },
+    // Prefer the committed assumed PIN; fall back to the recorded PIN so
+    // supplied PINs are shown even before an allocation is generated.
+    { $match: { caseStudyId, pollType, importId, $or: [{ assumedPin: { $ne: "" } }, { pinNormalized: { $ne: "" } }] } },
     { $group: { _id: {
-      pin: "$assumedPin", status: "$status", party: "$party",
+      pin: { $cond: [{ $ne: ["$assumedPin", ""] }, "$assumedPin", "$pinNormalized"] }, status: "$status", party: "$party",
       district: { $ifNull: ["$district", "$scenarioDistrict"] },
       basis: "$pinGeographyBasis", method: "$pinAssignmentMethod", source: "$pinMappingSource",
       version: "$pinAllocationVersion", districtBasis: "$pinDistrictBasis",

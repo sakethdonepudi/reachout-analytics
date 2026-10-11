@@ -273,26 +273,26 @@ export default function TamilNaduMap(props: Props) {
       if (!pinRoot) return;
       const { mode: m, selectedDistricts: sel, layers: lay, intensityActive, forceDemo } = live.current;
       if (m !== "pincode" || !lay.pins) return;
-      // A single selected district shows only its pins; otherwise statewide.
-      const allowed = sel.length === 1 ? new Set([sel[0]]) : null;
+      // Original behaviour: markers appear only for a single focused district.
+      if (sel.length !== 1) return;
+      const district = sel[0];
       const useSurvey = intensityActive && !forceDemo;
 
       if (useSurvey) {
         // Survey view: plot only PINs from the committed allocation that have a
         // POSTAL-AREA reference coordinate. No synthetic demo positions/shares.
         for (const sp of live.current.surveyPins ?? []) {
-          if (allowed && !allowed.has(sp.district)) continue;
+          if (sp.district !== district) continue;
           makePin({ pin: sp.pin, district: sp.district, lng: sp.lng, lat: sp.lat, samples: sp.valid, results: ZERO_RESULTS, kind: "survey", valid: sp.valid, place: sp.place });
         }
         return;
       }
 
       // Demo view (isolated): synthetic demonstration positions & sample shares.
-      for (const row of live.current.districts) {
-        if (allowed && !allowed.has(row.district)) continue;
-        for (const p of row.pincodes) {
-          makePin({ pin: p.pincode, district: row.district, lng: p.lng, lat: p.lat, samples: p.samples, results: p.results, kind: "demo", valid: 0, place: null });
-        }
+      const row = live.current.districts.find((r) => r.district === district);
+      if (!row) return;
+      for (const p of row.pincodes) {
+        makePin({ pin: p.pincode, district: row.district, lng: p.lng, lat: p.lat, samples: p.samples, results: p.results, kind: "demo", valid: 0, place: null });
       }
     };
     rebuildPins();
