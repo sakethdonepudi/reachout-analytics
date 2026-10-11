@@ -53,7 +53,7 @@ export default function MapTooltip({ data, x, y }: { data: MapTooltipData; x: nu
         ) : data.kind === "pincode" && data.survey ? (
           <>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              District survey responses: <b className="font-semibold text-foreground">{(data.valid ?? 0).toLocaleString("en-IN")}</b>
+              Survey responses: <b className="font-semibold text-foreground">{(data.valid ?? 0).toLocaleString("en-IN")}</b>
             </p>
             <p className="text-[11px] text-muted-foreground">District: <b className="font-semibold text-foreground">{data.district || "—"}</b></p>
             <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">Postal-area reference{data.postalPlace ? ` · ${data.postalPlace}` : ""} — not a respondent location.</p>

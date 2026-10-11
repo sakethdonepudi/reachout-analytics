@@ -76,6 +76,8 @@ export default function AdminPortal() {
 
   const [pollType, setPollType] = useState<"opinion" | "exit">("exit");
   const [view, setView] = useState<"recorded" | "scenario">("recorded");
+  // What the PUBLIC dashboard displays for this case study.
+  const [displayBasis, setDisplayBasisState] = useState<"recorded" | "estimated">("recorded");
   const [sum, setSum] = useState<{ opinion: Summary | null; exit: Summary | null; opinionShares: Shares; exitShares: Shares } | null>(null);
   const [records, setRecords] = useState<Row_[]>([]);
   const [total, setTotal] = useState(0);
@@ -118,6 +120,14 @@ export default function AdminPortal() {
     if (r.ok) { const d = await r.json(); setRecords(d.records); setTotal(d.total); }
     setLoading(false);
   }, [caseId, pollType, skip, filters]);
+  const loadSettings = useCallback(async () => {
+    const r = await fetch(`/api/data/settings?caseStudyId=${encodeURIComponent(caseId)}`);
+    if (r.ok) setDisplayBasisState(((await r.json()).displayBasis ?? "recorded") as "recorded" | "estimated");
+  }, [caseId]);
+  async function saveDisplayBasis(b: "recorded" | "estimated") {
+    setDisplayBasisState(b);
+    await fetch("/api/data/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ caseStudyId: caseId, displayBasis: b }) });
+  }
   const loadHistory = useCallback(async () => {
     const r = await fetch(`/api/data/history?caseStudyId=${encodeURIComponent(caseId)}`);
     if (r.ok) setHistory((await r.json()).history);
@@ -128,6 +138,7 @@ export default function AdminPortal() {
   }, [caseId, pollType, pinIncludeEstimated]);
 
   useEffect(() => { if (ready) loadSummary(); }, [ready, loadSummary]);
+  useEffect(() => { if (ready) loadSettings(); }, [ready, loadSettings]);
   useEffect(() => { if (ready && section === "poll") { loadRecords(); loadPinScenario(); } }, [ready, section, loadRecords, loadPinScenario]);
   useEffect(() => { if (ready && (section === "history" || section === "overview")) loadHistory(); }, [ready, section, loadHistory]);
   useEffect(() => { setSkip(0); }, [caseId, pollType]);
@@ -337,6 +348,12 @@ export default function AdminPortal() {
                 <div className="inline-flex rounded-xl border border-border bg-card/60 p-1 text-[13px] font-semibold">
                   {(["recorded", "scenario"] as const).map((v) => (
                     <button key={v} onClick={() => setView(v)} className={cn("rounded-lg px-3 py-1.5", view === v ? "bg-elevated text-foreground" : "text-muted-foreground")}>{v === "recorded" ? "Recorded" : "Estimated scenario"}</button>
+                  ))}
+                </div>
+                <div className="inline-flex items-center gap-1 rounded-xl border border-border bg-card/60 p-1 text-[13px] font-semibold">
+                  <span className="px-2 py-1 text-[10px] font-normal uppercase tracking-[0.1em] text-muted-foreground">Public dataset</span>
+                  {(["recorded", "estimated"] as const).map((b) => (
+                    <button key={b} onClick={() => saveDisplayBasis(b)} className={cn("rounded-lg px-3 py-1.5", displayBasis === b ? "bg-elevated text-foreground" : "text-muted-foreground")}>{b === "recorded" ? "Recorded" : "Estimated"}</button>
                   ))}
                 </div>
                 <div className="ml-auto flex gap-2">

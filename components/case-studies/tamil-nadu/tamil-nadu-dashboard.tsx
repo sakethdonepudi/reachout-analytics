@@ -125,6 +125,16 @@ export default function TamilNaduDashboard() {
     return () => ctrl.abort();
   }, [pollType, refreshNonce]);
 
+  // The displayed district dataset is configured in admin (no public control).
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch(`/api/public/case-studies/tamil-nadu/settings`, { cache: "no-store", signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!ctrl.signal.aborted && (d?.displayBasis === "estimated" || d?.displayBasis === "recorded")) setView(d.displayBasis); })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [refreshNonce]);
+
   // Auto-refresh filters/counts/markers when a new dataset is published
   // (tab focus + visibility + a light poll), matching the districts fetch.
   useEffect(() => {
@@ -288,13 +298,6 @@ export default function TamilNaduDashboard() {
     if (activePincode) { setActivePincode(null); setNotice("PIN selection cleared — PIN results differ per poll type."); }
   };
 
-  const changeView = (v: "recorded" | "estimated") => {
-    if (v === view) return;
-    setView(v);
-    setActivePincode(null);
-    if (v === "estimated") setNotice("Estimated scenario enabled — allocated districts, not verified respondent locations.");
-  };
-
   const resetView = useCallback(() => {
     setResetNonce((n) => n + 1);
     setGeoMode("state");
@@ -380,7 +383,7 @@ export default function TamilNaduDashboard() {
           )}
 
           {intensity && (
-            <SurveyLegend theme={theme} ranges={intensity.ranges} hasData={intensity.hasData} pollLabel={pollLabel} basisLabel={basisLabel} className="hidden lg:block" />
+            <SurveyLegend theme={theme} ranges={intensity.ranges} hasData={intensity.hasData} className="hidden lg:block" />
           )}
         </aside>
 
@@ -430,24 +433,12 @@ export default function TamilNaduDashboard() {
 
         {/* mobile: legend directly below the map */}
         {intensity && (
-          <SurveyLegend theme={theme} ranges={intensity.ranges} hasData={intensity.hasData} pollLabel={pollLabel} basisLabel={basisLabel} className="mt-3 lg:hidden" />
+          <SurveyLegend theme={theme} ranges={intensity.ranges} hasData={intensity.hasData} className="mt-3 lg:hidden" />
         )}
 
         {/* right: analysis */}
         <section className="relative z-20 mx-auto mt-4 max-w-xl rounded-2xl border border-border bg-card/85 p-4 shadow-[0_18px_50px_-30px_rgba(15,20,30,0.45)] backdrop-blur-2xl lg:absolute lg:right-[292px] lg:top-24 lg:mt-0 lg:w-[276px] lg:max-w-none">
           <PollToggle value={pollType} onChange={changePollType} />
-
-          <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl border border-border bg-elevated/50 p-1 text-[11.5px] font-semibold">
-            {(["recorded", "estimated"] as const).map((b) => (
-              <button key={b} type="button" onClick={() => changeView(b)}
-                className={cn("rounded-lg py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60", view === b ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-                {b === "recorded" ? "Recorded" : "Estimated"}
-              </button>
-            ))}
-          </div>
-          {view === "estimated" && (
-            <p className="mt-2 text-[10.5px] leading-relaxed text-saffron-2">Includes estimated districts — an allocated scenario, not verified respondent locations.</p>
-          )}
 
           <div className="my-3.5 border-t border-dashed border-border" />
 
@@ -457,13 +448,13 @@ export default function TamilNaduDashboard() {
                 <p className={LABEL}>PIN code · {parentDistrict ?? "district not stated"}</p>
                 <div className="mt-1 flex items-end justify-between gap-3">
                   <span className="font-display text-2xl font-semibold tabular-nums text-foreground">{activePincode}</span>
-                  <span className="text-[11.5px] text-muted-foreground">District survey responses: <b className="tabular-nums text-foreground/85">{(districtRow?.valid ?? 0).toLocaleString("en-IN")}</b></span>
+                  <span className="text-[11.5px] text-muted-foreground">Survey responses: <b className="tabular-nums text-foreground/85">{(districtRow?.valid ?? 0).toLocaleString("en-IN")}</b></span>
                 </div>
                 {!districtRow || districtRow.valid === 0 ? (
                   <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">No district survey responses.</p>
                 ) : (
                   <>
-                    <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Survey share</p>
+                    <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Party share</p>
                     <ul className="mt-1.5 space-y-2">
                       {districtShares.map((s) => (
                         <li key={s.party} className="text-[12px]">
@@ -478,10 +469,10 @@ export default function TamilNaduDashboard() {
                   </>
                 )}
                 {selectedRefPin && !selectedRefPin.locationAvailable && <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">No mapped location for this PIN.</p>}
-                <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Shares shown for the parent district.</p>
+                <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Based on district survey results.</p>
               </div>
             ) : liveActive ? (
-              <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">Select a PIN code to see its district shares.</p>
+              <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">Select a PIN code to view survey results.</p>
             ) : activePin ? (
               <div>
                 <p className={LABEL}>PIN code · {activePin.district}</p>
@@ -574,7 +565,17 @@ export default function TamilNaduDashboard() {
           )}
 
           {intensityActive ? (
-            <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Published survey data · {pollLabel} · {basisLabel}. Percentages use valid party responses as the denominator.</p>
+            <details className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
+              <summary className="inline-flex cursor-pointer list-none items-center gap-1 font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                About this data
+              </summary>
+              <div className="mt-1.5 space-y-1">
+                <p>Dataset: {pollLabel}, {basisLabel} district results.</p>
+                <p>Party shares use the district’s valid party responses as the denominator.</p>
+                <p>PIN codes are postal-area references, not respondent locations.{pinData ? ` ${pinData.withCoordinates}/${pinData.referencePinsTotal} reference PINs have a mapped location.` : ""}</p>
+                {pinData?.reference && <p>Postal reference: {pinData.reference.name} · {pinData.reference.version}.</p>}
+              </div>
+            </details>
           ) : (
             <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">MOCK DATA — vote estimates shown for demonstration only.</p>
           )}

@@ -14,15 +14,11 @@ export type IntensityRange = { lo: number; hi: number };
 export default function SurveyLegend({
   ranges,
   hasData,
-  pollLabel,
-  basisLabel,
   theme,
   className,
 }: {
   ranges: IntensityRange[];
   hasData: boolean;
-  pollLabel: string;
-  basisLabel: string;
   theme: ThemeName;
   className?: string;
 }) {
@@ -51,9 +47,6 @@ export default function SurveyLegend({
         {hasData && <li className="flex items-center gap-2">{swatch(NO_DATA_COLOR[theme])} No survey responses</li>}
         <li className="flex items-center gap-2">{swatch(SELECTED_FILL[theme], SELECTED_LINE[theme])} Selected district</li>
       </ul>
-      <p className="mt-2 border-t border-border pt-2 text-[10px] leading-relaxed text-muted-foreground">
-        Valid party responses · {pollLabel} · {basisLabel}
-      </p>
     </div>
   );
 }

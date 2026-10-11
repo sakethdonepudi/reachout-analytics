@@ -49,6 +49,29 @@ export async function isConfigured() {
   return getMongo() !== null;
 }
 
+/* ---- per-case display settings (admin-configured) ------------------- */
+
+export type DisplayBasis = "recorded" | "estimated";
+
+export async function getDisplayBasis(caseStudyId: string): Promise<DisplayBasis> {
+  const p = getMongo();
+  if (!p) return "recorded";
+  const client = await p;
+  const doc = await client.db(DB).collection<{ _id: string; displayBasis?: DisplayBasis }>("poll_settings").findOne({ _id: caseStudyId });
+  return doc?.displayBasis === "estimated" ? "estimated" : "recorded";
+}
+
+export async function setDisplayBasis(caseStudyId: string, basis: DisplayBasis): Promise<void> {
+  const p = getMongo();
+  if (!p) return;
+  const client = await p;
+  await client.db(DB).collection<{ _id: string; caseStudyId?: string; displayBasis?: DisplayBasis; updatedAt?: string }>("poll_settings").updateOne(
+    { _id: caseStudyId },
+    { $set: { caseStudyId, displayBasis: basis === "estimated" ? "estimated" : "recorded", updatedAt: new Date().toISOString() } },
+    { upsert: true },
+  );
+}
+
 /** Tag pre-scoping (legacy) rows with a caseStudyId — preserves existing data. */
 export async function migrateLegacyToCase(caseStudyId: string) {
   const c = await cols();
