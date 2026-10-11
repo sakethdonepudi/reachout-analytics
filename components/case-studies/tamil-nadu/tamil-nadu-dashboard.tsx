@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { ArrowLeft, ChevronRight, Info, Layers, Map as MapIcon, MapPin, Navigation, RotateCcw } from "lucide-react";
+import { ArrowLeft, ChevronRight, Layers, Map as MapIcon, MapPin, Navigation, RotateCcw } from "lucide-react";
 import {
   PARTY_META, PARTY_ORDER, aggregate, datasetFor, findPincode, rowsForDistricts, STATEWIDE, leadingParty,
   type PollType,
@@ -40,10 +40,6 @@ const LAYER_LABELS: { id: keyof MapLayers; label: string }[] = [
 ];
 
 const LABEL = "text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground";
-
-/** Detailed allocation method, surfaced through the accessible info tooltip. */
-const ALLOCATION_METHOD =
-  "PIN breakdown: each district's recorded (or estimated, when enabled) responses are divided evenly across the district's eligible PIN codes from the bundled India Post PIN reference (version assumed-pin-ref-2026-02.1, a subset — not the complete Tamil Nadu directory), with the integer remainder allocated deterministically by Response-ID order. Recorded PINs are preserved and never overwritten; percentages use valid assigned responses as the denominator. These figures illustrate an allocation scenario and do not measure actual PIN-level voting.";
 
 type PubPin = {
   pin: string; total: number; valid: number; parties: Record<string, number>;
@@ -172,14 +168,22 @@ export default function TamilNaduDashboard() {
   const pollLabel = pollType === "exit" ? "Exit Poll" : "Opinion Poll";
   const basisLabel = view === "estimated" ? "Estimated" : "Recorded";
 
-  /* PIN breakdown availability: the committed allocation, or any recorded
-     PINs. Never gated by a scenario switch. */
+  /* PIN Codes is a district-share lookup: the bundled reference PIN list, and
+     selecting a PIN shows its PARENT DISTRICT's current survey shares. No
+     allocation/commit is required. */
   const currentPins = pinData?.pins ?? [];
-  const pinReady = !!pinData && (pinData.committed || pinData.allocatedPins > 0);
-  const realPin = liveActive && activePincode ? currentPins.find((p) => p.pin === activePincode) : undefined;
-  const realShares = realPin
-    ? Object.entries(realPin.parties)
-        .map(([party, count]) => ({ party, count, pct: realPin.valid ? +((count / realPin.valid) * 100).toFixed(2) : 0 }))
+  const districtValidByName = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const d of live?.districts ?? []) m[d.district] = d.valid;
+    return m;
+  }, [live]);
+  // Parent district of the selected PIN (from the reference), else the focused district.
+  const selectedRefPin = activePincode ? currentPins.find((p) => p.pin === activePincode) : undefined;
+  const parentDistrict = selectedRefPin?.district ?? focusDistrict ?? null;
+  const districtRow = parentDistrict ? live?.districts.find((d) => d.district === parentDistrict) : undefined;
+  const districtShares = districtRow
+    ? Object.entries(districtRow.parties ?? {})
+        .map(([party, count]) => ({ party, count, pct: districtRow.valid ? +((count / districtRow.valid) * 100).toFixed(2) : 0 }))
         .sort((a, b) => b.count - a.count)
     : [];
   const filteredPublishedPins = (() => {
@@ -187,17 +191,16 @@ export default function TamilNaduDashboard() {
     const q = pinQuery.trim();
     return q ? base.filter((p) => p.pin.includes(q)) : base;
   })();
-  // PINs with responses but no postal coordinate → district inset.
-  const unresolvedPins = filteredPublishedPins.filter((p) => !p.locationAvailable && p.allocated);
+  // Reference PINs of the focused district without a mapped coordinate → inset.
+  const unresolvedPins = filteredPublishedPins.filter((p) => !p.locationAvailable);
 
-  // Survey markers: PINs WITH allocated responses that also have a POSTAL-AREA
-  // reference coordinate. Reference-only (zero-response) PINs are never plotted,
-  // and pins without a coordinate stay in the list but are not plotted.
+  // Survey markers: the reference PINs that have a POSTAL-AREA coordinate. The
+  // tooltip reports the PIN's parent-district response total (never summed).
   const surveyPins = useMemo(
     () => currentPins
-      .filter((p) => p.allocated && p.lat != null && p.lng != null)
-      .map((p) => ({ pin: p.pin, lat: p.lat as number, lng: p.lng as number, district: p.district ?? "", valid: p.valid, place: p.postalPlace ?? null })),
-    [currentPins],
+      .filter((p) => p.locationAvailable && p.lat != null && p.lng != null)
+      .map((p) => ({ pin: p.pin, lat: p.lat as number, lng: p.lng as number, district: p.district ?? "", valid: districtValidByName[p.district ?? ""] ?? 0, place: p.postalPlace ?? null })),
+    [currentPins, districtValidByName],
   );
 
   // District filter rows use live valid counts when published, else demonstration data.
@@ -301,8 +304,8 @@ export default function TamilNaduDashboard() {
     setNotice(null);
   }, []);
 
-  const pinDistrict = realPin?.district ?? activePin?.district ?? focusDistrict;
-  const activePinCode = realPin?.pin ?? activePin?.pincode ?? null;
+  const pinDistrict = parentDistrict ?? activePin?.district ?? focusDistrict;
+  const activePinCode = activePincode ?? activePin?.pincode ?? null;
   const crumbs: { label: string; onClick?: () => void }[] = [{ label: "Tamil Nadu", onClick: () => applyMode("state") }];
   if (pinDistrict) crumbs.push({ label: pinDistrict, onClick: () => { setSelectedDistricts([pinDistrict]); setActivePincode(null); setGeoMode("district"); } });
   if (activePinCode) crumbs.push({ label: activePinCode });
@@ -409,7 +412,7 @@ export default function TamilNaduDashboard() {
           {/* District inset: PINs without a mapped location. A non-geographic
               flow layout, deliberately not a coordinate plot. */}
           {geoMode === "pincode" && liveActive && focusDistrict && unresolvedPins.length > 0 && (
-            <div className="pointer-events-none absolute bottom-4 left-4 z-10 w-[218px] rounded-2xl border border-border bg-card/90 p-3 backdrop-blur-md">
+            <div className="pointer-events-none absolute bottom-4 left-4 z-10 w-[218px] rounded-2xl border border-border bg-card/90 p-3 backdrop-blur-md lg:bottom-8 lg:left-[300px]">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">PINs without mapped locations</p>
               <p className="mt-0.5 text-[9.5px] leading-relaxed text-muted-foreground">{focusDistrict} · positions are not geographic.</p>
               <div className="pointer-events-auto mt-2 flex max-h-40 flex-wrap gap-1 overflow-y-auto [scrollbar-width:thin]">
@@ -449,39 +452,36 @@ export default function TamilNaduDashboard() {
           <div className="my-3.5 border-t border-dashed border-border" />
 
           {geoMode === "pincode" ? (
-            !pinReady ? (
+            liveActive && activePincode ? (
               <div>
-                <p className={LABEL}>PIN Codes</p>
-                <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">No PIN breakdown has been generated for this dataset yet.</p>
-                <Link href="/admin" className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-saffron/50 bg-saffron/10 px-3 py-1.5 text-[12px] font-semibold text-saffron-2 transition-colors hover:bg-saffron/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
-                  Generate PIN breakdown
-                </Link>
-              </div>
-            ) : realPin ? (
-              <div>
-                <p className={LABEL}>PIN code · {realPin.district ?? "district not stated"}{realPin.districtBasis === "estimated" ? " (estimated district)" : ""}</p>
+                <p className={LABEL}>PIN code · {parentDistrict ?? "district not stated"}</p>
                 <div className="mt-1 flex items-end justify-between gap-3">
-                  <span className="font-display text-2xl font-semibold tabular-nums text-foreground">{realPin.pin}</span>
-                  <span className="text-[11.5px] text-muted-foreground">Assigned valid: <b className="tabular-nums text-foreground/85">{realPin.valid.toLocaleString("en-IN")}</b></span>
+                  <span className="font-display text-2xl font-semibold tabular-nums text-foreground">{activePincode}</span>
+                  <span className="text-[11.5px] text-muted-foreground">District survey responses: <b className="tabular-nums text-foreground/85">{(districtRow?.valid ?? 0).toLocaleString("en-IN")}</b></span>
                 </div>
-                <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Survey share</p>
-                <ul className="mt-1.5 space-y-2">
-                  {realShares.length === 0 ? (
-                    <li className="text-[12px] text-muted-foreground">No valid party responses for this PIN.</li>
-                  ) : (
-                    realShares.map((s) => (
-                      <li key={s.party} className="text-[12px]">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="min-w-0 break-words text-foreground/85">{s.party}</span>
-                          <span className="shrink-0 tabular-nums text-muted-foreground">{s.count.toLocaleString("en-IN")} · {s.pct}%</span>
-                        </div>
-                        <span className="mt-1 block h-2 overflow-hidden rounded-full bg-elevated"><span className="block h-full rounded-full bg-saffron" style={{ width: `${s.pct}%` }} /></span>
-                      </li>
-                    ))
-                  )}
-                </ul>
-                {!realPin.locationAvailable && <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Map location unavailable.</p>}
+                {!districtRow || districtRow.valid === 0 ? (
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">No district survey responses.</p>
+                ) : (
+                  <>
+                    <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Survey share</p>
+                    <ul className="mt-1.5 space-y-2">
+                      {districtShares.map((s) => (
+                        <li key={s.party} className="text-[12px]">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="min-w-0 break-words text-foreground/85">{s.party}</span>
+                            <span className="shrink-0 tabular-nums text-muted-foreground">{s.count.toLocaleString("en-IN")} · {s.pct}%</span>
+                          </div>
+                          <span className="mt-1 block h-2 overflow-hidden rounded-full bg-elevated"><span className="block h-full rounded-full bg-saffron" style={{ width: `${s.pct}%` }} /></span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {selectedRefPin && !selectedRefPin.locationAvailable && <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">No mapped location for this PIN.</p>}
+                <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Shares shown for the parent district.</p>
               </div>
+            ) : liveActive ? (
+              <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">Select a PIN code to see its district shares.</p>
             ) : activePin ? (
               <div>
                 <p className={LABEL}>PIN code · {activePin.district}</p>
@@ -573,15 +573,6 @@ export default function TamilNaduDashboard() {
             </>
           )}
 
-          {pinReady && (
-            <div className="mt-3 flex items-start gap-1.5 text-[10px] leading-relaxed text-muted-foreground">
-              <span>PIN breakdown allocated from district survey totals.</span>
-              <button type="button" aria-label={ALLOCATION_METHOD} title={ALLOCATION_METHOD} className="mt-px inline-flex shrink-0 items-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
-                <Info className="size-3.5" aria-hidden />
-              </button>
-            </div>
-          )}
-
           {intensityActive ? (
             <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Published survey data · {pollLabel} · {basisLabel}. Percentages use valid party responses as the denominator.</p>
           ) : (
@@ -600,12 +591,6 @@ export default function TamilNaduDashboard() {
               onClear={() => applyMode("state")}
               onHover={setHoveredDistrict}
             />
-          ) : liveActive && !pinReady ? (
-            <div className="flex min-h-0 flex-1 flex-col">
-              <p className={cn("mb-2", LABEL)}>PIN Codes</p>
-              <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">No PIN breakdown has been generated for this dataset yet.</p>
-              <Link href="/admin" className="inline-flex w-fit items-center gap-1.5 rounded-full border border-saffron/50 bg-saffron/10 px-3 py-1.5 text-[12px] font-semibold text-saffron-2 transition-colors hover:bg-saffron/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">Generate PIN breakdown</Link>
-            </div>
           ) : liveActive ? (
             <div className="flex min-h-0 flex-1 flex-col">
               <p className={cn("mb-3", LABEL)}>
@@ -621,19 +606,12 @@ export default function TamilNaduDashboard() {
                     return (
                       <li key={p.pin}>
                         <button type="button"
-                          title={`PIN ${p.pin} · ${p.district ?? "district unknown"}${p.allocated ? ` · assigned ${p.valid.toLocaleString("en-IN")}` : " · no allocated responses"}${p.basis ? ` · ${p.basis}` : ""}${p.locationAvailable ? "" : " · no mapped location"}`}
+                          title={`PIN ${p.pin} · ${p.district ?? "district unknown"}${p.locationAvailable ? "" : " · no mapped location"}`}
                           aria-pressed={on} onMouseEnter={() => setHoveredDistrict(null)} onClick={() => onSelectPincode(p.pin)}
                           className={cn("flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60", on ? "bg-saffron/15 text-foreground" : "text-foreground/75 hover:bg-elevated hover:text-foreground")}>
-                          <span className={cn("size-1.5 shrink-0 rounded-full", p.allocated ? "bg-saffron" : "bg-muted-foreground/40")} aria-hidden />
+                          <span className={cn("size-1.5 shrink-0 rounded-full", p.locationAvailable ? "bg-[#3d8bfd]" : "bg-muted-foreground/40")} aria-hidden />
                           <span className="tabular-nums font-medium">{p.pin}</span>
-                          {p.allocated ? (
-                            <>
-                              {!p.locationAvailable && <span className="rounded border border-border px-1 py-px text-[9px] uppercase tracking-wide text-muted-foreground" title="No mapped location">no map ref</span>}
-                              <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">{p.valid.toLocaleString("en-IN")}</span>
-                            </>
-                          ) : (
-                            <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">No allocated responses</span>
-                          )}
+                          {!p.locationAvailable && <span className="ml-auto rounded border border-border px-1 py-px text-[9px] uppercase tracking-wide text-muted-foreground" title="No mapped location">no map ref</span>}
                         </button>
                       </li>
                     );

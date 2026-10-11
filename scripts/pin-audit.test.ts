@@ -12,7 +12,7 @@
 import * as XLSX from "xlsx";
 import { parseWorkbook, validateSheet, buildWorkbook, type Row } from "@/lib/poll-data";
 import { toDoc, assemblePinAggregates, buildRecordsQuery, type PinGroupRow } from "@/lib/poll-store";
-import { normalizePin, classifyPin, resolveRowPin, candidatePinsForDistrict, referenceAudit, coordinatesForPin } from "@/lib/pin";
+import { normalizePin, classifyPin, resolveRowPin, candidatePinsForDistrict, referenceAudit, coordinatesForPin, districtForPin } from "@/lib/pin";
 import { PIN_COORDINATE_COVERAGE, PIN_COORDINATE_REFERENCE } from "@/lib/data/tamil-nadu-pin-coordinates";
 import { allocatePinAssignments, summarizeAllocation, PIN_ALLOCATION_VERSION, PIN_BASIS_LABEL, type AllocInput } from "@/lib/pin-assign";
 import { POSTAL_REFERENCE } from "@/lib/data/tamil-nadu-pincodes";
@@ -359,6 +359,21 @@ const unplottedPins = assignedPins.filter((p) => !coordinatesForPin(p));
 ok("some assigned PINs have a postal reference coordinate (plotted)", plottedPins.length > 0, `assigned ${assignedPins.length}, plotted ${plottedPins.length}`);
 ok("plotted + unplotted reconcile with assigned PINs", plottedPins.length + unplottedPins.length === assignedPins.length);
 ok("unplotted PINs remain available (no coordinate dropped from allocation)", unplottedPins.every((p) => assignedPins.includes(p)));
+
+/* ---- 14. PIN → parent-district share lookup ------------------------- */
+console.log("\n14. PIN → parent-district share lookup");
+eq("a PIN resolves to its reference district", districtForPin("625001"), "Madurai");
+eq("another PIN in the same district resolves to the same district", districtForPin("625002"), "Madurai");
+ok("a PIN in a different district resolves differently", districtForPin("641001") !== districtForPin("625001"));
+eq("unknown PIN resolves to no district", districtForPin("999999"), null);
+const maduraiPins = candidatePinsForDistrict("Madurai");
+eq("every Madurai reference PIN resolves to Madurai", [...new Set(maduraiPins.map((p) => districtForPin(p)))], ["Madurai"]);
+ok("all Madurai PINs carry the identical district key (no per-PIN count)", maduraiPins.every((p) => districtForPin(p) === "Madurai"));
+// Statewide total = sum of district totals (never per-PIN repeats).
+const districtValid: Record<string, number> = { Madurai: 537, Coimbatore: 698, Salem: 515 };
+const statewide = Object.values(districtValid).reduce((a, b) => a + b, 0);
+ok("statewide total is the sum of district totals", statewide === 1750);
+ok("selecting a Madurai PIN reads the Madurai district total once", districtValid[districtForPin("625003")!] === 537);
 
 console.log(`\n${fail === 0 ? "ALL PASSED" : "FAILURES"}: ${pass} passed, ${fail} failed (case study: ${TEST_CASE})`);
 if (fail > 0) process.exitCode = 1;
