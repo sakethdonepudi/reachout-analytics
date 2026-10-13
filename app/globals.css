@@ -149,6 +149,23 @@ html.theme-transition *::after {
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
 @keyframes spin-slow { to { transform: rotate(360deg); } }
 
+/* hero backgrounds — cinematic dissolve: a focus-pull + zoom-settle on the
+   incoming frame, over a continuous slow ken-burns drift. The outgoing frame
+   stays opaque underneath, so there is never a blank frame. */
+@keyframes hero-enter {
+  from { opacity: 0; filter: blur(4px) brightness(1.05) saturate(1.08); transform: scale(1.05) translate3d(var(--ex, 0%), 1.2%, 0); }
+  40%  { filter: blur(0) brightness(1) saturate(1); }
+  to   { opacity: 1; filter: blur(0) brightness(1) saturate(1); transform: none; }
+}
+@keyframes hero-kb-a {
+  from { transform: scale(1.015) translate3d(-1%, 0.4%, 0); }
+  to   { transform: scale(1.06) translate3d(1%, -0.6%, 0); }
+}
+@keyframes hero-kb-b {
+  from { transform: scale(1.06) translate3d(1%, -0.6%, 0); }
+  to   { transform: scale(1.015) translate3d(-1%, 0.4%, 0); }
+}
+
 .animate-marquee { animation: marquee 38s linear infinite; }
 .animate-float { animation: float-y 6s ease-in-out infinite; }
 .animate-pulse-dot { animation: pulse-dot 1.8s ease-out infinite; }
@@ -159,6 +176,10 @@ html.theme-transition *::after {
 .animate-bob { animation: bob 5s ease-in-out infinite; }
 .animate-spin-slow { animation: spin-slow 40s linear infinite; }
 
+.hero-enter { animation: hero-enter 1.5s cubic-bezier(.4,0,.2,1) both; will-change: transform, opacity, filter; }
+.hero-kb-a { animation: hero-kb-a 10s linear both; will-change: transform; }
+.hero-kb-b { animation: hero-kb-b 10s linear both; will-change: transform; }
+
 /* scroll reveal — visible by default; JS only hides elements below the fold */
 .reveal { transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
 .reveal.reveal-hidden { opacity: 0; transform: translateY(26px); }
@@ -166,6 +187,7 @@ html.theme-transition *::after {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee, .animate-float, .animate-pulse-dot, .animate-sweep, .animate-wheel, .animate-drift, .animate-rise, .animate-bob, .animate-spin-slow { animation: none; }
+  .hero-enter, .hero-kb-a, .hero-kb-b { animation: none; will-change: auto; }
   .reveal { opacity: 1; transform: none; transition: none; }
   html { scroll-behavior: auto; }
   html.theme-transition, html.theme-transition * { transition: none !important; }

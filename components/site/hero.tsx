@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
@@ -20,26 +20,44 @@ const srcSet = (n: number, ext: "avif" | "webp") =>
 const HOLD_MS = 8000;
 const FADE_MS = 1500;
 
-/** A single crossfade layer. Rendered (and therefore loaded) before it shows. */
-function Slide({ n, show, immediate }: { n: number; show: boolean; immediate: boolean }) {
+/** A single hero background layer. `ken` alternates the drift direction. */
+function Slide({
+  n,
+  z,
+  animateIn,
+  ken,
+  priority,
+  preload,
+}: {
+  n: number;
+  z: number;
+  animateIn: boolean;
+  ken: "a" | "b";
+  priority?: boolean;
+  /** invisible layer that only warms the next frame's image cache */
+  preload?: boolean;
+}) {
   return (
-    <picture
-      className={cn("absolute inset-0 block transition-opacity ease-in-out", show ? "opacity-100" : "opacity-0")}
-      style={{ transitionDuration: `${FADE_MS}ms` }}
-    >
-      <source type="image/avif" srcSet={srcSet(n, "avif")} sizes="100vw" />
-      <source type="image/webp" srcSet={srcSet(n, "webp")} sizes="100vw" />
-      {/* The subject sits on the right of every frame; bias the crop so it is
-          never cut, while keeping the left side clear for the headline. */}
-      <img
-        src={`/images/hero/slide-${n}-1672.webp`}
-        alt=""
-        aria-hidden
-        decoding="async"
-        fetchPriority={immediate ? "high" : "auto"}
-        className="h-full w-full object-cover object-[72%_50%]"
-      />
-    </picture>
+    <div className={cn("absolute inset-0", preload && "opacity-0")} style={{ zIndex: z }} aria-hidden>
+      <div className={cn("absolute inset-0", !preload && animateIn && "hero-enter")}>
+        <div className={cn("absolute inset-0", !preload && (ken === "a" ? "hero-kb-a" : "hero-kb-b"))}>
+          <picture className="absolute inset-0 block">
+            <source type="image/avif" srcSet={srcSet(n, "avif")} sizes="100vw" />
+            <source type="image/webp" srcSet={srcSet(n, "webp")} sizes="100vw" />
+            {/* The subject sits on the right of every frame; bias the crop so it
+                is never cut, while keeping the left side clear for the headline. */}
+            <img
+              src={`/images/hero/slide-${n}-1672.webp`}
+              alt=""
+              aria-hidden
+              decoding="async"
+              fetchPriority={priority ? "high" : "auto"}
+              className="h-full w-full object-cover object-[72%_50%]"
+            />
+          </picture>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -48,8 +66,11 @@ export default function Hero() {
   const { theme } = useTheme();
   const root = useRef<HTMLElement>(null);
 
-  const [active, setActive] = useState(0);
-  const [fading, setFading] = useState(false);
+  // Active slide plus a monotonic cycle counter, so every mount is uniquely
+  // keyed and its CSS animation restarts exactly once.
+  const [idx, setIdx] = useState(0);
+  const [cycle, setCycle] = useState(0);
+  const [leaving, setLeaving] = useState<{ n: number; cycle: number } | null>(null);
   const [onscreen, setOnscreen] = useState(true);
   const [hidden, setHidden] = useState(false);
   const reduced = useRef(false);
@@ -65,20 +86,30 @@ export default function Hero() {
     return () => { document.removeEventListener("visibilitychange", onVis); io.disconnect(); };
   }, []);
 
+  // Hold the frame, then hand over: the outgoing frame stays mounted (and
+  // opaque) underneath while the incoming one dissolves in on top of it.
   useEffect(() => {
-    if (reduced.current || hidden || !onscreen || fading) return;
-    const t = window.setTimeout(() => setFading(true), HOLD_MS);
+    if (reduced.current || hidden || !onscreen) return;
+    const t = window.setTimeout(() => {
+      setLeaving({ n: idx, cycle });
+      setIdx((i) => (i + 1) % SLIDE_COUNT);
+      setCycle((c) => c + 1);
+    }, HOLD_MS);
     return () => window.clearTimeout(t);
-  }, [active, hidden, onscreen, fading]);
+  }, [idx, cycle, hidden, onscreen]);
 
+  // Retire the outgoing frame once the dissolve has finished.
   useEffect(() => {
-    if (!fading) return;
-    const t = window.setTimeout(() => { setActive((a) => (a + 1) % SLIDE_COUNT); setFading(false); }, FADE_MS);
+    if (!leaving) return;
+    const t = window.setTimeout(() => setLeaving(null), FADE_MS);
     return () => window.clearTimeout(t);
-  }, [fading]);
+  }, [leaving]);
 
-  const current = active;
-  const next = (active + 1) % SLIDE_COUNT;
+  const next = (idx + 1) % SLIDE_COUNT;
+  const layers = [
+    ...(leaving ? [{ n: leaving.n, cycle: leaving.cycle, out: true }] : []),
+    { n: idx, cycle, out: false },
+  ];
 
   const scrimLeft = theme === "light" ? "rgba(4,9,24,.92)" : "rgba(5,11,31,.88)";
   const scrimMid = theme === "light" ? "rgba(7,20,56,.66)" : "rgba(7,20,56,.52)";
@@ -87,10 +118,21 @@ export default function Hero() {
     <section ref={root} id="top" className="pointer-events-auto relative isolate overflow-hidden bg-[#050b1f]">
       <link rel="preload" as="image" href="/images/hero/slide-1-1672.webp" fetchPriority="high" />
 
-      {/* rotating backgrounds — outgoing stays opaque under the incoming fade */}
-      <div className="absolute inset-0" aria-hidden>
-        <Slide n={current + 1} show immediate={current === 0} />
-        <Slide n={next + 1} show={fading} immediate={false} />
+      {/* rotating backgrounds — the outgoing frame stays opaque under the
+          incoming dissolve, so a transition never shows a blank frame */}
+      <div className="absolute inset-0 isolate" aria-hidden>
+        {layers.map((l) => (
+          <Slide
+            key={`${l.n}-${l.cycle}`}
+            n={l.n + 1}
+            z={l.out ? 10 : 20}
+            animateIn={l.cycle !== 0}
+            ken={l.n % 2 === 0 ? "a" : "b"}
+            priority={l.n === 0}
+          />
+        ))}
+        {/* silently warm the next frame so a dissolve never waits on the network */}
+        <Slide key={`warm-${next}`} n={next + 1} z={5} animateIn={false} ken="a" preload />
       </div>
 
       {/* consistent theme-aware scrims */}
