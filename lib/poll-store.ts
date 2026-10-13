@@ -339,7 +339,9 @@ export async function districtAggregates(caseStudyId: string, pollType: PollType
     ? { $ifNull: ["$scenarioDistrict", "$estimatedDistrict"] }
     : { $cond: [{ $ne: ["$district", ""] }, "$district", { $ifNull: ["$allocatedDistrict", ""] }] };
   const match: Record<string, unknown> = { caseStudyId, pollType, importId };
-  if (!scenario) match.$or = [{ recorded: true }, { allocatedDistrict: { $ne: "" } }];
+  // Only include coverage-allocated rows when the field actually EXISTS and is
+  // non-empty ($ne alone would also match documents missing the field).
+  if (!scenario) match.$or = [{ recorded: true }, { allocatedDistrict: { $exists: true, $nin: ["", null] } }];
 
   const rows = await c.responses.aggregate([
     { $match: match },
