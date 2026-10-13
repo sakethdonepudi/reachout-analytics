@@ -1,14 +1,25 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, BarChart3, Compass, Users } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
 import LeaderCarousel from "@/components/site/leader-carousel";
 import MobileLeaderStrip from "@/components/site/mobile-leader-strip";
-import { rafLoop } from "@/lib/raf-loop";
+import { useTheme } from "@/components/theme-provider";
+import { cn } from "@/lib/utils";
 
-const IMG = "/images/parliament.webp";
+/* ------------------------------------------------------------------ *
+ *  Hero backgrounds — seven approved images, responsive AVIF/WebP.
+ *  Order matters and matches the reading order of the supplied set.
+ * ------------------------------------------------------------------ */
+const SLIDE_COUNT = 7;
+const WIDTHS = [768, 1152, 1672];
+const srcSet = (n: number, ext: "avif" | "webp") =>
+  WIDTHS.map((w) => `/images/hero/slide-${n}-${w}.${ext} ${w}w`).join(", ");
+
+const HOLD_MS = 8000;
+const FADE_MS = 1500;
 
 const FEATURES = [
   { Icon: BarChart3, title: "Election Analysis", desc: "Survey design, constituency modelling and seat-level strategy, built on field data." },
@@ -16,98 +27,96 @@ const FEATURES = [
   { Icon: Compass, title: "Regional Intelligence", desc: "State and district research that helps campaigns focus where it counts." },
 ];
 
-/**
- * Landing hero. The Parliament image is split into depth layers (blurred
- * ambient, sharp photo, tilt-shift copy) that drift subtly with the pointer and
- * scroll. A restrained architectural line motif adds motion without noise.
- * Motion respects prefers-reduced-motion and stops once the hero is off-screen.
- */
+/** A single crossfade layer. Rendered (and therefore loaded) before it shows. */
+function Slide({ n, show, immediate }: { n: number; show: boolean; immediate: boolean }) {
+  return (
+    <picture
+      className={cn("absolute inset-0 block transition-opacity ease-in-out", show ? "opacity-100" : "opacity-0")}
+      style={{ transitionDuration: `${FADE_MS}ms` }}
+    >
+      <source type="image/avif" srcSet={srcSet(n, "avif")} sizes="100vw" />
+      <source type="image/webp" srcSet={srcSet(n, "webp")} sizes="100vw" />
+      {/* The subject sits on the right of every frame; bias the crop so it is
+          never cut, while keeping the left side clear for the headline. */}
+      <img
+        src={`/images/hero/slide-${n}-1672.webp`}
+        alt=""
+        aria-hidden
+        decoding="async"
+        fetchPriority={immediate ? "high" : "auto"}
+        className="h-full w-full object-cover object-[72%_50%]"
+      />
+    </picture>
+  );
+}
+
 export default function Hero() {
   const router = useRouter();
+  const { theme } = useTheme();
   const root = useRef<HTMLElement>(null);
-  const layers = useRef<{ ambient?: HTMLDivElement | null; sharp?: HTMLDivElement | null; shift?: HTMLDivElement | null; content?: HTMLDivElement | null; people?: HTMLDivElement | null }>({});
+
+  const [active, setActive] = useState(0);
+  const [fading, setFading] = useState(false);
+  const [onscreen, setOnscreen] = useState(true);
+  const [hidden, setHidden] = useState(false);
+  const reduced = useRef(false);
+
+  // Reduced motion → a single static background, no rotation.
+  useEffect(() => {
+    reduced.current = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
+
+  // Suspend rotation when the tab is hidden or the hero is off-screen.
+  useEffect(() => {
+    const onVis = () => setHidden(document.hidden);
+    document.addEventListener("visibilitychange", onVis);
+    const io = new IntersectionObserver(([e]) => setOnscreen(e.isIntersecting), { threshold: 0.12 });
+    if (root.current) io.observe(root.current);
+    return () => { document.removeEventListener("visibilitychange", onVis); io.disconnect(); };
+  }, []);
+
+  // Hold each slide, then crossfade.
+  useEffect(() => {
+    if (reduced.current || hidden || !onscreen || fading) return;
+    const t = window.setTimeout(() => setFading(true), HOLD_MS);
+    return () => window.clearTimeout(t);
+  }, [active, hidden, onscreen, fading]);
 
   useEffect(() => {
-    let mx = 0, my = 0, sx = 0, sy = 0;
-    const cache = new Map<HTMLElement, string>();
-    const setF = (el: HTMLElement, key: "filter" | "opacity", v: string) => {
-      const id = key + v;
-      if (cache.get(el) === id) return;
-      cache.set(el, id);
-      el.style[key] = v;
-    };
-    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const onMove = (e: PointerEvent) => { mx = e.clientX / innerWidth - 0.5; my = e.clientY / innerHeight - 0.5; };
-    const tick = () => {
-      sx += (mx - sx) * 0.06;
-      sy += (my - sy) * 0.06;
-      const p = Math.min(1, Math.max(0, scrollY / innerHeight));
-      if (p >= 1) return;
-      const L = layers.current;
-      const k = reduced ? 0 : 1;
-      if (L.ambient) L.ambient.style.transform = `translate3d(${sx * -16 * k}px, ${sy * -10 * k + scrollY * 0.45}px, 0) scale(${1.22 + p * 0.18})`;
-      if (L.sharp) {
-        L.sharp.style.transform = `translate3d(${sx * 12 * k}px, ${sy * 8 * k + scrollY * 0.32}px, 0) scale(${1.06 + p * 0.22})`;
-        setF(L.sharp, "filter", p > 0.02 ? `blur(${(p * 9).toFixed(0)}px)` : "none");
-      }
-      if (L.shift) L.shift.style.transform = `translate3d(${sx * 18 * k}px, ${sy * 12 * k + scrollY * 0.28}px, 0) scale(${1.08 + p * 0.22})`;
-      if (L.content) {
-        L.content.style.transform = `translate3d(0, ${-p * 70}px, 0)`;
-        setF(L.content, "opacity", (1 - p * 1.3).toFixed(2));
-        setF(L.content, "filter", p > 0.02 ? `blur(${(p * 6).toFixed(0)}px)` : "none");
-      }
-      if (L.people) {
-        L.people.style.transform = `rotateY(${sx * 8 * k}deg) rotateX(${-sy * 5 * k}deg) translate3d(0, ${-p * 140}px, ${-p * 260}px)`;
-        setF(L.people, "opacity", (1 - p * 1.3).toFixed(2));
-      }
-      if (root.current) setF(root.current, "opacity", (1 - Math.max(0, p - 0.6) / 0.4).toFixed(2));
-    };
-    addEventListener("pointermove", onMove);
-    const stopLoop = rafLoop(tick);
-    return () => { stopLoop(); removeEventListener("pointermove", onMove); };
-  }, []);
+    if (!fading) return;
+    const t = window.setTimeout(() => { setActive((a) => (a + 1) % SLIDE_COUNT); setFading(false); }, FADE_MS);
+    return () => window.clearTimeout(t);
+  }, [fading]);
+
+  const current = active;
+  const next = (active + 1) % SLIDE_COUNT;
+
+  // Theme-aware scrim: guarantees contrast for the left-aligned copy on every
+  // (dark) frame, slightly stronger in light theme.
+  const scrimLeft = theme === "light" ? "rgba(4,9,24,.9)" : "rgba(5,11,31,.86)";
+  const scrimMid = theme === "light" ? "rgba(7,20,56,.62)" : "rgba(7,20,56,.5)";
 
   return (
     <section ref={root} id="top" className="pointer-events-auto relative isolate min-h-[100svh] overflow-hidden bg-[#050b1f]">
-      {/* depth layers */}
-      <div ref={(el) => { layers.current.ambient = el; }} className="absolute inset-0 bg-cover bg-[position:60%_center] will-change-transform [filter:blur(14px)_saturate(1.15)_brightness(.62)] sm:[filter:blur(30px)_saturate(1.2)_brightness(.55)]"
-        style={{ backgroundImage: `url(${IMG})` }} aria-hidden />
-      <div ref={(el) => { layers.current.sharp = el; }} className="absolute inset-0 bg-cover bg-[center_38%] will-change-transform"
-        style={{ backgroundImage: `url(${IMG})`, WebkitMaskImage: "radial-gradient(150% 120% at 58% 40%, #000 62%, transparent 92%)", maskImage: "radial-gradient(150% 120% at 58% 40%, #000 62%, transparent 92%)" }} aria-hidden />
-      <div ref={(el) => { layers.current.shift = el; }} className="absolute inset-0 bg-cover bg-[center_35%] will-change-transform"
-        style={{ backgroundImage: `url(${IMG})`, filter: "blur(10px) saturate(1.1)", WebkitMaskImage: "linear-gradient(180deg,#000 0%,transparent 32%,transparent 64%,#000 90%)", maskImage: "linear-gradient(180deg,#000 0%,transparent 32%,transparent 64%,#000 90%)" }} aria-hidden />
+      {/* load the first background immediately (React hoists this to <head>) */}
+      <link rel="preload" as="image" href="/images/hero/slide-1-1672.webp" fetchPriority="high" />
 
-      {/* colour grade */}
-      <div className="absolute inset-0 bg-[linear-gradient(95deg,rgba(5,11,31,.92)_0%,rgba(7,20,56,.72)_34%,rgba(7,20,56,.16)_64%,rgba(5,11,31,.32)_100%)]" aria-hidden />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,11,31,.6)_0%,transparent_24%,transparent_62%,#050b1f_100%)]" aria-hidden />
-
-      {/* architectural line motif — subtle, slow drift */}
-      <div className="animate-drift pointer-events-none absolute inset-x-0 bottom-0 h-[78%] text-white/[0.09] mix-blend-soft-light" aria-hidden>
-        <svg viewBox="0 0 1400 700" preserveAspectRatio="xMidYMax slice" className="h-full w-full">
-          <g fill="none" stroke="currentColor" strokeWidth="1.1">
-            <line x1="0" y1="618" x2="1400" y2="618" />
-            {Array.from({ length: 22 }).map((_, i) => {
-              const x = 120 + i * 54;
-              return (
-                <g key={i}>
-                  <line x1={x} y1="300" x2={x} y2="618" />
-                  <line x1={x - 10} y1="300" x2={x + 10} y2="300" />
-                  <line x1={x - 8} y1="318" x2={x + 8} y2="318" />
-                </g>
-              );
-            })}
-            <path d="M120 300 Q700 150 1280 300" />
-            <path d="M120 262 Q700 112 1280 262" />
-            <line x1="0" y1="262" x2="1400" y2="262" />
-            <line x1="0" y1="240" x2="1400" y2="240" />
-          </g>
-        </svg>
+      {/* rotating backgrounds (two layers: current + preloading next) */}
+      <div className="absolute inset-0" aria-hidden>
+        {/* The outgoing frame stays fully opaque underneath; the incoming frame
+            fades in on top — no background bleeds through mid-crossfade. */}
+        <Slide n={current + 1} show immediate={current === 0} />
+        <Slide n={next + 1} show={fading} immediate={false} />
       </div>
+
+      {/* consistent theme-aware scrims */}
+      <div className="absolute inset-0" style={{ background: `linear-gradient(95deg, ${scrimLeft} 0%, ${scrimMid} 36%, rgba(7,20,56,.14) 64%, rgba(5,11,31,.4) 100%)` }} aria-hidden />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,11,31,.62)_0%,transparent_26%,transparent_60%,#050b1f_100%)]" aria-hidden />
       <div className="grain absolute inset-0 opacity-[0.05] mix-blend-overlay" aria-hidden />
 
       {/* content */}
       <div className="relative mx-auto flex min-h-[100svh] max-w-7xl flex-col justify-start px-5 pb-16 pt-28 sm:px-10 sm:pb-40 lg:justify-center lg:pt-32">
-        <div ref={(el) => { layers.current.content = el; }} className="w-full max-w-2xl origin-bottom will-change-transform">
+        <div className="w-full max-w-2xl">
           <div className="animate-rise mb-6 inline-flex items-center gap-2.5 rounded-full border border-white/12 bg-white/[0.06] px-4 py-2 text-[12px] font-medium tracking-wide text-white/85 backdrop-blur-xl">
             <span className="animate-pulse-dot size-2 rounded-full bg-saffron" />
             Political analytics &amp; campaign strategy
@@ -157,12 +166,9 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* original circular ring of leader portraits */}
-        <div className="pointer-events-none absolute bottom-48 right-[-40px] hidden [perspective:1600px] lg:block xl:right-0">
-          <div
-            ref={(el) => { layers.current.people = el; }}
-            className="pointer-events-auto origin-center [transform-style:preserve-3d] will-change-transform"
-          >
+        {/* circular ring of leader portraits — higher, centred in the right column */}
+        <div className="pointer-events-none absolute top-[46%] right-[1%] hidden -translate-y-1/2 [perspective:1600px] lg:block xl:right-[3%]">
+          <div className="pointer-events-auto origin-center [transform-style:preserve-3d]">
             <LeaderCarousel radius={250} />
           </div>
         </div>
