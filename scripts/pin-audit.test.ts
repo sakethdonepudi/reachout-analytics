@@ -12,7 +12,8 @@
 import * as XLSX from "xlsx";
 import { parseWorkbook, validateSheet, buildWorkbook, type Row } from "@/lib/poll-data";
 import { toDoc, assemblePinAggregates, buildRecordsQuery, type PinGroupRow } from "@/lib/poll-store";
-import { normalizePin, classifyPin, resolveRowPin, candidatePinsForDistrict, referenceAudit, coordinatesForPin, districtForPin } from "@/lib/pin";
+import { normalizePin, classifyPin, resolveRowPin, candidatePinsForDistrict, referenceAudit, coordinatesForPin, districtForPin, canonicalDistrictName } from "@/lib/pin";
+import { canonicalParty, partyStatus } from "@/lib/poll-data";
 import { PIN_COORDINATE_COVERAGE, PIN_COORDINATE_REFERENCE } from "@/lib/data/tamil-nadu-pin-coordinates";
 import { divideDistrictAcrossPins, reconcileDivision } from "@/lib/pin-divide";
 import { allocatePinAssignments, summarizeAllocation, PIN_ALLOCATION_VERSION, PIN_BASIS_LABEL, type AllocInput } from "@/lib/pin-assign";
@@ -392,6 +393,19 @@ const d3 = divideDistrictAcrossPins(537, partiesB, maduraiRefPins);
 eq("PIN totals sum to the district valid count", d3.reduce((a, d) => a + d.valid, 0), 537);
 ok("party totals reconcile across PINs", reconcileDivision(d3, partiesB).partyOk);
 ok("deterministic output", JSON.stringify(divideDistrictAcrossPins(537, partiesB, maduraiRefPins)) === JSON.stringify(d3));
+
+/* ---- 16. district + party alias canonicalisation --------------------- */
+console.log("\n16. District & party alias canonicalisation");
+eq("Kanniyakumari → Kanyakumari", canonicalDistrictName("Kanniyakumari"), "Kanyakumari");
+eq("Kanyakumari stays", canonicalDistrictName("Kanyakumari"), "Kanyakumari");
+eq("The Nilgiris → Nilgiris", canonicalDistrictName("The Nilgiris"), "Nilgiris");
+eq("Thoothukudi → Thoothukkudi", canonicalDistrictName("Thoothukudi"), "Thoothukkudi");
+eq("Tirupattur → Tirupathur", canonicalDistrictName("Tirupattur"), "Tirupathur");
+eq("unknown district passes through", canonicalDistrictName("Nowhere"), "Nowhere");
+eq("party alias resolves", canonicalParty("AIDMK+BJP+PMK+AMMK"), "AIADMK+BJP+PMK+AMMK");
+eq("aliased party validates as valid", partyStatus("AIDMK+BJP+PMK+AMMK"), "valid");
+eq("canonical party unchanged", canonicalParty("TVK"), "TVK");
+ok("alias merge makes valid count whole (no false invalid)", partyStatus("AIADMK+BJP+PMK+AMMK") === partyStatus("AIDMK+BJP+PMK+AMMK"));
 
 console.log(`\n${fail === 0 ? "ALL PASSED" : "FAILURES"}: ${pass} passed, ${fail} failed (case study: ${TEST_CASE})`);
 if (fail > 0) process.exitCode = 1;

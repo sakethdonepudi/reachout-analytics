@@ -13,6 +13,7 @@
 
 import { TN_DISTRICT_PINCODES, DISTRICT_ALIASES, POSTAL_REFERENCE } from "./data/tamil-nadu-pincodes";
 import { PIN_COORDINATES } from "./data/tamil-nadu-pin-coordinates";
+import { TN_DISTRICTS } from "./data/tamil-nadu-districts";
 
 export const PIN_CANONICAL = "PIN Code";
 
@@ -151,6 +152,22 @@ for (const [k, v] of Object.entries(DISTRICT_ALIASES)) ALIAS[canonDist(k)] = can
 export function canonicalDistrictKey(name: string): string {
   const c = canonDist(String(name ?? ""));
   return ALIAS[c] ?? c;
+}
+
+/** Canonical DISPLAY name (matches the boundary/geojson and TN_DISTRICTS). */
+const DISTRICT_DISPLAY = new Map<string, string>();
+for (const district of Object.keys(TN_DISTRICT_PINCODES)) DISTRICT_DISPLAY.set(canonDist(district), district);
+for (const d of TN_DISTRICTS) if (!DISTRICT_DISPLAY.has(canonDist(d.name))) DISTRICT_DISPLAY.set(canonDist(d.name), d.name);
+
+/**
+ * Resolve any data/import spelling (e.g. "Kanniyakumari", "The Nilgiris",
+ * "Thoothukudi") to the canonical display name used by the map and reference.
+ */
+export function canonicalDistrictName(name: string): string {
+  const raw = String(name ?? "").trim();
+  if (!raw) return "";
+  const key = canonicalDistrictKey(raw);
+  return DISTRICT_DISPLAY.get(key) ?? raw;
 }
 
 const DISTRICT_TO_PINS = new Map<string, { name: string; pins: Set<string> }>();

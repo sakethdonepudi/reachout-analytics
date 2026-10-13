@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getMongo } from "@/lib/mongodb";
-import { partyStatus, isRecordedDistrict, estimatedDistrictOf, recordedDistrictOf, scenarioDistrictOf, type PollType, type Row } from "@/lib/poll-data";
-import { resolveRowPin, pinLocationRef, normalizePin, isSixDigitPin } from "@/lib/pin";
+import { partyStatus, canonicalParty, isRecordedDistrict, estimatedDistrictOf, recordedDistrictOf, scenarioDistrictOf, type PollType, type Row } from "@/lib/poll-data";
+import { resolveRowPin, pinLocationRef, normalizePin, isSixDigitPin, canonicalDistrictName } from "@/lib/pin";
 import { allocatePinAssignments, summarizeAllocation, PIN_ALLOCATION_VERSION, type AllocInput, type PinAllocationSummary } from "@/lib/pin-assign";
 
 /* =====================================================================
@@ -125,6 +125,9 @@ export function toDoc(row: Row, caseStudyId: string, pollType: PollType, importI
     survey: String(row["Survey"] ?? ""),
     state: String(row["State"] ?? ""),
     district: recordedDistrictOf(row),
+    // Canonical district (data spelling → boundary/reference name), kept ALONGSIDE
+    // the original. Original geography is never changed; this only fixes matching.
+    districtCanonical: canonicalDistrictName(recordedDistrictOf(row)),
     ac: String(row["Assembly Constituency"] ?? ""),
     // PIN is always stored as text; raw (cleaned) value + normalised digits + format.
     pin: pin.value,
@@ -134,6 +137,8 @@ export function toDoc(row: Row, caseStudyId: string, pollType: PollType, importI
     pinRefDistrict: pinRef.district ?? "",
     pinLocationKnown: pinRef.known,
     party: String(row["Party"] ?? ""),
+    // Canonical party (aliases resolved); the original `party` is preserved.
+    partyCanonical: canonicalParty(row["Party"]),
     status,
     partyValid: status === "valid",
     entryIso: String(row["Entry Datetime ISO"] ?? row["Entry Date Original"] ?? ""),
@@ -270,9 +275,15 @@ export async function partyShares(caseStudyId: string, pollType: PollType, scena
     { $match: { caseStudyId, pollType, importId, status: "valid", ...(scenario ? { recorded: false } : {}) } },
     { $group: { _id: "$party", count: { $sum: 1 } } },
   ]).toArray();
-  const denominator = rows.reduce((a, r) => a + (r.count as number), 0);
-  const shares = rows
-    .map((r) => ({ party: r._id as string, count: r.count as number, pct: denominator ? +((r.count / denominator) * 100).toFixed(2) : 0 }))
+  // Merge party aliases (e.g. AIDMK+… → AIADMK+…) into one bucket.
+  const merged = new Map<string, number>();
+  for (const r of rows) {
+    const p = canonicalParty(r._id) || "Unknown";
+    merged.set(p, (merged.get(p) ?? 0) + (r.count as number));
+  }
+  const denominator = [...merged.values()].reduce((a, b) => a + b, 0);
+  const shares = [...merged.entries()]
+    .map(([party, count]) => ({ party, count, pct: denominator ? +((count / denominator) * 100).toFixed(2) : 0 }))
     .sort((a, b) => b.count - a.count);
   return { denominator, shares };
 }
@@ -337,13 +348,15 @@ export async function districtAggregates(caseStudyId: string, pollType: PollType
     const g = r._id as { d?: string; status?: string; party?: string };
     const n = r.n as number;
     total += n;
-    const name = (g.d ?? "").trim();
+    // Canonicalise the data spelling to the boundary/reference name so aliases
+    // (e.g. Kanniyakumari → Kanyakumari) aggregate into one district.
+    const name = canonicalDistrictName(g.d ?? "");
     const key = name || "__unmapped__";
     const d = map.get(key) ?? { district: name, total: 0, valid: 0, parties: {} };
     d.total += n;
     if (g.status === "valid") {
       d.valid += n; valid += n;
-      const p = g.party || "Unknown";
+      const p = canonicalParty(g.party) || "Unknown";
       d.parties[p] = (d.parties[p] ?? 0) + n;
       byParty[p] = (byParty[p] ?? 0) + n;
     }
@@ -436,8 +449,8 @@ export async function scenarioDistrictCounts(caseStudyId: string, pollType: Poll
   for (const r of rows) {
     const n = r.n;
     total += n;
-    const rec = String(r._id.recorded ?? "").trim();
-    const alloc = String(r._id.allocated ?? "").trim();
+    const rec = canonicalDistrictName(r._id.recorded ?? "");
+    const alloc = canonicalDistrictName(r._id.allocated ?? "");
     if (rec) { recordedTotal += n; bump(rec, "recorded", n); }
     else if (alloc) { allocatedTotal += n; bump(alloc, "allocated", n); }
     else unassigned += n;
@@ -503,10 +516,10 @@ export async function assumedPinDetails(caseStudyId: string, pollType: PollType)
     if (g.status === "valid") {
       valid += r.n;
       d.valid += r.n;
-      const p = g.party || "Unknown";
+      const p = canonicalParty(g.party) || "Unknown";
       d.parties[p] = (d.parties[p] ?? 0) + r.n;
     }
-    if (!d.district && g.district) d.district = String(g.district);
+    if (!d.district && g.district) d.district = canonicalDistrictName(String(g.district));
     if (!d.basis && g.basis) { d.basis = String(g.basis); d.basisLabel = String(g.basis); }
     if (!d.method && g.method) d.method = String(g.method);
     if (!d.source && g.source) d.source = String(g.source);

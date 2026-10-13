@@ -19,14 +19,20 @@ async function rowsFor(caseStudyId: string, pollType: "opinion" | "exit"): Promi
   const client = await p;
   const cursor = client.db(DB).collection("poll_responses").find({ caseStudyId, pollType, importId }).project({ _id: 0, row: 1 });
   const out: Row[] = [];
-  // Provenance preserved per row: PIN division method + reference version +
-  // the active source import identifier (the same dataset the page shows).
-  const stamp = {
-    "PIN Division Method": `${PIN_DIVISION_METHOD} (${PIN_DIVISION_VERSION})`,
-    "Reference Version": POSTAL_REFERENCE.version,
-    "Source Import ID": importId,
-  };
-  for await (const d of cursor) out.push({ ...((d as { row: Row }).row), ...stamp });
+  for await (const d of cursor) {
+    const row = (d as { row: Row }).row;
+    // Dataset-level provenance applies to every row (the import it came from and
+    // the reference version). District-division metadata is stamped ONLY on rows
+    // that actually carry an assumed-PIN allocation — never on unrelated or
+    // unallocated rows.
+    const allocated = String(row["Assumed PIN Code"] ?? "").trim() !== "" || String(row["PIN Assignment Method"] ?? "").trim() !== "";
+    out.push({
+      ...row,
+      "Reference Version": POSTAL_REFERENCE.version,
+      "Source Import ID": importId,
+      ...(allocated ? { "PIN Division Method": `${PIN_DIVISION_METHOD} (${PIN_DIVISION_VERSION})` } : {}),
+    });
+  }
   return out;
 }
 

@@ -44,8 +44,23 @@ const DISTRICT_NAMES = new Set(TN_DISTRICTS.map((d) => d.name));
 export type Row = Record<string, unknown>;
 export type PartyStatus = "valid" | "blank" | "invalid";
 
-export function partyStatus(party: unknown): PartyStatus {
+/**
+ * Explicit party-name aliases. The merged crosstab workbook spells the AIADMK
+ * coalition "AIDMK+BJP+PMK+AMMK" (missing an "A"); it maps to the canonical
+ * value. The original supplied value is always preserved on the row.
+ */
+export const PARTY_ALIASES: Record<string, string> = {
+  "AIDMK+BJP+PMK+AMMK": "AIADMK+BJP+PMK+AMMK",
+};
+
+/** Canonical party value (aliases resolved); original value is preserved elsewhere. */
+export function canonicalParty(party: unknown): string {
   const p = String(party ?? "").trim();
+  return PARTY_ALIASES[p] ?? p;
+}
+
+export function partyStatus(party: unknown): PartyStatus {
+  const p = canonicalParty(party);
   if (BLANK_PARTY.has(p.toLowerCase())) return "blank";
   if ((VALID_PARTIES as readonly string[]).includes(p)) return "valid";
   return "invalid";
