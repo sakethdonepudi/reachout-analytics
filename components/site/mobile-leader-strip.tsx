@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import LeaderPortrait from "@/components/site/leader-portrait";
+import LeaderDisc from "@/components/site/leader-disc";
 import { LEADERS } from "@/lib/cases";
 
 /**
@@ -38,8 +38,12 @@ export default function MobileLeaderStrip() {
         style={{ touchAction: "pan-x" }}
       >
         {LEADERS.map((l) => (
-          <div key={l.id} className="shrink-0 snap-center">
-            <LeaderPortrait leader={l} size="sm" />
+          <div key={l.id} className="w-[132px] shrink-0 snap-center px-1">
+            <LeaderDisc leader={l} size={112} ring />
+            <div className="mt-2.5 px-1 text-center">
+              <p className="font-display text-[12px] font-semibold leading-tight text-white">{l.name}</p>
+              <p className="mt-0.5 text-[10px] leading-tight text-white/60">{l.party} · {l.role}</p>
+            </div>
           </div>
         ))}
       </div>
