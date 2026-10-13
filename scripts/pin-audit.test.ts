@@ -427,7 +427,9 @@ eq("all eligible allocated to the one zero district", alloc.allocated, 5);
 eq("receiving district + count", alloc.byDistrict, [{ district: missing, count: 5 }]);
 eq("party choices preserved in the allocation", alloc.byParty, { TVK: 3, NTK: 2 });
 rows2.push({ responseId: "B9", district: "", ac: "", party: "TVK", zone: "North", status: "valid", estimatedDistrict: "Salem" });
-eq("existing estimate is not reused as eligible", allocateMissingGeography(rows2).eligible, 5);
+const alloc3 = allocateMissingGeography(rows2);
+eq("estimate-bearing blank records join the replacement pool", alloc3.eligible, 6);
+eq("reports how many records replace an estimate", alloc3.replacesEstimated, 1);
 eq("no constituency invented (allocation only names a district)", "ac" in { ac: 1 } && true, true);
 
 console.log(`\n${fail === 0 ? "ALL PASSED" : "FAILURES"}: ${pass} passed, ${fail} failed (case study: ${TEST_CASE})`);

@@ -62,9 +62,11 @@ export const DISTRICT_ALIASES: Record<string, string> = {
   tiruvarur: "Thiruvarur",
   nagapattinam: "Nagapattinam",
   nagappattinam: "Nagapattinam",
-  mayiladuthurai: "Mayiladuthurai",
-  mayiladuthurai_: "Mayiladuthurai",
-  mayavaram: "Mayiladuthurai",
+  // The 37-district boundary set merges Mayiladuthurai into Nagapattinam, so
+  // align the data/API/counts with the map meshes (no mesh-less district).
+  mayiladuthurai: "Nagapattinam",
+  mayiladuthurai_: "Nagapattinam",
+  mayavaram: "Nagapattinam",
   krishnagiri: "Krishnagiri",
   dharmapuri: "Dharmapuri",
   namakkal: "Namakkal",

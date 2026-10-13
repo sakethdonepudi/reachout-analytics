@@ -1,82 +1,56 @@
 "use client";
 
-import { PARTY_META, PARTY_ORDER, type PartyResult } from "@/lib/data/tamil-nadu-poll-data";
+import type { PartyResult } from "@/lib/data/tamil-nadu-poll-data";
 
 export type MapTooltipData =
-  | { kind: "district"; name: string; samples: number; results: PartyResult; valid?: number; sharePct?: number; pollLabel?: string; basisLabel?: string; scenario?: boolean; recorded?: number; allocated?: number }
-  | { kind: "pincode"; pincode: string; district: string; samples: number; results: PartyResult; pollType: "exit" | "opinion"; survey?: boolean; valid?: number; postalPlace?: string | null };
+  | { kind: "district"; name: string; samples: number; results: PartyResult; valid?: number; leader?: string | null; leaderPct?: number; empty?: boolean }
+  | { kind: "pincode"; pincode: string; district: string; samples: number; results: PartyResult; pollType: "exit" | "opinion"; survey?: boolean; valid?: number; postalPlace?: string | null; leader?: string | null; leaderPct?: number };
 
-/** Glass tooltip anchored to the pointer. Always spells out party names + %. */
+const TIP_W = 236;
+const TIP_H = 132;
+
+/** Compact glass tooltip anchored to the pointer, kept inside the viewport. */
 export default function MapTooltip({ data, x, y }: { data: MapTooltipData; x: number; y: number }) {
-  const live = data.kind === "district" && data.valid !== undefined;
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1920;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 1080;
+  const left = Math.max(8, Math.min(x + 16, vw - TIP_W - 8));
+  const top = Math.max(8, Math.min(y + 16, vh - TIP_H - 8));
+
   return (
-    <div
-      className="pointer-events-none fixed left-0 top-0 z-[60] w-[220px]"
-      style={{ transform: `translate(${x + 16}px, ${y + 16}px)` }}
-      role="status"
-    >
+    <div className="pointer-events-none fixed left-0 top-0 z-[60] w-[236px]" style={{ transform: `translate(${left}px, ${top}px)` }} role="status">
       <div className="glass relative rounded-2xl p-3.5">
         <span className="tricolor-line absolute inset-x-4 top-0 h-px opacity-70" aria-hidden />
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-          {data.kind === "pincode" ? `Pincode · ${data.district}` : "District"}
-        </p>
-        <p className="font-display text-base font-semibold leading-tight text-foreground">
-          {data.kind === "pincode" ? data.pincode : data.name}
-        </p>
 
-        {data.kind === "district" && live ? (
+        {data.kind === "district" ? (
           <>
-            {(data.valid ?? 0) === 0 ? (
-              <p className="mt-0.5 text-[11px] text-muted-foreground">No survey responses</p>
-            ) : data.scenario && data.recorded !== undefined ? (
-              <>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">Recorded: <b className="font-semibold text-foreground">{data.recorded.toLocaleString("en-IN")}</b></p>
-                <p className="text-[11px] text-muted-foreground">Allocated: <b className="font-semibold text-foreground">{(data.allocated ?? 0).toLocaleString("en-IN")}</b></p>
-                <p className="text-[11px] text-muted-foreground">Scenario total: <b className="font-semibold text-foreground">{(data.valid ?? 0).toLocaleString("en-IN")}</b></p>
-              </>
-            ) : (
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Valid responses: <b className="font-semibold text-foreground">{(data.valid ?? 0).toLocaleString("en-IN")}</b>
-              </p>
-            )}
-            {data.sharePct !== undefined && (data.valid ?? 0) > 0 && (
-              <p className="text-[11px] text-muted-foreground">
-                Share of state: <b className="font-semibold text-foreground">{data.sharePct.toFixed(1)}%</b>
-              </p>
-            )}
-            {data.pollLabel && (
-              <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-saffron-2">
-                {data.pollLabel}{data.basisLabel ? ` · ${data.basisLabel}` : ""}
-              </p>
-            )}
-          </>
-        ) : data.kind === "pincode" && data.survey ? (
-          <>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">District</p>
+            <p className="font-display text-base font-semibold leading-tight text-foreground">{data.name}</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
               Survey responses: <b className="font-semibold text-foreground">{(data.valid ?? 0).toLocaleString("en-IN")}</b>
             </p>
-            <p className="text-[11px] text-muted-foreground">District: <b className="font-semibold text-foreground">{data.district || "—"}</b></p>
-            <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">Postal-area reference{data.postalPlace ? ` · ${data.postalPlace}` : ""} — not a respondent location.</p>
+            {(data.valid ?? 0) === 0 || data.empty ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">No survey responses available.</p>
+            ) : (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Leading: <b className="font-semibold text-foreground">{data.leader ?? "—"}</b>
+                {data.leaderPct !== undefined ? <span className="text-muted-foreground"> · {data.leaderPct.toFixed(1)}%</span> : null}
+              </p>
+            )}
+            <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Click to explore district and PIN codes.</p>
           </>
         ) : (
           <>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Samples: <b className="font-semibold text-foreground">{data.samples.toLocaleString("en-IN")}</b>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">PIN code · {data.district || "—"}</p>
+            <p className="font-display text-base font-semibold leading-tight tabular-nums text-foreground">{data.pincode}</p>
+            {data.postalPlace && <p className="text-[11px] text-muted-foreground">{data.postalPlace}</p>}
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Allocated responses: <b className="font-semibold text-foreground">{(data.valid ?? 0).toLocaleString("en-IN")}</b>
             </p>
-            {data.kind === "pincode" && (
-              <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-saffron-2">
-                {data.pollType === "exit" ? "Exit Poll" : "Opinion Poll"}
-              </p>
-            )}
-            <ul className="mt-2 space-y-1 border-t border-border pt-2">
-              {PARTY_ORDER.map((k) => (
-                <li key={k} className="flex items-center gap-2 text-[12px]">
-                  <span className="size-2 rounded-sm" style={{ background: PARTY_META[k].color }} aria-hidden />
-                  <span className="text-muted-foreground">{PARTY_META[k].label}</span>
-                  <span className="ml-auto tabular-nums font-semibold text-foreground">{data.results[k]}%</span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-[11px] text-muted-foreground">
+              Leading: <b className="font-semibold text-foreground">{data.leader ?? "—"}</b>
+              {data.leaderPct !== undefined ? <span className="text-muted-foreground"> · {data.leaderPct.toFixed(1)}%</span> : null}
+            </p>
+            <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">Based on district survey totals.</p>
           </>
         )}
       </div>

@@ -22,7 +22,8 @@ import { canonicalDistrictName, referenceDistrictNames } from "./pin";
 import { POSTAL_REFERENCE } from "./data/tamil-nadu-pincodes";
 
 export const COVERAGE_METHOD = "even-distribution-over-zero-response-districts";
-export const COVERAGE_VERSION = "coverage-v1";
+/** v2: estimate-bearing blank-geography records are INCLUDED (replacement pool). */
+export const COVERAGE_VERSION = "coverage-v2";
 
 export type CoverageRow = {
   responseId: string;
@@ -39,6 +40,8 @@ export type CoverageRow = {
 export type CoverageAllocation = {
   zeroDistricts: string[];
   eligible: number;
+  /** Eligible records that previously carried an estimate (replacement pool). */
+  replacesEstimated: number;
   allocated: number;
   unassigned: number;
   byDistrict: { district: string; count: number }[];
@@ -81,17 +84,22 @@ export function allocateMissingGeography(
   }
   const zeroDistricts = refs.filter((d) => (validByDistrict.get(d) ?? 0) === 0).sort();
 
+  // Eligible = valid responses with BOTH original district and AC blank, that
+  // do NOT already carry a coverage allocation (never reused). Records with a
+  // previous ESTIMATE are INCLUDED — a replacement version supersedes it rather
+  // than silently excluding them.
   const eligible = rows.filter((r) =>
     r.status === "valid" &&
     !String(r.district ?? "").trim() &&
     !String(r.ac ?? "").trim() &&
-    !String(r.allocatedDistrict ?? "").trim() &&
-    !String(r.estimatedDistrict ?? "").trim(),
+    !String(r.allocatedDistrict ?? "").trim(),
   );
+  const replacesEstimated = eligible.filter((r) => String(r.estimatedDistrict ?? "").trim() !== "").length;
 
   const base: CoverageAllocation = {
     zeroDistricts,
     eligible: eligible.length,
+    replacesEstimated,
     allocated: 0,
     unassigned: eligible.length,
     byDistrict: [],

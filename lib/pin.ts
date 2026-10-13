@@ -157,8 +157,8 @@ export function canonicalDistrictKey(name: string): string {
 
 /** Canonical DISPLAY name (matches the boundary/geojson and TN_DISTRICTS). */
 const DISTRICT_DISPLAY = new Map<string, string>();
-for (const district of Object.keys(TN_DISTRICT_PINCODES)) DISTRICT_DISPLAY.set(canonDist(district), district);
-for (const d of TN_DISTRICTS) if (!DISTRICT_DISPLAY.has(canonDist(d.name))) DISTRICT_DISPLAY.set(canonDist(d.name), d.name);
+for (const district of Object.keys(TN_DISTRICT_PINCODES)) DISTRICT_DISPLAY.set(canonicalDistrictKey(district), district);
+for (const d of TN_DISTRICTS) if (!DISTRICT_DISPLAY.has(canonicalDistrictKey(d.name))) DISTRICT_DISPLAY.set(canonicalDistrictKey(d.name), d.name);
 
 /**
  * Resolve any data/import spelling (e.g. "Kanniyakumari", "The Nilgiris",
@@ -176,8 +176,10 @@ const PIN_DISTRICTS = new Map<string, Set<string>>();
 let DUPLICATE_PINS = 0; // codes listed more than once within the same district
 let RAW_PINS = 0;
 for (const [district, pins] of Object.entries(TN_DISTRICT_PINCODES)) {
-  const key = canonDist(district);
-  const entry = DISTRICT_TO_PINS.get(key) ?? { name: district, pins: new Set<string>() };
+  // Canonical key so aliases (e.g. Mayiladuthurai → Nagapattinam) MERGE their
+  // candidate PINs into one district, matching the boundary/geometry set.
+  const key = canonicalDistrictKey(district);
+  const entry = DISTRICT_TO_PINS.get(key) ?? { name: canonicalDistrictName(district), pins: new Set<string>() };
   for (const p of pins) {
     RAW_PINS++;
     if (entry.pins.has(p)) DUPLICATE_PINS++;
