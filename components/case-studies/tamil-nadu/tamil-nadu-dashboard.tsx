@@ -9,13 +9,13 @@ import {
   type PollType,
 } from "@/lib/data/tamil-nadu-poll-data";
 import { cn } from "@/lib/utils";
+import { divideDistrictAcrossPins, pinShares } from "@/lib/pin-divide";
 import { useTheme } from "@/components/theme-provider";
 import PollToggle from "./poll-toggle";
 import PollSummary from "./poll-summary";
 import PollChart from "./poll-chart";
 import DistrictFilter from "./district-filter";
 import PublishedSummary from "./published-summary";
-import ExploreGeography from "./explore-geography";
 import SurveyLegend from "./survey-legend";
 import type { MapLayers, MapMode } from "./tamil-nadu-map";
 
@@ -53,7 +53,6 @@ export default function TamilNaduDashboard() {
   const { theme } = useTheme();
 
   /* ---- one shared geography state: mode + selected regions ---- */
-  const [geoMode, setGeoMode] = useState<MapMode>("state");
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>([]);
   const [activePincode, setActivePincode] = useState<string | null>(null);
   const [hoveredDistrict, setHoveredDistrict] = useState<string | null>(null); // transient only
@@ -70,6 +69,9 @@ export default function TamilNaduDashboard() {
 
   const dataset = useMemo(() => datasetFor(pollType), [pollType]);
   const focusDistrict = selectedDistricts.length === 1 ? selectedDistricts[0] : null;
+  // Navigation is derived from the selection: any selected district reveals its
+  // PINs automatically (no public State/District/PIN view selectors).
+  const geoMode: MapMode = selectedDistricts.length > 0 ? "pincode" : "state";
   const activePin = useMemo(() => (activePincode ? findPincode(activePincode, pollType) : undefined), [activePincode, pollType]);
 
   useEffect(() => {
@@ -135,6 +137,21 @@ export default function TamilNaduDashboard() {
     return () => ctrl.abort();
   }, [refreshNonce]);
 
+  // Statewide totals: every supplied record (total) with shares from valid only.
+  const [stateTotals, setStateTotals] = useState<{ total: number; valid: number; shares: { party: string; count: number; pct: number }[] } | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch(`/api/public/case-studies/tamil-nadu/summary`, { cache: "no-store", signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (ctrl.signal.aborted) return;
+        const block = pollType === "exit" ? d?.exit : d?.opinion;
+        setStateTotals(block?.counts ? { total: block.counts.total ?? 0, valid: block.counts.valid ?? 0, shares: block.shares?.shares ?? [] } : null);
+      })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [pollType, refreshNonce]);
+
   // Auto-refresh filters/counts/markers when a new dataset is published
   // (tab focus + visibility + a light poll), matching the districts fetch.
   useEffect(() => {
@@ -191,13 +208,20 @@ export default function TamilNaduDashboard() {
   const selectedRefPin = activePincode ? currentPins.find((p) => p.pin === activePincode) : undefined;
   const parentDistrict = selectedRefPin?.district ?? focusDistrict ?? null;
   const districtRow = parentDistrict ? live?.districts.find((d) => d.district === parentDistrict) : undefined;
+  // Even division of the parent district's responses across its eligible PINs.
+  const districtPinList = parentDistrict ? currentPins.filter((p) => p.district === parentDistrict).map((p) => p.pin) : [];
+  const division = parentDistrict && districtRow
+    ? divideDistrictAcrossPins(districtRow.valid, districtRow.parties ?? {}, districtPinList)
+    : [];
+  const selectedDivision = activePincode ? division.find((d) => d.pin === activePincode) : undefined;
+  const selectedPinShares = selectedDivision ? pinShares(selectedDivision) : [];
   const districtShares = districtRow
     ? Object.entries(districtRow.parties ?? {})
         .map(([party, count]) => ({ party, count, pct: districtRow.valid ? +((count / districtRow.valid) * 100).toFixed(2) : 0 }))
         .sort((a, b) => b.count - a.count)
     : [];
   const filteredPublishedPins = (() => {
-    const base = focusDistrict ? currentPins.filter((p) => p.district === focusDistrict) : currentPins;
+    const base = selectedDistricts.length ? currentPins.filter((p) => selectedDistricts.includes(p.district ?? "")) : currentPins;
     const q = pinQuery.trim();
     return q ? base.filter((p) => p.pin.includes(q)) : base;
   })();
@@ -254,41 +278,31 @@ export default function TamilNaduDashboard() {
     return q ? rows.filter((p) => p.pincode.includes(q)) : rows;
   }, [dataset, focusDistrict, pinQuery]);
 
-  /* ---- geography transitions (single source of truth: geoMode) ---- */
-  const applyMode = useCallback((m: MapMode) => {
+  /* ---- geography transitions (single source of truth: the selection) ---- */
+  const clearSelection = useCallback(() => {
     setHoveredDistrict(null);
-    if (m === "state") { setGeoMode("state"); setSelectedDistricts([]); setActivePincode(null); return; }
-    if (m === "district") { setGeoMode("district"); setActivePincode(null); return; }
-    // pincode: always openable. The panel shows the recorded explanation, the
-    // "not generated" notice, or the assigned PIN list depending on state.
-    setGeoMode("pincode");
+    setSelectedDistricts([]);
     setActivePincode(null);
-    setSelectedDistricts((prev) => {
-      if (prev.length > 1) { setNotice("Kept one district for PIN-code view."); return [prev[0]]; }
-      return prev;
-    });
+    setPinQuery("");
   }, []);
 
+  // Selecting a district ADDS it to the focused set (a second selection never
+  // silently replaces the first); selecting it again removes it.
   const toggleDistrict = useCallback((name: string) => {
     setHoveredDistrict(null);
     setActivePincode(null);
-    setSelectedDistricts((prev) => {
-      const next = prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name];
-      setGeoMode(next.length ? "district" : "state");
-      return next;
-    });
+    setSelectedDistricts((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]));
   }, []);
 
   const onMapSelectDistrict = useCallback((name: string | null) => {
     setHoveredDistrict(null);
     setActivePincode(null);
-    if (name) { setSelectedDistricts([name]); setGeoMode("district"); }
-    else { setSelectedDistricts([]); setGeoMode("state"); }
-  }, []);
+    if (name) toggleDistrict(name);
+    else clearSelection();
+  }, [toggleDistrict, clearSelection]);
 
   const onSelectPincode = useCallback((pin: string | null) => {
     setActivePincode(pin);
-    if (pin) setGeoMode("pincode");
   }, []);
 
   const changePollType = (v: PollType) => {
@@ -300,20 +314,18 @@ export default function TamilNaduDashboard() {
 
   const resetView = useCallback(() => {
     setResetNonce((n) => n + 1);
-    setGeoMode("state");
     setSelectedDistricts([]);
     setActivePincode(null);
     setHoveredDistrict(null);
     setNotice(null);
+    setPinQuery("");
   }, []);
 
   const pinDistrict = parentDistrict ?? activePin?.district ?? focusDistrict;
   const activePinCode = activePincode ?? activePin?.pincode ?? null;
-  const crumbs: { label: string; onClick?: () => void }[] = [{ label: "Tamil Nadu", onClick: () => applyMode("state") }];
-  if (pinDistrict) crumbs.push({ label: pinDistrict, onClick: () => { setSelectedDistricts([pinDistrict]); setActivePincode(null); setGeoMode("district"); } });
+  const crumbs: { label: string; onClick?: () => void }[] = [{ label: "Tamil Nadu", onClick: clearSelection }];
+  if (pinDistrict) crumbs.push({ label: pinDistrict, onClick: () => { setActivePincode(null); } });
   if (activePinCode) crumbs.push({ label: activePinCode });
-
-  const analysisDistrictPrompt = geoMode === "district" && selectedDistricts.length === 0;
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
@@ -344,7 +356,19 @@ export default function TamilNaduDashboard() {
 
         {/* left: geography controls (above the map on mobile) */}
         <aside className="relative z-20 mt-4 w-full space-y-2.5 lg:absolute lg:left-8 lg:top-[348px] lg:mt-0 lg:w-[236px] lg:max-h-[calc(100svh-368px)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
-          <ExploreGeography mode={geoMode} onChange={applyMode} pincodeDisabled={false} />
+          <p className="px-1 text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
+            {selectedDistricts.length === 0 ? "Tamil Nadu · statewide" : `${selectedDistricts.length} district${selectedDistricts.length > 1 ? "s" : ""} selected`}
+          </p>
+          {selectedDistricts.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedDistricts.map((d) => (
+                <span key={d} className="inline-flex items-center gap-1 rounded-full border border-saffron/50 bg-saffron/10 px-2.5 py-1 text-[11.5px] font-semibold text-saffron-2">
+                  {d}
+                  <button type="button" onClick={() => toggleDistrict(d)} aria-label={`Remove ${d}`} className="grid size-4 place-items-center rounded-full text-saffron-2 transition-colors hover:bg-saffron/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">×</button>
+                </span>
+              ))}
+            </div>
+          )}
           {notice && <p className="rounded-xl border border-saffron/30 bg-saffron/10 px-3 py-2 text-[11px] leading-relaxed text-saffron-2">{notice}</p>}
 
           <div className="flex items-center gap-2 rounded-2xl border border-border bg-card/60 px-3.5 py-2.5">
@@ -448,15 +472,15 @@ export default function TamilNaduDashboard() {
                 <p className={LABEL}>PIN code · {parentDistrict ?? "district not stated"}</p>
                 <div className="mt-1 flex items-end justify-between gap-3">
                   <span className="font-display text-2xl font-semibold tabular-nums text-foreground">{activePincode}</span>
-                  <span className="text-[11.5px] text-muted-foreground">Survey responses: <b className="tabular-nums text-foreground/85">{(districtRow?.valid ?? 0).toLocaleString("en-IN")}</b></span>
+                  <span className="text-[11.5px] text-muted-foreground">Survey responses: <b className="tabular-nums text-foreground/85">{(selectedDivision?.valid ?? 0).toLocaleString("en-IN")}</b></span>
                 </div>
-                {!districtRow || districtRow.valid === 0 ? (
-                  <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">No district survey responses.</p>
+                {!selectedDivision || selectedDivision.valid === 0 ? (
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">No survey responses for this PIN.</p>
                 ) : (
                   <>
                     <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Party share</p>
                     <ul className="mt-1.5 space-y-2">
-                      {districtShares.map((s) => (
+                      {selectedPinShares.map((s) => (
                         <li key={s.party} className="text-[12px]">
                           <div className="flex items-baseline justify-between gap-2">
                             <span className="min-w-0 break-words text-foreground/85">{s.party}</span>
@@ -469,7 +493,38 @@ export default function TamilNaduDashboard() {
                   </>
                 )}
                 {selectedRefPin && !selectedRefPin.locationAvailable && <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">No mapped location for this PIN.</p>}
-                <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Based on district survey results.</p>
+                <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">PIN breakdown allocated from district survey totals.</p>
+              </div>
+            ) : liveActive && liveSelection ? (
+              <div>
+                <p className={LABEL}>{selectedDistricts.length > 1 ? "Selected districts" : "Selected district"}</p>
+                <p className="mt-1 min-w-0 truncate font-display text-[15px] font-semibold text-foreground">
+                  {selectedDistricts.length <= 3 ? selectedDistricts.join(" & ") : `${selectedDistricts.slice(0, 3).join(" & ")} +${selectedDistricts.length - 3}`}
+                </p>
+                <div className="mt-4 flex items-end justify-between gap-3">
+                  <div>
+                    <p className={LABEL}>Survey responses</p>
+                    <p className="font-display text-3xl font-semibold tabular-nums text-foreground">{liveSelection.denom.toLocaleString("en-IN")}</p>
+                  </div>
+                  <p className="shrink-0 text-right text-[11px] text-muted-foreground">{pollLabel}</p>
+                </div>
+                <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Party share</p>
+                <ul className="mt-2 space-y-2.5">
+                  {liveSelection.shares.length === 0 ? (
+                    <li className="text-[12.5px] text-muted-foreground">No data available for this selection.</li>
+                  ) : (
+                    liveSelection.shares.map((s) => (
+                      <li key={s.party} className="text-[12.5px]">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="min-w-0 break-words text-foreground/85">{s.party}</span>
+                          <span className="shrink-0 tabular-nums text-muted-foreground">{s.count.toLocaleString("en-IN")} · {s.pct}%</span>
+                        </div>
+                        <span className="mt-1 block h-2 overflow-hidden rounded-full bg-elevated"><span className="block h-full rounded-full bg-saffron" style={{ width: `${s.pct}%` }} /></span>
+                      </li>
+                    ))
+                  )}
+                </ul>
+                <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Select a PIN code to view survey results.</p>
               </div>
             ) : liveActive ? (
               <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">Select a PIN code to view survey results.</p>
@@ -497,8 +552,6 @@ export default function TamilNaduDashboard() {
             ) : (
               <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">Select a PIN code to see its results.</p>
             )
-          ) : analysisDistrictPrompt ? (
-            <p className="py-2 text-[12.5px] leading-relaxed text-muted-foreground">Select a district to explore.</p>
           ) : intensityActive && liveSelection ? (
             <div>
               <p className={LABEL}>Selected region</p>
@@ -510,16 +563,17 @@ export default function TamilNaduDashboard() {
               </div>
               <div className="mt-4 flex items-end justify-between gap-3">
                 <div>
-                  <p className={LABEL}>Valid responses</p>
-                  <p className="font-display text-3xl font-semibold tabular-nums text-foreground">{liveSelection.denom.toLocaleString("en-IN")}</p>
+                  <p className={LABEL}>{selectedDistricts.length === 0 ? "Total responses" : "Survey responses"}</p>
+                  <p className="font-display text-3xl font-semibold tabular-nums text-foreground">{(selectedDistricts.length === 0 ? stateTotals?.total ?? liveSelection.denom : liveSelection.denom).toLocaleString("en-IN")}</p>
                 </div>
-                <p className="shrink-0 text-right text-[11px] text-muted-foreground">{pollLabel} · {basisLabel}</p>
+                <p className="shrink-0 text-right text-[11px] text-muted-foreground">{pollLabel}</p>
               </div>
-              <ul className="mt-4 space-y-2.5">
-                {liveSelection.shares.length === 0 ? (
+              <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Party share</p>
+              <ul className="mt-2 space-y-2.5">
+                {(selectedDistricts.length === 0 && stateTotals ? stateTotals.shares : liveSelection.shares).length === 0 ? (
                   <li className="text-[12.5px] text-muted-foreground">No data available for this selection.</li>
                 ) : (
-                  liveSelection.shares.map((s) => (
+                  (selectedDistricts.length === 0 && stateTotals ? stateTotals.shares : liveSelection.shares).map((s) => (
                     <li key={s.party} className="text-[12.5px]">
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="min-w-0 break-words text-foreground/85">{s.party}</span>
@@ -564,6 +618,10 @@ export default function TamilNaduDashboard() {
             </>
           )}
 
+          {intensityActive && view === "estimated" && (
+            <p className="mt-3 text-[10px] leading-relaxed text-saffron-2">Includes responses allocated from missing geography.</p>
+          )}
+
           {intensityActive ? (
             <details className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
               <summary className="inline-flex cursor-pointer list-none items-center gap-1 font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
@@ -583,19 +641,18 @@ export default function TamilNaduDashboard() {
 
         {/* right: filters */}
         <section id="geo-panel" role="region" aria-label="Geography details" className="relative z-20 mx-auto mt-4 flex max-w-xl flex-col rounded-2xl border border-border bg-card/85 p-4 shadow-[0_18px_50px_-30px_rgba(15,20,30,0.45)] backdrop-blur-2xl lg:absolute lg:bottom-8 lg:right-8 lg:top-24 lg:mt-0 lg:w-[240px] lg:max-w-none">
-          {geoMode !== "pincode" ? (
-            <DistrictFilter
-              rows={allRows}
-              selected={selectedDistricts}
-              onToggle={toggleDistrict}
-              onSelectAll={() => applyMode("state")}
-              onClear={() => applyMode("state")}
-              onHover={setHoveredDistrict}
-            />
-          ) : liveActive ? (
+          <DistrictFilter
+            rows={allRows}
+            selected={selectedDistricts}
+            onToggle={toggleDistrict}
+            onSelectAll={clearSelection}
+            onClear={clearSelection}
+            onHover={setHoveredDistrict}
+          />
+          {selectedDistricts.length > 0 && liveActive ? (
             <div className="flex min-h-0 flex-1 flex-col">
-              <p className={cn("mb-3", LABEL)}>
-                {focusDistrict ? `${focusDistrict} · ` : "Statewide · "}{filteredPublishedPins.length.toLocaleString("en-IN")} PIN {filteredPublishedPins.length === 1 ? "code" : "codes"}
+              <p className={cn("mb-3 border-t border-border pt-3", LABEL)}>
+                {selectedDistricts.length === 1 ? selectedDistricts[0] : `${selectedDistricts.length} districts`} · {filteredPublishedPins.length.toLocaleString("en-IN")} PIN {filteredPublishedPins.length === 1 ? "code" : "codes"}
               </p>
               <label className="relative mb-3 block">
                 <input value={pinQuery} onChange={(e) => setPinQuery(e.target.value)} placeholder="Search PIN code..." aria-label="Search PIN codes" className="w-full rounded-xl border border-border bg-elevated/60 px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground outline-none focus:border-saffron/60 focus:ring-2 focus:ring-saffron/20" />
@@ -621,9 +678,9 @@ export default function TamilNaduDashboard() {
                 </ul>
               </div>
             </div>
-          ) : (
+          ) : selectedDistricts.length > 0 ? (
             <div className="flex min-h-0 flex-1 flex-col">
-              <p className={cn("mb-3", LABEL)}>{focusDistrict ? `${focusDistrict} · PIN codes` : "Statewide · PIN codes"}</p>
+              <p className={cn("mb-3", LABEL)}>{focusDistrict ? `${focusDistrict} · PIN codes` : "Selected districts · PIN codes"}</p>
               {demoPins && <p className="mb-2 rounded-lg border border-saffron/30 bg-saffron/10 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-saffron-2">Demonstration PIN data — synthetic positions and sample shares, not uploaded survey data.</p>}
               <label className="relative mb-3 block">
                 <input value={pinQuery} onChange={(e) => setPinQuery(e.target.value)} placeholder="Search PIN code..." aria-label="Search PIN codes" className="w-full rounded-xl border border-border bg-elevated/60 px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground outline-none focus:border-saffron/60 focus:ring-2 focus:ring-saffron/20" />
@@ -649,7 +706,7 @@ export default function TamilNaduDashboard() {
               </div>
               <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Demonstration PIN codes — not from an uploaded dataset.</p>
             </div>
-          )}
+          ) : null}
         </section>
       </section>
 
@@ -663,7 +720,7 @@ export default function TamilNaduDashboard() {
         <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">How to explore</p>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
           {MODES.map(({ id, title, desc, Icon }, i) => (
-            <button key={id} type="button" onClick={() => applyMode(id)} className="rounded-2xl border border-border bg-card/60 p-4 text-left backdrop-blur-xl transition-colors hover:border-saffron/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+            <button key={id} type="button" onClick={clearSelection} className="rounded-2xl border border-border bg-card/60 p-4 text-left backdrop-blur-xl transition-colors hover:border-saffron/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
               <div className="mb-2 flex items-center gap-2">
                 <span className="font-serif text-2xl italic text-saffron-2">{String(i + 1).padStart(2, "0")}</span>
                 <Icon className="size-4 text-muted-foreground" />
@@ -672,7 +729,7 @@ export default function TamilNaduDashboard() {
               <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{desc}</p>
             </button>
           ))}
-          <button type="button" onClick={() => applyMode("district")} className="rounded-2xl border border-border bg-card/60 p-4 text-left backdrop-blur-xl transition-colors hover:border-saffron/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+          <button type="button" onClick={clearSelection} className="rounded-2xl border border-border bg-card/60 p-4 text-left backdrop-blur-xl transition-colors hover:border-saffron/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
             <div className="mb-2 flex items-center gap-2">
               <span className="font-serif text-2xl italic text-saffron-2">04</span>
               <MapPin className="size-4 text-muted-foreground" />

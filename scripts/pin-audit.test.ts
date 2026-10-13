@@ -14,6 +14,7 @@ import { parseWorkbook, validateSheet, buildWorkbook, type Row } from "@/lib/pol
 import { toDoc, assemblePinAggregates, buildRecordsQuery, type PinGroupRow } from "@/lib/poll-store";
 import { normalizePin, classifyPin, resolveRowPin, candidatePinsForDistrict, referenceAudit, coordinatesForPin, districtForPin } from "@/lib/pin";
 import { PIN_COORDINATE_COVERAGE, PIN_COORDINATE_REFERENCE } from "@/lib/data/tamil-nadu-pin-coordinates";
+import { divideDistrictAcrossPins, reconcileDivision } from "@/lib/pin-divide";
 import { allocatePinAssignments, summarizeAllocation, PIN_ALLOCATION_VERSION, PIN_BASIS_LABEL, type AllocInput } from "@/lib/pin-assign";
 import { POSTAL_REFERENCE } from "@/lib/data/tamil-nadu-pincodes";
 import { NO_DATA_COLOR } from "@/lib/data/tamil-nadu-scale";
@@ -374,6 +375,23 @@ const districtValid: Record<string, number> = { Madurai: 537, Coimbatore: 698, S
 const statewide = Object.values(districtValid).reduce((a, b) => a + b, 0);
 ok("statewide total is the sum of district totals", statewide === 1750);
 ok("selecting a Madurai PIN reads the Madurai district total once", districtValid[districtForPin("625003")!] === 537);
+
+/* ---- 15. even district → PIN division --------------------------------- */
+console.log("\n15. Even district → PIN division");
+const pins5 = ["a", "b", "c", "d", "e"];
+const partiesA = { TVK: 2000, "DMK+INC+VCK": 1500, NTK: 1000, Others: 500 };
+const d1 = divideDistrictAcrossPins(5000, partiesA, pins5);
+eq("5,000 across 5 PINs → 1,000 each", d1.map((d) => d.valid), [1000, 1000, 1000, 1000, 1000]);
+ok("division reconciles exactly", reconcileDivision(d1, partiesA).pinTotal === 5000);
+ok("party totals preserved", reconcileDivision(d1, partiesA).partyOk);
+const d2 = divideDistrictAcrossPins(5003, { TVK: 5003 }, pins5);
+eq("remainder → +1 to the first (N mod K) PINs", d2.map((d) => d.valid), [1001, 1001, 1001, 1000, 1000]);
+const partiesB = { TVK: 202, "DMK+INC+VCK": 146, "AIADMK+BJP+PMK+AMMK": 130, NTK: 55, Others: 2, NOTA: 2 };
+const maduraiRefPins = candidatePinsForDistrict("Madurai");
+const d3 = divideDistrictAcrossPins(537, partiesB, maduraiRefPins);
+eq("PIN totals sum to the district valid count", d3.reduce((a, d) => a + d.valid, 0), 537);
+ok("party totals reconcile across PINs", reconcileDivision(d3, partiesB).partyOk);
+ok("deterministic output", JSON.stringify(divideDistrictAcrossPins(537, partiesB, maduraiRefPins)) === JSON.stringify(d3));
 
 console.log(`\n${fail === 0 ? "ALL PASSED" : "FAILURES"}: ${pass} passed, ${fail} failed (case study: ${TEST_CASE})`);
 if (fail > 0) process.exitCode = 1;

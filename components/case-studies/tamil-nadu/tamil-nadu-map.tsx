@@ -105,6 +105,7 @@ type DistrictState = {
   tone: number;
   heat: number;
   hover: number;
+  focus: number;
 };
 
 export default function TamilNaduMap(props: Props) {
@@ -227,7 +228,7 @@ export default function TamilNaduMap(props: Props) {
       g.add(mesh);
       mapGroup.add(g);
       const tone = 0.96 + (((name.charCodeAt(0) * 7 + name.length * 3) % 9) / 9) * 0.08;
-      states[name] = { id: name, name, mesh, cap, side, line, group: g, tone, heat: 0, hover: 0 };
+      states[name] = { id: name, name, mesh, cap, side, line, group: g, tone, heat: 0, hover: 0, focus: 1 };
     }
 
     // NOTE: no separate state-outline layer — a flat line drawn at a fixed
@@ -273,26 +274,26 @@ export default function TamilNaduMap(props: Props) {
       if (!pinRoot) return;
       const { mode: m, selectedDistricts: sel, layers: lay, intensityActive, forceDemo } = live.current;
       if (m !== "pincode" || !lay.pins) return;
-      // Original behaviour: markers appear only for a single focused district.
-      if (sel.length !== 1) return;
-      const district = sel[0];
+      if (sel.length === 0) return;
+      const focus = new Set(sel);
       const useSurvey = intensityActive && !forceDemo;
 
       if (useSurvey) {
-        // Survey view: plot only PINs from the committed allocation that have a
-        // POSTAL-AREA reference coordinate. No synthetic demo positions/shares.
+        // Survey view: reveal PINs for EVERY selected district, plotting only
+        // PINs with a postal-area reference coordinate.
         for (const sp of live.current.surveyPins ?? []) {
-          if (sp.district !== district) continue;
+          if (!focus.has(sp.district)) continue;
           makePin({ pin: sp.pin, district: sp.district, lng: sp.lng, lat: sp.lat, samples: sp.valid, results: ZERO_RESULTS, kind: "survey", valid: sp.valid, place: sp.place });
         }
         return;
       }
 
       // Demo view (isolated): synthetic demonstration positions & sample shares.
-      const row = live.current.districts.find((r) => r.district === district);
-      if (!row) return;
-      for (const p of row.pincodes) {
-        makePin({ pin: p.pincode, district: row.district, lng: p.lng, lat: p.lat, samples: p.samples, results: p.results, kind: "demo", valid: 0, place: null });
+      for (const row of live.current.districts) {
+        if (!focus.has(row.district)) continue;
+        for (const p of row.pincodes) {
+          makePin({ pin: p.pincode, district: row.district, lng: p.lng, lat: p.lat, samples: p.samples, results: p.results, kind: "demo", valid: 0, place: null });
+        }
       }
     };
     rebuildPins();
@@ -452,18 +453,23 @@ export default function TamilNaduMap(props: Props) {
         const isHover = hv === id || hovered === id;
         st.heat += ((isSelected ? 1 : 0) - st.heat) * 0.15;
         st.hover += ((isHover ? 1 : 0) - st.hover) * 0.2;
+        // Focused-state: selected districts come forward, unselected recede and dim.
+        st.focus += ((selSet && !isSelected ? 0 : 1) - st.focus) * 0.12;
         const useIntensity = live.current.intensityActive;
         const bands = live.current.bandByName;
         const band = bands ? bands[st.name] : undefined;
         const baseFill = useIntensity
           ? (band === undefined || band < 0 ? P.none.clone() : P.bands[Math.min(P.bands.length - 1, band)].clone())
           : P.fill.clone().multiplyScalar(st.tone);
-        const target = baseFill.lerp(P.hover, st.hover * (1 - st.heat)).lerp(P.sel, st.heat);
+        // Recede unselected geometry (restrained: dimmed, not blurred).
+        baseFill.multiplyScalar(0.45 + 0.55 * st.focus);
+        const target = baseFill.lerp(P.hover, st.hover * (1 - st.heat) * (selSet ? st.focus : 1)).lerp(P.sel, st.heat);
         st.cap.color.lerp(target, 0.25);
         st.side.color.lerp(P.side, 0.25);
         st.line.color.copy(P.line).lerp(P.selLine, st.heat);
-        st.line.opacity = lay.boundaries ? 0.9 : 0;
-        st.group.position.y = st.heat * 4 + st.hover * 2;
+        st.line.opacity = lay.boundaries ? (selSet ? (isSelected ? 0.95 : 0.3) : 0.9) : 0;
+        // Selected districts lift with restrained elevation; unselected settle.
+        st.group.position.y = st.heat * 6 - (selSet ? (1 - st.focus) * 2 : 0) + st.hover * (selSet ? st.focus : 1) * 2;
       }
       // projection helper
       const hostRect = host.getBoundingClientRect();
