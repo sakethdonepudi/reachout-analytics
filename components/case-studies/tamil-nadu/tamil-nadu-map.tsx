@@ -106,6 +106,10 @@ type DistrictState = {
   heat: number;
   hover: number;
   focus: number;
+  /** 0 = fully visible, 1 = fully isolated (faded out & hidden). */
+  isolate: number;
+  /** Projected XZ bounds of this district's geometry (for camera fitting). */
+  bounds: { minx: number; maxx: number; minz: number; maxz: number };
 };
 
 export default function TamilNaduMap(props: Props) {
@@ -202,8 +206,8 @@ export default function TamilNaduMap(props: Props) {
       geo.rotateX(Math.PI / 2);
       geo.translate(0, DEPTH, 0);
 
-      const cap = new THREE.MeshStandardMaterial({ color: PAL.dark.fill.clone(), roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide });
-      const side = new THREE.MeshStandardMaterial({ color: PAL.dark.side.clone(), roughness: 1, metalness: 0.02, side: THREE.DoubleSide });
+      const cap = new THREE.MeshStandardMaterial({ color: PAL.dark.fill.clone(), roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide, transparent: true, opacity: 1 });
+      const side = new THREE.MeshStandardMaterial({ color: PAL.dark.side.clone(), roughness: 1, metalness: 0.02, side: THREE.DoubleSide, transparent: true, opacity: 1 });
       const mesh = new THREE.Mesh(geo, [cap, side]);
       mesh.userData.id = name;
       pickables.push(mesh);
@@ -211,24 +215,29 @@ export default function TamilNaduMap(props: Props) {
       // district boundary line attached to the top surface
       const pts: number[] = [];
       const y = DEPTH + 0.06;
+      let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
       const addLoop = (ring: number[][]) => {
         for (let i = 0; i < ring.length; i++) {
           const p = projection(ring[i] as [number, number])!;
           const q = projection(ring[(i + 1) % ring.length] as [number, number])!;
-          pts.push(p[0] - CX, y, p[1] - CZ, q[0] - CX, y, q[1] - CZ);
+          const px = p[0] - CX, pz = p[1] - CZ;
+          minx = Math.min(minx, px); maxx = Math.max(maxx, px);
+          minz = Math.min(minz, pz); maxz = Math.max(maxz, pz);
+          pts.push(px, y, pz, q[0] - CX, y, q[1] - CZ);
         }
       };
       for (const poly of polys) poly.forEach(addLoop);
       const lg = new THREE.BufferGeometry();
       lg.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
       const line = new THREE.LineBasicMaterial({ color: PAL.dark.line.clone(), transparent: true, opacity: 1 });
-      mapGroup.add(new THREE.LineSegments(lg, line));
-
       const g = new THREE.Group();
+      // The boundary line is a child of the district group so it rises and hides
+      // with the district (no detached outline when isolated).
       g.add(mesh);
+      g.add(new THREE.LineSegments(lg, line));
       mapGroup.add(g);
       const tone = 0.96 + (((name.charCodeAt(0) * 7 + name.length * 3) % 9) / 9) * 0.08;
-      states[name] = { id: name, name, mesh, cap, side, line, group: g, tone, heat: 0, hover: 0, focus: 1 };
+      states[name] = { id: name, name, mesh, cap, side, line, group: g, tone, heat: 0, hover: 0, focus: 1, isolate: 0, bounds: { minx, maxx, minz, maxz } };
     }
 
     // NOTE: no separate state-outline layer — a flat line drawn at a fixed
@@ -241,6 +250,7 @@ export default function TamilNaduMap(props: Props) {
     const pinRoot = pinRef.current;
     type PinEl = { el: HTMLButtonElement; path: SVGPathElement; label: HTMLSpanElement; pincode: string; district: string; lng: number; lat: number; samples: number; results: PartyResult; kind: "demo" | "survey"; valid: number; place: string | null };
     let pins: PinEl[] = [];
+    let pinReveal = 0; // 0..1 smooth reveal, ramped once the camera has settled
     const pinHover = { current: null as string | null };
     const clearPins = () => { for (const p of pins) { p.el.remove(); p.label.remove(); } pins = []; pinHover.current = null; };
 
@@ -278,6 +288,7 @@ export default function TamilNaduMap(props: Props) {
 
     const rebuildPins = () => {
       clearPins();
+      pinReveal = 0; // re-reveal smoothly after a selection change
       if (!pinRoot) return;
       const { mode: m, selectedDistricts: sel, layers: lay, intensityActive, forceDemo } = live.current;
       if (m !== "pincode" || !lay.pins) return;
@@ -337,28 +348,37 @@ export default function TamilNaduMap(props: Props) {
       camera.lookAt(target);
     };
 
+    // Fit the camera to the selected district(s)' ACTUAL geometry bounds, inside
+    // the map area not covered by the side panels. Preserves shape/proportions.
     const setSelection = (selected: string[]) => {
-      const OX = oxBase();
-      if (selected.length === 0) { desired.tx = OX; desired.tz = 0; desired.dist = 2020; }
-      else if (selected.length === 1) {
-        const { lng, lat } = districtCentroid(selected[0]);
-        const [x, z] = projectLngLat(lng, lat);
-        desired.tx = OX + x * 0.9; desired.tz = z * 0.9;
-        const rr = districtRadius(selected[0]);
-        desired.dist = live.current.mode === "pincode" ? clamp(rr * 2200 + 560, 620, 1300) : clamp(rr * 2600 + 720, 900, 1500);
-      } else {
-        let minx = 1e9, maxx = -1e9, minz = 1e9, maxz = -1e9;
-        for (const n of selected) {
-          const { lng, lat } = districtCentroid(n);
-          const [x, z] = projectLngLat(lng, lat);
-          minx = Math.min(minx, x); maxx = Math.max(maxx, x);
-          minz = Math.min(minz, z); maxz = Math.max(maxz, z);
-        }
-        const span = Math.max(maxx - minx, maxz - minz, 300);
-        desired.tx = OX + ((minx + maxx) / 2) * 0.85;
-        desired.tz = ((minz + maxz) / 2) * 0.85;
-        desired.dist = clamp(span * 2.9 + 900, 1350, 2900);
+      const hostRect = host.getBoundingClientRect();
+      const vw = Math.max(320, hostRect.width), vh = Math.max(320, hostRect.height);
+      const wide = typeof window !== "undefined" && window.innerWidth > 1024;
+      let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
+      for (const n of selected) {
+        const st = states[n];
+        if (!st) continue;
+        minx = Math.min(minx, st.bounds.minx); maxx = Math.max(maxx, st.bounds.maxx);
+        minz = Math.min(minz, st.bounds.minz); maxz = Math.max(maxz, st.bounds.maxz);
       }
+      if (selected.length === 0 || !isFinite(minx)) { desired.tx = oxBase(); desired.tz = 0; desired.dist = 2020; return; }
+      const cx = (minx + maxx) / 2, cz = (minz + maxz) / 2;
+      const W = Math.max(70, maxx - minx), H = Math.max(70, maxz - minz);
+      const leftPx = wide ? 300 : 0, rightPx = wide ? 600 : 0;
+      const availW = Math.max(220, vw - leftPx - rightPx);
+      const availH = Math.max(220, vh - 130);
+      const aspect = availW / availH;
+      const fov = (camera.fov * Math.PI) / 180;
+      const horizHalf = Math.atan(Math.tan(fov / 2) * aspect);
+      const distH = (H / 2) / Math.tan(fov / 2);
+      const distW = (W / 2) / Math.tan(horizHalf);
+      const fit = clamp(Math.max(distH, distW) * 1.35, 550, 3200);
+      // Nudge the map left so the focused district sits in the panel-free middle.
+      const shiftPx = wide ? (leftPx - rightPx) / 2 : 0;
+      const worldPerPx = (2 * fit * Math.tan(fov / 2)) / availH;
+      desired.tx = cx - shiftPx * worldPerPx;
+      desired.tz = cz;
+      desired.dist = fit;
     };
 
     // ---- pointer / resize ----
@@ -460,7 +480,9 @@ export default function TamilNaduMap(props: Props) {
         const r = canvas.getBoundingClientRect();
         ndc.set(((mouse.px - r.left) / r.width) * 2 - 1, -(((mouse.py - r.top) / r.height) * 2 - 1));
         ray.setFromCamera(ndc, camera);
-        const hit = ray.intersectObjects(pickables, false)[0];
+        // When a selection exists, only the selected districts are hit targets.
+        const activePickables = selSet ? pickables.filter((m) => selSet.has(m.userData.id as string)) : pickables;
+        const hit = ray.intersectObjects(activePickables, false)[0];
         hoveredFound = hit ? (hit.object.userData.id as string) : null;
       }
       if (hoveredFound !== hovered) { hovered = hoveredFound; live.current.onHoverDistrict(hoveredFound); }
@@ -475,7 +497,9 @@ export default function TamilNaduMap(props: Props) {
         const isHover = hv === id || hovered === id;
         st.heat += ((isSelected ? 1 : 0) - st.heat) * aHeat;
         st.hover += ((isHover ? 1 : 0) - st.hover) * aHover;
-        // Focused-state: selected districts come forward, unselected recede and dim.
+        // Isolation: unselected districts fade out completely, then hide.
+        st.isolate += ((selSet && !isSelected ? 1 : 0) - st.isolate) * aMat;
+        const vis = 1 - st.isolate;
         st.focus += ((selSet && !isSelected ? 0 : 1) - st.focus) * aHeat;
         const useIntensity = live.current.intensityActive;
         const bands = live.current.bandByName;
@@ -483,15 +507,18 @@ export default function TamilNaduMap(props: Props) {
         const baseFill = useIntensity
           ? (band === undefined || band < 0 ? P.none.clone() : P.bands[Math.min(P.bands.length - 1, band)].clone())
           : P.fill.clone().multiplyScalar(st.tone);
-        // Recede unselected geometry (restrained: dimmed, not blurred).
-        baseFill.multiplyScalar(0.45 + 0.55 * st.focus);
+        baseFill.multiplyScalar(0.55 + 0.45 * st.focus);
         const target = baseFill.lerp(P.hover, st.hover * (1 - st.heat) * (selSet ? st.focus : 1)).lerp(P.sel, st.heat);
         st.cap.color.lerp(target, aMat);
+        st.cap.opacity = vis;
         st.side.color.lerp(P.side, aMat);
+        st.side.opacity = vis;
         st.line.color.copy(P.line).lerp(P.selLine, st.heat);
-        st.line.opacity = lay.boundaries ? (selSet ? (isSelected ? 0.95 : 0.3) : 0.9) : 0;
+        st.line.opacity = (lay.boundaries ? (selSet ? (isSelected ? 0.95 : 0.3) : 0.9) : 0) * vis;
+        // Hide the mesh + line + hit target once fully faded.
+        st.group.visible = vis > 0.01;
         // Selected districts lift with restrained elevation; unselected settle.
-        st.group.position.y = st.heat * 6 - (selSet ? (1 - st.focus) * 2 : 0) + st.hover * (selSet ? st.focus : 1) * 2;
+        st.group.position.y = st.heat * 6 + st.hover * (selSet ? st.focus : 1) * 2;
       }
       // projection helper
       const hostRect = host.getBoundingClientRect();
@@ -505,18 +532,25 @@ export default function TamilNaduMap(props: Props) {
       const showPins = live.current.mode === "pincode" && lay.pins;
       const hoverRef: { pos: { x: number; y: number } | null } = { pos: null };
       const placedPinLabels: { x: number; y: number }[] = [];
+      // Reveal markers only after the camera is mostly settled (short fade).
+      const settled = Math.abs(desired.dist - dist) < desired.dist * 0.05 && Math.abs(desired.tx - target.x) < 30 && Math.abs(desired.tz - target.z) < 30;
+      pinReveal += ((settled ? 1 : 0) - pinReveal) * (reduced ? 1 : 1 - Math.exp(-dt / 120));
       if (pins.length) {
         const step = Math.max(1, Math.ceil(pins.length / 10));
         pins.forEach((mk, i) => {
-          if (!showPins) { if (mk.el.style.display !== "none") mk.el.style.display = "none"; if (mk.label.style.opacity !== "0") mk.label.style.opacity = "0"; return; }
+          if (!showPins || pinReveal < 0.02) { if (mk.el.style.display !== "none") mk.el.style.display = "none"; if (mk.label.style.opacity !== "0") mk.label.style.opacity = "0"; return; }
           const c = districtCentroid(mk.district);
           const [cwx, cwz] = projectLngLat(c.lng, c.lat);
           // Survey pins use their real postal-area coordinate; demo pins are spread.
           const spreadF = mk.kind === "survey" ? 1 : clamp(0.26 / districtRadius(mk.district), 1, 3);
           const [rwx, rwz] = projectLngLat(mk.lng, mk.lat);
-          const p = toScreen(cwx + (rwx - cwx) * spreadF, DEPTH + 3, cwz + (rwz - cwz) * spreadF);
+          // Anchor to the district's current elevated transform so pins ride its surface.
+          const elev = states[mk.district]?.group.position.y ?? 0;
+          const p = toScreen(cwx + (rwx - cwx) * spreadF, DEPTH + 3 + elev, cwz + (rwz - cwz) * spreadF);
           if (p.behind) { mk.el.style.display = "none"; mk.label.style.opacity = "0"; return; }
           mk.el.style.display = "";
+          mk.el.style.opacity = pinReveal.toFixed(2);
+          mk.el.style.pointerEvents = pinReveal > 0.5 ? "auto" : "none";
           mk.el.style.transform = `translate(-50%,-100%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
           const isSel = pin === mk.pincode;
           const isHover = pinHover.current === mk.pincode;
@@ -585,12 +619,13 @@ export default function TamilNaduMap(props: Props) {
         if (!el) continue;
         const focused = hv === name || pinDistrict === name;
         const isSel = selSet ? selSet.has(name) : false;
+        const isolated = selSet ? !isSel : false; // unselected while a selection exists
         const big = districtRadius(name) >= 0.18;
-        const want = lay.labels && (focused || isSel || zoomed || (!selSet && big));
+        const want = lay.labels && !isolated && (focused || isSel || zoomed || (!selSet && big));
         if (!want) { if (el.style.opacity !== "0") el.style.opacity = "0"; continue; }
         const { lng, lat } = districtCentroid(name);
         const [wx, wz] = projectLngLat(lng, lat);
-        const p = toScreen(wx, DEPTH + 8, wz);
+        const p = toScreen(wx, DEPTH + 8 + (states[name]?.group.position.y ?? 0), wz);
         if (p.behind) { el.style.opacity = "0"; continue; }
         const lw = name.length * 6.4 + 8, lh = 14;
         const collide = placed.some((q) => Math.abs(q.x - p.x) < (q.w + lw) / 2 && Math.abs(q.y - p.y) < (q.h + lh) / 2);

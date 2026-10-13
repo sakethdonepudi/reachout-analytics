@@ -14,6 +14,7 @@
 import { TN_DISTRICT_PINCODES, DISTRICT_ALIASES, POSTAL_REFERENCE } from "./data/tamil-nadu-pincodes";
 import { PIN_COORDINATES } from "./data/tamil-nadu-pin-coordinates";
 import { TN_DISTRICTS } from "./data/tamil-nadu-districts";
+import TN_GEO from "./data/tamil-nadu-districts.json";
 
 export const PIN_CANONICAL = "PIN Code";
 
@@ -226,6 +227,37 @@ export function referenceAudit() {
     version: POSTAL_REFERENCE.version,
     source: POSTAL_REFERENCE.source,
   };
+}
+
+/* ---- point-in-district (validate postal coordinates) ---------------- */
+
+type GeoFeature = { properties: { district: string }; geometry: { type: string; coordinates: unknown } };
+const DISTRICT_SHAPES = new Map<string, number[][][][]>(); // canonical → polygons[ring[]]
+for (const f of (TN_GEO as unknown as { features: GeoFeature[] }).features) {
+  const key = canonDist(f.properties.district);
+  const polys = (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates) as number[][][][];
+  const existing = DISTRICT_SHAPES.get(key) ?? [];
+  DISTRICT_SHAPES.set(key, [...existing, ...polys]);
+}
+
+function ringContains(ring: number[][], lng: number, lat: number): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if ((yi > lat) !== (yj > lat) && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * True when (lng, lat) lies inside the canonical district's geometry. Unknown
+ * districts return true (do not flag). Used to avoid plotting a postal
+ * coordinate that does not fall within its assigned district.
+ */
+export function pointInDistrict(lng: number, lat: number, district: string): boolean {
+  const polys = DISTRICT_SHAPES.get(canonDist(district));
+  if (!polys) return true;
+  return polys.some((rings) => ringContains(rings[0], lng, lat) && !rings.slice(1).some((hole) => ringContains(hole, lng, lat)));
 }
 
 /** Canonical reference district names (for the coverage-scenario pool). */

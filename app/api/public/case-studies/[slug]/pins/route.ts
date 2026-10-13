@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { getCase } from "@/lib/case-registry";
 import { pinAggregates, assumedPinDetails, isConfigured } from "@/lib/poll-store";
-import { coordinatesForPin, candidatePinsForDistrict, referenceDistrictNames } from "@/lib/pin";
+import { coordinatesForPin, candidatePinsForDistrict, referenceDistrictNames, pointInDistrict } from "@/lib/pin";
 import { PIN_COORDINATE_COVERAGE } from "@/lib/data/tamil-nadu-pin-coordinates";
 
 export const runtime = "nodejs";
@@ -32,6 +32,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
     const buildPin = (pin: string, district: string | null) => {
       const a = allocated.get(pin);
       const coord = coordinatesForPin(pin);
+      const dName = a?.district ?? district ?? "";
+      // A postal coordinate that falls outside its assigned district geometry is
+      // flagged for review and kept in the list (never forced onto the map).
+      const inDistrict = coord ? pointInDistrict(coord.lng, coord.lat, dName) : false;
       return {
         pin,
         district: a?.district ?? district ?? null,
@@ -46,7 +50,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
         allocationVersion: a?.allocationVersion ?? null,
         allocated: !!a && a.total > 0,
         // Postal-area reference coordinate (post-office locality), not a respondent location.
-        locationAvailable: !!coord,
+        locationAvailable: !!coord && inDistrict,
+        coordinateReview: !!coord && !inDistrict,
         lat: coord?.lat ?? null,
         lng: coord?.lng ?? null,
         postalPlace: coord?.place ?? null,
@@ -111,7 +116,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const pins = agg.pins.map((p) => {
     const district = Object.entries(p.districts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
     const coord = coordinatesForPin(p.pin);
-    return { pin: p.pin, total: p.total, valid: p.valid, parties: p.parties, district, locationAvailable: !!coord, lat: coord?.lat ?? null, lng: coord?.lng ?? null, postalPlace: coord?.place ?? null };
+    const inDistrict = coord ? pointInDistrict(coord.lng, coord.lat, district ?? "") : false;
+    return { pin: p.pin, total: p.total, valid: p.valid, parties: p.parties, district, locationAvailable: !!coord && inDistrict, coordinateReview: !!coord && !inDistrict, lat: coord?.lat ?? null, lng: coord?.lng ?? null, postalPlace: coord?.place ?? null };
   });
 
   return Response.json(

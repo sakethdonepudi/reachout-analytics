@@ -237,6 +237,14 @@ export default function TamilNaduDashboard() {
     [currentPins, districtValidByName],
   );
 
+  // Clear a PIN selection that no longer belongs to the focused district set
+  // (keeps the results panel, list and markers on the same selection state).
+  useEffect(() => {
+    if (!activePincode) return;
+    const d = currentPins.find((p) => p.pin === activePincode)?.district ?? null;
+    if (selectedDistricts.length === 0 || (d && !selectedDistricts.includes(d))) setActivePincode(null);
+  }, [selectedDistricts, activePincode, currentPins]);
+
   // District filter rows use live valid counts when published, else demonstration data.
   const allRows = useMemo(() => {
     if (live?.published) {
