@@ -176,6 +176,9 @@ html.theme-transition *::after {
 .animate-bob { animation: bob 5s ease-in-out infinite; }
 .animate-spin-slow { animation: spin-slow 40s linear infinite; }
 
+/* leader orbit — the caption box never moves; only its content crossfades */
+.leader-caption { transition: opacity 600ms cubic-bezier(.4,0,.2,1); }
+
 .hero-enter { animation: hero-enter 1.5s cubic-bezier(.4,0,.2,1) both; will-change: transform, opacity, filter; }
 .hero-kb-a { animation: hero-kb-a 10s linear both; will-change: transform; }
 .hero-kb-b { animation: hero-kb-b 10s linear both; will-change: transform; }
@@ -188,6 +191,7 @@ html.theme-transition *::after {
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee, .animate-float, .animate-pulse-dot, .animate-sweep, .animate-wheel, .animate-drift, .animate-rise, .animate-bob, .animate-spin-slow { animation: none; }
   .hero-enter, .hero-kb-a, .hero-kb-b { animation: none; will-change: auto; }
+  .leader-caption { transition: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
   html { scroll-behavior: auto; }
   html.theme-transition, html.theme-transition * { transition: none !important; }

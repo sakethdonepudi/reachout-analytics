@@ -4,8 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
-import LeaderCarousel from "@/components/site/leader-carousel";
-import MobileLeaderStrip from "@/components/site/mobile-leader-strip";
+import LeaderOrbit from "@/components/site/leader-orbit";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 
@@ -174,13 +173,13 @@ export default function Hero() {
 
           {/* right: leader composition, vertically centred beside the headline */}
           <div className="hidden justify-center lg:flex" data-hero-leaders>
-            <LeaderCarousel />
+            <LeaderOrbit />
           </div>
         </div>
 
-        {/* mobile: compact portrait composition directly under the CTAs */}
-        <div className="mt-12 lg:hidden">
-          <MobileLeaderStrip />
+        {/* mobile: compact composition (one active + two supporting) under the CTAs */}
+        <div className="mt-12 flex justify-center lg:hidden">
+          <LeaderOrbit compact />
         </div>
       </div>
 
