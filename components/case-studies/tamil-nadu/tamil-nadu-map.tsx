@@ -252,7 +252,14 @@ export default function TamilNaduMap(props: Props) {
       const el = document.createElement("button");
       el.type = "button";
       el.setAttribute("aria-label", `PIN ${opts.pin}, ${opts.district}`);
-      el.className = "pointer-events-auto absolute left-0 top-0 cursor-pointer outline-none will-change-transform";
+      el.className = "pointer-events-auto absolute left-0 top-0 flex cursor-pointer items-end justify-center outline-none will-change-transform";
+      // Comfortable invisible touch target: a larger button whose bottom-centre
+      // is the pin tip; the SVG keeps its clean 18×26 silhouette.
+      el.style.width = "34px";
+      el.style.height = "38px";
+      el.style.touchAction = "manipulation";
+      // Restrained depth: a soft drop-shadow, no glow.
+      el.style.filter = "drop-shadow(0 2px 2.5px rgba(0,0,0,.45))";
       el.innerHTML = PIN_SVG;
       const path = el.querySelector("path") as SVGPathElement;
       el.addEventListener("mouseenter", () => (pinHover.current = opts.pin));
@@ -423,11 +430,23 @@ export default function TamilNaduMap(props: Props) {
     resize();
 
     // ---- frame ----
+    // Elapsed-time-based transitions (frame-rate independent). Time constants
+    // approximate ~700 ms for camera/elevation and ~300 ms for material fades.
+    // Because each value eases from its CURRENT state, interrupted/rapid
+    // selections transition smoothly from wherever the animation is.
+    let lastFrame = performance.now();
+    const TAU_CAM = 220;   // ≈ 700 ms settle
+    const TAU_HEAT = 220;  // ≈ 700 ms selection/elevation
+    const TAU_HOVER = 95;  // ≈ 300 ms hover
+    const TAU_MAT = 85;    // ≈ 300 ms material fades
     const frame = () => {
-      const k = reduced ? 1 : 0.12;
-      target.x += (desired.tx - target.x) * k;
-      target.z += (desired.tz - target.z) * k;
-      dist += (desired.dist - dist) * (reduced ? 1 : 0.1);
+      const now = performance.now();
+      const dt = Math.min(50, Math.max(1, now - lastFrame));
+      lastFrame = now;
+      const aCam = reduced ? 1 : 1 - Math.exp(-dt / TAU_CAM);
+      target.x += (desired.tx - target.x) * aCam;
+      target.z += (desired.tz - target.z) * aCam;
+      dist += (desired.dist - dist) * aCam;
       applyCamera();
 
       const { selectedDistricts: sel, hoveredDistrict: hv, activePincode: pin } = live.current;
@@ -447,14 +466,17 @@ export default function TamilNaduMap(props: Props) {
       if (hoveredFound !== hovered) { hovered = hoveredFound; live.current.onHoverDistrict(hoveredFound); }
       canvas.style.cursor = hovered || dragging ? (dragging ? "grabbing" : "pointer") : "grab";
 
+      const aHeat = reduced ? 1 : 1 - Math.exp(-dt / TAU_HEAT);
+      const aHover = reduced ? 1 : 1 - Math.exp(-dt / TAU_HOVER);
+      const aMat = reduced ? 1 : 1 - Math.exp(-dt / TAU_MAT);
       for (const id in states) {
         const st = states[id];
         const isSelected = selSet ? selSet.has(st.name) : false;
         const isHover = hv === id || hovered === id;
-        st.heat += ((isSelected ? 1 : 0) - st.heat) * 0.15;
-        st.hover += ((isHover ? 1 : 0) - st.hover) * 0.2;
+        st.heat += ((isSelected ? 1 : 0) - st.heat) * aHeat;
+        st.hover += ((isHover ? 1 : 0) - st.hover) * aHover;
         // Focused-state: selected districts come forward, unselected recede and dim.
-        st.focus += ((selSet && !isSelected ? 0 : 1) - st.focus) * 0.12;
+        st.focus += ((selSet && !isSelected ? 0 : 1) - st.focus) * aHeat;
         const useIntensity = live.current.intensityActive;
         const bands = live.current.bandByName;
         const band = bands ? bands[st.name] : undefined;
@@ -464,8 +486,8 @@ export default function TamilNaduMap(props: Props) {
         // Recede unselected geometry (restrained: dimmed, not blurred).
         baseFill.multiplyScalar(0.45 + 0.55 * st.focus);
         const target = baseFill.lerp(P.hover, st.hover * (1 - st.heat) * (selSet ? st.focus : 1)).lerp(P.sel, st.heat);
-        st.cap.color.lerp(target, 0.25);
-        st.side.color.lerp(P.side, 0.25);
+        st.cap.color.lerp(target, aMat);
+        st.side.color.lerp(P.side, aMat);
         st.line.color.copy(P.line).lerp(P.selLine, st.heat);
         st.line.opacity = lay.boundaries ? (selSet ? (isSelected ? 0.95 : 0.3) : 0.9) : 0;
         // Selected districts lift with restrained elevation; unselected settle.
@@ -482,6 +504,7 @@ export default function TamilNaduMap(props: Props) {
       const pinDistrict = sel.length === 1 ? sel[0] : null;
       const showPins = live.current.mode === "pincode" && lay.pins;
       const hoverRef: { pos: { x: number; y: number } | null } = { pos: null };
+      const placedPinLabels: { x: number; y: number }[] = [];
       if (pins.length) {
         const step = Math.max(1, Math.ceil(pins.length / 10));
         pins.forEach((mk, i) => {
@@ -503,6 +526,13 @@ export default function TamilNaduMap(props: Props) {
           if (isHover) hoverRef.pos = { x: hostRect.left + p.x, y: hostRect.top + p.y };
           const showLabel = isSel || isHover || (dist < 1100 && i % step === 0);
           if (!showLabel) { if (mk.label.style.opacity !== "0") mk.label.style.opacity = "0"; return; }
+          // Collision handling: selected/hovered labels always show; other
+          // labels are hidden when they would overlap an already-placed label.
+          if (!isSel && !isHover && placedPinLabels.some((q) => Math.abs(q.x - p.x) < 36 && Math.abs(q.y - p.y) < 14)) {
+            if (mk.label.style.opacity !== "0") mk.label.style.opacity = "0";
+            return;
+          }
+          placedPinLabels.push({ x: p.x, y: p.y });
           mk.label.style.transform = `translate(-50%,-165%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
           mk.label.style.opacity = isSel ? "1" : "0.8";
           mk.label.style.color = isSel ? "#ffffff" : "rgba(255,255,255,.85)";

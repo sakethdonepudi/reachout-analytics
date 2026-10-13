@@ -3,6 +3,8 @@ import { requireAdmin } from "@/lib/auth";
 import { buildWorkbook, type Row } from "@/lib/poll-data";
 import { getActiveImportId } from "@/lib/poll-store";
 import { getMongo } from "@/lib/mongodb";
+import { PIN_DIVISION_METHOD, PIN_DIVISION_VERSION } from "@/lib/pin-divide";
+import { POSTAL_REFERENCE } from "@/lib/data/tamil-nadu-pincodes";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -17,7 +19,14 @@ async function rowsFor(caseStudyId: string, pollType: "opinion" | "exit"): Promi
   const client = await p;
   const cursor = client.db(DB).collection("poll_responses").find({ caseStudyId, pollType, importId }).project({ _id: 0, row: 1 });
   const out: Row[] = [];
-  for await (const d of cursor) out.push((d as { row: Row }).row);
+  // Provenance preserved per row: PIN division method + reference version +
+  // the active source import identifier (the same dataset the page shows).
+  const stamp = {
+    "PIN Division Method": `${PIN_DIVISION_METHOD} (${PIN_DIVISION_VERSION})`,
+    "Reference Version": POSTAL_REFERENCE.version,
+    "Source Import ID": importId,
+  };
+  for await (const d of cursor) out.push({ ...((d as { row: Row }).row), ...stamp });
   return out;
 }
 

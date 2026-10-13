@@ -436,6 +436,12 @@ export default function TamilNaduDashboard() {
             onSelectPincode={onSelectPincode}
           />
 
+          {/* Subtle background softening: a cheap periphery vignette (no blur of
+              selected geometry/markers/controls — dimming remains the fallback). */}
+          {selectedDistricts.length > 0 && (
+            <div aria-hidden className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(62%_62%_at_50%_48%,transparent_38%,rgba(0,0,0,0.34)_100%)] transition-opacity duration-300 motion-reduce:transition-none" />
+          )}
+
           {/* District inset: PINs without a mapped location. A non-geographic
               flow layout, deliberately not a coordinate plot. */}
           {geoMode === "pincode" && liveActive && focusDistrict && unresolvedPins.length > 0 && (

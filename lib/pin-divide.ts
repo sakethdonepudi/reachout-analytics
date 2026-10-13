@@ -15,6 +15,10 @@
    same input yields identical output.
    ===================================================================== */
 
+/** Method + version stamped into exports (provenance). */
+export const PIN_DIVISION_METHOD = "even-district-division";
+export const PIN_DIVISION_VERSION = "v1";
+
 export type PartyCounts = Record<string, number>;
 export type PinDivision = { pin: string; valid: number; parties: PartyCounts; capacity: number };
 
