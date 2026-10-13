@@ -3,6 +3,7 @@ import { getMongo } from "@/lib/mongodb";
 import { partyStatus, canonicalParty, isRecordedDistrict, estimatedDistrictOf, recordedDistrictOf, scenarioDistrictOf, type PollType, type Row } from "@/lib/poll-data";
 import { resolveRowPin, pinLocationRef, normalizePin, isSixDigitPin, canonicalDistrictName } from "@/lib/pin";
 import { allocatePinAssignments, summarizeAllocation, PIN_ALLOCATION_VERSION, type AllocInput, type PinAllocationSummary } from "@/lib/pin-assign";
+import { allocateMissingGeography, COVERAGE_METHOD, COVERAGE_VERSION } from "@/lib/coverage-alloc";
 
 /* =====================================================================
    Persistent poll datasets in MongoDB, scoped by caseStudyId + pollType.
@@ -332,9 +333,13 @@ export async function districtAggregates(caseStudyId: string, pollType: PollType
   const importId = await getActiveImportId(caseStudyId, pollType);
   if (!importId) return empty;
 
-  const groupField = scenario ? { $ifNull: ["$scenarioDistrict", "$estimatedDistrict"] } : "$district";
+  // Recorded basis includes coverage-allocated records (their destination is
+  // "Allocated District"); the original blank geography is untouched.
+  const groupField = scenario
+    ? { $ifNull: ["$scenarioDistrict", "$estimatedDistrict"] }
+    : { $cond: [{ $ne: ["$district", ""] }, "$district", { $ifNull: ["$allocatedDistrict", ""] }] };
   const match: Record<string, unknown> = { caseStudyId, pollType, importId };
-  if (!scenario) match.recorded = true;
+  if (!scenario) match.$or = [{ recorded: true }, { allocatedDistrict: { $ne: "" } }];
 
   const rows = await c.responses.aggregate([
     { $match: match },
@@ -680,6 +685,69 @@ export async function getPinScenario(caseStudyId: string, pollType: PollType) {
   const sc = await scenarioCol();
   if (!sc) return null;
   return sc.findOne({ _id: `${caseStudyId}:${pollType}` });
+}
+
+/* =====================================================================
+   Missing-geography coverage allocation (admin preview + apply).
+   Fixed rule: allocate ONLY when zero-response districts exist; otherwise
+   records stay statewide-only and nothing is written.
+   ===================================================================== */
+
+async function coverageRows(caseStudyId: string, pollType: PollType, importId: string) {
+  const c = await cols();
+  if (!c) return [];
+  const docs = await c.responses
+    .find({ caseStudyId, pollType, importId })
+    .project({ _id: 0, responseId: 1, district: 1, ac: 1, party: 1, zone: 1, status: 1, allocatedDistrict: 1, estimatedDistrict: 1 })
+    .toArray();
+  return docs.map((d) => ({
+    responseId: String(d.responseId ?? ""),
+    district: String(d.district ?? ""),
+    ac: String(d.ac ?? ""),
+    party: String(d.party ?? ""),
+    zone: String(d.zone ?? ""),
+    status: String(d.status ?? ""),
+    allocatedDistrict: String(d.allocatedDistrict ?? ""),
+    estimatedDistrict: String(d.estimatedDistrict ?? ""),
+  }));
+}
+
+export async function previewCoverageAllocation(caseStudyId: string, pollType: PollType) {
+  const c = await cols();
+  const empty = allocateMissingGeography([]);
+  if (!c) return { ok: false, reason: "Database not configured", importId: null, allocation: empty, baselineValid: 0 };
+  const importId = await getActiveImportId(caseStudyId, pollType);
+  if (!importId) return { ok: false, reason: "No active import", importId: null, allocation: empty, baselineValid: 0 };
+  const rows = await coverageRows(caseStudyId, pollType, importId);
+  const allocation = allocateMissingGeography(rows);
+  const shares = await partyShares(caseStudyId, pollType);
+  return { ok: true, importId, allocation, baselineValid: shares.denominator };
+}
+
+export async function applyCoverageAllocation(caseStudyId: string, pollType: PollType) {
+  const preview = await previewCoverageAllocation(caseStudyId, pollType);
+  const c = await cols();
+  if (!c || !preview.ok || !preview.importId) return preview;
+  if (preview.allocation.zeroDistricts.length === 0 || preview.allocation.allocated === 0) return preview; // no-op
+  const byId = new Map(preview.allocation.assignments.map((a) => [a.responseId, a.district]));
+  const docs = await c.responses.find({ caseStudyId, pollType, importId: preview.importId }).project({ _id: 1, responseId: 1 }).toArray();
+  const ops = docs
+    .filter((d) => byId.has(String(d.responseId ?? "")))
+    .map((d) => ({
+      updateOne: {
+        filter: { _id: d._id },
+        update: { $set: {
+          // Destination only — original blank District/AC preserved, no AC invented.
+          allocatedDistrict: byId.get(String(d.responseId ?? ""))!,
+          coverageBasis: "coverage",
+          coverageMethod: COVERAGE_METHOD,
+          coverageVersion: COVERAGE_VERSION,
+          "row.Allocated District": byId.get(String(d.responseId ?? ""))!,
+        } },
+      },
+    }));
+  for (let i = 0; i < ops.length; i += 1000) await c.responses.bulkWrite(ops.slice(i, i + 1000), { ordered: false });
+  return preview;
 }
 
 export async function pinAggregates(caseStudyId: string, pollType: PollType, scenario = false): Promise<PinAggregates> {

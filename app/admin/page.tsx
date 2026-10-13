@@ -46,6 +46,12 @@ type PinScenarioPreview = {
   allocationVersion: string; asOf: string | null;
 };
 type PinScenarioInfo = { appliedAt?: string; importId?: string; includeEstimated?: boolean; allocationVersion?: string; summary?: PinScenarioSummary } | null;
+type CoverageAllocation = {
+  zeroDistricts: string[]; eligible: number; allocated: number; unassigned: number;
+  byDistrict: { district: string; count: number }[]; byParty: Record<string, number>;
+  note: string; method: string; version: string; source: string;
+};
+type CoveragePreview = { ok: boolean; reason?: string; importId?: string | null; allocation: CoverageAllocation; baselineValid?: number } | null;
 
 const PIN_BASIS_ROWS: { key: string; label: string }[] = [
   { key: "recorded", label: "Recorded PIN" },
@@ -98,6 +104,8 @@ export default function AdminPortal() {
   const [pinMsg, setPinMsg] = useState("");
   const [pinIncludeEstimated, setPinIncludeEstimated] = useState(true);
   const [pinConfirm, setPinConfirm] = useState(false);
+  const [coverage, setCoverage] = useState<CoveragePreview>(null);
+  const [coverageBusy, setCoverageBusy] = useState(false);
 
   const activeCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
 
@@ -132,6 +140,18 @@ export default function AdminPortal() {
     const r = await fetch(`/api/data/history?caseStudyId=${encodeURIComponent(caseId)}`);
     if (r.ok) setHistory((await r.json()).history);
   }, [caseId]);
+  const loadCoverage = useCallback(async () => {
+    const r = await fetch(`/api/data/coverage?caseStudyId=${encodeURIComponent(caseId)}&pollType=${pollType}`);
+    if (r.ok) setCoverage(await r.json());
+  }, [caseId, pollType]);
+  async function runCoverage() {
+    setCoverageBusy(true);
+    try {
+      const r = await fetch("/api/data/coverage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ caseStudyId: caseId, pollType, confirm: true }) });
+      const d = await r.json();
+      setCoverage(d);
+    } finally { setCoverageBusy(false); }
+  }
   const loadPinScenario = useCallback(async () => {
     const r = await fetch(`/api/data/pin-scenario?caseStudyId=${encodeURIComponent(caseId)}&pollType=${pollType}&includeEstimated=${pinIncludeEstimated ? 1 : 0}`);
     if (r.ok) { const d = await r.json(); setPinPreview(d.preview ?? null); setPinScenario(d.scenario ?? null); }
@@ -139,7 +159,7 @@ export default function AdminPortal() {
 
   useEffect(() => { if (ready) loadSummary(); }, [ready, loadSummary]);
   useEffect(() => { if (ready) loadSettings(); }, [ready, loadSettings]);
-  useEffect(() => { if (ready && section === "poll") { loadRecords(); loadPinScenario(); } }, [ready, section, loadRecords, loadPinScenario]);
+  useEffect(() => { if (ready && section === "poll") { loadRecords(); loadPinScenario(); loadCoverage(); } }, [ready, section, loadRecords, loadPinScenario, loadCoverage]);
   useEffect(() => { if (ready && (section === "history" || section === "overview")) loadHistory(); }, [ready, section, loadHistory]);
   useEffect(() => { setSkip(0); }, [caseId, pollType]);
 
@@ -442,6 +462,45 @@ export default function AdminPortal() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Missing-geography coverage allocation */}
+              <div className="mt-5 rounded-2xl border border-border bg-card/60 p-4">
+                <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><MapIcon className="size-4" /> Missing-geography coverage</h2>
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  Valid responses with <b>both District and Assembly Constituency blank</b> are allocated evenly across <b>zero-response districts only</b>. If every district already has responses, nothing is allocated (no low-sample filling).
+                </p>
+                {coverage?.ok ? (
+                  <>
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {[
+                        ["Zero-response districts", coverage.allocation.zeroDistricts.length],
+                        ["Eligible (blank geo)", coverage.allocation.eligible],
+                        ["Allocated", coverage.allocation.allocated],
+                        ["Remaining unassigned", coverage.allocation.unassigned],
+                      ].map(([l, v]) => (
+                        <div key={String(l)} className="rounded-xl border border-border bg-elevated/40 px-3 py-2">
+                          <p className="font-display text-lg font-semibold tabular-nums text-foreground">{Number(v).toLocaleString("en-IN")}</p>
+                          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{String(l)}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {coverage.allocation.note && <p className="mt-2 text-[12px] font-semibold text-saffron-2">{coverage.allocation.note}</p>}
+                    {coverage.allocation.zeroDistricts.length > 0 && <p className="mt-1 text-[11.5px] text-muted-foreground">Empty districts: {coverage.allocation.zeroDistricts.join(", ")}</p>}
+                    {coverage.allocation.byDistrict.length > 0 && (
+                      <ul className="mt-2 space-y-0.5 text-[12px] text-muted-foreground">
+                        {coverage.allocation.byDistrict.map((b) => (<li key={b.district} className="flex justify-between gap-3"><span>{b.district}</span><span className="tabular-nums">{b.count.toLocaleString("en-IN")}</span></li>))}
+                      </ul>
+                    )}
+                    <p className="mt-2 text-[10.5px] text-muted-foreground">Method {coverage.allocation.method} · {coverage.allocation.version} · source {coverage.allocation.source}</p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button onClick={loadCoverage} className="rounded-xl border border-border px-3 py-2 text-[12.5px] hover:bg-elevated">Refresh preview</button>
+                      <button disabled={coverageBusy || coverage.allocation.zeroDistricts.length === 0} onClick={runCoverage} className="rounded-xl bg-saffron px-3 py-2 text-[12.5px] font-semibold text-[#241203] disabled:opacity-50">{coverageBusy ? "Working…" : "Preview & allocate"}</button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-2 text-[12.5px] text-muted-foreground">{coverage?.reason ?? "No active dataset for this poll type."}</p>
+                )}
               </div>
 
               {/* Assumed PIN scenario */}

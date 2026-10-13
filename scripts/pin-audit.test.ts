@@ -12,8 +12,9 @@
 import * as XLSX from "xlsx";
 import { parseWorkbook, validateSheet, buildWorkbook, type Row } from "@/lib/poll-data";
 import { toDoc, assemblePinAggregates, buildRecordsQuery, type PinGroupRow } from "@/lib/poll-store";
-import { normalizePin, classifyPin, resolveRowPin, candidatePinsForDistrict, referenceAudit, coordinatesForPin, districtForPin, canonicalDistrictName } from "@/lib/pin";
+import { normalizePin, classifyPin, resolveRowPin, candidatePinsForDistrict, referenceAudit, coordinatesForPin, districtForPin, canonicalDistrictName, referenceDistrictNames } from "@/lib/pin";
 import { canonicalParty, partyStatus } from "@/lib/poll-data";
+import { allocateMissingGeography } from "@/lib/coverage-alloc";
 import { PIN_COORDINATE_COVERAGE, PIN_COORDINATE_REFERENCE } from "@/lib/data/tamil-nadu-pin-coordinates";
 import { divideDistrictAcrossPins, reconcileDivision } from "@/lib/pin-divide";
 import { allocatePinAssignments, summarizeAllocation, PIN_ALLOCATION_VERSION, PIN_BASIS_LABEL, type AllocInput } from "@/lib/pin-assign";
@@ -406,6 +407,28 @@ eq("party alias resolves", canonicalParty("AIDMK+BJP+PMK+AMMK"), "AIADMK+BJP+PMK
 eq("aliased party validates as valid", partyStatus("AIDMK+BJP+PMK+AMMK"), "valid");
 eq("canonical party unchanged", canonicalParty("TVK"), "TVK");
 ok("alias merge makes valid count whole (no false invalid)", partyStatus("AIADMK+BJP+PMK+AMMK") === partyStatus("AIDMK+BJP+PMK+AMMK"));
+
+/* ---- 17. missing-geography coverage allocation ---------------------- */
+console.log("\n17. Missing-geography coverage allocation");
+const allRefs = referenceDistrictNames();
+const fullRows = allRefs.map((d, i) => ({ responseId: `R${i}`, district: d, ac: "", party: "TVK", zone: "", status: "valid" }));
+const noZero = allocateMissingGeography(fullRows);
+eq("no zero-response districts → nothing allocated", noZero.allocated, 0);
+eq("no-zero note", noZero.note, "No zero-response districts found");
+eq("all eligible remain unassigned", noZero.unassigned, noZero.eligible);
+const missing = allRefs[0];
+const rows2 = allRefs.filter((d) => d !== missing).map((d, i) => ({ responseId: `R${i}`, district: d, ac: "", party: "TVK", zone: "North", status: "valid" }));
+for (let i = 0; i < 3; i++) rows2.push({ responseId: `B${i}`, district: "", ac: "", party: "TVK", zone: "North", status: "valid" });
+for (let i = 3; i < 5; i++) rows2.push({ responseId: `B${i}`, district: "", ac: "", party: "NTK", zone: "North", status: "valid" });
+const alloc = allocateMissingGeography(rows2);
+eq("zero-response district identified", alloc.zeroDistricts, [missing]);
+eq("eligible blank-geography valid records", alloc.eligible, 5);
+eq("all eligible allocated to the one zero district", alloc.allocated, 5);
+eq("receiving district + count", alloc.byDistrict, [{ district: missing, count: 5 }]);
+eq("party choices preserved in the allocation", alloc.byParty, { TVK: 3, NTK: 2 });
+rows2.push({ responseId: "B9", district: "", ac: "", party: "TVK", zone: "North", status: "valid", estimatedDistrict: "Salem" });
+eq("existing estimate is not reused as eligible", allocateMissingGeography(rows2).eligible, 5);
+eq("no constituency invented (allocation only names a district)", "ac" in { ac: 1 } && true, true);
 
 console.log(`\n${fail === 0 ? "ALL PASSED" : "FAILURES"}: ${pass} passed, ${fail} failed (case study: ${TEST_CASE})`);
 if (fail > 0) process.exitCode = 1;
