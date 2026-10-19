@@ -7,9 +7,9 @@ import CaseCta from "@/components/site/case-cta";
 import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl, leaderById } from "@/lib/cases";
 
 export function generateStaticParams() {
-  // Tamil Nadu has its own dedicated dashboard route (/case-studies/tamil-nadu).
+  // Tamil Nadu and Telangana have their own dedicated dashboard routes.
   return [
-    ...CASES.filter((c) => c.slug !== "tamil-nadu").map((c) => ({ slug: c.slug })),
+    ...CASES.filter((c) => c.slug !== "tamil-nadu" && c.slug !== "telangana").map((c) => ({ slug: c.slug })),
     ...UPCOMING.map((u) => ({ slug: u.slug })),
   ];
 }

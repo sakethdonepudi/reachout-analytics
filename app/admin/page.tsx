@@ -7,6 +7,7 @@ import { Download, FileSpreadsheet, History, LayoutDashboard, LogOut, Loader2, M
 import { Logo } from "@/components/site/navbar";
 import ThemeToggle from "@/components/site/theme-toggle";
 import AboutEditor from "@/components/admin/about-editor";
+import TelanganaAdmin from "@/components/admin/telangana-admin";
 import { cn } from "@/lib/utils";
 import type { Row as PollRow } from "@/lib/poll-data";
 
@@ -306,7 +307,31 @@ export default function AdminPortal() {
             ))}
           </div>
 
-          {section === "overview" && (
+          {section === "overview" && caseId === "telangana" && (
+            <div>
+              <h1 className="font-display text-2xl font-semibold">Overview · Telangana</h1>
+              <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
+                Telangana is a single-basis opinion survey (2028 vote intention) with 119 assemblies and 33 uploaded analytical
+                district groups. The public page shows percentages only; row counts, the import preview and provenance live here
+                and in the public “About this data” panel.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button onClick={() => setSection("poll")} className="rounded-lg bg-saffron px-3 py-1.5 text-[12.5px] font-semibold text-[#241203]">Open Telangana import</button>
+                <Link href="/case-studies/telangana" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">View public page</Link>
+              </div>
+              <div className="mt-6 rounded-2xl border border-border bg-card/60 p-4 text-[12px] text-muted-foreground">
+                <p className="font-semibold text-foreground/80">Data limits</p>
+                <ul className="mt-1.5 space-y-1">
+                  <li>· The 30,000-row scenario repeats 5,090 entries; repeated rows are not new respondents.</li>
+                  <li>· Adjusted 2023 columns are provenance only — never a 2028 party or an AC baseline.</li>
+                  <li>· Device mix uses original-entry metadata only, at assembly aggregate anchors.</li>
+                  <li>· The analytical district grouping is not a verified official district boundary.</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {section === "overview" && caseId !== "telangana" && (
             <div>
               <h1 className="font-display text-2xl font-semibold">Overview · {activeCase?.title}</h1>
               <p className="mt-1 text-[13px] text-muted-foreground">Publication: {activeCase?.published ? "published — visible on the public dashboard" : "draft — private until published"}</p>
@@ -356,7 +381,8 @@ export default function AdminPortal() {
             </div>
           )}
 
-          {section === "poll" && (
+          {section === "poll" && caseId === "telangana" && <TelanganaAdmin />}
+          {section === "poll" && caseId !== "telangana" && (
             <div>
               <h1 className="font-display text-2xl font-semibold">Poll Data · {activeCase?.title}</h1>
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -650,7 +676,7 @@ export default function AdminPortal() {
             </div>
           )}
 
-          {section === "settings" && (
+          {section === "settings" && caseId !== "telangana" && (
             <div>
               <h1 className="font-display text-2xl font-semibold">Settings</h1>
               <div className="mt-5 max-w-xl space-y-3 text-[13px]">

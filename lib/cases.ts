@@ -46,6 +46,8 @@ export type CaseStudy = {
   subtitle: string;
   summary: string;
   tags: string[];
+  /** optional supplied portrait for the case-study card */
+  portrait?: string;
 };
 
 export const CASES: CaseStudy[] = [
@@ -81,9 +83,10 @@ export const CASES: CaseStudy[] = [
   {
     slug: "telangana", state: "tg", x: 219, y: 467, pinDx: -40,
     label: "Telangana", badge: "Telangana", title: "Telangana", region: "Telangana",
-    party: "INC", subtitle: "Indian National Congress",
-    summary: "Political analytics and voter insights for Congress in Telangana.",
-    tags: ["Voter Insights", "Analytics"],
+    party: "BRS", subtitle: "BRS · Telangana 2028 survey",
+    summary: "Assembly-level opinion survey of 2028 vote intention, set against the actual 2018 and 2023 results across all 119 constituencies.",
+    tags: ["Voter Insights", "Analytics", "Surveys"],
+    portrait: "/telangana/brs-leader.png",
   },
   {
     slug: "bihar", state: "br", x: 355, y: 282,

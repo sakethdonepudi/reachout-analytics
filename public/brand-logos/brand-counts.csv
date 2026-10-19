@@ -1,0 +1,31 @@
+﻿Column R label,Source entries,Expanded rows,Artwork kind,Original asset,Map marker SVG,Map marker PNG
+Vivo,1291,7624,sourced-logo,original/vivo.svg,marker-svg/vivo.svg,marker-png/vivo.png
+Samsung,626,3679,sourced-logo,original/samsung.svg,marker-svg/samsung.svg,marker-png/samsung.png
+OPPO,597,3516,sourced-logo,original/oppo.svg,marker-svg/oppo.svg,marker-png/oppo.png
+Apple,594,3490,sourced-logo,original/apple.svg,marker-svg/apple.svg,marker-png/apple.png
+Xiaomi,538,3167,sourced-logo,original/xiaomi.svg,marker-svg/xiaomi.svg,marker-png/xiaomi.png
+Realme,430,2542,sourced-logo,original/realme.svg,marker-svg/realme.svg,marker-png/realme.png
+OnePlus,347,2055,sourced-logo,original/oneplus.svg,marker-svg/oneplus.svg,marker-png/oneplus.png
+Motorola,299,1754,sourced-logo,original/motorola.svg,marker-svg/motorola.svg,marker-png/motorola.png
+POCO,114,672,sourced-logo,original/poco.png,marker-svg/poco.svg,marker-png/poco.png
+Infinix,36,214,sourced-logo,original/infinix.svg,marker-svg/infinix.svg,marker-png/infinix.png
+Google,18,107,sourced-logo,original/google.svg,marker-svg/google.svg,marker-png/google.png
+Tecno Mobile,17,101,sourced-logo,original/tecno-mobile.svg,marker-svg/tecno-mobile.svg,marker-png/tecno-mobile.png
+Nothing,17,99,sourced-logo,original/nothing.svg,marker-svg/nothing.svg,marker-png/nothing.png
+CMF,12,68,sourced-logo,original/cmf.svg,marker-svg/cmf.svg,marker-png/cmf.png
+iTel,5,30,sourced-logo,original/itel.svg,marker-svg/itel.svg,marker-png/itel.png
+Explay,4,24,sourced-logo,original/explay.png,marker-svg/explay.svg,marker-png/explay.png
+Lava,4,23,sourced-logo,original/lava.svg,marker-svg/lava.svg,marker-png/lava.png
+Honor,4,23,sourced-logo,original/honor.svg,marker-svg/honor.svg,marker-png/honor.png
+Wiko,2,12,sourced-logo,original/wiko.png,marker-svg/wiko.svg,marker-png/wiko.png
+Leagoo,2,12,sourced-logo,original/leagoo.png,marker-svg/leagoo.svg,marker-png/leagoo.png
+Lenovo,2,12,sourced-logo,original/lenovo.svg,marker-svg/lenovo.svg,marker-png/lenovo.png
+AI+,1,6,sourced-logo,original/aiplus.png,marker-svg/aiplus.svg,marker-png/aiplus.png
+Huawei,1,6,sourced-logo,original/huawei.svg,marker-svg/huawei.svg,marker-png/huawei.png
+ZTE,1,6,sourced-logo,original/zte.svg,marker-svg/zte.svg,marker-png/zte.png
+Nokia,1,6,sourced-logo,original/nokia.svg,marker-svg/nokia.svg,marker-png/nokia.png
+LG,1,6,sourced-logo,original/lg.svg,marker-svg/lg.svg,marker-png/lg.png
+Gionee,1,6,sourced-logo,original/gionee.png,marker-svg/gionee.svg,marker-png/gionee.png
+Jio,1,5,sourced-logo,original/jio.svg,marker-svg/jio.svg,marker-png/jio.png
+Unknown,13,77,neutral-fallback,original/unknown.svg,marker-svg/unknown.svg,marker-png/unknown.png
+Unknown Android,111,658,neutral-fallback,original/unknown-android.svg,marker-svg/unknown-android.svg,marker-png/unknown-android.png
