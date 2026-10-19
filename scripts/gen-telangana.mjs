@@ -11,6 +11,7 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const XLSX = require("xlsx");
+const pc = require("polygon-clipping");
 
 const PACK = process.env.TG_PACK || path.resolve(process.cwd(), ".context/telangana-pack/ReachOut_Telangana");
 if (!fs.existsSync(PACK)) {
@@ -322,6 +323,40 @@ fs.writeFileSync(path.join(OUT_DATA, "baseline.json"), JSON.stringify(baseline))
 fs.writeFileSync(
   path.join(OUT_PUBLIC, "telangana-ac.geojson"),
   JSON.stringify({ type: "FeatureCollection", features }),
+);
+
+/* dissolved analytical grouping outlines — a union of the group's AC shapes.
+   This is a dissolve of assemblies, not an official administrative boundary. */
+const groupRings = new Map();
+for (const f of geoRaw.features) {
+  const g = f.properties.districtGrouping;
+  const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+  if (!groupRings.has(g)) groupRings.set(g, []);
+  groupRings.get(g).push(...polys);
+}
+const districtFeatures = [];
+let districtPts = 0;
+for (const [group, polys] of groupRings) {
+  let merged;
+  try { merged = pc.union(polys[0], ...polys.slice(1)); }
+  catch { continue; }
+  const coordinates = merged.map((poly) =>
+    poly.map((ring) => {
+      const simplified = dp(ring, TOL * TOL);
+      districtPts += simplified.length;
+      return simplified;
+    }),
+  );
+  const rec = districts.find((d) => d.group === group);
+  districtFeatures.push({
+    type: "Feature",
+    properties: { group, acs: rec?.acs ?? [], basis: "dissolved analytical grouping; not an official district boundary" },
+    geometry: { type: "MultiPolygon", coordinates },
+  });
+}
+fs.writeFileSync(
+  path.join(OUT_PUBLIC, "telangana-districts.geojson"),
+  JSON.stringify({ type: "FeatureCollection", features: districtFeatures }),
 );
 
 /* ---------------- assets ---------------- */

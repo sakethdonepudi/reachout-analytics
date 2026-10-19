@@ -30,14 +30,6 @@ export default function CaseStudiesIndex() {
                     <span className="rounded-full border border-saffron/40 bg-saffron/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-saffron-2">{c.badge}</span>
                     {c.party && <span className="text-[11px] font-bold text-muted-foreground">{c.party}</span>}
                   </div>
-                  {c.portrait && (
-                    <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-border/60 bg-muted/25 py-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={c.portrait} alt={`Supplied portrait for ${c.title}`} className="h-20 w-auto object-contain" />
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="/telangana/brs-car.png" alt="" aria-hidden className="h-7 w-auto object-contain opacity-90" />
-                    </div>
-                  )}
                   <h2 className="mt-4 font-display text-xl font-semibold">{c.title}</h2>
                   <p className="mt-1 text-[13px] text-muted-foreground">{leader ? `${leader.name} · ${c.region}` : c.region}</p>
                   <p className="mt-3 line-clamp-3 text-[13.5px] leading-relaxed text-muted-foreground">{c.summary}</p>

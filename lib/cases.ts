@@ -18,6 +18,7 @@ export type Leader = {
 export const LEADERS: Leader[] = [
   { id: "cbn", name: "N. Chandrababu Naidu", role: "Andhra Pradesh", party: "TDP", photo: "/leaders/chandrababu-naidu.webp", initials: "CBN", caseSlug: "andhra-pradesh-2024" },
   { id: "eps", name: "Edappadi K. Palaniswami", role: "Tamil Nadu", party: "AIADMK", photo: "/leaders/edappadi-palaniswami.webp", initials: "EPS", caseSlug: "tamil-nadu" },
+  { id: "kcr", name: "K. Chandrashekar Rao", role: "Telangana", party: "BRS", photo: "/telangana/brs-leader.png", initials: "KCR", caseSlug: "telangana" },
   { id: "himanta", name: "Himanta Biswa Sarma", role: "Assam", party: "BJP", photo: "/leaders/himanta-biswa-sarma.webp", initials: "HBS", caseSlug: "north-east-elections" },
   { id: "bhupendra", name: "Bhupendra Patel", role: "Gujarat", party: "BJP", photo: "/leaders/bhupendra-patel.webp", initials: "BP", caseSlug: "gujarat" },
   { id: "nitish", name: "Nitish Kumar", role: "Bihar", party: "JD(U)", photo: "/leaders/nitish-kumar.webp", initials: "NK", caseSlug: "bihar" },
@@ -46,8 +47,8 @@ export type CaseStudy = {
   subtitle: string;
   summary: string;
   tags: string[];
-  /** optional supplied portrait for the case-study card */
-  portrait?: string;
+  /** optional supplied party symbol for the case-study card */
+  symbol?: string;
 };
 
 export const CASES: CaseStudy[] = [
@@ -83,10 +84,10 @@ export const CASES: CaseStudy[] = [
   {
     slug: "telangana", state: "tg", x: 219, y: 467, pinDx: -40,
     label: "Telangana", badge: "Telangana", title: "Telangana", region: "Telangana",
-    party: "BRS", subtitle: "BRS · Telangana 2028 survey",
+    party: "BRS", leaderId: "kcr", subtitle: "K. Chandrashekar Rao",
     summary: "Assembly-level opinion survey of 2028 vote intention, set against the actual 2018 and 2023 results across all 119 constituencies.",
     tags: ["Voter Insights", "Analytics", "Surveys"],
-    portrait: "/telangana/brs-leader.png",
+    symbol: "/telangana/brs-car.png",
   },
   {
     slug: "bihar", state: "br", x: 355, y: 282,

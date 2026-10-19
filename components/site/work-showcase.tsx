@@ -14,6 +14,7 @@ const PARTY_COLORS: Record<string, string> = {
   BJP: "#f58a24",
   "JD(U)": "#1e8a3c",
   INC: "#1b82c4",
+  BRS: "#e5007d",
 };
 
 function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
@@ -126,7 +127,12 @@ export default function WorkShowcase() {
                     <span className="rounded-full border border-saffron/40 bg-saffron/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-saffron-2">
                       {c.badge}
                     </span>
-                    {c.party && <PartyBadge party={c.party} size="sm" />}
+                    {c.symbol ? (
+                      <span className="grid size-9 place-items-center rounded-lg bg-white ring-1 ring-border" title={`${c.party} symbol (supplied)`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={c.symbol} alt={`${c.party} party symbol`} className="h-5 w-7 object-contain" />
+                      </span>
+                    ) : c.party ? <PartyBadge party={c.party} size="sm" /> : null}
                   </div>
 
                   <div className="mt-4 flex items-center gap-3">
