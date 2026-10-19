@@ -645,7 +645,20 @@ export default function AdminPortal() {
             </div>
           )}
 
-          {section === "history" && (
+          {section === "history" && caseId === "telangana" && (
+            <div>
+              <h1 className="font-display text-2xl font-semibold">Import History</h1>
+              <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
+                Telangana scenario imports are tracked in their own namespace. Their history, active-source status, preview and
+                export controls live in the <b className="text-foreground/85">Poll Data</b> section for this case study.
+              </p>
+              <button onClick={() => setSection("poll")} className="mt-4 rounded-lg bg-saffron px-3 py-1.5 text-[12.5px] font-semibold text-[#241203]">
+                Open Telangana import history
+              </button>
+            </div>
+          )}
+
+          {section === "history" && caseId !== "telangana" && (
             <div>
               <h1 className="font-display text-2xl font-semibold">Import History</h1>
               <p className="mt-1 text-[13px] text-muted-foreground">Scoped to {activeCase?.title}. Uploader, timestamp, filename, counts and outcome.</p>
