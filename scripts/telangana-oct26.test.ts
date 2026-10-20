@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { DATA, PARTIES, NO_DATA_COLOR, PARTY_COLOR, leaderOf, partyShade, rawShares, weightedShares, type ShareSet } from "@/lib/telangana/oct26";
+import { DATA, PARTIES, NO_DATA_COLOR, PARTY_COLOR, leaderOf, partyShade, weightedShares, type ShareSet } from "@/lib/telangana/oct26";
 
 let passed = 0;
 const check = (name: string, fn: () => void) => {
@@ -55,17 +55,19 @@ check("statewide 2028 prediction after overrides", () => {
   closeShares(DATA.statewide.prediction, { BRS: 0.466894, Congress: 0.293983, BJP: 0.148877, Others: 0.090246 }, 5e-5);
 });
 
-check("statewide raw 2028 survey shares", () => {
-  closeShares(DATA.statewide.raw, { BRS: 0.581913, Congress: 0.205408, BJP: 0.187003, Others: 0.025676 }, 5e-5);
+check("raw survey aggregates are excluded from the public snapshot", () => {
+  assert.ok(!("raw" in DATA.statewide));
+  for (const a of DATA.acs) assert.ok(!("raw" in a));
+  for (const d of DATA.districts) assert.ok(!("raw" in d));
 });
 
 check("displayed shares sum to one", () => {
-  for (const key of ["actual", "prediction", "raw"] as const) {
+  for (const key of ["actual", "prediction"] as const) {
     const total = PARTIES.reduce((s, p) => s + DATA.statewide[key][p], 0);
     assert.ok(near(total, 1, 1e-5), `${key} ${total}`);
   }
   for (const a of DATA.acs) {
-    for (const key of ["actual", "prediction", "raw"] as const) {
+    for (const key of ["actual", "prediction"] as const) {
       const total = PARTIES.reduce((s, p) => s + a[key][p], 0);
       assert.ok(near(total, 1, 2e-4), `AC ${a.no} ${key} ${total}`);
     }
@@ -75,10 +77,6 @@ check("displayed shares sum to one", () => {
 check("re-weighting the AC predictions by 2023 votes reproduces the statewide snapshot", () => {
   closeShares(weightedShares(DATA.acs, "prediction"), DATA.statewide.prediction, 1e-5);
   closeShares(weightedShares(DATA.acs, "actual"), DATA.statewide.actual, 1e-5);
-});
-
-check("re-weighting raw answers reproduces the statewide raw shares", () => {
-  closeShares(rawShares(DATA.acs), DATA.statewide.raw, 1e-5);
 });
 
 check("district rollup is vote-weighted and reconciles", () => {
@@ -137,20 +135,11 @@ check("Jubilee Hills derives its leader from numbers, not the text label", () =>
   assert.ok(a.prediction.BRS > a.prediction.Congress);
 });
 
-check("prediction and raw survey are distinct measures", () => {
-  assert.ok(DATA.statewide.raw.BRS > DATA.statewide.prediction.BRS + 0.1);
-  assert.ok(DATA.statewide.prediction.Congress > DATA.statewide.raw.Congress + 0.05);
-  for (const a of DATA.acs) assert.notDeepEqual(a.raw, a.prediction);
+check("2023 actuals are separate from the 2028 prediction", () => {
+  for (const a of DATA.acs) assert.notDeepEqual(a.actual, a.prediction);
 });
 
-check("2023 actuals are separate from every 2028 series", () => {
-  for (const a of DATA.acs) {
-    assert.notDeepEqual(a.actual, a.prediction);
-    assert.notDeepEqual(a.actual, a.raw);
-  }
-});
-
-check("devices and PINs are declared unavailable, not zero-filled", () => {
+check("the 2028 source itself carries no device or PIN fields", () => {
   assert.equal(DATA.devicesAvailable, false);
   assert.equal(DATA.pinDataAvailable, false);
 });
@@ -158,13 +147,6 @@ check("devices and PINs are declared unavailable, not zero-filled", () => {
 check("no answered-2028 AC has a zero base", () => {
   for (const a of DATA.acs) assert.ok(a.answered2028 > 0, `AC ${a.no}`);
   assert.equal(DATA.acs.reduce((s, a) => s + a.answered2028, 0), 4401);
-});
-
-check("raw answer counts reconcile with answered rows", () => {
-  for (const a of DATA.acs) {
-    const total = PARTIES.reduce((s, p) => s + a.raw[p], 0);
-    assert.ok(near(total, 1, 2e-4), `AC ${a.no} ${total}`);
-  }
 });
 
 check("map colours have a leading party for every assembly and no invented AIMIM prediction", () => {

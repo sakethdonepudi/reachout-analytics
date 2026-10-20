@@ -3,12 +3,12 @@ import bundle from "@/lib/data/telangana/oct26.json";
 /* =====================================================================
    Telangana October workbook dataset (tg-oct20-v1).
 
-   Three separate measures, never mixed:
+   Two public measures, never mixed:
    - actual:        2023 election result (candidate votes + NOTA)
    - prediction:    model estimate from the AC projection workbook
-   - raw:           actual 2028 survey answers at the workbook cutoff
-   State/district aggregates weight ACs by 2023 total votes for
-   actual/prediction, and by answered 2028 rows for the raw survey.
+   Raw survey answers remain private in the source workbook; only the
+   answered-row counts are exposed here as a base for provenance.
+   State/district aggregates weight ACs by 2023 total votes.
    ===================================================================== */
 
 export type Party = "BRS" | "Congress" | "BJP" | "Others";
@@ -69,7 +69,7 @@ export type Override = { basis: string; reason: string; version: string };
 export type AcRow = {
   no: number; name: string; district: string; zone: string;
   votes2023: number;
-  actual: ShareSet; prediction: ShareSet; raw: ShareSet;
+  actual: ShareSet; prediction: ShareSet;
   answered2028: number; answeredRecall2023: number; totalRows: number;
   leader: Party | "Tie"; tied: Party[]; marginPp: number;
   sourceLeader: Party | null;
@@ -77,7 +77,7 @@ export type AcRow = {
 };
 export type DistrictRow = {
   name: string; acs: number[]; votes2023: number;
-  actual: ShareSet; prediction: ShareSet; raw: ShareSet;
+  actual: ShareSet; prediction: ShareSet;
   answered2028: number; leader: Party | "Tie"; tied: Party[]; marginPp: number;
 };
 export type Oct26 = {
@@ -90,7 +90,7 @@ export type Oct26 = {
   };
   statewide: {
     name: string; acs: number; votes2023: number;
-    actual: ShareSet; prediction: ShareSet; raw: ShareSet;
+    actual: ShareSet; prediction: ShareSet;
     answered2028: number; changePp: ShareSet;
     leads: Record<string, number>; leader: Party | "Tie"; tied: Party[]; marginPp: number;
   };
@@ -120,19 +120,6 @@ export function weightedShares(acs: AcRow[], key: "actual" | "prediction"): Shar
   }
   if (!weight) return { ...EMPTY };
   for (const p of PARTIES) out[p] /= weight;
-  return out;
-}
-
-export function rawShares(acs: AcRow[]): ShareSet {
-  let answered = 0;
-  const out: ShareSet = { ...EMPTY };
-  for (const a of acs) {
-    if (!(a.answered2028 > 0)) continue;
-    answered += a.answered2028;
-    for (const p of PARTIES) out[p] += a.raw[p] * a.answered2028;
-  }
-  if (!answered) return { ...EMPTY };
-  for (const p of PARTIES) out[p] /= answered;
   return out;
 }
 

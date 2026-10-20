@@ -38,7 +38,6 @@ async function activePackSafe() {
  */
 export async function GET() {
   const [active, pack] = await Promise.all([activeImportSafe(), activePackSafe()]);
-  const { raw: _statewideRaw, ...statewide } = DATA.statewide;
   return NextResponse.json(
     {
       published: true,
@@ -64,9 +63,9 @@ export async function GET() {
       congressBasis: DATA.congressBasis,
       othersBasis: DATA.othersBasis,
       counts: DATA.counts,
-      statewide,
-      districts: DATA.districts.map(({ raw, ...rest }) => rest),
-      acs: DATA.acs.map(({ raw, ...rest }) => rest),
+      statewide: DATA.statewide,
+      districts: DATA.districts,
+      acs: DATA.acs,
       overrides: DATA.overrides,
       overrideMeta: DATA.overrideMeta,
     },
