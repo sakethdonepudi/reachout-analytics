@@ -106,17 +106,6 @@ export type Oct26 = {
 export const DATA = bundle as unknown as Oct26;
 export const EMPTY: ShareSet = { BRS: 0, Congress: 0, BJP: 0, Others: 0 };
 
-/* ---------------- sequential pink scale (fixed 0–100% domain) -------- */
-const PINK: [number, number, number][] = [[252, 231, 243], [244, 114, 182], [157, 23, 77]];
-/** BRS 2028 prediction share → readable light-pink to dark-pink fill. */
-export function pinkScale(share: number | null): string {
-  if (share === null || !Number.isFinite(share)) return "#e6e8ec";
-  const t = Math.max(0, Math.min(1, share));
-  const [a, b, k] = t < 0.5 ? [PINK[0], PINK[1], t * 2] : [PINK[1], PINK[2], (t - 0.5) * 2];
-  const c = a.map((x, i) => Math.round(x + (b[i] - x) * k));
-  return `rgb(${c[0]},${c[1]},${c[2]})`;
-}
-
 /* ---------------- aggregation ---------------- */
 export function weightedShares(acs: AcRow[], key: "actual" | "prediction"): ShareSet {
   let weight = 0;
