@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { ArrowLeft, Check, ChevronDown, Layers, MapPin, RotateCcw, Search } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
-import { leaderOf, rawShares, weightedShares, type Oct26, type ShareSet } from "@/lib/telangana/oct26";
+import { PARTIES, PARTY_COLOR, PARTY_LABEL, NO_DATA_COLOR, leaderOf, partyShade, rawShares, weightedShares, type Oct26, type ShareSet } from "@/lib/telangana/oct26";
 import TelanganaRail, { type ScopeResult } from "./telangana-rail";
 import AboutTelangana from "./about-telangana";
 import type { MapTheme } from "./telangana-map";
@@ -20,7 +20,6 @@ type Tab = "change" | "share" | "seats" | "more";
 type Layer = "party";
 
 const LABEL = "text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
-const PINK_GRADIENT = "linear-gradient(90deg, rgb(252,231,243) 0%, rgb(244,114,182) 50%, rgb(157,23,77) 100%)";
 
 /* ---------------- searchable single-select ---------------- */
 type Option = { value: string; label: string; hint?: string };
@@ -287,9 +286,26 @@ export default function TelanganaDashboard() {
             </div>
 
             <div>
-              <span className={LABEL}>BRS 2028 prediction share</span>
-              <div className="mt-1.5 h-2 rounded-full ring-1 ring-inset ring-black/10" style={{ background: PINK_GRADIENT }} aria-hidden />
-              <div className="mt-1 flex justify-between text-[9px] tabular-nums text-muted-foreground"><span>0%</span><span>50%</span><span>100%</span></div>
+              <span className={LABEL}>Leading party</span>
+              <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] font-medium text-muted-foreground">
+                {PARTIES.map((p) => (
+                  <span key={p} className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15"
+                      style={{ background: `linear-gradient(90deg, ${partyShade(p, 0.2)} 0%, ${PARTY_COLOR[p]} 50%, ${partyShade(p, 0.7)} 100%)` }} />
+                    {PARTY_LABEL[p]}
+                  </span>
+                ))}
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15"
+                    style={{ background: `linear-gradient(90deg, ${PARTY_COLOR.BRS} 0 50%, ${PARTY_COLOR.Congress} 50% 100%)` }} />
+                  Tie
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15" style={{ background: NO_DATA_COLOR }} />
+                  No data
+                </span>
+              </div>
+              <p className="mt-1.5 text-[9px] leading-snug text-muted-foreground">Shade = predicted share · lighter lower, darker higher</p>
             </div>
           </div>
         </aside>

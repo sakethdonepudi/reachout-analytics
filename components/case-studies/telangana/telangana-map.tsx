@@ -4,16 +4,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { geoIdentity } from "d3-geo";
 import { rafLoop } from "@/lib/raf-loop";
-import { PARTY_COLOR, pinkScale, fmtPct, type AcRow } from "@/lib/telangana/oct26";
+import { PARTY_COLOR, PARTY_LABEL, NO_DATA_COLOR, fmtPct, leaderOf, partyShade, type AcRow, type Party } from "@/lib/telangana/oct26";
 
 /* =====================================================================
    Telangana 2.5D map — October workbook.
 
    Genuine extruded geometry, perspective camera (34°, φ 0.6), the same
-   lighting rig and ~700 ms elapsed-time easing as Tamil Nadu. Fills use a
-   single sequential pink scale for the BRS 2028 prediction share; the scale
-   is labelled by the caller. District grouping is the workbook's analytical
-   AC grouping, not an official administrative boundary.
+   lighting rig and ~700 ms elapsed-time easing as Tamil Nadu. Each assembly
+   is filled by its leading 2028 prediction party, with a party-hue light-to-
+   dark shade for that party's predicted share. Ties are split equally
+   between the tied parties' colours; missing predictions are neutral grey.
+   AIMIM has no separate prediction in this workbook and is never invented.
+   District grouping is the workbook's analytical AC grouping, not an
+   official administrative boundary.
    ===================================================================== */
 
 export type MapTheme = "light" | "dark";
@@ -53,12 +56,34 @@ const PAL = {
   light: { none: "#e7ebef", side: "#d3d9e0", line: "rgb(70,86,104)", sel: "#7a1f4d", label: "#1b2430", halo: "rgba(255,255,255,.94)" },
 };
 
+/** Equal-width party bands for a tied assembly, mapped once across the cap. */
+function tieTexture(colors: string[]): THREE.CanvasTexture {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const band = size / colors.length;
+  colors.forEach((color, i) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.floor(i * band), 0, Math.ceil(band) + 1, size);
+    if (i > 0) {
+      ctx.fillStyle = "rgba(255,255,255,.55)";
+      ctx.fillRect(Math.round(i * band) - 0.5, 0, 1, size);
+    }
+  });
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}
+
 export default function TelanganaMap({ acs, district, ac, theme, onSelectDistrict, onSelectAc, onReset }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   const [geo, setGeo] = useState<FC | null>(null);
-  const [tip, setTip] = useState<{ x: number; y: number; title: string; sub: string; value: string } | null>(null);
+  const [tip, setTip] = useState<{ x: number; y: number; title: string; sub: string; value: string; party: Party | null; tied: Party[] } | null>(null);
 
   const live = useRef({ acs, district, ac, theme, onSelectDistrict, onSelectAc, onReset });
   live.current = { acs, district, ac, theme, onSelectDistrict, onSelectAc, onReset };
@@ -105,12 +130,14 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
       no: number; district: string;
       group3: THREE.Group; mesh: THREE.Mesh;
       cap: THREE.MeshStandardMaterial; side: THREE.MeshStandardMaterial; line: THREE.LineBasicMaterial;
+      fill: THREE.Color; texture: THREE.CanvasTexture | null;
       heat: number; hover: number; isolate: number; dim: number; elev: number;
       bounds: { minx: number; maxx: number; minz: number; maxz: number }; cx: number; cz: number;
     };
     const entries = new Map<number, Entry>();
     const byGroup = new Map<string, number[]>();
     const pickables: THREE.Mesh[] = [];
+    const acMap = new Map(live.current.acs.map((a) => [a.no, a]));
 
     for (const f of geo.features) {
       const rings = (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates) as number[][][][];
@@ -135,7 +162,20 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
       geom.rotateX(Math.PI / 2);
       geom.translate(0, DEPTH, 0);
 
-      const cap = new THREE.MeshStandardMaterial({ color: new THREE.Color(P.none), roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide, transparent: true, opacity: 1 });
+      const rec = acMap.get(f.properties.acNo);
+      const lead = rec ? leaderOf(rec.prediction) : { leader: null, tied: [] as Party[], marginPp: 0 };
+      let fillHex = NO_DATA_COLOR;
+      let texture: THREE.CanvasTexture | null = null;
+      if (rec && rec.answered2028 > 0) {
+        if (lead.tied.length > 1) {
+          texture = tieTexture(lead.tied.map((p) => partyShade(p, rec.prediction[p])));
+          fillHex = "#ffffff";
+        } else if (lead.leader) {
+          fillHex = partyShade(lead.leader, rec.prediction[lead.leader]);
+        }
+      }
+
+      const cap = new THREE.MeshStandardMaterial({ color: new THREE.Color(fillHex), roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide, transparent: true, opacity: 1 });
       const side = new THREE.MeshStandardMaterial({ color: new THREE.Color(P.side), roughness: 1, metalness: 0.02, side: THREE.DoubleSide, transparent: true, opacity: 1 });
       const mesh = new THREE.Mesh(geom, [cap, side]);
       mesh.userData.acNo = f.properties.acNo;
@@ -161,8 +201,25 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
       group3.add(new THREE.LineSegments(lg, line));
       scene.add(group3);
 
+      if (texture) {
+        /* ExtrudeGeometry UVs follow shape coordinates; normalise them once so
+           the tied-party bands span exactly this assembly's cap. */
+        const pos = geom.attributes.position;
+        const uw = Math.max(1e-6, maxx - minx), uh = Math.max(1e-6, maxz - minz);
+        const uv = new Float32Array(pos.count * 2);
+        for (let i = 0; i < pos.count; i++) {
+          uv[i * 2] = (pos.getX(i) - minx) / uw;
+          uv[i * 2 + 1] = (pos.getZ(i) - minz) / uh;
+        }
+        geom.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+        cap.map = texture;
+        cap.color.set("#ffffff");
+        cap.needsUpdate = true;
+      }
+
       entries.set(f.properties.acNo, {
         no: f.properties.acNo, district: f.properties.group, group3, mesh, cap, side, line,
+        fill: new THREE.Color(fillHex), texture,
         heat: 0, hover: 0, isolate: 0, dim: 0, elev: 0,
         bounds: { minx, maxx, minz, maxz }, cx: (minx + maxx) / 2, cz: (minz + maxz) / 2,
       });
@@ -233,6 +290,24 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
     };
 
     /* ---------------- pointer ---------------- */
+    let pinnedUntil = 0;
+    let touchTip = false;
+    const tipFor = (rec: AcRow, clientX: number, clientY: number) => {
+      const hostRect = host.getBoundingClientRect();
+      const lead = leaderOf(rec.prediction);
+      const isTie = lead.tied.length > 1;
+      return {
+        x: clamp(clientX - hostRect.left + 14, 8, hostRect.width - 236),
+        y: clamp(clientY - hostRect.top + 14, 8, hostRect.height - 104),
+        title: `${rec.no}. ${rec.name}`,
+        sub: `${rec.district} · ${isTie ? "Tie" : lead.leader ? `Leading ${PARTY_LABEL[lead.leader]}` : "No prediction"}`,
+        value: isTie
+          ? lead.tied.map((p) => `${PARTY_LABEL[p]} ${fmtPct(rec.prediction[p])}`).join(" · ")
+          : lead.leader ? `${fmtPct(rec.prediction[lead.leader])} predicted share` : "No data",
+        party: isTie ? null : lead.leader,
+        tied: isTie ? lead.tied : [],
+      };
+    };
     const pointers = new Map<number, { x: number; y: number }>();
     let dragging = false, dragMoved = false, lastX = 0, lastY = 0, pinch = 0;
     const mouse = { px: -1, py: -1 };
@@ -244,6 +319,7 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
     const onDown = (e: PointerEvent) => {
       canvas.setPointerCapture(e.pointerId);
       pointers.set(e.pointerId, local(e));
+      if (e.pointerType === "touch") touchTip = false;
       if (pointers.size === 1) { dragging = true; dragMoved = false; lastX = e.clientX; lastY = e.clientY; }
       else if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); }
     };
@@ -279,20 +355,32 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
       pointers.delete(e.pointerId);
       if (pointers.size < 2) pinch = 0;
       if (pointers.size === 0) {
-        const wasDrag = dragMoved;
+        const isDrag = dragMoved;
         dragging = false; dragMoved = false;
-        if (wasDrag) return;
+        if (isDrag) return;
+        mouse.px = e.clientX; mouse.py = e.clientY;
         const no = pick();
         const grp = live.current.district;
-        if (no == null) { live.current.onReset(); return; }
+        if (no == null) { pinnedUntil = 0; touchTip = false; hovered = null; setTip(null); live.current.onReset(); return; }
         const entry = entries.get(no);
         if (!entry) return;
+        const rec = acRef.current.get(no);
+        if (rec) {
+          pinnedUntil = Date.now() + 4000;
+          if (e.pointerType === "touch") touchTip = true;
+          setTip(tipFor(rec, e.clientX, e.clientY));
+        }
+        hovered = null; // refresh hover state so the tap shows the tooltip
         if (!grp) live.current.onSelectDistrict(entry.district);
         else live.current.onSelectAc(no);
       }
     };
     const onWheel = (e: WheelEvent) => { e.preventDefault(); dist = clamp(dist * (1 + e.deltaY * 0.0012), 200, 3200); desired.dist = dist; };
-    const onLeave = () => { mouse.px = -1; mouse.py = -1; hovered = null; setTip(null); };
+    const onLeave = (e: PointerEvent) => {
+      /* touch has no hover state; keep the tooltip raised by the tap */
+      if (e.pointerType === "touch") return;
+      mouse.px = -1; mouse.py = -1; hovered = null; pinnedUntil = 0; touchTip = false; setTip(null);
+    };
 
     canvas.addEventListener("pointerdown", onDown);
     canvas.addEventListener("pointermove", onMove);
@@ -337,22 +425,24 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
       dist += (desired.dist - dist) * aCam;
       applyCamera();
 
-      const hov = pick();
-      if (hov !== hovered) {
+      const hov = touchTip ? hovered : pick();
+      if (!touchTip && hov !== hovered) {
         hovered = hov;
         const rec = hov != null ? acRef.current.get(hov) : null;
-        if (rec) {
-          const hostRect = host.getBoundingClientRect();
-          setTip({ x: clamp(mouse.px - hostRect.left + 14, 8, hostRect.width - 210), y: clamp(mouse.py - hostRect.top + 14, 8, hostRect.height - 90), title: `${rec.no}. ${rec.name}`, sub: rec.district, value: `${fmtPct(rec.prediction.BRS)} BRS` });
-        } else setTip(null);
+        if (rec) setTip(tipFor(rec, mouse.px, mouse.py));
+        else if (Date.now() >= pinnedUntil) setTip(null);
         canvas.style.cursor = hov != null ? "pointer" : dragging ? "grabbing" : "grab";
+      }
+      if (pinnedUntil && Date.now() > pinnedUntil) {
+        pinnedUntil = 0;
+        if (touchTip) { touchTip = false; hovered = null; setTip(null); }
+        else if (hovered == null) setTip(null);
       }
 
       const aHeat = reduced ? 1 : 1 - Math.exp(-dt / TAU_HEAT);
       const aHover = reduced ? 1 : 1 - Math.exp(-dt / TAU_HOVER);
       const aMat = reduced ? 1 : 1 - Math.exp(-dt / TAU_MAT);
       for (const e of entries.values()) {
-        const rec = acRef.current.get(e.no);
         const inScope = !grp || e.district === grp;
         const isSel = selAc === e.no;
         const isHover = hovered === e.no;
@@ -363,8 +453,7 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
         e.elev += (((inScope && (grp || isSel)) ? 6 : 0) + (isSel ? 2 : 0) - e.elev) * aHeat;
         const vis = 1 - e.isolate;
         const dimOp = 1 - e.dim * 0.62;
-        const known = (rec?.answered2028 ?? 0) > 0;
-        const base = known && rec ? new THREE.Color(pinkScale(rec.prediction.BRS)) : new THREE.Color(P.none);
+        const base = e.fill.clone();
         if (!inScope) base.lerp(new THREE.Color(P.none), 0.88);
         const targetCol = base.lerp(new THREE.Color(P.sel), e.heat * 0.12);
         e.cap.color.lerp(targetCol, aMat);
@@ -429,7 +518,7 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
       canvas.removeEventListener("pointercancel", onUp);
       canvas.removeEventListener("pointerleave", onLeave);
       canvas.removeEventListener("wheel", onWheel);
-      for (const e of entries.values()) { e.mesh.geometry.dispose(); e.cap.dispose(); e.side.dispose(); e.line.dispose(); }
+      for (const e of entries.values()) { e.mesh.geometry.dispose(); e.cap.dispose(); e.side.dispose(); e.line.dispose(); e.texture?.dispose(); }
       renderer.dispose();
       setTip(null);
     };
@@ -448,7 +537,7 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
 
   return (
     <div ref={hostRef} className="relative h-full w-full overflow-hidden">
-      <canvas ref={canvasRef} className="block h-full w-full touch-none" aria-label="Telangana assembly map" role="img" />
+      <canvas ref={canvasRef} className="block h-full w-full touch-none" aria-label="Telangana assembly map, coloured by leading 2028 prediction party" role="img" />
       {!geo && <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">Loading Telangana geometry…</div>}
 
       <div ref={labelRef} className="pointer-events-none absolute inset-0">
@@ -462,13 +551,17 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
       </div>
 
       {tip && (
-        <div role="tooltip" className="pointer-events-none absolute z-20 w-[200px] rounded-lg border border-border bg-card/95 px-2.5 py-1.5 text-left shadow-lg backdrop-blur"
+        <div role="tooltip" className="pointer-events-none absolute z-20 w-[224px] rounded-lg border border-border bg-card/95 px-2.5 py-1.5 text-left shadow-lg backdrop-blur"
           style={{ left: tip.x, top: tip.y }}>
           <p className="text-[11.5px] font-semibold leading-tight">{tip.title}</p>
-          <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">{tip.sub} · analytical grouping</p>
-          <p className="mt-0.5 flex items-center gap-1.5 text-[10px] tabular-nums">
-            <span className="size-1.5 rounded-sm" style={{ background: PARTY_COLOR.BRS }} />
-            BRS prediction {tip.value}
+          <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">{tip.sub}</p>
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] leading-snug tabular-nums">
+            <span className="flex items-center gap-1">
+              {tip.tied.length > 1
+                ? tip.tied.map((p) => <span key={p} className="size-1.5 rounded-sm" style={{ background: PARTY_COLOR[p] }} />)
+                : <span className="size-1.5 rounded-sm" style={{ background: tip.party ? PARTY_COLOR[tip.party] : NO_DATA_COLOR }} />}
+            </span>
+            <span>{tip.value}</span>
           </p>
         </div>
       )}

@@ -32,6 +32,12 @@ export default function AboutTelangana({ data }: { data: Oct26 }) {
           the same four display groups. Others is therefore not a single party.
         </p>
         <p>
+          <b className="text-foreground/85">Map colour.</b> Each assembly is filled by its leading 2028 prediction party:
+          BRS pink, Congress+ blue, BJP orange, Others purple-slate. Lighter-to-darker shades within a party show that
+          party&apos;s predicted share (lighter lower, darker higher). Kodangal&apos;s 50–50 tie is split equally between BRS
+          and Congress. AIMIM sits inside Others in this workbook, so there is no separate AIMIM prediction or green region.
+        </p>
+        <p>
           <b className="text-foreground/85">Replacement workbook.</b> {fmtInt(c.sourceIds)} distinct Entry IDs; default cutoff
           {" "}{data.cutoff}; {fmtInt(c.cutoffRows)} rows on or after the cutoff; {fmtInt(c.answered2028)} answered the 2028
           question and {fmtInt(c.blank2028)} left it blank; {fmtInt(c.answeredRecall2023)} answered the 2023 recall and

@@ -14,12 +14,53 @@ import bundle from "@/lib/data/telangana/oct26.json";
 export type Party = "BRS" | "Congress" | "BJP" | "Others";
 export const PARTIES: Party[] = ["BRS", "Congress", "BJP", "Others"];
 export const PARTY_COLOR: Record<Party, string> = {
-  BRS: "#e5007d", Congress: "#1f6fd0", BJP: "#e87511", Others: "#8a94a3",
+  BRS: "#e5007d", Congress: "#1f6fd0", BJP: "#e87511", Others: "#6f62a0",
 };
 export const PARTY_LABEL: Record<Party, string> = {
   BRS: "BRS", Congress: "Congress+", BJP: "BJP", Others: "Others",
 };
+export const NO_DATA_COLOR = "#9aa1ab";
 export type ShareSet = Record<Party, number>;
+
+/* Party-colour shading: hue identifies the party, lightness tracks its
+   predicted share. 20% → lightest, 70%+ → darkest, 50% ≈ the base colour. */
+function rgbToHsl(hex: string): [number, number, number] {
+  const n = Number.parseInt(hex.replace("#", ""), 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l * 100];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  else if (max === g) h = ((b - r) / d + 2) / 6;
+  else h = ((r - g) / d + 4) / 6;
+  return [h * 360, s * 100, l * 100];
+}
+function hslToHex(h: number, s: number, l: number): string {
+  const sn = s / 100, ln = l / 100;
+  const c = (1 - Math.abs(2 * ln - 1)) * sn;
+  const hp = h / 60;
+  const x = c * (1 - Math.abs((hp % 2) - 1));
+  let [r, g, b] = [0, 0, 0];
+  if (hp < 1) [r, g, b] = [c, x, 0];
+  else if (hp < 2) [r, g, b] = [x, c, 0];
+  else if (hp < 3) [r, g, b] = [0, c, x];
+  else if (hp < 4) [r, g, b] = [0, x, c];
+  else if (hp < 5) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
+  const m = ln - c / 2;
+  const to = (v: number) => Math.round(Math.max(0, Math.min(1, v + m)) * 255).toString(16).padStart(2, "0");
+  return `#${to(r)}${to(g)}${to(b)}`;
+}
+export function partyShade(party: Party, share: number): string {
+  const t = Math.max(0, Math.min(1, (share - 0.2) / 0.5));
+  const [h, s, l] = rgbToHsl(PARTY_COLOR[party]);
+  const light = Math.min(76, l + 24);
+  const dark = Math.max(30, l - 20);
+  return hslToHex(h, s, light + (dark - light) * t);
+}
 
 export type Override = { basis: string; reason: string; version: string };
 export type AcRow = {

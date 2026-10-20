@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { DATA, PARTIES, leaderOf, rawShares, weightedShares, type ShareSet } from "@/lib/telangana/oct26";
+import { DATA, PARTIES, NO_DATA_COLOR, PARTY_COLOR, leaderOf, partyShade, rawShares, weightedShares, type ShareSet } from "@/lib/telangana/oct26";
 
 let passed = 0;
 const check = (name: string, fn: () => void) => {
@@ -165,6 +165,33 @@ check("raw answer counts reconcile with answered rows", () => {
     const total = PARTIES.reduce((s, p) => s + a.raw[p], 0);
     assert.ok(near(total, 1, 2e-4), `AC ${a.no} ${total}`);
   }
+});
+
+check("map colours have a leading party for every assembly and no invented AIMIM prediction", () => {
+  for (const a of DATA.acs) {
+    assert.deepEqual(Object.keys(a.prediction).sort(), ["BJP", "BRS", "Congress", "Others"]);
+    assert.ok(!("AIMIM" in a.prediction));
+    const lead = leaderOf(a.prediction);
+    assert.ok(lead.tied.length > 1 || lead.leader !== null, `AC ${a.no}`);
+  }
+  assert.equal(PARTY_COLOR.BRS, "#e5007d");
+  assert.equal(PARTY_COLOR.Congress, "#1f6fd0");
+  assert.equal(PARTY_COLOR.BJP, "#e87511");
+  assert.ok(NO_DATA_COLOR.startsWith("#"));
+});
+
+check("party shading keeps each hue and varies with predicted share", () => {
+  for (const p of PARTIES) {
+    const light = partyShade(p, 0.2);
+    const dark = partyShade(p, 0.7);
+    assert.match(light, /^#[0-9a-f]{6}$/);
+    assert.match(dark, /^#[0-9a-f]{6}$/);
+    assert.notEqual(light, dark, p);
+  }
+  const kodangal = DATA.acs.find((a) => a.no === 72)!;
+  const tie = leaderOf(kodangal.prediction).tied;
+  assert.deepEqual(tie, ["BRS", "Congress"]);
+  assert.notEqual(partyShade(tie[0], 0.5), partyShade(tie[1], 0.5));
 });
 
 console.log(`\n${passed} checks passed.`);
