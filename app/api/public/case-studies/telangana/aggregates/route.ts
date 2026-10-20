@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { DATA } from "@/lib/telangana/oct26";
 import { oct26ActiveImport } from "@/lib/telangana/oct26-import";
+import { activePack } from "@/lib/telangana/pack-import";
 
 export const runtime = "nodejs";
 
@@ -9,6 +10,17 @@ async function activeImportSafe() {
   try {
     return await Promise.race([
       oct26ActiveImport(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200)),
+    ]);
+  } catch {
+    return null;
+  }
+}
+
+async function activePackSafe() {
+  try {
+    return await Promise.race([
+      activePack(),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200)),
     ]);
   } catch {
@@ -25,7 +37,8 @@ async function activeImportSafe() {
  * stays in private admin storage.
  */
 export async function GET() {
-  const active = await activeImportSafe();
+  const [active, pack] = await Promise.all([activeImportSafe(), activePackSafe()]);
+  const { raw: _statewideRaw, ...statewide } = DATA.statewide;
   return NextResponse.json(
     {
       published: true,
@@ -34,6 +47,9 @@ export async function GET() {
       basis: "tg-oct20-v1",
       activeImport: active
         ? { importId: active.importId, version: active.version, sourceHash: active.sourceHash, at: active.at, filename: active.filename }
+        : null,
+      activePack: pack
+        ? { importId: pack.importId, version: pack.version, at: pack.at, files: pack.files.map((f) => f.name) }
         : null,
       sourceFile: DATA.sourceFile,
       sourceHash: DATA.sourceHash,
@@ -48,9 +64,9 @@ export async function GET() {
       congressBasis: DATA.congressBasis,
       othersBasis: DATA.othersBasis,
       counts: DATA.counts,
-      statewide: DATA.statewide,
-      districts: DATA.districts,
-      acs: DATA.acs,
+      statewide,
+      districts: DATA.districts.map(({ raw, ...rest }) => rest),
+      acs: DATA.acs.map(({ raw, ...rest }) => rest),
       overrides: DATA.overrides,
       overrideMeta: DATA.overrideMeta,
     },

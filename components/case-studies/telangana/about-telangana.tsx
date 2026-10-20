@@ -1,5 +1,6 @@
 import { fmtInt } from "@/lib/telangana/model";
 import type { Oct26 } from "@/lib/telangana/oct26";
+import { HISTORY } from "@/lib/telangana/history";
 
 /**
  * One compact disclosure at the bottom of the page. Collapsed by default; the
@@ -20,22 +21,24 @@ export default function AboutTelangana({ data }: { data: Oct26 }) {
       </summary>
       <div className="space-y-2.5 rounded-b-xl border border-t-0 border-border bg-card px-4 py-3 text-[11px] leading-relaxed text-muted-foreground">
         <p>
-          <b className="text-foreground/85">Three separate measures.</b> The <b>2023 result</b> is the ECI-origin election
-          table (candidate votes plus NOTA). The <b>2028 prediction</b> is the workbook&apos;s assembly model, aggregated by the
-          2023 total vote weight ({fmtInt(s.votes2023)}). The <b>raw 2028 survey</b> is the actual answered intention at the
-          cutoff ({fmtInt(s.answered2028)} answers), aggregated by answered rows. They are never merged or presented as one
-          number.
+          <b className="text-foreground/85">Four election years.</b> The <b>2014</b> and <b>2018</b> figures are actual
+          ECI-derived OpenCity/TCPD mirror results (vote totals {fmtInt(HISTORY.years["2014"].total)} and {fmtInt(HISTORY.years["2018"].total)});
+          <b> 2023</b> is the supplied workbook result table ({fmtInt(HISTORY.years["2023"].total)} votes). None of these are exit
+          polls. <b>2028</b> is a separate model prediction aggregated by 2023 vote weight ({fmtInt(s.votes2023)}), not an
+          observed result. Raw survey answers stay private and are not displayed in the public comparison.
         </p>
         <p>
-          <b className="text-foreground/85">Parties.</b> BRS; <b>Congress+</b> is the INC + CPI alliance, not INC alone; BJP;
-          and Others (AIMIM + BSP + Janasena + NOTA + IND + all remaining). Raw answer options TDP + Janasena + AIMIM fold into
-          the same four display groups. Others is therefore not a single party.
+          <b className="text-foreground/85">Parties.</b> The comparison table uses four groups: BRS/TRS family; <b>Congress+</b>
+          (INC + CPI, not INC alone); BJP; and Others (AIMIM + BSP + Janasena + NOTA + IND + all remaining). Historical maps
+          retain the detailed winning-party identity — TRS, Congress, BJP, AIMIM, TDP, BSP, YSRCP, CPI, CPM, AIFB and
+          Independent — so the seat geography is not collapsed into the four comparison groups.
         </p>
         <p>
-          <b className="text-foreground/85">Map colour.</b> Each assembly is filled by its leading 2028 prediction party:
-          BRS pink, Congress+ blue, BJP orange, Others purple-slate. Lighter-to-darker shades within a party show that
-          party&apos;s predicted share (lighter lower, darker higher). Kodangal&apos;s 50–50 tie is split equally between BRS
-          and Congress. AIMIM sits inside Others in this workbook, so there is no separate AIMIM prediction or green region.
+          <b className="text-foreground/85">Map colour.</b> For 2014, 2018 and 2023, each assembly is filled by its actual
+          winner in that party&apos;s colour, shaded by the winner&apos;s vote share. For 2028 it is filled by the leading
+          predicted party (BRS pink, Congress+ blue, BJP orange, Others purple-slate) shaded by the predicted share.
+          Kodangal&apos;s 50–50 tie is split equally between BRS and Congress. AIMIM has separate historical results (green)
+          but no separate 2028 prediction: it sits inside Others, so no green 2028 region is invented.
         </p>
         <p>
           <b className="text-foreground/85">Replacement workbook.</b> {fmtInt(c.sourceIds)} distinct Entry IDs; default cutoff
@@ -61,15 +64,28 @@ export default function AboutTelangana({ data }: { data: Oct26 }) {
           metadata states no explicit licence, so reuse terms must be reviewed before production clearance.
         </p>
         <p>
+          <b className="text-foreground/85">Swing statistics.</b> The median is the median assembly swing across the 119
+          comparable ACs (or a re-computed cohort with at least 10 assemblies), not the vote-weighted aggregate. Quartiles are
+          inclusive; outlier fences are 1.5×IQR. A selected assembly&apos;s points outside a fence are ringed; the statewide
+          aggregate is never flagged as an AC outlier.
+        </p>
+        <p>
+          <b className="text-foreground/85">Devices.</b> The device layer uses a separate exact Entry ID join: {fmtInt(HISTORY.devices.total)}
+          {" "}October-cutoff entries, with zero AC mismatches. Brands are predicted metadata, not verified handsets, unique
+          people or GPS; markers use stable illustrative anchors inside the selected assembly geometry. If a later import no
+          longer matches Entry IDs, enrichment must be disabled and revalidated.
+        </p>
+        <p>
           <b className="text-foreground/85">What is not claimed.</b> No confidence interval, margin of error, certified seat
           count, voter transfer, live result or ad-performance claim. “Projected leads” are modelled leading assemblies, not
-          seats won. A zero recorded share is a valid zero, shown as 0.00%; only a missing base shows “—”. Device and PIN data
-          are not in this workbook, so the device layer is unavailable rather than empty.
+          seats won. A zero recorded share is a valid zero, shown as 0.00%; only a missing base shows “—”. The historical
+          downloads are internally reconciled but official ECI PDF verification remains incomplete; the downloaded source URLs and versions are retained in the admin bundle.
         </p>
         <p>
           <b className="text-foreground/85">Provenance.</b> Source file {data.sourceFile}; workbook SHA-256{" "}
           <code className="break-all text-[10px]">{data.sourceHash}</code>; import version {data.version}; override version
-          {" "}{data.overrideVersion}. Public pages expose aggregates only — no Entry IDs, raw rows, IPs or phone numbers.
+          {" "}{data.overrideVersion}. Historical/map sources: {HISTORY.sourceAudit.historical.map((h) => `${h.year} (${fmtInt(h.totalVotes)} votes)`).join(" · ")}.
+          Public pages expose aggregates only — no Entry IDs, raw rows, IPs or phone numbers.
         </p>
       </div>
     </details>

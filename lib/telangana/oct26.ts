@@ -54,12 +54,15 @@ function hslToHex(h: number, s: number, l: number): string {
   const to = (v: number) => Math.round(Math.max(0, Math.min(1, v + m)) * 255).toString(16).padStart(2, "0");
   return `#${to(r)}${to(g)}${to(b)}`;
 }
-export function partyShade(party: Party, share: number): string {
+export function shadeHex(hex: string, share: number): string {
   const t = Math.max(0, Math.min(1, (share - 0.2) / 0.5));
-  const [h, s, l] = rgbToHsl(PARTY_COLOR[party]);
+  const [h, s, l] = rgbToHsl(hex);
   const light = Math.min(76, l + 24);
   const dark = Math.max(30, l - 20);
   return hslToHex(h, s, light + (dark - light) * t);
+}
+export function partyShade(party: Party, share: number): string {
+  return shadeHex(PARTY_COLOR[party], share);
 }
 
 export type Override = { basis: string; reason: string; version: string };

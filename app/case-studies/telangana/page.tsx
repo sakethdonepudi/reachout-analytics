@@ -3,9 +3,9 @@ import Navbar from "@/components/site/navbar";
 import TelanganaDashboard from "@/components/case-studies/telangana/telangana-dashboard";
 
 export const metadata: Metadata = {
-  title: "Telangana — 2028 Vote Intention | ReachOut Analytics",
+  title: "Telangana — 2014 to 2028 Election Intelligence | ReachOut Analytics",
   description:
-    "Interactive Telangana assembly-level opinion model: 2028 vote intention against the 2023 election result, with district and assembly drilldown across 119 constituencies.",
+    "Interactive Telangana assembly election history: 2014, 2018 and 2023 actual winners, the 2028 prediction, swing statistics and device metadata across 119 constituencies.",
 };
 
 export default function TelanganaCaseStudyPage() {

@@ -6,8 +6,16 @@ import dynamic from "next/dynamic";
 import { ArrowLeft, Check, ChevronDown, Layers, MapPin, RotateCcw, Search } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
-import { PARTIES, PARTY_COLOR, PARTY_LABEL, NO_DATA_COLOR, leaderOf, partyShade, rawShares, weightedShares, type Oct26, type ShareSet } from "@/lib/telangana/oct26";
+import {
+  NO_DATA_COLOR, PARTIES, PARTY_COLOR, PARTY_LABEL, leaderOf, shadeHex, weightedShares,
+  type Oct26, type ShareSet,
+} from "@/lib/telangana/oct26";
+import {
+  ELECTION_YEARS, YEAR_LABEL, baselineYear, deviceSummary, historicalAc, historicalShares,
+  historicalTotal, winnerColour, winnerLabel, winnerSeats, type ElectionYear,
+} from "@/lib/telangana/history";
 import TelanganaRail, { type ScopeResult } from "./telangana-rail";
+import TelanganaChartModal from "./telangana-chart-modal";
 import AboutTelangana from "./about-telangana";
 import type { MapTheme } from "./telangana-map";
 
@@ -17,11 +25,10 @@ const TelanganaMap = dynamic(() => import("./telangana-map"), {
 });
 
 type Tab = "change" | "share" | "seats" | "more";
-type Layer = "party";
+type Layer = "party" | "device";
 
 const LABEL = "text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
 
-/* ---------------- searchable single-select ---------------- */
 type Option = { value: string; label: string; hint?: string };
 
 function SearchSelect({
@@ -64,28 +71,18 @@ function SearchSelect({
   return (
     <div ref={root} className="relative">
       <span className={LABEL}>{label}</span>
-      <button
-        type="button"
-        disabled={disabled}
-        aria-haspopup="listbox"
-        aria-expanded={open}
+      <button type="button" disabled={disabled} aria-haspopup="listbox" aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-card/80 px-2.5 py-2 text-left text-[12px] backdrop-blur transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
-          disabled ? "cursor-not-allowed opacity-50" : "hover:border-saffron/40",
-        )}
-      >
+        className={cn("mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-card/80 px-2.5 py-2 text-left text-[12px] backdrop-blur transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
+          disabled ? "cursor-not-allowed opacity-50" : "hover:border-saffron/40")}>
         <span className="truncate">{selected?.label ?? placeholder}</span>
         <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
-
       {open && (
         <div className="absolute left-0 right-0 z-50 mt-1 overflow-hidden rounded-lg border border-border bg-card shadow-xl">
           <div className="flex items-center gap-1.5 border-b border-border px-2">
             <Search className="size-3.5 shrink-0 text-muted-foreground" />
-            <input
-              ref={input}
-              value={query}
+            <input ref={input} value={query}
               onChange={(e) => { setQuery(e.target.value); setActive(0); }}
               onKeyDown={(e) => {
                 if (e.key === "Escape") { e.preventDefault(); setOpen(false); }
@@ -93,24 +90,15 @@ function SearchSelect({
                 else if (e.key === "ArrowUp") { e.preventDefault(); setActive((i) => Math.max(0, i - 1)); }
                 else if (e.key === "Enter") { e.preventDefault(); if (filtered[active]) choose(filtered[active]); }
               }}
-              placeholder="Search…"
-              aria-label={`Search ${label.toLowerCase()}`}
-              className="w-full bg-transparent py-2 text-[12px] outline-none placeholder:text-muted-foreground/70"
-            />
+              placeholder="Search…" aria-label={`Search ${label.toLowerCase()}`}
+              className="w-full bg-transparent py-2 text-[12px] outline-none placeholder:text-muted-foreground/70" />
           </div>
           <ul role="listbox" aria-label={label} className="max-h-56 overflow-y-auto py-1 [scrollbar-width:thin]">
             {filtered.map((o, i) => (
               <li key={o.value || "all"} role="option" aria-selected={o.value === value}>
-                <button
-                  type="button"
-                  onClick={() => choose(o)}
-                  onMouseEnter={() => setActive(i)}
-                  className={cn(
-                    "flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px]",
-                    i === active ? "bg-muted/50" : "",
-                    o.value === value ? "font-semibold text-foreground" : "text-muted-foreground",
-                  )}
-                >
+                <button type="button" onClick={() => choose(o)} onMouseEnter={() => setActive(i)}
+                  className={cn("flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px]", i === active ? "bg-muted/50" : "",
+                    o.value === value ? "font-semibold text-foreground" : "text-muted-foreground")}>
                   <span className="min-w-0 flex-1 truncate">{o.label}</span>
                   {o.hint && <span className="shrink-0 text-[9px] uppercase tracking-wide opacity-60">{o.hint}</span>}
                   {o.value === value && <Check className="size-3 shrink-0 text-saffron-2" />}
@@ -125,7 +113,6 @@ function SearchSelect({
   );
 }
 
-/* ---------------- dashboard ---------------- */
 export default function TelanganaDashboard() {
   const { theme } = useTheme();
   const [data, setData] = useState<Oct26 | null>(null);
@@ -134,9 +121,10 @@ export default function TelanganaDashboard() {
 
   const [district, setDistrict] = useState<string | null>(null);
   const [acNo, setAcNo] = useState<number | null>(null);
-  const [series, setSeries] = useState<"prediction" | "raw">("prediction");
+  const [year, setYear] = useState<ElectionYear>("2028");
+  const [layer, setLayer] = useState<Layer>("party");
   const [tab, setTab] = useState<Tab>("change");
-  const [full, setFull] = useState(false);
+  const [chartOpen, setChartOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -152,13 +140,6 @@ export default function TelanganaDashboard() {
     return () => { cancelled = true; controller.abort(); };
   }, [reloadKey]);
 
-  useEffect(() => {
-    if (!full) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFull(false); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [full]);
-
   const acs = data?.acs ?? [];
   const acByNo = useMemo(() => new Map(acs.map((a) => [a.no, a])), [acs]);
   const currentAc = acNo != null ? acByNo.get(acNo) ?? null : null;
@@ -168,10 +149,7 @@ export default function TelanganaDashboard() {
     () => [{ value: "", label: "All Telangana" }, ...districts.map((d) => ({ value: d.name, label: d.name, hint: `${d.acs.length} ACs` }))],
     [districts],
   );
-  const assemblyPool = useMemo(
-    () => (district ? acs.filter((a) => a.district === district) : acs),
-    [acs, district],
-  );
+  const assemblyPool = useMemo(() => (district ? acs.filter((a) => a.district === district) : acs), [acs, district]);
   const assemblyOptions = useMemo<Option[]>(
     () => [
       { value: "", label: district ? `All assemblies in ${district}` : "All assemblies" },
@@ -197,22 +175,69 @@ export default function TelanganaDashboard() {
 
   const scope: ScopeResult = useMemo(() => {
     const empty: ShareSet = { BRS: 0, Congress: 0, BJP: 0, Others: 0 };
+    const label = currentAc ? currentAc.name : district ?? "Telangana";
     if (!scopeAcs.length) {
-      return { label: district ?? "Statewide", actual: empty, prediction: empty, raw: empty, answered: 0, votes2023: 0, leader: null, tied: [], marginPp: 0 };
+      return {
+        label, baselineYear: baselineYear(year), baseline: empty, prediction: empty,
+        change: { ...empty }, predictedLeader: null, predictedTied: [], votes: 0, answered: 0, device: null, baselineTotal: 0,
+      };
     }
-    const actual = weightedShares(scopeAcs, "actual");
     const prediction = weightedShares(scopeAcs, "prediction");
-    const raw = rawShares(scopeAcs);
-    const shown = series === "prediction" ? prediction : raw;
-    const lead = leaderOf(shown);
+    const baseYear = baselineYear(year);
+    const baseline = historicalShares(scopeAcs, baseYear);
+    const change: ShareSet = { BRS: 0, Congress: 0, BJP: 0, Others: 0 };
+    for (const p of PARTIES) change[p] = (prediction[p] - baseline[p]) * 100;
+    const lead = leaderOf(prediction);
     return {
-      label: currentAc ? currentAc.name : district ?? "Telangana",
-      actual, prediction, raw,
+      label,
+      baselineYear: baseYear,
+      baseline,
+      prediction,
+      change,
+      predictedLeader: lead.leader,
+      predictedTied: lead.tied,
+      votes: scopeAcs.reduce((n, a) => n + (a.votes2023 || 0), 0),
       answered: scopeAcs.reduce((n, a) => n + a.answered2028, 0),
-      votes2023: scopeAcs.reduce((n, a) => n + (a.votes2023 || 0), 0),
-      leader: lead.leader, tied: lead.tied, marginPp: lead.marginPp,
+      device: deviceSummary(scopeAcs),
+      baselineTotal: historicalTotal(scopeAcs, baseYear),
     };
-  }, [scopeAcs, series, currentAc, district]);
+  }, [scopeAcs, year, currentAc, district]);
+
+  const leads2028 = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const a of scopeAcs) {
+      const lead = leaderOf(a.prediction);
+      const key = lead.tied.length > 1 ? "Tie" : lead.leader ?? "Tie";
+      out[key] = (out[key] ?? 0) + 1;
+    }
+    return out;
+  }, [scopeAcs]);
+  const actualSeats = useMemo(() => winnerSeats(scopeAcs, baselineYear(year)), [scopeAcs, year]);
+  const actualSeatsYear = baselineYear(year);
+  const cohortAcs = useMemo(() => {
+    if (!data) return [];
+    if (currentAc && district) return data.acs.filter((a) => a.district === district);
+    return scopeAcs;
+  }, [data, currentAc, district, scopeAcs]);
+  const cohortLabel = currentAc ? (district ?? "Statewide") : (district ?? "Statewide");
+
+  const legendItems = useMemo(() => {
+    if (year === "2028") {
+      return [
+        ...PARTIES.map((party) => ({ key: party, label: PARTY_LABEL[party], colour: PARTY_COLOR[party], split: false })),
+        { key: "tie", label: "Tie", colour: PARTY_COLOR.BRS, split: true },
+        { key: "none", label: "No data", colour: NO_DATA_COLOR, split: false },
+      ];
+    }
+    const counts = new Map<string, number>();
+    for (const a of scopeAcs) {
+      const rec = historicalAc(year, a.no);
+      if (rec) counts.set(rec.winnerParty, (counts.get(rec.winnerParty) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([party]) => ({
+      key: party, label: winnerLabel(party), colour: winnerColour(party), split: false,
+    }));
+  }, [year, scopeAcs]);
 
   if (error && !data) {
     return (
@@ -221,9 +246,7 @@ export default function TelanganaDashboard() {
           <h1 className="font-display text-2xl font-semibold">Telangana data unavailable</h1>
           <p className="mt-2 text-sm text-muted-foreground">{error}</p>
           <button type="button" onClick={() => setReloadKey((k) => k + 1)}
-            className="mt-4 rounded-full border border-border px-4 py-1.5 text-[12px] font-semibold hover:border-saffron/50">
-            Try again
-          </button>
+            className="mt-4 rounded-full border border-border px-4 py-1.5 text-[12px] font-semibold hover:border-saffron/50">Try again</button>
         </div>
       </main>
     );
@@ -243,7 +266,6 @@ export default function TelanganaDashboard() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_18%_8%,rgba(229,0,125,0.055),transparent_60%)]" aria-hidden />
 
       <section className="relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-24 sm:pt-28 lg:h-[100svh] lg:min-h-[760px] lg:overflow-hidden lg:px-6 lg:pt-20">
-        {/* compact controls */}
         <aside aria-label="Map controls" className="relative z-30 lg:absolute lg:left-8 lg:top-24 lg:w-[264px] lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
           <Link href="/case-studies"
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-[12.5px] text-muted-foreground backdrop-blur-xl transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
@@ -252,75 +274,66 @@ export default function TelanganaDashboard() {
 
           <h1 className="mt-4 font-display text-[clamp(34px,4vw,52px)] font-semibold leading-[0.98] tracking-[-0.03em]">Telangana</h1>
           <p className="mt-2 text-[13px] font-semibold text-foreground/70">Election intelligence</p>
-          <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">2028 vote intention across 119 assemblies</p>
+          <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">2014 → 2028 assembly history and the 2028 prediction</p>
 
-          <div className="mt-6 space-y-3">
-            <SearchSelect
-              label="District"
-              value={district ?? ""}
-              options={districtOptions}
-              placeholder="Select a district"
-              onChange={(v) => selectDistrict(v || null)}
-            />
-            <SearchSelect
-              label="Assembly"
-              value={acNo != null ? String(acNo) : ""}
-              options={assemblyOptions}
-              placeholder="Select an assembly"
-              onChange={(v) => selectAc(v ? Number(v) : null)}
-            />
+          <div className="mt-5 space-y-3">
+            <div>
+              <span className={LABEL}>Election year</span>
+              <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-border p-0.5" role="group" aria-label="Election year">
+                {ELECTION_YEARS.map((y) => (
+                  <button key={y} type="button" aria-pressed={year === y} onClick={() => setYear(y)}
+                    className={cn("rounded-md px-2 py-1.5 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
+                      year === y ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
+                    {YEAR_LABEL[y]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <SearchSelect label="District" value={district ?? ""} options={districtOptions} placeholder="Select a district"
+              onChange={(v) => selectDistrict(v || null)} />
+            <SearchSelect label="Assembly" value={acNo != null ? String(acNo) : ""} options={assemblyOptions} placeholder="Select an assembly"
+              onChange={(v) => selectAc(v ? Number(v) : null)} />
 
             <div>
               <span className={LABEL}>Map layer</span>
               <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-border p-0.5">
-                <button type="button" aria-pressed
-                  className="flex items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-[11px] font-medium text-background">
+                <button type="button" aria-pressed={layer === "party"} onClick={() => setLayer("party")}
+                  className={cn("flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors", layer === "party" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
                   <MapPin className="size-3" /> Party mix
                 </button>
-                <button type="button" disabled aria-disabled="true" title="Device metadata is not included in this workbook"
-                  className="flex cursor-not-allowed items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium text-muted-foreground/45">
+                <button type="button" aria-pressed={layer === "device"} onClick={() => setLayer("device")}
+                  className={cn("flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors", layer === "device" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
                   <Layers className="size-3" /> Devices
                 </button>
               </div>
-              <p className="mt-1 text-[9.5px] leading-snug text-muted-foreground">Device data is not included in this workbook.</p>
+              <p className="mt-1 text-[9px] leading-snug text-muted-foreground">
+                {layer === "device" ? "Device mix · illustrative placement. 2028 survey metadata, not GPS." : year === "2028" ? "Shade = predicted share." : "Shade = winner's vote share."}
+              </p>
             </div>
 
             <div>
-              <span className={LABEL}>Leading party</span>
-              <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] font-medium text-muted-foreground">
-                {PARTIES.map((p) => (
-                  <span key={p} className="flex items-center gap-1.5">
+              <span className={LABEL}>{year === "2028" ? "Leading party" : `${YEAR_LABEL[year]} winners`}</span>
+              <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] font-medium text-muted-foreground">
+                {legendItems.map((item) => (
+                  <span key={item.key} className="flex min-w-0 items-center gap-1.5">
                     <span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15"
-                      style={{ background: `linear-gradient(90deg, ${partyShade(p, 0.2)} 0%, ${PARTY_COLOR[p]} 50%, ${partyShade(p, 0.7)} 100%)` }} />
-                    {PARTY_LABEL[p]}
+                      style={{ background: item.split ? `linear-gradient(90deg, ${PARTY_COLOR.BRS} 0 50%, ${PARTY_COLOR.Congress} 50% 100%)` : item.key === "none" ? NO_DATA_COLOR : `linear-gradient(90deg, ${shadeHex(item.colour, 0.2)} 0%, ${item.colour} 50%, ${shadeHex(item.colour, 0.7)} 100%)` }} />
+                    <span className="truncate">{item.label}</span>
                   </span>
                 ))}
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15"
-                    style={{ background: `linear-gradient(90deg, ${PARTY_COLOR.BRS} 0 50%, ${PARTY_COLOR.Congress} 50% 100%)` }} />
-                  Tie
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15" style={{ background: NO_DATA_COLOR }} />
-                  No data
-                </span>
               </div>
-              <p className="mt-1.5 text-[9px] leading-snug text-muted-foreground">Shade = predicted share · lighter lower, darker higher</p>
+              <p className="mt-1.5 text-[9px] leading-snug text-muted-foreground">
+                {year === "2028" ? "Shade = predicted share · lighter lower, darker higher" : `Shade = ${YEAR_LABEL[year]} winner's vote share`}
+              </p>
             </div>
           </div>
         </aside>
 
-        {/* map */}
         <div className="relative z-0 mt-4 h-[52svh] min-h-[360px] overflow-hidden rounded-2xl border border-border bg-card lg:absolute lg:inset-x-0 lg:top-16 lg:bottom-0 lg:mt-0 lg:h-auto lg:rounded-none lg:border-0 lg:bg-transparent">
-          <TelanganaMap
-            acs={acs}
-            district={district}
-            ac={acNo}
+          <TelanganaMap acs={acs} district={district} ac={acNo} year={year} layer={layer}
             theme={(theme === "light" ? "light" : "dark") as MapTheme}
-            onSelectDistrict={selectDistrict}
-            onSelectAc={selectAc}
-            onReset={reset}
-          />
+            onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={reset} />
           {(district || currentAc) && (
             <button type="button" onClick={reset}
               className="absolute left-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 lg:left-[312px]">
@@ -329,24 +342,17 @@ export default function TelanganaDashboard() {
           )}
         </div>
 
-        {/* comparison rail */}
-        <section className={cn("relative mx-auto mt-4 max-w-xl lg:absolute lg:right-6 lg:top-24 lg:mt-0 lg:w-[340px] lg:max-w-none lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]", full ? "z-[90]" : "z-20")}>
-          <TelanganaRail
-            scope={scope}
-            series={series}
-            onSeries={setSeries}
-            tab={tab}
-            onTab={setTab}
-            full={full}
-            onFull={() => setFull((v) => !v)}
-            theme={theme === "light" ? "light" : "dark"}
-            statewideLeads={data.statewide.leads}
-            isStatewide={isStatewide}
-          />
+        <section className="relative z-20 mx-auto mt-4 max-w-xl lg:absolute lg:right-6 lg:top-24 lg:mt-0 lg:w-[340px] lg:max-w-none lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
+          <TelanganaRail scope={scope} year={year} tab={tab} onTab={setTab} onExpand={() => setChartOpen(true)}
+            theme={theme === "light" ? "light" : "dark"} leads2028={leads2028} actualSeats={actualSeats} actualSeatsYear={actualSeatsYear} isStatewide={isStatewide} />
         </section>
       </section>
 
       <AboutTelangana data={data} />
+
+      <TelanganaChartModal open={chartOpen} onClose={() => setChartOpen(false)} acs={scopeAcs} cohortAcs={cohortAcs}
+        scopeLabel={scope.label} cohortLabel={cohortLabel} year={year} selectedNo={acNo} onSelectAc={(no) => selectAc(no)}
+        theme={theme === "light" ? "light" : "dark"} />
     </div>
   );
 }

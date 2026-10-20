@@ -5,6 +5,8 @@ import * as THREE from "three";
 import { geoIdentity } from "d3-geo";
 import { rafLoop } from "@/lib/raf-loop";
 import { PARTY_COLOR, PARTY_LABEL, NO_DATA_COLOR, fmtPct, leaderOf, partyShade, type AcRow, type Party } from "@/lib/telangana/oct26";
+import { DEVICE_AC, historicalAc, winnerColour, winnerLabel, winnerShade, type ElectionYear } from "@/lib/telangana/history";
+import { brandMarker } from "@/lib/telangana/brands";
 
 /* =====================================================================
    Telangana 2.5D map — October workbook.
@@ -35,6 +37,8 @@ type Props = {
   acs: AcRow[];
   district: string | null;
   ac: number | null;
+  year: ElectionYear;
+  layer: "party" | "device";
   theme: "light" | "dark";
   onSelectDistrict: (name: string) => void;
   onSelectAc: (no: number) => void;
@@ -42,6 +46,34 @@ type Props = {
 };
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+type MarkerDef = {
+  key: string; level: "district" | "ac" | "brand"; brand: string;
+  entries: number; share: number; title: string;
+  x: number; z: number; no: number | null; district: string | null;
+};
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function pointInRing(x: number, z: number, ring: number[][]) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], zi = ring[i][1], xj = ring[j][0], zj = ring[j][1];
+    if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function pointInPolygon(x: number, z: number, rings: number[][][]) {
+  if (!rings.length || !pointInRing(x, z, rings[0])) return false;
+  for (let i = 1; i < rings.length; i++) if (pointInRing(x, z, rings[i])) return false;
+  return true;
+}
 const signedArea = (r: number[][]) => {
   let a = 0;
   for (let i = 0, n = r.length; i < n; i++) {
@@ -78,18 +110,29 @@ function tieTexture(colors: string[]): THREE.CanvasTexture {
   return texture;
 }
 
-export default function TelanganaMap({ acs, district, ac, theme, onSelectDistrict, onSelectAc, onReset }: Props) {
+export default function TelanganaMap({ acs, district, ac, year, layer, theme, onSelectDistrict, onSelectAc, onReset }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
+  const markerRef = useRef<HTMLDivElement>(null);
+  const [markers, setMarkers] = useState<MarkerDef[]>([]);
+  const markerDefsRef = useRef(new Map<string, MarkerDef>());
+  markerDefsRef.current = new Map(markers.map((m) => [m.key, m]));
+  const buildMarkersRef = useRef<() => void>(() => {});
   const [geo, setGeo] = useState<FC | null>(null);
-  const [tip, setTip] = useState<{ x: number; y: number; title: string; sub: string; value: string; party: Party | null; tied: Party[] } | null>(null);
+  const [tip, setTip] = useState<{ x: number; y: number; title: string; sub: string; value: string; colours: string[] } | null>(null);
 
-  const live = useRef({ acs, district, ac, theme, onSelectDistrict, onSelectAc, onReset });
-  live.current = { acs, district, ac, theme, onSelectDistrict, onSelectAc, onReset };
+  const live = useRef({ acs, district, ac, year, layer, theme, onSelectDistrict, onSelectAc, onReset });
+  live.current = { acs, district, ac, year, layer, theme, onSelectDistrict, onSelectAc, onReset };
   const acByNo = useMemo(() => new Map(acs.map((a) => [a.no, a])), [acs]);
   const acRef = useRef(acByNo);
   acRef.current = acByNo;
+
+  useEffect(() => { setTip(null); }, [year]);
+
+  useEffect(() => {
+    buildMarkersRef.current();
+  }, [layer, district, ac, acs]);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,7 +173,7 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
       no: number; district: string;
       group3: THREE.Group; mesh: THREE.Mesh;
       cap: THREE.MeshStandardMaterial; side: THREE.MeshStandardMaterial; line: THREE.LineBasicMaterial;
-      fill: THREE.Color; texture: THREE.CanvasTexture | null;
+      fills: Record<ElectionYear, { color: THREE.Color; texture: THREE.CanvasTexture | null }>;
       heat: number; hover: number; isolate: number; dim: number; elev: number;
       bounds: { minx: number; maxx: number; minz: number; maxz: number }; cx: number; cz: number;
     };
@@ -174,8 +217,18 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
           fillHex = partyShade(lead.leader, rec.prediction[lead.leader]);
         }
       }
-
-      const cap = new THREE.MeshStandardMaterial({ color: new THREE.Color(fillHex), roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide, transparent: true, opacity: 1 });
+      const fills: Record<ElectionYear, { color: THREE.Color; texture: THREE.CanvasTexture | null }> = {
+        "2028": { color: new THREE.Color(fillHex), texture },
+        "2014": { color: new THREE.Color(NO_DATA_COLOR), texture: null },
+        "2018": { color: new THREE.Color(NO_DATA_COLOR), texture: null },
+        "2023": { color: new THREE.Color(NO_DATA_COLOR), texture: null },
+      };
+      for (const y of ["2014", "2018", "2023"] as const) {
+        const h = historicalAc(y, f.properties.acNo);
+        if (h) fills[y] = { color: new THREE.Color(winnerShade(h.winnerParty, h.winnerShare)), texture: null };
+      }
+      const initial = fills[live.current.year];
+      const cap = new THREE.MeshStandardMaterial({ color: new THREE.Color(initial.texture ? "#ffffff" : initial.color), roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide, transparent: true, opacity: 1 });
       const side = new THREE.MeshStandardMaterial({ color: new THREE.Color(P.side), roughness: 1, metalness: 0.02, side: THREE.DoubleSide, transparent: true, opacity: 1 });
       const mesh = new THREE.Mesh(geom, [cap, side]);
       mesh.userData.acNo = f.properties.acNo;
@@ -212,14 +265,16 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
           uv[i * 2 + 1] = (pos.getZ(i) - minz) / uh;
         }
         geom.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
-        cap.map = texture;
-        cap.color.set("#ffffff");
-        cap.needsUpdate = true;
+        if (live.current.year === "2028") {
+          cap.map = texture;
+          cap.color.set("#ffffff");
+          cap.needsUpdate = true;
+        }
       }
 
       entries.set(f.properties.acNo, {
         no: f.properties.acNo, district: f.properties.group, group3, mesh, cap, side, line,
-        fill: new THREE.Color(fillHex), texture,
+        fills,
         heat: 0, hover: 0, isolate: 0, dim: 0, elev: 0,
         bounds: { minx, maxx, minz, maxz }, cx: (minx + maxx) / 2, cz: (minz + maxz) / 2,
       });
@@ -249,6 +304,108 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
     const topMobileGroups = new Set(
       [...groupArea.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([g]) => g),
     );
+
+    /* ---------------- deterministic illustrative device anchors ---------------- */
+    const acAnchors = new Map<number, { x: number; z: number }[]>();
+    for (const f of geo.features) {
+      const polys = (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates) as number[][][][];
+      /* use the largest polygon part so exclaves do not pull anchors off the main shape */
+      let poly: number[][][] | null = null;
+      let bestArea = -1;
+      for (const candidate of polys) {
+        const outer = candidate?.[0];
+        if (!outer || outer.length < 4) continue;
+        let bminx = Infinity, bmaxx = -Infinity, bminz = Infinity, bmaxz = -Infinity;
+        for (const [lng, lat] of outer) {
+          const [x, z] = project(lng, lat);
+          bminx = Math.min(bminx, x); bmaxx = Math.max(bmaxx, x); bminz = Math.min(bminz, z); bmaxz = Math.max(bmaxz, z);
+        }
+        const area = (bmaxx - bminx) * (bmaxz - bminz);
+        if (area > bestArea) { bestArea = area; poly = candidate; }
+      }
+      if (!poly) continue;
+      const outer = poly[0];
+      const projected = outer.map(([lng, lat]) => project(lng, lat));
+      const holes = poly.slice(1).map((ring) => ring.map(([lng, lat]) => project(lng, lat)));
+      let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
+      for (const [x, z] of projected) {
+        minx = Math.min(minx, x); maxx = Math.max(maxx, x); minz = Math.min(minz, z); maxz = Math.max(maxz, z);
+      }
+      const w = maxx - minx, h = maxz - minz;
+      const area = w * h;
+      if (!(area > 0)) continue;
+      const rnd = mulberry32(f.properties.acNo * 7919 + 17);
+      const want = clamp(Math.round(Math.sqrt(area) / 3.2), 2, 12);
+      const minGap = Math.max(2.4, Math.min(9, Math.sqrt(area) * 0.3));
+      const ringsProj = [projected, ...holes];
+      const chosen: { x: number; z: number }[] = [];
+      for (let attempt = 0; attempt < want * 90 && chosen.length < want; attempt++) {
+        const x = minx + rnd() * w, z = minz + rnd() * h;
+        if (!pointInPolygon(x, z, ringsProj)) continue;
+        if (chosen.some((c) => Math.hypot(c.x - x, c.z - z) < minGap)) continue;
+        chosen.push({ x, z });
+      }
+      const cx = (minx + maxx) / 2, cz = (minz + maxz) / 2;
+      chosen.sort((a, b) => Math.hypot(a.x - cx, a.z - cz) - Math.hypot(b.x - cx, b.z - cz));
+      if (chosen.length) acAnchors.set(f.properties.acNo, chosen);
+    }
+
+    const buildMarkers = () => {
+      const { layer: activeLayer, district: activeDistrict, ac: activeAc, acs: allAcs } = live.current;
+      if (activeLayer !== "device") { setMarkers([]); return; }
+      const list: MarkerDef[] = [];
+      const acMap = new Map(allAcs.map((a) => [a.no, a]));
+      if (activeAc != null) {
+        const rec = DEVICE_AC(activeAc);
+        const anchors = acAnchors.get(activeAc) ?? [];
+        if (rec && anchors.length) {
+          const top = [...rec.brands].sort((a, b) => b.entries - a.entries).slice(0, Math.min(4, anchors.length));
+          top.forEach((b, i) => list.push({
+            key: `brand-${activeAc}-${b.brand}`, level: "brand", brand: b.brand,
+            entries: b.entries, share: b.share, title: acMap.get(activeAc)?.name ?? `AC ${activeAc}`,
+            x: anchors[i].x, z: anchors[i].z, no: activeAc, district: activeDistrict,
+          }));
+        }
+      } else if (activeDistrict) {
+        const rows = allAcs.filter((x) => x.district === activeDistrict).map((a) => {
+          const rec = DEVICE_AC(a.no);
+          const anchors = acAnchors.get(a.no) ?? [];
+          const b = rec ? [...rec.brands].sort((x, y) => y.entries - x.entries)[0] : null;
+          return rec && anchors.length && b ? { a, rec, anchors, b } : null;
+        }).filter((x): x is NonNullable<typeof x> => !!x);
+        const chosen = typeof window !== "undefined" && window.innerWidth < 640 ? rows.sort((x, y) => y.rec.total - x.rec.total).slice(0, 10) : rows;
+        for (const { a, anchors, b } of chosen) {
+          list.push({
+            key: `ac-${a.no}`, level: "ac", brand: b.brand, entries: b.entries, share: b.share,
+            title: a.name, x: anchors[0].x, z: anchors[0].z, no: a.no, district: activeDistrict,
+          });
+        }
+      } else {
+        const districts = [...byGroup.entries()].map(([g, nos]) => {
+          let total = 0;
+          const totals = new Map<string, number>();
+          for (const no of nos) {
+            const rec = DEVICE_AC(no);
+            if (!rec) continue;
+            total += rec.total;
+            for (const b of rec.brands) totals.set(b.brand, (totals.get(b.brand) ?? 0) + b.entries);
+          }
+          const top = [...totals.entries()].sort((a, b) => b[1] - a[1])[0];
+          const anchor = groupCentroid.get(g);
+          return total && top && anchor ? { g, total, top, anchor } : null;
+        }).filter((x): x is NonNullable<typeof x> => !!x);
+        const chosen = typeof window !== "undefined" && window.innerWidth < 640 ? districts.sort((a, b) => b.total - a.total).slice(0, 8) : districts;
+        for (const { g, total, top, anchor } of chosen) {
+          list.push({
+            key: `g-${g}`, level: "district", brand: top[0], entries: top[1], share: top[1] / total,
+            title: g, x: anchor.x, z: anchor.z, no: null, district: g,
+          });
+        }
+      }
+      setMarkers(list);
+    };
+    buildMarkersRef.current = buildMarkers;
+    buildMarkers();
 
     /* ---------------- camera ---------------- */
     let theta = 0, phi = 0.6, dist = 2020;
@@ -294,18 +451,34 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
     let touchTip = false;
     const tipFor = (rec: AcRow, clientX: number, clientY: number) => {
       const hostRect = host.getBoundingClientRect();
-      const lead = leaderOf(rec.prediction);
-      const isTie = lead.tied.length > 1;
+      const x = clamp(clientX - hostRect.left + 14, 8, hostRect.width - 236);
+      const y = clamp(clientY - hostRect.top + 14, 8, hostRect.height - 104);
+      const activeYear = live.current.year;
+      if (activeYear === "2028") {
+        const lead = leaderOf(rec.prediction);
+        const isTie = lead.tied.length > 1;
+        return {
+          x, y,
+          title: `${rec.no}. ${rec.name}`,
+          sub: `${rec.district} · ${isTie ? "Tie" : lead.leader ? `Leading ${PARTY_LABEL[lead.leader]}` : "No prediction"}`,
+          value: isTie
+            ? lead.tied.map((p) => `${PARTY_LABEL[p]} ${fmtPct(rec.prediction[p])}`).join(" · ")
+            : lead.leader ? `${fmtPct(rec.prediction[lead.leader])} predicted share` : "No data",
+          colours: isTie
+            ? lead.tied.map((p) => PARTY_COLOR[p])
+            : [lead.leader ? PARTY_COLOR[lead.leader] : NO_DATA_COLOR],
+        };
+      }
+      const h = historicalAc(activeYear, rec.no);
+      if (!h) {
+        return { x, y, title: `${rec.no}. ${rec.name}`, sub: `${rec.district} · No result`, value: "No data", colours: [NO_DATA_COLOR] };
+      }
       return {
-        x: clamp(clientX - hostRect.left + 14, 8, hostRect.width - 236),
-        y: clamp(clientY - hostRect.top + 14, 8, hostRect.height - 104),
+        x, y,
         title: `${rec.no}. ${rec.name}`,
-        sub: `${rec.district} · ${isTie ? "Tie" : lead.leader ? `Leading ${PARTY_LABEL[lead.leader]}` : "No prediction"}`,
-        value: isTie
-          ? lead.tied.map((p) => `${PARTY_LABEL[p]} ${fmtPct(rec.prediction[p])}`).join(" · ")
-          : lead.leader ? `${fmtPct(rec.prediction[lead.leader])} predicted share` : "No data",
-        party: isTie ? null : lead.leader,
-        tied: isTie ? lead.tied : [],
+        sub: `${rec.district} · Winner ${winnerLabel(h.winnerParty)}`,
+        value: `${fmtPct(h.winnerShare)} of votes`,
+        colours: [winnerColour(h.winnerParty)],
       };
     };
     const pointers = new Map<number, { x: number; y: number }>();
@@ -453,7 +626,13 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
         e.elev += (((inScope && (grp || isSel)) ? 6 : 0) + (isSel ? 2 : 0) - e.elev) * aHeat;
         const vis = 1 - e.isolate;
         const dimOp = 1 - e.dim * 0.62;
-        const base = e.fill.clone();
+        const fy = e.fills[live.current.year];
+        if (e.cap.map !== fy.texture) {
+          e.cap.map = fy.texture;
+          if (fy.texture) e.cap.color.set("#ffffff");
+          e.cap.needsUpdate = true;
+        }
+        const base = fy.texture ? new THREE.Color("#ffffff") : fy.color.clone();
         if (!inScope) base.lerp(new THREE.Color(P.none), 0.88);
         const targetCol = base.lerp(new THREE.Color(P.sel), e.heat * 0.12);
         e.cap.color.lerp(targetCol, aMat);
@@ -502,6 +681,38 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
         });
       }
 
+      /* device markers follow the elevated assembly transform */
+      const markerEls = markerRef.current?.querySelectorAll<HTMLElement>("[data-marker]");
+      if (markerEls) {
+        markerEls.forEach((el) => {
+          const def = markerDefsRef.current.get(el.dataset.marker ?? "");
+          if (!def || live.current.layer !== "device" || (grp && def.district && def.district !== grp)) {
+            el.style.display = "none";
+            return;
+          }
+          let elev = 0;
+          if (def.no != null) {
+            const e = entries.get(def.no);
+            elev = e ? e.elev + e.hover * 1.5 : 0;
+          } else if (def.district) {
+            const nos = byGroup.get(def.district) ?? [];
+            if (nos.length) {
+              let sum = 0;
+              for (const no of nos) sum += entries.get(no)?.elev ?? 0;
+              elev = sum / nos.length;
+            }
+          }
+          const p = toScreen(def.x, DEPTH + 0.9 + elev, def.z);
+          if (p.behind || p.x < -20 || p.x > hostRect.width + 20 || p.y < -20 || p.y > hostRect.height + 20) {
+            el.style.display = "none";
+            return;
+          }
+          const oy = def.level === "district" ? 22 : def.level === "ac" ? 16 : 14;
+          el.style.display = "";
+          el.style.transform = `translate(-50%,-50%) translate(${p.x.toFixed(1)}px, ${(p.y + oy).toFixed(1)}px)`;
+        });
+      }
+
       renderer.render(scene, camera);
     };
 
@@ -518,7 +729,10 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
       canvas.removeEventListener("pointercancel", onUp);
       canvas.removeEventListener("pointerleave", onLeave);
       canvas.removeEventListener("wheel", onWheel);
-      for (const e of entries.values()) { e.mesh.geometry.dispose(); e.cap.dispose(); e.side.dispose(); e.line.dispose(); e.texture?.dispose(); }
+      for (const e of entries.values()) {
+        e.mesh.geometry.dispose(); e.cap.dispose(); e.side.dispose(); e.line.dispose();
+        for (const f of Object.values(e.fills)) f.texture?.dispose();
+      }
       renderer.dispose();
       setTip(null);
     };
@@ -550,6 +764,23 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
         ))}
       </div>
 
+      <div ref={markerRef} className="pointer-events-none absolute inset-0 z-10" aria-label="Illustrative device-brand placement">
+        {markers.map((m) => (
+          <button key={m.key} data-marker={m.key} data-device-marker type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (m.no != null) onSelectAc(m.no);
+              else if (m.district) onSelectDistrict(m.district);
+            }}
+            style={{ display: "none" }}
+            className={`pointer-events-auto absolute left-0 top-0 grid place-items-center rounded-full border border-white/75 bg-card/95 shadow-md backdrop-blur transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 ${m.level === "brand" ? "size-8" : "size-7"}`}
+            title={`${m.title} · ${m.brand} · ${(m.share * 100).toFixed(1)}% of device metadata. Illustrative placement, not GPS.`}
+            aria-label={`${m.title}: ${m.brand}, ${(m.share * 100).toFixed(1)} percent of aggregate device metadata. Illustrative placement, not a handset location.`}>
+            <img src={brandMarker(m.brand).src} alt="" className="h-4 w-5 object-contain" draggable={false} />
+          </button>
+        ))}
+      </div>
+
       {tip && (
         <div role="tooltip" className="pointer-events-none absolute z-20 w-[224px] rounded-lg border border-border bg-card/95 px-2.5 py-1.5 text-left shadow-lg backdrop-blur"
           style={{ left: tip.x, top: tip.y }}>
@@ -557,9 +788,7 @@ export default function TelanganaMap({ acs, district, ac, theme, onSelectDistric
           <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">{tip.sub}</p>
           <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] leading-snug tabular-nums">
             <span className="flex items-center gap-1">
-              {tip.tied.length > 1
-                ? tip.tied.map((p) => <span key={p} className="size-1.5 rounded-sm" style={{ background: PARTY_COLOR[p] }} />)
-                : <span className="size-1.5 rounded-sm" style={{ background: tip.party ? PARTY_COLOR[tip.party] : NO_DATA_COLOR }} />}
+              {tip.colours.map((c, i) => <span key={`${c}-${i}`} className="size-1.5 rounded-sm" style={{ background: c }} />)}
             </span>
             <span>{tip.value}</span>
           </p>
