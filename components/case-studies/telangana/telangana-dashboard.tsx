@@ -40,6 +40,7 @@ export default function TelanganaDashboard() {
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [flash, setFlash] = useState(false);
   const flashTimer = useRef<number | null>(null);
+  const requestSeq = useRef(0);
 
   const [group, setGroup] = useState<string | null>(null);
   const [selectedAcs, setSelectedAcs] = useState<number[]>([]);
@@ -53,11 +54,14 @@ export default function TelanganaDashboard() {
 
   const load = useCallback(async (isRefresh: boolean) => {
     const controller = new AbortController();
+    const seq = ++requestSeq.current;
     if (isRefresh) { setUpdating(true); setRefreshError(null); }
     try {
       const r = await fetch("/api/public/case-studies/telangana/aggregates", { cache: "no-store", signal: controller.signal });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d: Payload = await r.json();
+      // a slower, older response must never overwrite a newer selection/request
+      if (seq !== requestSeq.current) return;
       setData(d);
       setLastRefreshed(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
       setRefreshError(null);
@@ -108,6 +112,25 @@ export default function TelanganaDashboard() {
     shares2028, shares2023, shares2018,
     device: agg.device, deviceTotal: agg.deviceTotal,
   }), [scopeAcs, agg, shares2028, shares2023, shares2018, selectedAcs, acByNo, group]);
+
+  /* age cross-tab follows the same geography (per-AC age counts are bundled) */
+  const scopedAge = useMemo(() => {
+    if (!data) return [];
+    const byBand = new Map<string, Record<string, number>>();
+    for (const a of scopeAcs) {
+      for (const [band, counts] of Object.entries(a.ageByAc ?? {})) {
+        const b = byBand.get(band) ?? {};
+        for (const [party, n] of Object.entries(counts)) b[party] = (b[party] ?? 0) + n;
+        byBand.set(band, b);
+      }
+    }
+    if (!byBand.size) return data.age;
+    const ORDER = ["18–25", "26-35", "36–45", "46–60", "60+", "(missing)"];
+    return ORDER.filter((b) => byBand.has(b)).map((band) => {
+      const parties = byBand.get(band)!;
+      return { band, answered: Object.values(parties).reduce((s, n) => s + n, 0), parties };
+    });
+  }, [data, scopeAcs]);
 
   const lead = useMemo(() => leadingParty(agg.a2028, CONTESTED as unknown as string[]), [agg]);
 
@@ -287,9 +310,32 @@ export default function TelanganaDashboard() {
           <p className={LABEL}>Current scope</p>
           <div className="mt-0.5 flex items-start justify-between gap-2">
             <h2 className="min-w-0 truncate font-display text-lg font-semibold leading-tight">{scope.label}</h2>
-            {lead.party && (
-              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold">
-                <span className="size-2 rounded-sm" style={{ background: partyMeta(lead.party).color }} />{partyMeta(lead.party).short}
+          </div>
+
+          {/* Leading party — integrated into the summary, not floating over the map */}
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-lg border border-border/70 bg-background/50 px-2.5 py-1.5">
+            <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Leading party</span>
+            {!lead.party || agg.answered2028 === 0 ? (
+              <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="size-2 rounded-full" style={{ background: "var(--border)" }} />
+                {agg.answered2028 === 0 ? "No answered survey responses" : "Unavailable"}
+              </span>
+            ) : lead.tie.length > 1 ? (
+              <span className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                {lead.tie.map((t) => (
+                  <span key={t} className="flex items-center gap-1 font-semibold">
+                    <span className="size-2 rounded-sm" style={{ background: partyMeta(t).color }} />
+                    {partyMeta(t).short}
+                  </span>
+                ))}
+                <span className="text-muted-foreground">tied</span>
+                <span className="tabular-nums font-semibold">{fmtPct(lead.share)}</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-[11px]">
+                <span className="size-2 rounded-sm" style={{ background: partyMeta(lead.party).color }} />
+                <b className="font-semibold">{partyMeta(lead.party).label}</b>
+                <span className="tabular-nums text-muted-foreground">{fmtPct(lead.share)}</span>
               </span>
             )}
           </div>
@@ -350,7 +396,7 @@ export default function TelanganaDashboard() {
       <section className="mx-auto mt-8 min-h-[calc(100svh-6rem)] max-w-[1720px] px-4 pb-8 sm:px-6">
         <TelanganaAnalysis
           scope={scope}
-          age={data.age}
+          age={scopedAge}
           rounds={data.rounds}
           daily={data.daily}
           statewide={data.statewide}
@@ -359,6 +405,8 @@ export default function TelanganaDashboard() {
           parties={parties}
           onParties={setParties}
           selectedAc={selectedAcs.length === 1 ? selectedAcs[0] : null}
+          onSelectAc={(no) => toggleAc(no, false)}
+          theme={theme === "light" ? "light" : "dark"}
           status={{ updating, lastRefreshed, error: refreshError, flash, onRefresh: () => load(true) }}
         />
         <div className="mt-3">

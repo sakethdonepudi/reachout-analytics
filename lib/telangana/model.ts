@@ -31,6 +31,8 @@ export type AcRecord = {
   answered2028: number;
   originalAnswered2028: number;
   deviceTotal: number;
+  /** per-assembly age band × party counts (survey scenario) */
+  ageByAc?: Record<string, Counts>;
 };
 
 export type DistrictRecord = {

@@ -226,6 +226,7 @@ const wb = XLSX.readFile(path.join(PACK, "data/admin/Telangana_Opinion_Poll_3000
 const rows30k = XLSX.utils.sheet_to_json(wb.Sheets["Opinion Poll"], { defval: "", raw: true });
 const AGE_BANDS = ["18–25", "26-35", "36–45", "46–60", "60+", "(missing)"];
 const ageMap = new Map(AGE_BANDS.map((b) => [b, Object.fromEntries(PARTIES.map((p) => [p, 0]))]));
+const ageByAc = new Map();
 let answered2028 = 0, blank2028 = 0;
 const party2028 = Object.fromEntries(PARTIES.map((p) => [p, 0]));
 for (const r of rows30k) {
@@ -237,7 +238,18 @@ for (const r of rows30k) {
   const p = canonParty(raw);
   party2028[p] += 1;
   ageMap.get(band)[p] += 1;
+  // per-assembly age × party cross-tab so the age chart can follow the map scope
+  const acMatch = /^(\d{1,3})/.exec(String(r["Assembly Constituency"] ?? "").trim());
+  const acNo = acMatch ? Number(acMatch[1]) : null;
+  if (acNo) {
+    const forAc = ageByAc.get(acNo) ?? {};
+    const counts = forAc[band] ?? Object.fromEntries(PARTIES.map((q) => [q, 0]));
+    counts[p] = (counts[p] ?? 0) + 1;
+    forAc[band] = counts;
+    ageByAc.set(acNo, forAc);
+  }
 }
+for (const a of acs) a.ageByAc = ageByAc.get(a.no) ?? {};
 const age = [...ageMap.entries()].map(([band, parties]) => ({
   band, answered: PARTIES.reduce((s, p) => s + parties[p], 0), parties,
 }));

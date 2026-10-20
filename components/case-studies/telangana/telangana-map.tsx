@@ -820,9 +820,11 @@ export default function TelanganaMap(props: TgMapProps) {
         </div>
       )}
 
-      <div className="pointer-events-none absolute right-3 top-3 rounded-lg border border-border bg-card/85 px-2 py-1 text-[9.5px] text-muted-foreground backdrop-blur">
-        {layer === "device" ? "Device mix · illustrative placement" : "Leading 2028 survey party"}
-      </div>
+      {layer === "device" && (
+        <div className="pointer-events-none absolute right-3 top-3 rounded-lg border border-border bg-card/85 px-2 py-1 text-[9.5px] text-muted-foreground backdrop-blur">
+          Device mix · illustrative placement
+        </div>
+      )}
     </div>
   );
 }
