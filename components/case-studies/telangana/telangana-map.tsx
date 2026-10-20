@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { geoIdentity } from "d3-geo";
 import { rafLoop } from "@/lib/raf-loop";
-import { PARTY_META, partyMeta, type TgParty } from "@/lib/telangana/parties";
+import { PARTY_META, type TgParty } from "@/lib/telangana/parties";
 import { leadingParty, type AcRecord } from "@/lib/telangana/model";
 import { brandMarker } from "@/lib/telangana/brands";
 import { cn } from "@/lib/utils";
@@ -164,6 +164,8 @@ export default function TelanganaMap(props: TgMapProps) {
 
   /* ---------------- device markers (React-managed list) ---------------- */
   const [markers, setMarkers] = useState<MarkerDef[]>([]);
+  const [tip, setTip] = useState<{ key: string; x: number; y: number } | null>(null);
+  const suppressClickRef = useRef<string | null>(null);
   const anchorsRef = useRef<{ ac: Map<number, Anchor[]>; group: Map<string, Anchor> }>({ ac: new Map(), group: new Map() });
 
   const buildMarkers = (acAnchors: Map<number, Anchor[]>, groupAnchors: Map<string, Anchor>) => {
@@ -410,7 +412,7 @@ export default function TelanganaMap(props: TgMapProps) {
 
     const panelOffsets = () => {
       const wide = typeof window !== "undefined" && window.innerWidth > 1024;
-      return wide ? { leftPx: 270, rightPx: 330 } : { leftPx: 0, rightPx: 0 };
+      return wide ? { leftPx: 330, rightPx: 330 } : { leftPx: 0, rightPx: 0 };
     };
 
     const fitTo = (nos: number[] | null, opts: { margin?: number; min?: number } = {}) => {
@@ -724,7 +726,33 @@ export default function TelanganaMap(props: TgMapProps) {
     return [...groups.values()].map((g) => ({ key: `g-${g}`, text: g, group: g }));
   }, [geo, group, showLabels]);
 
-  const legend = CONTESTED;
+  /* one quiet tooltip: pointer/focus opens it, Escape or a tap elsewhere closes it */
+  useEffect(() => {
+    if (!tip) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setTip(null); };
+    const onDown = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement)?.closest?.("[data-device-marker]")) setTip(null);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, [tip]);
+  const tipDef = tip ? markerDefsRef.current.get(tip.key) : null;
+
+  const openTip = (m: MarkerDef, el: HTMLElement) => {
+    const host = hostRef.current;
+    if (!host) return;
+    const hb = host.getBoundingClientRect();
+    const rb = el.getBoundingClientRect();
+    setTip({
+      key: m.key,
+      x: clamp(rb.left - hb.left + rb.width / 2, 112, Math.max(112, hb.width - 112)),
+      y: Math.max(6, rb.top - hb.top - 8),
+    });
+  };
 
   return (
     <div ref={hostRef} className="relative h-full w-full overflow-hidden">
@@ -748,11 +776,26 @@ export default function TelanganaMap(props: TgMapProps) {
             type="button"
             data-marker={m.key}
             onClick={(e) => {
+              if (suppressClickRef.current === m.key) { suppressClickRef.current = null; return; }
               if (m.ac != null) props.onToggleAc(m.ac, e.shiftKey || e.metaKey || e.ctrlKey);
               else if (m.group) props.onSelectGroup(m.group);
             }}
             title={`${m.title} · ${m.brand} · ${m.share.toFixed(1)}% of aggregate device metadata`}
-            aria-label={`${m.title}: ${m.brand}, ${m.share.toFixed(1)} percent of aggregate device metadata. Illustrative placement, not a handset location.`}
+            aria-label={`${m.title}: ${m.brand}, ${m.share.toFixed(2)} percent of aggregate device metadata. Illustrative placement, not a handset location.`}
+            data-device-marker
+            onPointerEnter={(e) => openTip(m, e.currentTarget)}
+            onPointerLeave={() => setTip(null)}
+            onPointerDown={(e) => {
+              if (e.pointerType !== "touch") return;
+              if (tip?.key !== m.key) {
+                // first tap shows the compact detail; a second tap selects
+                suppressClickRef.current = m.key;
+                openTip(m, e.currentTarget);
+              }
+            }}
+            onFocus={(e) => openTip(m, e.currentTarget)}
+            onBlur={() => setTip(null)}
+            onKeyDown={(e) => { if (e.key === "Escape") setTip(null); }}
             className={cn(
               "pointer-events-auto absolute left-0 top-0 grid place-items-center rounded-full border border-border bg-white shadow-md transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron",
               m.level === "brand" ? "size-8" : "size-9",
@@ -761,23 +804,21 @@ export default function TelanganaMap(props: TgMapProps) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={brandMarker(m.brand).src} alt="" className="h-5 w-7 object-contain" draggable={false} />
-            <span className="absolute -bottom-1 rounded-full bg-foreground px-1 text-[8px] font-bold leading-tight text-background">{m.count}</span>
           </button>
         ))}
       </div>
 
-      <div className="pointer-events-none absolute bottom-4 left-3 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-card/85 px-2.5 py-2 backdrop-blur">
-        {legend.map((p) => (
-          <span key={p} className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-            <span className="size-2.5 rounded-sm" style={{ background: PARTY_META[p].color }} />
-            {partyMeta(p).short}
-          </span>
-        ))}
-        <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-          <span className="size-2.5 rounded-sm" style={{ background: theme === "dark" ? "#2b3442" : "#e7ebef" }} />
-          No answers
-        </span>
-      </div>
+      {tip && tipDef && (
+        <div
+          role="tooltip"
+          className="pointer-events-none absolute z-30 w-max max-w-[210px] -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-card/95 px-2.5 py-1.5 text-left shadow-lg backdrop-blur transition-opacity duration-150"
+          style={{ left: tip.x, top: tip.y }}
+        >
+          <p className="text-[11.5px] font-semibold leading-tight">{tipDef.brand}</p>
+          <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">{tipDef.group ? `${tipDef.group} · ${tipDef.title}` : tipDef.title}</p>
+          <p className="mt-0.5 text-[10px] tabular-nums leading-tight">Device mix: {tipDef.share.toFixed(2)}%</p>
+        </div>
+      )}
 
       <div className="pointer-events-none absolute right-3 top-3 rounded-lg border border-border bg-card/85 px-2 py-1 text-[9.5px] text-muted-foreground backdrop-blur">
         {layer === "device" ? "Device mix · illustrative placement" : "Leading 2028 survey party"}

@@ -110,119 +110,114 @@ export default function TelanganaDashboard() {
   const filteredGroupAcs = groupAcs.filter((a) => !acFilter || a.name.toLowerCase().includes(acFilter.toLowerCase()) || String(a.no) === acFilter);
   const hoveredAc = hover ? acByNo.get(hover.ac) : null;
 
-  const crumb = (
-    <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted-foreground">
-      <button type="button" onClick={() => selectGroup(null)} className={cn("transition-colors hover:text-foreground", !group && "font-semibold text-saffron-2")}>Telangana</button>
-      {group && <><ChevronRight className="size-3 opacity-50" />
-        <button type="button" onClick={() => setSelectedAcs([])} className={cn("truncate transition-colors hover:text-foreground", !selectedAcs.length && "font-semibold text-saffron-2")}>{group}</button></>}
-      {selectedAcs.length > 0 && <><ChevronRight className="size-3 opacity-50" />
-        <span className="truncate font-semibold text-saffron-2">{selectedAcs.length === 1 ? acByNo.get(selectedAcs[0])?.name : `${selectedAcs.length} assemblies`}</span></>}
-    </nav>
-  );
-
-  const Filters = (
-    <div className="space-y-4">
-      <div>
-        <p className={LABEL}>Analytical district grouping</p>
-        <p className="mt-1 text-[10px] leading-snug text-muted-foreground">AC-derived grouping, not an official district boundary.</p>
-        <div className="mt-2 max-h-52 space-y-0.5 overflow-y-auto pr-1 [scrollbar-width:thin]">
-          <button type="button" onClick={() => selectGroup(null)}
-            className={cn("flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-[12px] transition-colors", !group ? "bg-saffron/15 font-semibold text-saffron-2" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground")}>
-            <span>All Telangana</span><span className="text-[10px]">{data.totals.acs} ACs</span>
-          </button>
-          {groups.map((g) => {
-            const gLead = leadingParty(combineAcs(g.acs).a2028, CONTESTED as unknown as string[]);
-            return (
-              <button key={g.group} type="button" onClick={() => selectGroup(g.group)}
-                className={cn("flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[12px] transition-colors", group === g.group ? "bg-saffron/15 font-semibold text-saffron-2" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground")}>
-                <span className="size-2 shrink-0 rounded-sm" style={{ background: gLead.party ? partyMeta(gLead.party).color : "transparent", border: gLead.party ? "none" : "1px solid var(--border)" }} />
-                <span className="truncate">{g.group}</span>
-                <span className="ml-auto text-[9.5px] opacity-60">{g.acs.length}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {group && (
-        <div>
-          <p className={LABEL}>Assemblies · multi-select</p>
-          <input value={acFilter} onChange={(e) => setAcFilter(e.target.value)} placeholder="Filter assemblies"
-            className="mt-1.5 w-full rounded-md border border-border bg-background px-2 py-1 text-[11.5px] outline-none focus-visible:ring-2 focus-visible:ring-saffron/50" />
-          <div className="mt-1.5 max-h-44 space-y-0.5 overflow-y-auto pr-1 [scrollbar-width:thin]">
-            {filteredGroupAcs.map((a) => {
-              const on = selectedAcs.includes(a.no);
-              return (
-                <button key={a.no} type="button" onClick={(e) => toggleAc(a.no, e.shiftKey || e.metaKey || e.ctrlKey)}
-                  className={cn("flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[11.5px] transition-colors", on ? "bg-saffron/15 font-semibold text-saffron-2" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground")}>
-                  <span className={cn("grid size-3.5 place-items-center rounded border", on ? "border-saffron bg-saffron text-[#241203]" : "border-border")}>
-                    {on && <Check className="size-2.5" strokeWidth={3} />}
-                  </span>
-                  <span className="truncate">{a.no}. {a.name}</span>
-                  {a.reservation && <span className="ml-auto text-[9px] opacity-60">{a.reservation}</span>}
-                </button>
-              );
-            })}
-            {!filteredGroupAcs.length && <p className="px-2 py-2 text-[11px] text-muted-foreground">No assemblies match.</p>}
-          </div>
-        </div>
-      )}
-
-      <div>
-        <p className={LABEL}>Map layer</p>
-        <div className="mt-1.5 grid grid-cols-2 gap-1 rounded-lg border border-border p-0.5">
-          {([["party", "Party mix"], ["device", "Devices"]] as const).map(([id, label]) => (
-            <button key={id} type="button" onClick={() => setLayer(id)}
-              className={cn("flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors", layer === id ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
-              {id === "party" ? <MapPin className="size-3" /> : <Layers className="size-3" />}{label}
-            </button>
-          ))}
-        </div>
-        <label className="mt-2 flex cursor-pointer items-center gap-2 text-[11.5px] text-muted-foreground">
-          <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} className="size-3.5 accent-[var(--saffron)]" />
-          Show labels
-        </label>
-      </div>
-
-      <button type="button" onClick={reset}
-        className="flex w-full items-center gap-2 rounded-xl border border-border px-3 py-2 text-left text-[12px] font-semibold transition-colors hover:border-saffron/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
-        <RotateCcw className="size-3.5 text-saffron-2" /> Reset View
-      </button>
-    </div>
-  );
-
   return (
     <div className="relative min-h-screen bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_18%_8%,rgba(245,138,36,0.07),transparent_60%)]" aria-hidden />
 
-      <section className="relative mx-auto max-w-[1720px] px-4 pb-4 pt-24 sm:pt-28 lg:h-[100svh] lg:min-h-[780px] lg:px-6 lg:pt-20">
-        {/* header — neutral, no campaign branding */}
-        <header className="relative z-30 mb-4 max-w-[360px] lg:absolute lg:left-8 lg:top-24 lg:mb-0 lg:max-w-[320px]">
-          <Link href="/case-studies" className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3.5 py-1.5 text-[13px] text-muted-foreground backdrop-blur-xl transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
-            <ArrowLeft className="size-3.5" /> Case studies
+      <section className="relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-24 sm:pt-28 lg:h-[100svh] lg:min-h-[780px] lg:overflow-hidden lg:px-6 lg:pt-20">
+        {/* left column: heading → context → filters, one spacing system */}
+        <aside aria-label="Filters" className="relative z-30 lg:absolute lg:left-8 lg:top-24 lg:w-[284px] lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
+          <Link href="/case-studies" className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-[12.5px] text-muted-foreground backdrop-blur-xl transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+            <ArrowLeft className="size-3.5" /> Back to Case Studies
           </Link>
-          <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] text-saffron-2">Telangana · Election Intelligence</p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h1 className="font-display text-[clamp(34px,4vw,52px)] font-semibold leading-[0.98] tracking-[-0.03em] text-foreground">Telangana</h1>
-            <span className="rounded-full border border-border bg-card/70 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Survey scenario</span>
-          </div>
-          <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px]">
-            <b className="font-bold" style={{ color: PARTY_META.BRS.ink }}>BRS</b>
-            <span className="text-muted-foreground">K. Chandrashekar Rao</span>
-          </p>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-            119-assembly opinion survey of 2028 vote intention, set against actual 2018 and 2023 results.
-          </p>
-          <div className="mt-3">{crumb}</div>
-        </header>
 
-        {/* left: geography controls */}
-        <aside className="relative z-20 mt-4 w-full space-y-2.5 lg:absolute lg:left-8 lg:top-[352px] lg:mt-0 lg:w-[236px] lg:max-h-[calc(100svh-380px)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
-          <div className="rounded-2xl border border-border bg-card/85 p-3 backdrop-blur-xl">
-            <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-              <SlidersHorizontal className="size-3.5" /> Filters
+          <h1 className="mt-4 font-display text-[clamp(34px,4vw,52px)] font-semibold leading-[0.98] tracking-[-0.03em] text-foreground">Telangana</h1>
+          <p className="mt-2 text-[13px] font-semibold text-foreground/70">Election intelligence</p>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span
+              className="rounded-full border border-border bg-card/70 px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground"
+              title="The 2028 figures are a survey scenario built from a 30,000-row workbook that repeats 5,090 supplied entries."
+            >
+              Survey scenario
+            </span>
+          </div>
+
+          <p className="mt-4 text-[13px] font-medium leading-snug text-foreground">119-assembly opinion survey · 2028 vote intentions</p>
+          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">Set against the actual 2018 and 2023 assembly results.</p>
+
+          {group && (
+            <nav aria-label="Breadcrumb" className="mt-4 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+              <button type="button" onClick={() => setSelectedAcs([])} className={cn("truncate transition-colors hover:text-foreground", !selectedAcs.length && "font-semibold text-foreground")}>{group}</button>
+              {selectedAcs.length > 0 && (
+                <>
+                  <ChevronRight className="size-3 opacity-50" />
+                  <span className="truncate font-semibold text-foreground">{selectedAcs.length === 1 ? acByNo.get(selectedAcs[0])?.name : `${selectedAcs.length} assemblies`}</span>
+                </>
+              )}
+            </nav>
+          )}
+
+          {/* 28px before filters */}
+          <div className="mt-7 space-y-4">
+            <div>
+              <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                <SlidersHorizontal className="size-3.5" /> Filters
+              </div>
+              <p className="text-[10px] leading-snug text-muted-foreground">AC-derived analytical grouping, not an official district boundary.</p>
+              <div className="mt-2 max-h-52 space-y-0.5 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                <button type="button" onClick={() => selectGroup(null)}
+                  className={cn("flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] transition-colors", !group ? "bg-saffron/15 font-semibold text-saffron-2" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground")}>
+                  <span className="size-2 shrink-0 rounded-full bg-saffron/70" />
+                  <span>All Telangana</span>
+                </button>
+                {groups.map((g) => {
+                  const gLead = leadingParty(combineAcs(g.acs).a2028, CONTESTED as unknown as string[]);
+                  return (
+                    <button key={g.group} type="button" onClick={() => selectGroup(g.group)}
+                      className={cn("flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] transition-colors", group === g.group ? "bg-saffron/15 font-semibold text-saffron-2" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground")}>
+                      <span className="size-2 shrink-0 rounded-full ring-1 ring-inset ring-black/10" style={{ background: gLead.party ? partyMeta(gLead.party).color : "transparent", border: gLead.party ? "none" : "1px solid var(--border)" }} />
+                      <span className="truncate">{g.group}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            {Filters}
+
+            {group && (
+              <div>
+                <p className={LABEL}>Assemblies · multi-select</p>
+                <input value={acFilter} onChange={(e) => setAcFilter(e.target.value)} placeholder="Filter assemblies"
+                  className="mt-1.5 w-full rounded-md border border-border bg-background px-2 py-1.5 text-[11.5px] outline-none focus-visible:ring-2 focus-visible:ring-saffron/50" />
+                <div className="mt-1.5 max-h-44 space-y-0.5 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                  {filteredGroupAcs.map((a) => {
+                    const on = selectedAcs.includes(a.no);
+                    return (
+                      <button key={a.no} type="button" onClick={(e) => toggleAc(a.no, e.shiftKey || e.metaKey || e.ctrlKey)}
+                        className={cn("flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11.5px] transition-colors", on ? "bg-saffron/15 font-semibold text-saffron-2" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground")}>
+                        <span className={cn("grid size-3.5 shrink-0 place-items-center rounded-[4px] border", on ? "border-saffron bg-saffron text-[#241203]" : "border-border")}>
+                          {on && <Check className="size-2.5" strokeWidth={3} />}
+                        </span>
+                        <span className="truncate">{a.no}. {a.name}</span>
+                        {a.reservation && <span className="ml-auto text-[9px] opacity-60">{a.reservation}</span>}
+                      </button>
+                    );
+                  })}
+                  {!filteredGroupAcs.length && <p className="px-2 py-2 text-[11px] text-muted-foreground">No assemblies match.</p>}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className={LABEL}>Map layer</p>
+              <div className="mt-1.5 grid grid-cols-2 gap-1 rounded-lg border border-border p-0.5">
+                {([["party", "Party mix"], ["device", "Devices"]] as const).map(([id, label]) => (
+                  <button key={id} type="button" onClick={() => setLayer(id)}
+                    className={cn("flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors", layer === id ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
+                    {id === "party" ? <MapPin className="size-3" /> : <Layers className="size-3" />}{label}
+                  </button>
+                ))}
+              </div>
+              <label className="mt-2 flex cursor-pointer items-center gap-2 text-[11.5px] text-muted-foreground">
+                <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} className="size-3.5 accent-[var(--saffron)]" />
+                Show labels
+              </label>
+            </div>
+
+            <button type="button" onClick={reset}
+              className="flex w-full items-center gap-2 rounded-xl border border-border px-3 py-2 text-left text-[12px] font-semibold transition-colors hover:border-saffron/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+              <RotateCcw className="size-3.5 text-saffron-2" /> Reset View
+            </button>
           </div>
         </aside>
 
@@ -240,17 +235,30 @@ export default function TelanganaDashboard() {
             onHover={(ac, x, y) => setHover(ac == null ? null : { ac, x, y })}
             resetNonce={resetNonce}
           />
-          {group && (
-            <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(62%_62%_at_50%_48%,transparent_40%,rgba(0,0,0,0.30)_100%)]" />
-          )}
+          {group && <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(62%_62%_at_50%_48%,transparent_40%,rgba(0,0,0,0.30)_100%)]" />}
         </div>
 
-        <p className="relative z-10 mt-1.5 text-[10px] leading-snug text-muted-foreground lg:absolute lg:bottom-4 lg:right-[346px] lg:mt-0 lg:max-w-[420px] lg:text-right">
-          Fill = leading 2028 survey party; polygon area is not vote volume.
-          {group ? " Focus uses the uploaded analytical grouping, not an official district boundary." : " Select a district or assembly to focus."}
-        </p>
+        {/* legend row, aligned to the map content width */}
+        <div className="relative z-10 mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 rounded-xl border border-border bg-card/85 px-3 py-2 lg:absolute lg:bottom-4 lg:left-[330px] lg:right-[330px] lg:mt-0 lg:flex-nowrap">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label="Party legend">
+            {CONTESTED.map((p) => (
+              <span key={p} className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                <span className="size-2 rounded-full" style={{ background: PARTY_META[p].color }} />
+                {PARTY_META[p].short}
+              </span>
+            ))}
+            <span className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+              <span className="size-2 rounded-full" style={{ background: theme === "dark" ? "#2b3442" : "#e7ebef", boxShadow: "inset 0 0 0 1px rgba(120,130,145,.5)" }} />
+              No answers
+            </span>
+          </div>
+          <p className="text-[9.5px] leading-tight text-muted-foreground lg:max-w-[44%] lg:text-right">
+            Fill = leading 2028 survey party; polygon area is not vote volume.
+            {group ? " Analytical grouping, not an official district boundary." : " Select a district or assembly to focus."}
+          </p>
+        </div>
 
-        {/* right: analysis rail */}
+        {/* right: scope summary — names and percentages only */}
         <section className="relative z-20 mx-auto mt-4 max-w-xl rounded-2xl border border-border bg-card/85 p-4 shadow-[0_18px_50px_-30px_rgba(15,20,30,0.45)] backdrop-blur-2xl lg:absolute lg:right-6 lg:top-24 lg:mt-0 lg:max-h-[calc(100svh-8rem)] lg:w-[300px] lg:max-w-none lg:overflow-y-auto lg:[scrollbar-width:thin]">
           <p className={LABEL}>Current scope</p>
           <div className="mt-0.5 flex items-start justify-between gap-2">
@@ -261,12 +269,11 @@ export default function TelanganaDashboard() {
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-[10.5px] text-muted-foreground">{scopeAcs.length} assembl{scopeAcs.length === 1 ? "y" : "ies"} · {fmtInt(agg.answered2028)} answered in 2028</p>
 
-          {agg.answered2028 === 0 && <p className="mt-3 rounded-lg bg-muted/40 px-2 py-2 text-[11px] text-muted-foreground">No answered survey responses in this scope.</p>}
+          {agg.answered2028 === 0 && <p className="mt-2.5 rounded-lg bg-muted/40 px-2 py-2 text-[11px] text-muted-foreground">No answered survey responses in this scope.</p>}
           {agg.answered2028 > 0 && agg.answered2028 < SMALL_SAMPLE && (
             <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-300">
-              Low sample: {agg.answered2028} answered rows. Indicative only; nothing is redistributed to improve coverage.
+              Low sample in this scope. Percentages are indicative; nothing is redistributed to improve coverage.
             </p>
           )}
 
@@ -311,33 +318,24 @@ export default function TelanganaDashboard() {
             </div>
           )}
 
-          <div className="mt-3 border-t border-border pt-2.5">
-            <p className={LABEL}>Historical actuals</p>
-            <div className="mt-1.5 grid grid-cols-2 gap-2 text-[11px]">
-              <div><p className="text-muted-foreground">2018 total votes</p><p className="font-semibold tabular-nums">{fmtInt(agg.total2018)}</p></div>
-              <div><p className="text-muted-foreground">2023 total votes</p><p className="font-semibold tabular-nums">{fmtInt(agg.total2023)}</p></div>
-            </div>
-            <p className="mt-1.5 text-[9.5px] leading-snug text-muted-foreground">Candidate votes + NOTA in the same scope. Actual results are separate from the survey series.</p>
-          </div>
-
-          <p className="mt-2 text-[9px] leading-snug text-muted-foreground">2028 difference is a survey difference vs actual 2023 — not a measured swing.</p>
+          <p className="mt-2.5 text-[9.5px] leading-snug text-muted-foreground">2028 difference is a survey difference vs actual 2023 — not a measured swing.</p>
         </section>
       </section>
 
-      {/* analysis container */}
-      <section className="mx-auto max-w-[1720px] px-4 pb-4 sm:px-6">
+      {/* analysis */}
+      <section className="mx-auto mt-8 min-h-[calc(100svh-6rem)] max-w-[1720px] px-4 pb-8 sm:px-6">
         <TelanganaAnalysis
           scope={scope}
           age={data.age}
           rounds={data.rounds}
+          daily={data.daily}
           statewide={data.statewide}
           chart={chart}
           onChart={setChart}
           parties={parties}
           onParties={setParties}
         />
-
-        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="mt-3">
           <AboutTelangana
             totals={data.totals}
             conflictRows={data.totals.conflictRows}
@@ -345,25 +343,14 @@ export default function TelanganaDashboard() {
             groups={data.totals.groups}
             acs={data.totals.acs}
           />
-          <div className="rounded-2xl border border-border bg-card p-4 text-[11px] text-muted-foreground">
-            <p className={LABEL}>Method notes</p>
-            <ul className="mt-2 space-y-1.5">
-              <li>· 2018 and 2023 are actual results; 2028 is a survey scenario.</li>
-              <li>· Zero denominator shows “No answered survey responses”, never 0%.</li>
-              <li>· Missing ages and blank answers are retained, not redistributed.</li>
-              <li>· Device markers are illustrative assembly aggregates, not handset locations.</li>
-              <li>· No 2028 seat projection, confidence interval or ad-performance claim.</li>
-            </ul>
-            {data.importVersion && <p className="mt-2 break-all text-[9.5px]">Active import: {data.importVersion.slice(0, 8)}…</p>}
-          </div>
         </div>
       </section>
 
-      {/* hover tooltip */}
+      {/* hover tooltip for assemblies (map hover) */}
       {hover && hoveredAc && (
         <div
-          className="pointer-events-none fixed z-50 w-60 rounded-xl border border-border bg-card/95 p-2.5 text-[11px] shadow-xl backdrop-blur"
-          style={{ left: Math.min(hover.x + 14, (typeof window !== "undefined" ? window.innerWidth : 1200) - 252), top: Math.min(hover.y + 14, (typeof window !== "undefined" ? window.innerHeight : 800) - 190) }}
+          className="pointer-events-none fixed z-50 w-56 rounded-xl border border-border bg-card/95 p-2.5 text-[11px] shadow-xl backdrop-blur"
+          style={{ left: Math.min(hover.x + 14, (typeof window !== "undefined" ? window.innerWidth : 1200) - 236), top: Math.min(hover.y + 14, (typeof window !== "undefined" ? window.innerHeight : 800) - 170) }}
         >
           <p className="font-display text-[12px] font-semibold">{hoveredAc.no}. {hoveredAc.name}</p>
           <p className="text-[10px] text-muted-foreground">{hoveredAc.group}{hoveredAc.reservation ? ` · ${hoveredAc.reservation}` : ""}</p>
@@ -376,14 +363,12 @@ export default function TelanganaDashboard() {
                 return (
                   <div key={p} className="flex items-center gap-1.5 text-[10px]">
                     <span className="size-1.5 rounded-sm" style={{ background: partyMeta(p).color }} />
-                    <span className="w-14 truncate">{partyMeta(p).short}</span>
+                    <span className="w-12 truncate">{partyMeta(p).short}</span>
                     <span className="h-1.5 flex-1 overflow-hidden rounded bg-muted/40"><span className="block h-full rounded" style={{ width: `${pct}%`, background: partyMeta(p).color }} /></span>
-                    <span className="w-12 text-right tabular-nums">{pct.toFixed(1)}%</span>
+                    <span className="w-11 text-right tabular-nums">{pct.toFixed(1)}%</span>
                   </div>
                 );
               })}
-              <p className="pt-0.5 text-[9.5px] text-muted-foreground">{fmtInt(hoveredAc.answered2028)} answered 2028 · {fmtInt(hoveredAc.scenarioRows)} scenario rows</p>
-              {hoveredAc.answered2028 < SMALL_SAMPLE && <p className="text-[9.5px] font-medium text-amber-700 dark:text-amber-400">Low sample — indicative only</p>}
             </div>
           ) : (
             <p className="mt-1.5 text-[10.5px] text-muted-foreground">No answered survey responses</p>

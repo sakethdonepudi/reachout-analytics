@@ -479,11 +479,19 @@ export default function IndiaMap() {
           <>
             <div className="mb-3 flex items-center justify-between">
               <span className="rounded-full border border-saffron/40 bg-saffron/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-saffron-2">{cardCase.badge}</span>
-              {cardIsFinal ? (
-                <button data-close onClick={() => setSelected(null)} className="grid size-6 place-items-center rounded-full bg-white/10 text-white/70 hover:text-white" aria-label="Close"><X className="size-3.5" /></button>
-              ) : (
-                tourIndex >= 0 && <span className="text-[10px] font-semibold tracking-[0.16em] text-white/40">{String(tourIndex + 1).padStart(2, "0")} / {String(TOUR.length).padStart(2, "0")}</span>
-              )}
+              <div className="flex items-center gap-2">
+                {cardCase.symbol && (
+                  <span className="grid size-7 place-items-center rounded-md bg-white/90 shadow-sm" title={`${cardCase.party} symbol (supplied)`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={cardCase.symbol} alt={`${cardCase.party} party symbol`} className="h-4 w-5 object-contain" />
+                  </span>
+                )}
+                {cardIsFinal ? (
+                  <button data-close onClick={() => setSelected(null)} className="grid size-6 place-items-center rounded-full bg-white/10 text-white/70 hover:text-white" aria-label="Close"><X className="size-3.5" /></button>
+                ) : (
+                  tourIndex >= 0 && <span className="text-[10px] font-semibold tracking-[0.16em] text-white/40">{String(tourIndex + 1).padStart(2, "0")} / {String(TOUR.length).padStart(2, "0")}</span>
+                )}
+              </div>
             </div>
             <div className="mb-2.5 flex items-center gap-3">
               <div className="relative size-12 shrink-0 overflow-hidden rounded-full bg-gradient-to-b from-[#2a5fc4] to-[#0b1f4d] shadow-[0_0_0_2px_rgba(255,255,255,.2),0_0_0_4px_rgba(255,153,51,.6)]">

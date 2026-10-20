@@ -67,6 +67,14 @@ export const CASES: CaseStudy[] = [
     tags: ["Voter Insights", "Campaign Strategy", "Digital Boosting"],
   },
   {
+    slug: "telangana", tour: true, state: "tg", x: 219, y: 467, theta: -0.12, pinDx: -40,
+    label: "Telangana", badge: "Telangana", title: "Telangana", region: "Telangana",
+    party: "BRS", leaderId: "kcr", subtitle: "K. Chandrashekar Rao",
+    summary: "Assembly-level opinion survey of 2028 vote intention, set against the actual 2018 and 2023 results across all 119 constituencies.",
+    tags: ["Voter Insights", "Analytics", "Surveys"],
+    symbol: "/telangana/brs-car.png",
+  },
+  {
     slug: "andhra-pradesh-2024", tour: true, state: "ap", x: 260, y: 495, theta: -0.25, pinDx: 44,
     label: "Andhra Pradesh", badge: "Andhra Pradesh · 2024", title: "Andhra Pradesh 2024", region: "Andhra Pradesh",
     party: "TDP", leaderId: "cbn", subtitle: "N. Chandrababu Naidu",
@@ -81,14 +89,6 @@ export const CASES: CaseStudy[] = [
     tags: ["Voter Research", "Analytics", "Strategy"],
   },
   // Shown in the zoomed-out map (not camera stops)
-  {
-    slug: "telangana", state: "tg", x: 219, y: 467, pinDx: -40,
-    label: "Telangana", badge: "Telangana", title: "Telangana", region: "Telangana",
-    party: "BRS", leaderId: "kcr", subtitle: "K. Chandrashekar Rao",
-    summary: "Assembly-level opinion survey of 2028 vote intention, set against the actual 2018 and 2023 results across all 119 constituencies.",
-    tags: ["Voter Insights", "Analytics", "Surveys"],
-    symbol: "/telangana/brs-car.png",
-  },
   {
     slug: "bihar", state: "br", x: 355, y: 282,
     label: "Bihar", badge: "Bihar", title: "Bihar", region: "Bihar",
