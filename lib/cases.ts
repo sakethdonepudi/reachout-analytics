@@ -70,7 +70,7 @@ export const CASES: CaseStudy[] = [
     slug: "telangana", tour: true, state: "tg", x: 219, y: 467, theta: -0.12, pinDx: -40,
     label: "Telangana", badge: "Telangana", title: "Telangana", region: "Telangana",
     party: "BRS", leaderId: "kcr", subtitle: "K. Chandrashekar Rao",
-    summary: "Assembly-level opinion survey of 2028 vote intention, set against the actual 2018 and 2023 results across all 119 constituencies.",
+    summary: "Assembly-level 2028 vote intention for all 119 constituencies, set against the 2023 result, with district and assembly drilldown.",
     tags: ["Voter Insights", "Analytics", "Surveys"],
     symbol: "/telangana/brs-car.png",
   },
