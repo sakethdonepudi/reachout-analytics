@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Check, ChevronRight, Layers, MapPin, RotateCcw, SlidersHorizontal, X } from "lucide-react";
@@ -35,6 +35,11 @@ export default function TelanganaDashboard() {
   const { theme } = useTheme();
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [flash, setFlash] = useState(false);
+  const flashTimer = useRef<number | null>(null);
 
   const [group, setGroup] = useState<string | null>(null);
   const [selectedAcs, setSelectedAcs] = useState<number[]>([]);
@@ -46,14 +51,33 @@ export default function TelanganaDashboard() {
   const [hover, setHover] = useState<{ ac: number; x: number; y: number } | null>(null);
   const [acFilter, setAcFilter] = useState("");
 
-  useEffect(() => {
-    const ctrl = new AbortController();
-    fetch("/api/public/case-studies/telangana/aggregates", { cache: "no-store", signal: ctrl.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((d: Payload) => { if (!ctrl.signal.aborted) setData(d); })
-      .catch((e) => { if (!ctrl.signal.aborted) setError(e instanceof Error ? e.message : "Could not load Telangana aggregates"); });
-    return () => ctrl.abort();
+  const load = useCallback(async (isRefresh: boolean) => {
+    const controller = new AbortController();
+    if (isRefresh) { setUpdating(true); setRefreshError(null); }
+    try {
+      const r = await fetch("/api/public/case-studies/telangana/aggregates", { cache: "no-store", signal: controller.signal });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d: Payload = await r.json();
+      setData(d);
+      setLastRefreshed(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+      setRefreshError(null);
+      if (isRefresh) {
+        setFlash(true);
+        if (flashTimer.current) window.clearTimeout(flashTimer.current);
+        flashTimer.current = window.setTimeout(() => setFlash(false), 1400);
+      }
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") return;
+      const msg = e instanceof Error ? e.message : "Could not load Telangana aggregates";
+      if (isRefresh) setRefreshError(msg);
+      else setError(msg);
+    } finally {
+      if (isRefresh) setUpdating(false);
+    }
   }, []);
+
+  useEffect(() => { load(false); }, [load]);
+  useEffect(() => () => { if (flashTimer.current) window.clearTimeout(flashTimer.current); }, []);
 
   const acByNo = useMemo(() => new Map((data?.acs ?? []).map((a) => [a.no, a])), [data]);
   const groups = useMemo(() => {
@@ -334,6 +358,8 @@ export default function TelanganaDashboard() {
           onChart={setChart}
           parties={parties}
           onParties={setParties}
+          selectedAc={selectedAcs.length === 1 ? selectedAcs[0] : null}
+          status={{ updating, lastRefreshed, error: refreshError, flash, onRefresh: () => load(true) }}
         />
         <div className="mt-3">
           <AboutTelangana

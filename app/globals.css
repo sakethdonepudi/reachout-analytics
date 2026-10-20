@@ -179,6 +179,15 @@ html.theme-transition *::after {
 /* leader orbit — the caption box never moves; only its content crossfades */
 .leader-caption { transition: opacity 600ms cubic-bezier(.4,0,.2,1); }
 
+/* chart view transition + genuine loading pulse (never on static values) */
+@keyframes chart-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.chart-in { animation: chart-in 240ms cubic-bezier(.2,.7,.2,1) both; }
+@keyframes soft-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.soft-pulse { animation: soft-pulse 1.6s ease-in-out infinite; }
+.chart-row { transition: opacity 180ms ease, background-color 180ms ease; }
+.chart-bar { transition: width 680ms cubic-bezier(.2,.7,.2,1), background-color 200ms ease; }
+.chart-tip { transition: opacity 140ms ease; }
+
 .hero-enter { animation: hero-enter 1.5s cubic-bezier(.4,0,.2,1) both; will-change: transform, opacity, filter; }
 .hero-kb-a { animation: hero-kb-a 10s linear both; will-change: transform; }
 .hero-kb-b { animation: hero-kb-b 10s linear both; will-change: transform; }
@@ -192,6 +201,8 @@ html.theme-transition *::after {
   .animate-marquee, .animate-float, .animate-pulse-dot, .animate-sweep, .animate-wheel, .animate-drift, .animate-rise, .animate-bob, .animate-spin-slow { animation: none; }
   .hero-enter, .hero-kb-a, .hero-kb-b { animation: none; will-change: auto; }
   .leader-caption { transition: none; }
+  .chart-in, .soft-pulse { animation: none; }
+  .chart-bar, .chart-row { transition: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
   html { scroll-behavior: auto; }
   html.theme-transition, html.theme-transition * { transition: none !important; }
