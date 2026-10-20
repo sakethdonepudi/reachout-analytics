@@ -326,6 +326,7 @@ export default function TelanganaDashboard() {
               <p className="mt-1.5 text-[9px] leading-snug text-muted-foreground">
                 {year === "2028" ? "Shade = predicted share · lighter lower, darker higher" : `Shade = ${YEAR_LABEL[year]} winner's vote share`}
               </p>
+              {year === "2028" && <p className="mt-0.5 text-[8.5px] leading-snug text-muted-foreground/80">Others (AIMIM) is the residual group, not a separate AIMIM prediction.</p>}
             </div>
           </div>
         </aside>

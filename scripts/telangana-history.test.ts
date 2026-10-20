@@ -144,6 +144,8 @@ check("every historical winner has a distinct party colour and label", () => {
   assert.equal(winnerColour("TRS"), winnerColour("BRS"));
   assert.equal(new Set([...colours]).size, winners.size - 1);
   assert.equal(winnerColour("AIMIM").toLowerCase(), "#16a34a");
+  assert.equal(winnerColour("Others").toLowerCase(), "#16a34a");
+  assert.equal(winnerLabel("Others"), "Others (AIMIM)");
 });
 
 check("no AIMIM 2028 prediction is invented", () => {

@@ -80,7 +80,7 @@ export default function TelanganaRail({
     const sorted = [...PARTIES].sort((a, b) => scope.change[b] - scope.change[a]);
     return {
       animation: !reduced, animationDuration: 500, animationEasing: "cubicOut",
-      grid: { left: 66, right: 42, top: 8, bottom: 22 },
+      grid: { left: 82, right: 42, top: 8, bottom: 22 },
       tooltip: {
         ...tip(p), trigger: "axis", axisPointer: { type: "shadow" },
         formatter: (params: unknown) => {
@@ -114,7 +114,7 @@ export default function TelanganaRail({
     const max = Math.max(10, Math.ceil((Math.max(...PARTIES.map((x) => scope.prediction[x])) * 100 + 4) / 10) * 10);
     return {
       animation: !reduced, animationDuration: 500,
-      grid: { left: 66, right: 42, top: 8, bottom: 22 },
+      grid: { left: 82, right: 42, top: 8, bottom: 22 },
       tooltip: {
         ...tip(p), trigger: "axis", axisPointer: { type: "shadow" },
         formatter: (params: unknown) => {
@@ -148,7 +148,7 @@ export default function TelanganaRail({
         <div className="space-y-1">
           {keys.map((x) => (
             <div key={x} className="flex items-center gap-2 text-[10px]">
-              <span className="w-[74px] shrink-0 truncate font-medium" style={{ color: colourOf(x) }}>{labelOf(x)}</span>
+              <span className="w-[86px] shrink-0 truncate font-medium" style={{ color: colourOf(x) }}>{labelOf(x)}</span>
               <span className="h-2 flex-1 overflow-hidden rounded-sm bg-muted/40">
                 <span className="block h-full rounded-sm" style={{ width: `${(counts[x] / max) * 100}%`, background: colourOf(x) }} />
               </span>
@@ -178,7 +178,7 @@ export default function TelanganaRail({
       <div className="mt-2 overflow-hidden rounded-lg border border-border">
         <table className="w-full table-fixed border-collapse text-[10.5px]">
           <caption className="sr-only">{scope.label} {baselineLabel} result, 2028 prediction and change</caption>
-          <colgroup><col className="w-[28%]" /><col className="w-[23%]" /><col className="w-[25%]" /><col className="w-[24%]" /></colgroup>
+          <colgroup><col className="w-[33%]" /><col className="w-[22%]" /><col className="w-[24%]" /><col className="w-[21%]" /></colgroup>
           <thead>
             <tr className="bg-muted/30 text-left text-[8.5px] uppercase tracking-wide text-muted-foreground">
               <th scope="col" className="px-1.5 py-1.5 font-semibold">Party</th>

@@ -1,6 +1,6 @@
 import bundle from "@/lib/data/telangana/history.json";
 import {
-  PARTIES, PARTY_LABEL, NO_DATA_COLOR, shadeHex, weightedShares,
+  PARTIES, PARTY_COLOR, PARTY_LABEL, NO_DATA_COLOR, shadeHex, weightedShares,
   type AcRow, type Party, type ShareSet,
 } from "./oct26";
 
@@ -61,6 +61,8 @@ export const historicalAc = (year: HistoricYear, no: number) => yearMaps[year].g
 /** Detailed historic winner colour, retaining party identity. */
 export function winnerColour(party: string | null | undefined): string {
   if (!party) return NO_DATA_COLOR;
+  /* the residual comparison group shares AIMIM's green, with the label in brackets */
+  if (party === "Others") return PARTY_COLOR.Others;
   return HISTORY.winnerColours[party] ?? NO_DATA_COLOR;
 }
 export function winnerLabel(party: string | null | undefined): string {
@@ -68,6 +70,7 @@ export function winnerLabel(party: string | null | undefined): string {
   const labels: Record<string, string> = {
     TRS: "TRS", BRS: "BRS", INC: "Congress", BJP: "BJP", AIMIM: "AIMIM", TDP: "TDP",
     BSP: "BSP", YSRCP: "YSRCP", CPI: "CPI", CPM: "CPM", AIFB: "AIFB", IND: "Independent",
+    Others: "Others (AIMIM)",
   };
   return labels[party] ?? party;
 }

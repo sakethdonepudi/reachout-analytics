@@ -29,16 +29,18 @@ export default function AboutTelangana({ data }: { data: Oct26 }) {
         </p>
         <p>
           <b className="text-foreground/85">Parties.</b> The comparison table uses four groups: BRS/TRS family; <b>Congress+</b>
-          (INC + CPI, not INC alone); BJP; and Others (AIMIM + BSP + Janasena + NOTA + IND + all remaining). Historical maps
+          (INC + CPI, not INC alone); BJP; and Others (AIMIM + BSP + Janasena + NOTA + IND + all remaining). The Others row is
+          green to connect it with AIMIM, but it is a residual group, not a separate AIMIM projection. Historical maps
           retain the detailed winning-party identity — TRS, Congress, BJP, AIMIM, TDP, BSP, YSRCP, CPI, CPM, AIFB and
           Independent — so the seat geography is not collapsed into the four comparison groups.
         </p>
         <p>
           <b className="text-foreground/85">Map colour.</b> For 2014, 2018 and 2023, each assembly is filled by its actual
           winner in that party&apos;s colour, shaded by the winner&apos;s vote share. For 2028 it is filled by the leading
-          predicted party (BRS pink, Congress+ blue, BJP orange, Others purple-slate) shaded by the predicted share.
+          predicted party (BRS pink, Congress+ blue, BJP orange, Others (AIMIM) green) shaded by the predicted share.
           Kodangal&apos;s 50–50 tie is split equally between BRS and Congress. AIMIM has separate historical results (green)
-          but no separate 2028 prediction: it sits inside Others, so no green 2028 region is invented.
+          but no separate 2028 prediction: it sits inside Others. The green Others fill is a group label, not a separate
+          2028 AIMIM estimate.
         </p>
         <p>
           <b className="text-foreground/85">Replacement workbook.</b> {fmtInt(c.sourceIds)} distinct Entry IDs; default cutoff

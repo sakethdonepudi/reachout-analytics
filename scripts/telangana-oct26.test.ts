@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { DATA, PARTIES, NO_DATA_COLOR, PARTY_COLOR, leaderOf, partyShade, weightedShares, type ShareSet } from "@/lib/telangana/oct26";
+import { DATA, PARTIES, NO_DATA_COLOR, PARTY_COLOR, PARTY_LABEL, leaderOf, partyShade, weightedShares, type ShareSet } from "@/lib/telangana/oct26";
 
 let passed = 0;
 const check = (name: string, fn: () => void) => {
@@ -159,6 +159,8 @@ check("map colours have a leading party for every assembly and no invented AIMIM
   assert.equal(PARTY_COLOR.BRS, "#e5007d");
   assert.equal(PARTY_COLOR.Congress, "#1f6fd0");
   assert.equal(PARTY_COLOR.BJP, "#e87511");
+  assert.equal(PARTY_COLOR.Others, "#16a34a");
+  assert.equal(PARTY_LABEL.Others, "Others (AIMIM)");
   assert.ok(NO_DATA_COLOR.startsWith("#"));
 });
 

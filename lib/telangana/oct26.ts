@@ -14,10 +14,10 @@ import bundle from "@/lib/data/telangana/oct26.json";
 export type Party = "BRS" | "Congress" | "BJP" | "Others";
 export const PARTIES: Party[] = ["BRS", "Congress", "BJP", "Others"];
 export const PARTY_COLOR: Record<Party, string> = {
-  BRS: "#e5007d", Congress: "#1f6fd0", BJP: "#e87511", Others: "#6f62a0",
+  BRS: "#e5007d", Congress: "#1f6fd0", BJP: "#e87511", Others: "#16a34a",
 };
 export const PARTY_LABEL: Record<Party, string> = {
-  BRS: "BRS", Congress: "Congress+", BJP: "BJP", Others: "Others",
+  BRS: "BRS", Congress: "Congress+", BJP: "BJP", Others: "Others (AIMIM)",
 };
 export const NO_DATA_COLOR = "#9aa1ab";
 export type ShareSet = Record<Party, number>;
