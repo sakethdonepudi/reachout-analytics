@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { ArrowLeft, Check, ChevronDown, Layers, MapPin, RotateCcw, Search } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, RotateCcw, Search } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import {
@@ -12,10 +12,9 @@ import {
 } from "@/lib/telangana/oct26";
 import {
   ELECTION_YEARS, YEAR_LABEL, baselineYear, deviceSummary, historicalAc, historicalShares,
-  historicalAimim, historicalTotal, winnerColour, winnerLabel, winnerSeats, type ElectionYear,
+  historicalTotal, winnerColour, winnerLabel, winnerSeats, type ElectionYear,
 } from "@/lib/telangana/history";
 import TelanganaRail, { type ScopeResult } from "./telangana-rail";
-import TelanganaChartModal from "./telangana-chart-modal";
 import AboutTelangana from "./about-telangana";
 import type { MapTheme } from "./telangana-map";
 
@@ -23,9 +22,12 @@ const TelanganaMap = dynamic(() => import("./telangana-map"), {
   ssr: false,
   loading: () => <div className="grid h-full place-items-center text-sm text-muted-foreground">Loading Telangana…</div>,
 });
+const TelanganaAnalysis = dynamic(() => import("./telangana-analysis"), {
+  ssr: false,
+  loading: () => <div className="fixed inset-0 z-[140] grid place-items-center bg-background/80 text-sm text-muted-foreground backdrop-blur-sm">Opening analysis…</div>,
+});
 
-type Tab = "change" | "share" | "seats" | "more";
-type Layer = "party" | "device";
+type Tab = "change" | "share" | "seats";
 
 const LABEL = "text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
 
@@ -122,9 +124,17 @@ export default function TelanganaDashboard() {
   const [district, setDistrict] = useState<string | null>(null);
   const [acNo, setAcNo] = useState<number | null>(null);
   const [year, setYear] = useState<ElectionYear>("2028");
-  const [layer, setLayer] = useState<Layer>("party");
   const [tab, setTab] = useState<Tab>("change");
   const [chartOpen, setChartOpen] = useState(false);
+  const expandFocus = useRef<HTMLElement | null>(null);
+  const openAnalysis = useCallback(() => {
+    expandFocus.current = document.activeElement as HTMLElement | null;
+    setChartOpen(true);
+  }, []);
+  const closeAnalysis = useCallback(() => {
+    setChartOpen(false);
+    requestAnimationFrame(() => expandFocus.current?.focus());
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -179,7 +189,7 @@ export default function TelanganaDashboard() {
     if (!scopeAcs.length) {
       return {
         label, baselineYear: baselineYear(year), baseline: empty, prediction: empty,
-        change: { ...empty }, predictedLeader: null, predictedTied: [], votes: 0, answered: 0, device: null, baselineTotal: 0, aimimShare: 0,
+        change: { ...empty }, predictedLeader: null, predictedTied: [], votes: 0, answered: 0, baselineTotal: 0,
       };
     }
     const prediction = weightedShares(scopeAcs, "prediction");
@@ -198,9 +208,7 @@ export default function TelanganaDashboard() {
       predictedTied: lead.tied,
       votes: scopeAcs.reduce((n, a) => n + (a.votes2023 || 0), 0),
       answered: scopeAcs.reduce((n, a) => n + a.answered2028, 0),
-      device: deviceSummary(scopeAcs),
       baselineTotal: historicalTotal(scopeAcs, baseYear),
-      aimimShare: historicalAimim(scopeAcs, baseYear),
     };
   }, [scopeAcs, year, currentAc, district]);
 
@@ -215,13 +223,6 @@ export default function TelanganaDashboard() {
   }, [scopeAcs]);
   const actualSeats = useMemo(() => winnerSeats(scopeAcs, baselineYear(year)), [scopeAcs, year]);
   const actualSeatsYear = baselineYear(year);
-  const cohortAcs = useMemo(() => {
-    if (!data) return [];
-    if (currentAc && district) return data.acs.filter((a) => a.district === district);
-    return scopeAcs;
-  }, [data, currentAc, district, scopeAcs]);
-  const cohortLabel = currentAc ? (district ?? "Statewide") : (district ?? "Statewide");
-
   const legendItems = useMemo(() => {
     if (year === "2028") {
       return [
@@ -273,9 +274,8 @@ export default function TelanganaDashboard() {
             <ArrowLeft className="size-3.5" /> Back to Case Studies
           </Link>
 
-          <h1 className="mt-4 font-display text-[clamp(34px,4vw,52px)] font-semibold leading-[0.98] tracking-[-0.03em]">Telangana</h1>
-          <p className="mt-2 text-[13px] font-semibold text-foreground/70">Election intelligence</p>
-          <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">2014 → 2028 assembly history and the 2028 prediction</p>
+          <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Telangana</p>
+          <h1 className="mt-1 font-display text-[clamp(27px,3.2vw,40px)] font-semibold leading-[1.02] tracking-[-0.03em]">ReachOut&apos;s Election Intelligence</h1>
 
           <div className="mt-5 space-y-3">
             <div>
@@ -297,23 +297,6 @@ export default function TelanganaDashboard() {
               onChange={(v) => selectAc(v ? Number(v) : null)} />
 
             <div>
-              <span className={LABEL}>Map layer</span>
-              <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-border p-0.5">
-                <button type="button" aria-pressed={layer === "party"} onClick={() => setLayer("party")}
-                  className={cn("flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors", layer === "party" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
-                  <MapPin className="size-3" /> Party mix
-                </button>
-                <button type="button" aria-pressed={layer === "device"} onClick={() => setLayer("device")}
-                  className={cn("flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors", layer === "device" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
-                  <Layers className="size-3" /> Devices
-                </button>
-              </div>
-              <p className="mt-1 text-[9px] leading-snug text-muted-foreground">
-                {layer === "device" ? "Device mix · illustrative placement. 2028 survey metadata, not GPS." : year === "2028" ? "Shade = predicted share." : "Shade = winner's vote share."}
-              </p>
-            </div>
-
-            <div>
               <span className={LABEL}>{year === "2028" ? "Leading party" : `${YEAR_LABEL[year]} winners`}</span>
               <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] font-medium text-muted-foreground">
                 {legendItems.map((item) => (
@@ -324,37 +307,42 @@ export default function TelanganaDashboard() {
                   </span>
                 ))}
               </div>
-              <p className="mt-1.5 text-[9px] leading-snug text-muted-foreground">
-                {year === "2028" ? "Shade = predicted share · lighter lower, darker higher" : `Shade = ${YEAR_LABEL[year]} winner's vote share`}
-              </p>
-              {year === "2028" && <p className="mt-0.5 text-[8.5px] leading-snug text-muted-foreground/80">Others (AIMIM) is the residual group, not a separate AIMIM prediction.</p>}
+
             </div>
           </div>
         </aside>
 
         <div className="relative z-0 mt-4 h-[52svh] min-h-[360px] overflow-hidden rounded-2xl border border-border bg-card lg:absolute lg:inset-x-0 lg:top-16 lg:bottom-0 lg:mt-0 lg:h-auto lg:rounded-none lg:border-0 lg:bg-transparent">
-          <TelanganaMap acs={acs} district={district} ac={acNo} year={year} layer={layer}
+          <TelanganaMap acs={acs} district={district} ac={acNo} year={year} layer="party"
             theme={(theme === "light" ? "light" : "dark") as MapTheme}
             onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={reset} />
           {(district || currentAc) && (
-            <button type="button" onClick={reset}
-              className="absolute left-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 lg:left-[312px]">
-              <RotateCcw className="size-3" /> Reset
-            </button>
+            <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 lg:left-[312px]">
+              <button type="button" onClick={reset}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                <ArrowLeft className="size-3" /> Telangana
+              </button>
+              <button type="button" onClick={reset}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                <RotateCcw className="size-3" /> Reset
+              </button>
+            </div>
           )}
         </div>
 
         <section className="relative z-20 mx-auto mt-4 max-w-xl lg:absolute lg:right-6 lg:top-24 lg:mt-0 lg:w-[340px] lg:max-w-none lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
-          <TelanganaRail scope={scope} year={year} tab={tab} onTab={setTab} onExpand={() => setChartOpen(true)}
+          <TelanganaRail scope={scope} year={year} tab={tab} onTab={setTab} onExpand={openAnalysis}
             theme={theme === "light" ? "light" : "dark"} leads2028={leads2028} actualSeats={actualSeats} actualSeatsYear={actualSeatsYear} isStatewide={isStatewide} />
         </section>
       </section>
 
       <AboutTelangana data={data} />
 
-      <TelanganaChartModal open={chartOpen} onClose={() => setChartOpen(false)} acs={scopeAcs} cohortAcs={cohortAcs}
-        scopeLabel={scope.label} cohortLabel={cohortLabel} year={year} selectedNo={acNo} onSelectAc={(no) => selectAc(no)}
-        theme={theme === "light" ? "light" : "dark"} />
+      {chartOpen && (
+        <TelanganaAnalysis open={chartOpen} onClose={closeAnalysis} acs={data.acs} districts={data.districts}
+          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"}
+          initialLabel={scope.label} theme={theme === "light" ? "light" : "dark"} onSelectDistrict={selectDistrict} />
+      )}
     </div>
   );
 }

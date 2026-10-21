@@ -22,14 +22,12 @@ export type ScopeResult = {
   votes: number;
   answered: number;
   baselineTotal: number;
-  aimimShare: number;
-  device: { total: number; brands: { brand: string; entries: number; share: number }[] } | null;
 };
 
-type Tab = "change" | "share" | "seats" | "more";
+type Tab = "change" | "share" | "seats";
 const TABS: { id: Tab; label: string }[] = [
   { id: "change", label: "Change" }, { id: "share", label: "Share" },
-  { id: "seats", label: "Seats" }, { id: "more", label: "More" },
+  { id: "seats", label: "Seats" },
 ];
 
 function palette(theme: "light" | "dark") {
@@ -167,7 +165,7 @@ export default function TelanganaRail({
         <div className="min-w-0">
           <h2 className="font-display text-lg font-semibold leading-tight">Telangana comparison</h2>
           <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
-            {isStatewide ? "Statewide" : scope.label} · {baselineLabel} vs 2028
+            {isStatewide ? "Statewide" : scope.label}
           </p>
         </div>
         <button type="button" onClick={onExpand} aria-label="Open the large history chart"
@@ -201,34 +199,9 @@ export default function TelanganaRail({
                 </td>
               </tr>
             ))}
-            {scope.aimimShare > 0 && (
-              <tr className="border-t border-border/60 bg-muted/15">
-                <th scope="row" className="px-1.5 py-1.5 text-left font-medium">
-                  <span className="flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: winnerColour("AIMIM") }} />AIMIM</span>
-                </th>
-                <td className="px-1 py-1.5 text-right tabular-nums text-muted-foreground">{fmtPct(scope.aimimShare)}</td>
-                <td className="px-1 py-1.5 text-right text-[9px] leading-tight text-muted-foreground">Inside Others</td>
-                <td className="px-1 py-1.5 text-right text-muted-foreground">—</td>
-              </tr>
-            )}
+
           </tbody>
         </table>
-      </div>
-
-      {scope.aimimShare > 0 && (
-        <p className="mt-1 text-[8.5px] leading-snug text-muted-foreground">
-          AIMIM has its own historical result where available; it sits inside the Others comparison group and has no separate 2028 prediction.
-        </p>
-      )}
-
-      <div className="mt-2 space-y-0.5 text-[9.5px] leading-snug text-muted-foreground">
-        <p><span className="font-semibold text-foreground/80">{baselineLabel} vote-share leader:</span> {PARTY_LABEL[baselineLeader]} · {fmtPct(scope.baseline[baselineLeader])}</p>
-        <p><span className="font-semibold text-foreground/80">2028 predicted leader:</span> {predictedLabel}{scope.predictedLeader && scope.predictedTied.length < 2 ? ` · ${fmtPct(scope.prediction[scope.predictedLeader])}` : ""}</p>
-      </div>
-
-      <div className="mt-2 flex items-center justify-between text-[9px] text-muted-foreground">
-        <span>{year === "2028" ? "Predicted leads, not certified seats" : `${year} actual · election result`}</span>
-        <span className="tabular-nums">{fmtInt(scope.answered)} 2028 survey answers</span>
       </div>
 
       <div className="mt-2 flex gap-1 border-b border-border" role="tablist" aria-label="Comparison views">
@@ -258,35 +231,7 @@ export default function TelanganaRail({
           <div className="space-y-2">
             {leadRows(leads2028, "2028 projected leading assemblies")}
             {Object.keys(actualSeats).length > 0 && leadRows(actualSeats, `${actualSeatsYear} actual AC winners`, true)}
-            <p className="text-[9px] leading-snug text-muted-foreground">
-              {isStatewide ? "Projected leads are modelled from numeric predictions, not certified seats. The actual AC winners are election results; a vote-share leader can differ from the party winning the most ACs." : "Counts are within this scope only. A vote-share leader is not necessarily the party winning the most assemblies."}
-            </p>
-          </div>
-        )}
-        {tab === "more" && (
-          <div className="space-y-2 text-[9.5px] leading-relaxed text-muted-foreground">
-            <p>2014 and 2018 are ECI-derived mirror results; 2023 is the supplied workbook result table. None are exit polls. The 2028 prediction is a separate model measured against the selected baseline.</p>
-            <p>{scope.baselineYear} vote base: {fmtInt(scope.baselineTotal)}.</p>
-            {scope.device && scope.device.total > 0 && (
-              <div className="rounded-lg border border-border/70 bg-background/40 p-2">
-                <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-foreground/70">Device mix · illustrative placement</p>
-                <div className="mt-1 space-y-0.5">
-                  {scope.device.brands.slice(0, 5).map((b) => (
-                    <div key={b.brand} className="flex justify-between gap-2 tabular-nums">
-                      <span className="truncate">{b.brand}</span>
-                      <span>{fmtInt(b.entries)} · {(b.share * 100).toFixed(1)}%</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-1 text-[8.5px] leading-snug">October survey metadata: {fmtInt(scope.device.total)} cutoff-matched entries. Predicted brands, not verified handsets or GPS.</p>
-              </div>
-            )}
-            <div className="flex items-center gap-1.5">
-              <Expand className="size-3" />
-              <button type="button" onClick={onExpand} className="font-medium text-foreground/80 underline decoration-border underline-offset-2 hover:text-foreground">
-                Open vote-share / swing chart
-              </button>
-            </div>
+
           </div>
         )}
       </div>

@@ -62,7 +62,6 @@ export const historicalAc = (year: HistoricYear, no: number) => yearMaps[year].g
 /** Detailed historic winner colour, retaining party identity. */
 export function winnerColour(party: string | null | undefined): string {
   if (!party) return NO_DATA_COLOR;
-  /* the residual comparison group shares AIMIM's green, with the label in brackets */
   if (party === "Others") return PARTY_COLOR.Others;
   return HISTORY.winnerColours[party] ?? NO_DATA_COLOR;
 }
@@ -71,7 +70,7 @@ export function winnerLabel(party: string | null | undefined): string {
   const labels: Record<string, string> = {
     TRS: "TRS", BRS: "BRS", INC: "Congress", BJP: "BJP", AIMIM: "AIMIM", TDP: "TDP",
     BSP: "BSP", YSRCP: "YSRCP", CPI: "CPI", CPM: "CPM", AIFB: "AIFB", IND: "Independent",
-    Others: "Others (AIMIM)",
+    Others: "Others",
   };
   return labels[party] ?? party;
 }

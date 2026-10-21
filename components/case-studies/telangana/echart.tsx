@@ -37,16 +37,18 @@ export default function EChart({ option, height, ariaLabel, reduced, onEvents, c
       if (!entry.isIntersecting || started) return;
       started = true;
       io.disconnect();
-      const [core, charts, components, renderers] = await Promise.all([
+      const [core, charts, components, renderers, features] = await Promise.all([
         import("echarts/core"),
         import("echarts/charts"),
         import("echarts/components"),
         import("echarts/renderers"),
+        import("echarts/features"),
       ]);
       core.use([
-        charts.BarChart, charts.LineChart, charts.ScatterChart,
+        charts.BarChart, charts.LineChart, charts.ScatterChart, charts.EffectScatterChart, charts.BoxplotChart,
         components.GridComponent, components.TooltipComponent, components.DataZoomComponent,
         components.MarkLineComponent, components.MarkAreaComponent, components.AriaComponent,
+        features.LabelLayout,
         renderers.CanvasRenderer,
       ]);
       if (cancelled || !hostRef.current) return;

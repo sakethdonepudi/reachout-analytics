@@ -37,10 +37,10 @@ export default function AboutTelangana({ data }: { data: Oct26 }) {
         <p>
           <b className="text-foreground/85">Map colour.</b> For 2014, 2018 and 2023, each assembly is filled by its actual
           winner in that party&apos;s colour, shaded by the winner&apos;s vote share. For 2028 it is filled by the leading
-          predicted party (BRS pink, Congress+ blue, BJP orange, Others (AIMIM) green) shaded by the predicted share.
+          predicted party (BRS pink, Congress+ blue, BJP orange, Others muted) shaded by the predicted share.
           Kodangal&apos;s 50–50 tie is split equally between BRS and Congress. AIMIM has separate historical results (green)
-          but no separate 2028 prediction: it sits inside Others. The green Others fill is a group label, not a separate
-          2028 AIMIM estimate.
+          but no separate 2028 prediction; the compact table keeps the 2028 residual aggregate intact. The expanded survey
+          analysis uses raw AIMIM answers, not a model projection.
         </p>
         <p>
           <b className="text-foreground/85">Replacement workbook.</b> {fmtInt(c.sourceIds)} distinct Entry IDs; default cutoff
@@ -66,16 +66,8 @@ export default function AboutTelangana({ data }: { data: Oct26 }) {
           metadata states no explicit licence, so reuse terms must be reviewed before production clearance.
         </p>
         <p>
-          <b className="text-foreground/85">Swing statistics.</b> The median is the median assembly swing across the 119
-          comparable ACs (or a re-computed cohort with at least 10 assemblies), not the vote-weighted aggregate. Quartiles are
-          inclusive; outlier fences are 1.5×IQR. A selected assembly&apos;s points outside a fence are ringed; the statewide
-          aggregate is never flagged as an AC outlier.
-        </p>
-        <p>
-          <b className="text-foreground/85">Devices.</b> The device layer uses a separate exact Entry ID join: {fmtInt(HISTORY.devices.total)}
-          {" "}October-cutoff entries, with zero AC mismatches. Brands are predicted metadata, not verified handsets, unique
-          people or GPS; markers use stable illustrative anchors inside the selected assembly geometry. If a later import no
-          longer matches Entry IDs, enrichment must be disabled and revalidated.
+          <b className="text-foreground/85">Swing statistics.</b> Survey-period medians and outliers use inclusive quartiles
+          and 1.5×IQR fences per party; historical election anchors are excluded from those survey-period statistics.
         </p>
         <p>
           <b className="text-foreground/85">What is not claimed.</b> No confidence interval, margin of error, certified seat

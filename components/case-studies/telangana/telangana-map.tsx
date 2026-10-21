@@ -32,6 +32,8 @@ type Feature = {
   geometry: { type: string; coordinates: unknown };
 };
 type FC = { type: "FeatureCollection"; features: Feature[] };
+type DistrictFeature = { properties: { group: string; acs: number[] }; geometry: { type: string; coordinates: unknown } };
+type DistrictFC = { type: "FeatureCollection"; features: DistrictFeature[] };
 
 type Props = {
   acs: AcRow[];
@@ -120,6 +122,7 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
   markerDefsRef.current = new Map(markers.map((m) => [m.key, m]));
   const buildMarkersRef = useRef<() => void>(() => {});
   const [geo, setGeo] = useState<FC | null>(null);
+  const [districtGeo, setDistrictGeo] = useState<DistrictFC | null>(null);
   const [tip, setTip] = useState<{ x: number; y: number; title: string; sub: string; value: string; colours: string[] } | null>(null);
 
   const live = useRef({ acs, district, ac, year, layer, theme, onSelectDistrict, onSelectAc, onReset });
@@ -136,17 +139,19 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/telangana/telangana-ac.geojson")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((d: FC) => { if (!cancelled) setGeo(d); })
-      .catch(() => { if (!cancelled) setGeo(null); });
+    Promise.all([
+      fetch("/telangana/telangana-ac.geojson").then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))),
+      fetch("/telangana/telangana-districts.geojson").then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))),
+    ])
+      .then(([a, d]: [FC, DistrictFC]) => { if (!cancelled) { setGeo(a); setDistrictGeo(d); } })
+      .catch(() => { if (!cancelled) { setGeo(null); setDistrictGeo(null); } });
     return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
     const host = hostRef.current;
     const canvas = canvasRef.current;
-    if (!geo || !host || !canvas) return;
+    if (!geo || !districtGeo || !host || !canvas) return;
     const P = PAL[theme];
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
@@ -304,6 +309,26 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
     const topMobileGroups = new Set(
       [...groupArea.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([g]) => g),
     );
+
+    /* district outlines: the analytical grouping boundaries shown at state */
+    const districtLines = new Map<string, THREE.LineBasicMaterial>();
+    for (const f of districtGeo.features) {
+      const polys = (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates) as number[][][][];
+      const pts: number[] = [];
+      for (const poly of polys) for (const ring of poly) {
+        for (let i = 0; i < ring.length; i++) {
+          const [px, pz] = project(ring[i][0], ring[i][1]);
+          const [qx, qz] = project(ring[(i + 1) % ring.length][0], ring[(i + 1) % ring.length][1]);
+          pts.push(px, DEPTH + 1.15, pz, qx, DEPTH + 1.15, qz);
+        }
+      }
+      if (!pts.length) continue;
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+      const mat = new THREE.LineBasicMaterial({ color: new THREE.Color(P.line), transparent: true, opacity: 0.75 });
+      scene.add(new THREE.LineSegments(g, mat));
+      districtLines.set(f.properties.group, mat);
+    }
 
     /* ---------------- deterministic illustrative device anchors ---------------- */
     const acAnchors = new Map<number, { x: number; z: number }[]>();
@@ -640,9 +665,13 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
         e.side.color.lerp(new THREE.Color(P.side), aMat);
         e.side.opacity = vis * 0.9 * dimOp;
         e.line.color.lerp(new THREE.Color(isSel ? P.sel : P.line), aHover);
-        e.line.opacity = (isSel ? 1 : 0.55) * vis * (0.5 + 0.5 * dimOp);
+        e.line.opacity = (grp ? (isSel ? 1 : 0.55) : 0) * vis * (0.5 + 0.5 * dimOp);
         e.group3.visible = vis > 0.01;
         e.group3.position.y = e.elev + e.hover * 1.5;
+      }
+
+      for (const [g, mat] of districtLines) {
+        mat.opacity = grp ? (g === grp ? 0.85 : 0.03) : 0.7;
       }
 
       /* labels: districts at state, assemblies when focused */
@@ -733,10 +762,11 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
         e.mesh.geometry.dispose(); e.cap.dispose(); e.side.dispose(); e.line.dispose();
         for (const f of Object.values(e.fills)) f.texture?.dispose();
       }
+      for (const mat of districtLines.values()) mat.dispose();
       renderer.dispose();
       setTip(null);
     };
-  }, [geo, theme]);
+  }, [geo, districtGeo, theme]);
 
   /* labels for the active level */
   const labels = useMemo<{ key: string; text: string; no?: number; group?: string }[]>(() => {

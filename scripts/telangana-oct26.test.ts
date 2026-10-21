@@ -159,8 +159,8 @@ check("map colours have a leading party for every assembly and no invented AIMIM
   assert.equal(PARTY_COLOR.BRS, "#e5007d");
   assert.equal(PARTY_COLOR.Congress, "#1f6fd0");
   assert.equal(PARTY_COLOR.BJP, "#e87511");
-  assert.equal(PARTY_COLOR.Others, "#16a34a");
-  assert.equal(PARTY_LABEL.Others, "Others (AIMIM)");
+  assert.equal(PARTY_COLOR.Others, "#7c6f9a");
+  assert.equal(PARTY_LABEL.Others, "Others");
   assert.ok(NO_DATA_COLOR.startsWith("#"));
 });
 
