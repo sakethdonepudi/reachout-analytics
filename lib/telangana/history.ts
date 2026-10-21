@@ -23,9 +23,10 @@ export const YEAR_LABEL: Record<ElectionYear, string> = {
 export type HistoricAc = {
   no: number; name: string; district: string; total: number;
   shares: ShareSet; winnerParty: string; winnerName: string; winnerVotes: number; winnerShare: number;
+  aimimVotes: number; aimimShare: number;
 };
 export type HistoricYearRow = {
-  total: number; shares: ShareSet; seats: Record<string, number>; acs: HistoricAc[];
+  total: number; shares: ShareSet; aimim: number; seats: Record<string, number>; acs: HistoricAc[];
 };
 export type SwingAssembly = { no: number; changePp: number; outlier: boolean };
 export type SwingStat = {
@@ -91,6 +92,19 @@ export function historicalShares(acs: AcRow[], year: HistoricYear): ShareSet {
   if (!weight) return { ...out };
   for (const p of PARTIES) out[p] /= weight;
   return out;
+}
+
+/** AIMIM's separately available historical share, weighted by that election's votes. */
+export function historicalAimim(acs: AcRow[], year: HistoricYear): number {
+  let weight = 0;
+  let votes = 0;
+  for (const a of acs) {
+    const rec = yearMaps[year].get(a.no);
+    if (!rec || !(rec.total > 0)) continue;
+    weight += rec.total;
+    votes += rec.aimimShare * rec.total;
+  }
+  return weight ? votes / weight : 0;
 }
 
 /** Scope shares for any election year: 2028 uses the prediction (2023 weights). */

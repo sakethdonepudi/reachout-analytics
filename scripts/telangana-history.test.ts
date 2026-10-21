@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { DATA, PARTIES, leaderOf, weightedShares } from "@/lib/telangana/oct26";
 import {
-  HISTORY, SWING_INTERVALS, baselineYear, cohortStats, historicalAc, historicalShares,
+  HISTORY, SWING_INTERVALS, baselineYear, cohortStats, historicalAc, historicalAimim, historicalShares,
   historicalTotal, outlierRows, swingStat, winnerColour, winnerLabel, winnerSeats,
 } from "@/lib/telangana/history";
 
@@ -64,6 +64,18 @@ check("baseline is 2023 for 2028 and the selected year otherwise", () => {
   assert.equal(baselineYear("2023"), "2023");
   assert.ok(near(weightedShares(DATA.acs, "prediction").BRS, DATA.statewide.prediction.BRS, 1e-5));
   assert.equal(historicalTotal(DATA.acs, "2014"), 19_448_279);
+});
+
+check("AIMIM historical results stay named separately by year", () => {
+  assert.ok(near(HISTORY.years["2014"].aimim, 0.037366, 1e-6));
+  assert.ok(near(HISTORY.years["2018"].aimim, 0.027112, 1e-6));
+  assert.ok(near(HISTORY.years["2023"].aimim, 0.022158, 1e-6));
+  assert.ok(near(historicalAimim(DATA.acs, "2014"), 0.037366, 1e-6));
+  assert.ok(near(historicalAimim(DATA.acs, "2018"), 0.027112, 1e-6));
+  assert.ok(near(historicalAimim(DATA.acs, "2023"), 0.022158, 1e-6));
+  assert.equal(HISTORY.years["2014"].seats.AIMIM, 7);
+  assert.equal(HISTORY.years["2018"].seats.AIMIM, 7);
+  assert.equal(HISTORY.years["2023"].seats.AIMIM, 7);
 });
 
 check("20 swing tables: five intervals × four parties, 119 assemblies each", () => {

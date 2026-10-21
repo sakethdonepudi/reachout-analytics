@@ -12,7 +12,7 @@ import {
 } from "@/lib/telangana/oct26";
 import {
   ELECTION_YEARS, YEAR_LABEL, baselineYear, deviceSummary, historicalAc, historicalShares,
-  historicalTotal, winnerColour, winnerLabel, winnerSeats, type ElectionYear,
+  historicalAimim, historicalTotal, winnerColour, winnerLabel, winnerSeats, type ElectionYear,
 } from "@/lib/telangana/history";
 import TelanganaRail, { type ScopeResult } from "./telangana-rail";
 import TelanganaChartModal from "./telangana-chart-modal";
@@ -179,7 +179,7 @@ export default function TelanganaDashboard() {
     if (!scopeAcs.length) {
       return {
         label, baselineYear: baselineYear(year), baseline: empty, prediction: empty,
-        change: { ...empty }, predictedLeader: null, predictedTied: [], votes: 0, answered: 0, device: null, baselineTotal: 0,
+        change: { ...empty }, predictedLeader: null, predictedTied: [], votes: 0, answered: 0, device: null, baselineTotal: 0, aimimShare: 0,
       };
     }
     const prediction = weightedShares(scopeAcs, "prediction");
@@ -200,6 +200,7 @@ export default function TelanganaDashboard() {
       answered: scopeAcs.reduce((n, a) => n + a.answered2028, 0),
       device: deviceSummary(scopeAcs),
       baselineTotal: historicalTotal(scopeAcs, baseYear),
+      aimimShare: historicalAimim(scopeAcs, baseYear),
     };
   }, [scopeAcs, year, currentAc, district]);
 

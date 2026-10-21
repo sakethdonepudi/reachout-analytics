@@ -304,6 +304,7 @@ export default function TelanganaChartModal({
           <p className="mt-1 text-[9.5px] text-muted-foreground">
             {mode === "share" ? "Solid segments are actual election results (2014, 2018, 2023); the dashed segment is the 2028 prediction." : "Swing is in percentage points. The median is the median assembly swing across comparable ACs, not the vote-weighted aggregate. Optional 2014→2028 and 2018→2028 lines are baseline comparisons, not extra election periods."}
           </p>
+          <p className="mt-0.5 text-[9px] text-muted-foreground">AIMIM is shown separately in the historical map, seats and AIMIM comparison row; these four comparison series keep it inside Others.</p>
 
           {mode === "swing" && (showMedian || highlightOutliers) && (
             <div className="mt-3 grid gap-2 rounded-xl border border-border bg-background/40 p-3 md:grid-cols-2">

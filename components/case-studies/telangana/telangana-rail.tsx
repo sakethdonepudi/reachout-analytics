@@ -22,6 +22,7 @@ export type ScopeResult = {
   votes: number;
   answered: number;
   baselineTotal: number;
+  aimimShare: number;
   device: { total: number; brands: { brand: string; entries: number; share: number }[] } | null;
 };
 
@@ -200,9 +201,25 @@ export default function TelanganaRail({
                 </td>
               </tr>
             ))}
+            {scope.aimimShare > 0 && (
+              <tr className="border-t border-border/60 bg-muted/15">
+                <th scope="row" className="px-1.5 py-1.5 text-left font-medium">
+                  <span className="flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: winnerColour("AIMIM") }} />AIMIM</span>
+                </th>
+                <td className="px-1 py-1.5 text-right tabular-nums text-muted-foreground">{fmtPct(scope.aimimShare)}</td>
+                <td className="px-1 py-1.5 text-right text-[9px] leading-tight text-muted-foreground">Inside Others</td>
+                <td className="px-1 py-1.5 text-right text-muted-foreground">—</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {scope.aimimShare > 0 && (
+        <p className="mt-1 text-[8.5px] leading-snug text-muted-foreground">
+          AIMIM has its own historical result where available; it sits inside the Others comparison group and has no separate 2028 prediction.
+        </p>
+      )}
 
       <div className="mt-2 space-y-0.5 text-[9.5px] leading-snug text-muted-foreground">
         <p><span className="font-semibold text-foreground/80">{baselineLabel} vote-share leader:</span> {PARTY_LABEL[baselineLeader]} · {fmtPct(scope.baseline[baselineLeader])}</p>

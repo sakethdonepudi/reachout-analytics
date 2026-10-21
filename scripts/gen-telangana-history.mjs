@@ -23,13 +23,19 @@ for (const year of ["2014", "2018", "2023"]) {
   const rows = history[year];
   const total = rows.reduce((sum, r) => sum + r.total, 0);
   const weighted = { BRS: 0, Congress: 0, BJP: 0, Others: 0 };
-  for (const r of rows) { const sh = pickShares(r.shares); for (const p of groups) weighted[p] += sh[p] * r.total; }
+  let aimimWeighted = 0;
+  for (const r of rows) {
+    const sh = pickShares(r.shares);
+    for (const p of groups) weighted[p] += sh[p] * r.total;
+    aimimWeighted += (Number(r.partyVotes?.AIMIM ?? 0) / (r.total || 1)) * r.total;
+  }
   for (const p of groups) weighted[p] /= total || 1;
   const seats = {};
   for (const r of rows) seats[r.winnerParty] = (seats[r.winnerParty] ?? 0) + 1;
   years[year] = {
     total,
     shares: Object.fromEntries(groups.map((p) => [p, round6(weighted[p])])),
+    aimim: round6(aimimWeighted / (total || 1)),
     seats,
     acs: rows.map((r) => ({
       no: r.acNo,
@@ -41,6 +47,8 @@ for (const year of ["2014", "2018", "2023"]) {
       winnerName: r.winnerName,
       winnerVotes: r.winnerVotes,
       winnerShare: round6(r.total ? r.winnerVotes / r.total : 0),
+      aimimVotes: Number(r.partyVotes?.AIMIM ?? 0),
+      aimimShare: round6(r.total ? Number(r.partyVotes?.AIMIM ?? 0) / r.total : 0),
     })),
   };
 }
