@@ -16,7 +16,8 @@ import { brandMarker } from "@/lib/telangana/brands";
    is filled by its leading 2028 prediction party, with a party-hue light-to-
    dark shade for that party's predicted share. Ties are split equally
    between the tied parties' colours; missing predictions are neutral grey.
-   AIMIM has no separate prediction in this workbook and is never invented.
+   AIMIM is a separate modelled series in the compact dataset after the
+   documented extraction from the four-group Others residual.
    District grouping is the workbook's analytical AC grouping, not an
    official administrative boundary.
    ===================================================================== */

@@ -28,19 +28,29 @@ export default function AboutTelangana({ data }: { data: Oct26 }) {
           observed result. Raw survey answers stay private and are not displayed in the public comparison.
         </p>
         <p>
-          <b className="text-foreground/85">Parties.</b> The comparison table uses four groups: BRS/TRS family; <b>Congress+</b>
-          (INC + CPI, not INC alone); BJP; and Others (AIMIM + BSP + Janasena + NOTA + IND + all remaining). The Others row is
-          green to connect it with AIMIM, but it is a residual group, not a separate AIMIM projection. Historical maps
-          retain the detailed winning-party identity — TRS, Congress, BJP, AIMIM, TDP, BSP, YSRCP, CPI, CPM, AIFB and
-          Independent — so the seat geography is not collapsed into the four comparison groups.
+          <b className="text-foreground/85">Parties.</b> The comparison table shows five displayed series: BRS/TRS family;
+          <b>Congress+</b> (INC + CPI, not INC alone); BJP; <b>AIMIM</b>; and Others. The underlying workbook model is the
+          accepted four-group BRS/Congress/BJP/Others model; AIMIM has been extracted from its Others residual using the
+          documented extension below. Others now excludes AIMIM and remains a residual of BSP + Janasena + NOTA + IND and all
+          other remaining parties. Historical maps retain the detailed winning-party identity — TRS, Congress, BJP, AIMIM, TDP,
+          BSP, YSRCP, CPI, CPM, AIFB and Independent.
+        </p>
+        <p>
+          <b className="text-foreground/85">AIMIM extraction.</b> The four-group model folds AIMIM into Others. The extension
+          estimates AIMIM at each assembly as the <b>2023 ECI AIMIM share</b> plus the AIMIM survey swing, where the swing is
+          AIMIM&apos;s 2028 intention share minus its recalled-2023 share. The AC swing is shrunk to the district AIMIM swing with
+          w = min(answered 2028, answered 2023) / (min + {data.shrinkFactor}). The resulting amount is removed from that
+          assembly&apos;s existing Others residual; it is never an arbitrary division and the raw AIMIM survey share is not used as
+          the prediction. {data.aimimExtension
+            ? `${data.aimimExtension.cappedCount === 0 ? "No assembly was constrained by a smaller Others residual." : `${data.aimimExtension.cappedCount} assembly(ies) were capped by the available Others residual.`} The only zero-Others, non-override case is ${data.aimimExtension.zeroResidualAcs.join(", ") || "none"}.`
+            : "Model extension metadata is unavailable."}
+          The Kodangal prediction-only 50–50 override is preserved exactly and is not given an AIMIM estimate.
         </p>
         <p>
           <b className="text-foreground/85">Map colour.</b> For 2014, 2018 and 2023, each assembly is filled by its actual
           winner in that party&apos;s colour, shaded by the winner&apos;s vote share. For 2028 it is filled by the leading
-          predicted party (BRS pink, Congress+ blue, BJP orange, Others muted) shaded by the predicted share.
-          Kodangal&apos;s 50–50 tie is split equally between BRS and Congress. AIMIM has separate historical results (green)
-          but no separate 2028 prediction; the compact table keeps the 2028 residual aggregate intact. The expanded survey
-          analysis uses raw AIMIM answers, not a model projection.
+          predicted party (BRS/TRS pink, Congress/INC blue, BJP saffron, AIMIM green, Others muted purple), shaded by the
+          predicted share. Kodangal&apos;s 50–50 tie is split equally between BRS and Congress.
         </p>
         <p>
           <b className="text-foreground/85">Replacement workbook.</b> {fmtInt(c.sourceIds)} distinct Entry IDs; default cutoff

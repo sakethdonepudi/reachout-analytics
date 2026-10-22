@@ -26,31 +26,31 @@ export type PartyMeta = {
 
 export const PARTY_META: Record<TgParty, PartyMeta> = {
   BRS: {
-    id: "BRS", label: "BRS", short: "BRS", color: "#e5007d", ink: "#b8005f",
+    id: "BRS", label: "BRS", short: "BRS", color: "#EC4899", ink: "#b8005f",
     aliases: ["BRS", "TRS", "BHRS", "Bharat Rashtra Samithi", "Telangana Rashtra Samithi"],
   },
   INC: {
-    id: "INC", label: "Congress", short: "INC", color: "#1f6fd0", ink: "#15539c",
+    id: "INC", label: "Congress", short: "INC", color: "#2563EB", ink: "#15539c",
     aliases: ["INC", "Congress", "Indian National Congress", "INC(I)"],
   },
   BJP: {
-    id: "BJP", label: "BJP", short: "BJP", color: "#e87511", ink: "#b55607",
+    id: "BJP", label: "BJP", short: "BJP", color: "#F97316", ink: "#b55607",
     aliases: ["BJP", "Bharatiya Janata Party"],
   },
   AIMIM: {
-    id: "AIMIM", label: "AIMIM", short: "AIMIM", color: "#128a3f", ink: "#0b612c",
+    id: "AIMIM", label: "AIMIM", short: "AIMIM", color: "#16A34A", ink: "#0b612c",
     aliases: ["AIMIM", "Majlis", "All India Majlis-e-Ittehadul Muslimeen"],
   },
   TDP: {
-    id: "TDP", label: "TDP", short: "TDP", color: "#e3b505", ink: "#8f6f00",
+    id: "TDP", label: "TDP", short: "TDP", color: "#EAB308", ink: "#8f6f00",
     aliases: ["TDP", "Telugu Desam Party"],
   },
   JSP: {
-    id: "JSP", label: "Jana Sena", short: "JSP", color: "#d7263d", ink: "#a11426",
+    id: "JSP", label: "Jana Sena", short: "JSP", color: "#06B6D4", ink: "#087f96",
     aliases: ["JSP", "JNP", "Janasena", "Jana Sena", "JnP"],
   },
   Others: {
-    id: "Others", label: "Others", short: "OTH", color: "#8a94a3", ink: "#5f6875",
+    id: "Others", label: "Others", short: "OTH", color: "#8B5CF6", ink: "#5b21b6",
     aliases: ["Others", "Other", "Independent", "IND"],
   },
   NOTA: {

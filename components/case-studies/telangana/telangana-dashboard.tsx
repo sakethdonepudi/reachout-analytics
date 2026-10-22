@@ -184,7 +184,7 @@ export default function TelanganaDashboard() {
   }, [data, district, currentAc]);
 
   const scope: ScopeResult = useMemo(() => {
-    const empty: ShareSet = { BRS: 0, Congress: 0, BJP: 0, Others: 0 };
+    const empty: ShareSet = { BRS: 0, Congress: 0, BJP: 0, AIMIM: 0, Others: 0 };
     const label = currentAc ? currentAc.name : district ?? "Telangana";
     if (!scopeAcs.length) {
       return {
@@ -195,7 +195,7 @@ export default function TelanganaDashboard() {
     const prediction = weightedShares(scopeAcs, "prediction");
     const baseYear = baselineYear(year);
     const baseline = historicalShares(scopeAcs, baseYear);
-    const change: ShareSet = { BRS: 0, Congress: 0, BJP: 0, Others: 0 };
+    const change: ShareSet = { BRS: 0, Congress: 0, BJP: 0, AIMIM: 0, Others: 0 };
     for (const p of PARTIES) change[p] = (prediction[p] - baseline[p]) * 100;
     const lead = leaderOf(prediction);
     return {

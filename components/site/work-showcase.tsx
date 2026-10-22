@@ -11,10 +11,10 @@ import { cn } from "@/lib/utils";
 const PARTY_COLORS: Record<string, string> = {
   TDP: "#e0b21a",
   AIADMK: "#2e8b2e",
-  BJP: "#f58a24",
+  BJP: "#F97316",
   "JD(U)": "#1e8a3c",
-  INC: "#1b82c4",
-  BRS: "#e5007d",
+  INC: "#2563EB",
+  BRS: "#EC4899",
 };
 
 function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {

@@ -47,12 +47,12 @@ check("district membership is complete and unique", () => {
   for (const a of DATA.acs) assert.ok(DATA.districts.some((d) => d.name === a.district), a.district);
 });
 
-check("statewide actual 2023 shares", () => {
-  closeShares(DATA.statewide.actual, { BRS: 0.373463, Congress: 0.397448, BJP: 0.138973, Others: 0.090115 }, 5e-5);
+check("statewide actual 2023 shares with AIMIM separated from Others", () => {
+  closeShares(DATA.statewide.actual, { BRS: 0.373463, Congress: 0.397448, BJP: 0.138973, AIMIM: 0.022158, Others: 0.067957 }, 5e-5);
 });
 
-check("statewide 2028 prediction after overrides", () => {
-  closeShares(DATA.statewide.prediction, { BRS: 0.466894, Congress: 0.293983, BJP: 0.148877, Others: 0.090246 }, 5e-5);
+check("statewide 2028 prediction after overrides and AIMIM extraction", () => {
+  closeShares(DATA.statewide.prediction, { BRS: 0.466895, Congress: 0.293983, BJP: 0.148877, AIMIM: 0.022413, Others: 0.067832 }, 5e-5);
 });
 
 check("raw survey aggregates are excluded from the public snapshot", () => {
@@ -87,8 +87,8 @@ check("district rollup is vote-weighted and reconciles", () => {
   assert.equal(weight, 23_439_945);
 });
 
-check("statewide projected leads: BRS 70, Congress 27, BJP 13, Others 8, Tie 1", () => {
-  assert.deepEqual(DATA.statewide.leads, { BJP: 13, Congress: 27, BRS: 70, Others: 8, Tie: 1 });
+check("statewide projected leads after AIMIM extraction: BRS 70, Congress 27, BJP 13, AIMIM 7, Others 1, Tie 1", () => {
+  assert.deepEqual(DATA.statewide.leads, { BJP: 13, Congress: 27, BRS: 70, AIMIM: 7, Others: 1, Tie: 1 });
   const counts: Record<string, number> = {};
   for (const a of DATA.acs) {
     const lead = leaderOf(a.prediction);
@@ -98,7 +98,8 @@ check("statewide projected leads: BRS 70, Congress 27, BJP 13, Others 8, Tie 1",
   assert.equal(counts.BRS, 70);
   assert.equal(counts.Congress, 27);
   assert.equal(counts.BJP, 13);
-  assert.equal(counts.Others, 8);
+  assert.equal(counts.AIMIM, 7);
+  assert.equal(counts.Others, 1);
   assert.equal(counts.Tie, 1);
 });
 
@@ -108,6 +109,7 @@ check("Kodangal is an exact prediction-only 50–50 tie", () => {
   assert.equal(k.name, "Kodangal");
   assert.equal(k.prediction.BRS, 0.5);
   assert.equal(k.prediction.Congress, 0.5);
+  assert.equal(k.prediction.AIMIM, 0);
   assert.deepEqual(k.tied.sort(), ["BRS", "Congress"]);
   assert.equal(k.leader, "Tie");
   assert.ok(k.override?.basis.toLowerCase().includes("override"));
@@ -149,19 +151,51 @@ check("no answered-2028 AC has a zero base", () => {
   assert.equal(DATA.acs.reduce((s, a) => s + a.answered2028, 0), 4401);
 });
 
-check("map colours have a leading party for every assembly and no invented AIMIM prediction", () => {
+check("all five displayed parties exist and use the required mapping", () => {
+  assert.deepEqual(PARTIES, ["BRS", "Congress", "BJP", "AIMIM", "Others"]);
   for (const a of DATA.acs) {
-    assert.deepEqual(Object.keys(a.prediction).sort(), ["BJP", "BRS", "Congress", "Others"]);
-    assert.ok(!("AIMIM" in a.prediction));
+    assert.deepEqual(Object.keys(a.prediction).sort(), ["AIMIM", "BJP", "BRS", "Congress", "Others"]);
     const lead = leaderOf(a.prediction);
     assert.ok(lead.tied.length > 1 || lead.leader !== null, `AC ${a.no}`);
   }
-  assert.equal(PARTY_COLOR.BRS, "#e5007d");
-  assert.equal(PARTY_COLOR.Congress, "#1f6fd0");
-  assert.equal(PARTY_COLOR.BJP, "#e87511");
-  assert.equal(PARTY_COLOR.Others, "#7c6f9a");
+  assert.equal(PARTY_COLOR.BRS, "#EC4899");
+  assert.equal(PARTY_COLOR.Congress, "#2563EB");
+  assert.equal(PARTY_COLOR.BJP, "#F97316");
+  assert.equal(PARTY_COLOR.AIMIM, "#16A34A");
+  assert.equal(PARTY_COLOR.Others, "#8B5CF6");
+  assert.equal(PARTY_LABEL.AIMIM, "AIMIM");
   assert.equal(PARTY_LABEL.Others, "Others");
   assert.ok(NO_DATA_COLOR.startsWith("#"));
+});
+
+check("AIMIM is a documented model extension, not a raw survey relabel", () => {
+  const ext = DATA.aimimExtension;
+  assert.ok(ext);
+  assert.equal(ext?.cappedCount, 0);
+  assert.deepEqual(ext?.cappedAcs, []);
+  assert.deepEqual(ext?.overrideAcs, [72]);
+  assert.match(ext?.method ?? "", /2023 ECI AIMIM actual share/);
+  assert.match(ext?.method ?? "", /shrunk to the district swing/);
+  assert.match(ext?.note ?? "", /not a raw survey share/i);
+  assert.ok(near(DATA.statewide.actual.AIMIM, 0.022158, 5e-5));
+  assert.ok(near(DATA.statewide.prediction.AIMIM, 0.022413, 5e-5));
+  assert.ok(DATA.statewide.prediction.AIMIM > 0);
+  assert.ok(Math.abs(DATA.statewide.prediction.AIMIM - 9 / 4768) > 0.01, "AIMIM must not reuse the raw survey share");
+  assert.ok(near(DATA.statewide.actual.Others, 0.067957, 5e-5));
+  assert.ok(near(DATA.statewide.prediction.Others, 0.067832, 5e-5));
+  for (const a of DATA.acs) {
+    assert.ok(a.prediction.AIMIM >= 0, `AC ${a.no}`);
+    assert.ok(a.prediction.AIMIM <= (a.aimimEstimate ?? 0) + 1e-6, `AC ${a.no} AIMIM > estimate`);
+    assert.ok(a.prediction.AIMIM + a.prediction.Others <= 1.000001, `AC ${a.no} residual`);
+    const total = PARTIES.reduce((s2, p) => s2 + a.prediction[p], 0);
+    assert.ok(near(total, 1, 2e-5), `AC ${a.no} total ${total}`);
+  }
+  const k = DATA.acs.find((a) => a.no === 72)!;
+  assert.equal(k.prediction.AIMIM, 0);
+  assert.equal(k.prediction.Others, 0);
+  assert.equal(k.prediction.BRS, 0.5);
+  assert.equal(k.prediction.Congress, 0.5);
+  assert.equal(k.leader, "Tie");
 });
 
 check("party shading keeps each hue and varies with predicted share", () => {

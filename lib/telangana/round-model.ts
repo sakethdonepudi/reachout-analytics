@@ -20,9 +20,9 @@ export const P7_COLOR: Record<P7, string> = {
   BRS: PARTY_COLOR.BRS,
   Congress: PARTY_COLOR.Congress,
   BJP: PARTY_COLOR.BJP,
-  AIMIM: "#16a34a",
-  TDP: "#eab308",
-  JSP: "#06b6d4",
+  AIMIM: PARTY_COLOR.AIMIM,
+  TDP: "#EAB308",
+  JSP: "#06B6D4",
   Others: PARTY_COLOR.Others,
 };
 export type Counts7 = Record<P7, number>;

@@ -107,7 +107,12 @@ const bundle = {
   cutoff: "2026-10-01",
   groups: ["BRS", "Congress", "BJP", "Others"],
   groupLabels: { BRS: "BRS", Congress: "Congress+", BJP: "BJP", Others: "Others" },
-  winnerColours: colours,
+  winnerColours: {
+    ...colours,
+    TRS: "#EC4899", BRS: "#EC4899",
+    INC: "#2563EB", Congress: "#2563EB", "Congress+": "#2563EB",
+    BJP: "#F97316", AIMIM: "#16A34A", TDP: "#EAB308", Others: "#8B5CF6",
+  },
   sourceAudit,
   years,
   stats: statsOut,
