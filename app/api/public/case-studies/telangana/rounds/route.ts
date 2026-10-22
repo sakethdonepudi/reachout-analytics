@@ -33,11 +33,13 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(
     {
       version: rounds.version,
+      source: rounds.source,
       parties: rounds.parties,
-      partyGroups: rounds.partyGroups,
+      modelAssumptions: rounds.modelAssumptions,
+      roundBasis: rounds.roundBasis,
       scope,
       ...data,
-      globalEligible: rounds.eligible,
+      globalEntries: rounds.entries,
       globalDateMin: rounds.dateMin,
       globalDateMax: rounds.dateMax,
     },

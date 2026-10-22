@@ -66,6 +66,12 @@ export default function AboutTelangana({ data }: { data: Oct26 }) {
           metadata states no explicit licence, so reuse terms must be reviewed before production clearance.
         </p>
         <p>
+          <b className="text-foreground/85">Round model.</b> The expanded round tracker is separate from the compact AC model:
+          projected 2028 = 2023 actual + (2028 intention share − recalled 2023 share), with negatives floored and the seven-party
+          vector normalised to 100%. The two questions use separate answered denominators. TDP and Janasena were not recalled-2023
+          answer options, so their recall share is recorded as zero; raw answers are unchanged.
+        </p>
+        <p>
           <b className="text-foreground/85">Swing statistics.</b> Survey-period medians and outliers use inclusive quartiles
           and 1.5×IQR fences per party; historical election anchors are excluded from those survey-period statistics.
         </p>

@@ -17,6 +17,20 @@ const sourceAudit = readJson("docs/source_audit.json");
 const round6 = (n) => (Number.isFinite(n) ? Math.round(n * 1e6) / 1e6 : 0);
 const groups = ["BRS", "Congress", "BJP", "Others"];
 const pickShares = (s) => ({ BRS: round6(s.BRS), Congress: round6(s["Congress+"] ?? s.Congress), BJP: round6(s.BJP), Others: round6(s.Others) });
+const detailOf = (r) => {
+  const pv = r.partyVotes || {};
+  const vals = {
+    BRS: Number(pv.TRS ?? pv.BRS ?? 0),
+    Congress: Number(pv.INC ?? 0),
+    BJP: Number(pv.BJP ?? 0),
+    AIMIM: Number(pv.AIMIM ?? 0),
+    TDP: Number(pv.TDP ?? 0),
+    JSP: Number(pv.Janasena ?? 0),
+  };
+  const present = Object.values(vals).reduce((s, n) => s + n, 0);
+  vals.Others = Math.max(0, Number(r.total || 0) - present);
+  return Object.fromEntries(Object.entries(vals).map(([k, n]) => [k, round6(Number(r.total) ? n / r.total : 0)]));
+};
 
 const years = {};
 for (const year of ["2014", "2018", "2023"]) {
@@ -24,9 +38,12 @@ for (const year of ["2014", "2018", "2023"]) {
   const total = rows.reduce((sum, r) => sum + r.total, 0);
   const weighted = { BRS: 0, Congress: 0, BJP: 0, Others: 0 };
   let aimimWeighted = 0;
+  const detailWeighted = Object.fromEntries(["BRS", "Congress", "BJP", "AIMIM", "TDP", "JSP", "Others"].map((p) => [p, 0]));
   for (const r of rows) {
     const sh = pickShares(r.shares);
+    const dt = detailOf(r);
     for (const p of groups) weighted[p] += sh[p] * r.total;
+    for (const p of Object.keys(detailWeighted)) detailWeighted[p] += dt[p] * r.total;
     aimimWeighted += (Number(r.partyVotes?.AIMIM ?? 0) / (r.total || 1)) * r.total;
   }
   for (const p of groups) weighted[p] /= total || 1;
@@ -35,6 +52,7 @@ for (const year of ["2014", "2018", "2023"]) {
   years[year] = {
     total,
     shares: Object.fromEntries(groups.map((p) => [p, round6(weighted[p])])),
+    detail: Object.fromEntries(Object.entries(detailWeighted).map(([p, n]) => [p, round6(n / (total || 1))])),
     aimim: round6(aimimWeighted / (total || 1)),
     seats,
     acs: rows.map((r) => ({
@@ -49,6 +67,7 @@ for (const year of ["2014", "2018", "2023"]) {
       winnerShare: round6(r.total ? r.winnerVotes / r.total : 0),
       aimimVotes: Number(r.partyVotes?.AIMIM ?? 0),
       aimimShare: round6(r.total ? Number(r.partyVotes?.AIMIM ?? 0) / r.total : 0),
+      detail: detailOf(r),
     })),
   };
 }

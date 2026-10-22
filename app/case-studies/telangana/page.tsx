@@ -5,7 +5,7 @@ import TelanganaDashboard from "@/components/case-studies/telangana/telangana-da
 export const metadata: Metadata = {
   title: "Telangana — ReachOut's Election Intelligence",
   description:
-    "Interactive Telangana assembly election history: 2014, 2018 and 2023 actual winners, the 2028 prediction, swing statistics and device metadata across 119 constituencies.",
+    "Interactive Telangana assembly election history: 2014, 2018 and 2023 actual winners, the 2028 prediction, survey-round projections and swing analysis across 119 constituencies.",
 };
 
 export default function TelanganaCaseStudyPage() {

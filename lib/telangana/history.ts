@@ -20,13 +20,16 @@ export const YEAR_LABEL: Record<ElectionYear, string> = {
   "2014": "2014", "2018": "2018", "2023": "2023", "2028": "2028 Predicted",
 };
 
+export type DetailSet = {
+  BRS: number; Congress: number; BJP: number; AIMIM: number; TDP: number; JSP: number; Others: number;
+};
 export type HistoricAc = {
   no: number; name: string; district: string; total: number;
-  shares: ShareSet; winnerParty: string; winnerName: string; winnerVotes: number; winnerShare: number;
+  shares: ShareSet; detail: DetailSet; winnerParty: string; winnerName: string; winnerVotes: number; winnerShare: number;
   aimimVotes: number; aimimShare: number;
 };
 export type HistoricYearRow = {
-  total: number; shares: ShareSet; aimim: number; seats: Record<string, number>; acs: HistoricAc[];
+  total: number; shares: ShareSet; detail: DetailSet; aimim: number; seats: Record<string, number>; acs: HistoricAc[];
 };
 export type SwingAssembly = { no: number; changePp: number; outlier: boolean };
 export type SwingStat = {
@@ -90,6 +93,20 @@ export function historicalShares(acs: AcRow[], year: HistoricYear): ShareSet {
   }
   if (!weight) return { ...out };
   for (const p of PARTIES) out[p] /= weight;
+  return out;
+}
+
+/** Detailed historical shares (BRS/INC/BJP/AIMIM/TDP/JSP/Others), weighted by that election's votes. */
+export function historicalDetail(acs: AcRow[], year: HistoricYear): DetailSet {
+  let weight = 0;
+  const out: DetailSet = { BRS: 0, Congress: 0, BJP: 0, AIMIM: 0, TDP: 0, JSP: 0, Others: 0 };
+  for (const a of acs) {
+    const rec = yearMaps[year].get(a.no);
+    if (!rec || !(rec.total > 0)) continue;
+    weight += rec.total;
+    for (const p of Object.keys(out) as (keyof DetailSet)[]) out[p] += rec.detail[p] * rec.total;
+  }
+  if (weight) for (const p of Object.keys(out) as (keyof DetailSet)[]) out[p] /= weight;
   return out;
 }
 
