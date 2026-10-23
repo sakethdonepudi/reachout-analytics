@@ -123,4 +123,17 @@ check("no Entry IDs or raw rows are present", () => {
   assert.equal(text.includes("entryId"), false);
 });
 
+check("latest-round summaries are calculated per scope, not hardcoded", () => {
+  const hyd = rounds.scopes["d:Hyderabad"] as unknown as S;
+  const hydActual = historicalDetail(DATA.acs.filter((a) => a.district === "Hyderabad"), "2023");
+  const hydR13 = projectVector(hyd.rounds388.at(-1)!, hydActual);
+  assert.ok(hydR13);
+  const expected = { BRS: 25.35, Congress: 22.66, BJP: 21.47, AIMIM: 22.09, TDP: 0, JSP: 8.33, Others: 0.09 };
+  for (const p of P7S) assert.ok(near(hydR13![p], expected[p], 0.01), `${p}: ${hydR13![p]}`);
+  const stateR13 = projectVector(state.rounds388.at(-1)!, historicalDetail(DATA.acs, "2023"));
+  assert.ok(stateR13);
+  assert.ok(near(stateR13!.BRS, 45.65, 0.01));
+  assert.notEqual(Number(hydR13!.BRS.toFixed(2)), Number(stateR13!.BRS.toFixed(2)));
+});
+
 console.log(`\n${passed} checks passed.`);
