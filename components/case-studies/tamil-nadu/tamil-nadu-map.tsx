@@ -1,677 +1,373 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { geoIdentity } from "d3-geo";
-import { rafLoop } from "@/lib/raf-loop";
-import TN_GEO from "@/lib/data/tamil-nadu-districts.json";
+import AC_GEO from "@/lib/data/tamil-nadu/tn-acs.json";
+import DISTRICT_GEO from "@/lib/data/tamil-nadu/tn-districts.json";
 import {
-  districtCentroid,
-  districtRadius,
-  type DistrictPollResult,
-  type PartyResult,
-  type PollType,
-} from "@/lib/data/tamil-nadu-poll-data";
-import { BAND_COLORS, NO_DATA_COLOR, SELECTED_FILL, SELECTED_LINE, type ThemeName } from "@/lib/data/tamil-nadu-scale";
-import MapTooltip, { type MapTooltipData } from "./map-tooltip";
+  TN_COLOR, TN_LABEL, TN_NO_DATA, tnLeader, tnPct,
+  type TnAc, type TnDistrict, type TnYearOrCurrent,
+} from "@/lib/tamil-nadu/model";
 
-/* =====================================================================
-   Interactive 2.5D Tamil Nadu district map — Tamil Nadu only.
-   No surrounding states, no neighbouring labels, no grid, no glow.
-   Boundary data: lib/data/tamil-nadu-districts.json (see that module).
-   ===================================================================== */
-
-type GeoFeature = { type: "Feature"; properties: { district: string }; geometry: { type: string; coordinates: unknown } };
-const FC = TN_GEO as unknown as { type: "FeatureCollection"; features: GeoFeature[] };
+export type MapTheme = "light" | "dark";
+export type MapMode = "state" | "district" | "pincode";
 
 const BOX = 1000;
-const DEPTH = 10; // extrusion depth for the 3D plate
+const DEPTH = 10;
+const AC_DEPTH = 3;
 const CX = BOX / 2;
 const CZ = BOX / 2;
-const CLUSTER_DIST = 1250;
 
-const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
-const signedArea = (r: number[][]) => {
-  let a = 0;
-  for (let i = 0, n = r.length; i < n; i++) {
-    const p = r[i], q = r[(i + 1) % n];
-    a += p[0] * q[1] - q[0] * p[1];
-  }
-  return a / 2;
-};
-
-export type MapMode = "state" | "district" | "pincode";
-export type MapLayers = { boundaries: boolean; pins: boolean; labels: boolean; context: boolean };
-
-/* Theme-aware cartographic palette. Intensity/sel colours come from the
-   shared tamil-nadu-scale module so the legend always matches the fills. */
-const PAL: Record<ThemeName, {
-  fill: THREE.Color; hover: THREE.Color; sel: THREE.Color; selLine: THREE.Color;
-  line: THREE.Color; state: THREE.Color; side: THREE.Color; bands: THREE.Color[]; none: THREE.Color; label: string; halo: string;
-}> = {
-  dark: {
-    fill: new THREE.Color(0x2b3746), hover: new THREE.Color(0x3c4a5d), sel: new THREE.Color(SELECTED_FILL.dark), selLine: new THREE.Color(SELECTED_LINE.dark),
-    line: new THREE.Color(0xa0adbc), state: new THREE.Color(0xd5dce5), side: new THREE.Color(0x1c2531),
-    bands: BAND_COLORS.dark.map((h) => new THREE.Color(h)), none: new THREE.Color(NO_DATA_COLOR.dark),
-    label: "#e7ecf2", halo: "rgba(0,0,0,.82)",
-  },
-  light: {
-    fill: new THREE.Color(0xe7ebef), hover: new THREE.Color(0xd9dee5), sel: new THREE.Color(SELECTED_FILL.light), selLine: new THREE.Color(SELECTED_LINE.light),
-    line: new THREE.Color(0x9aa6b4), state: new THREE.Color(0x48525f), side: new THREE.Color(0xd3d9e0),
-    bands: BAND_COLORS.light.map((h) => new THREE.Color(h)), none: new THREE.Color(NO_DATA_COLOR.light),
-    label: "#20242b", halo: "rgba(255,255,255,.92)",
-  },
-};
+type AcFeature = { type: "Feature"; properties: { no: number; name: string; district: string; centroid?: [number, number] }; geometry: { type: string; coordinates: unknown } };
+type DistrictFeature = { type: "Feature"; properties: { district: string; centroid?: [number, number] }; geometry: { type: string; coordinates: unknown } };
+type FC = { type: "FeatureCollection"; features: AcFeature[] };
+type DFC = { type: "FeatureCollection"; features: DistrictFeature[] };
+const AC_FC = AC_GEO as unknown as FC;
+const D_FC = DISTRICT_GEO as unknown as DFC;
 
 type Props = {
-  pollType: PollType;
-  districts: DistrictPollResult[];
-  selectedDistricts: string[];
-  hoveredDistrict: string | null;
-  activePincode: string | null;
-  mode: MapMode;
-  layers: MapLayers;
-  theme: ThemeName;
-  /** True when a published dataset drives the fills (even if it has no rows). */
-  intensityActive?: boolean;
-  /** True when the combined assumed-PIN scenario drives the fills. */
-  mapScenario?: boolean;
-  /** Survey view: PINs from the committed allocation with a postal-area reference coordinate. */
-  surveyPins?: { pin: string; lat: number; lng: number; district: string; valid: number; place: string | null; leader?: string | null; leaderPct?: number }[];
-  /** Per-district survey stats for the district tooltip. */
-  districtStats?: Record<string, { count: number; leader: string | null; leaderPct: number; empty: boolean }>;
-  /** district → intensity band (0–4); -1 = no responses. */
-  bandByName?: Record<string, number>;
-  liveValid?: Record<string, number>;
-  liveShare?: Record<string, number>;
-  /** Recorded counts per district (scenario mode) for recorded-vs-allocated tooltips. */
-  scenarioRecorded?: Record<string, number>;
-  pollLabel?: string;
-  basisLabel?: string;
-  resetNonce?: number;
-  onHoverDistrict: (name: string | null) => void;
-  onSelectDistrict: (name: string | null) => void;
-  onSelectPincode: (pincode: string | null) => void;
+  acs: TnAc[];
+  districts: TnDistrict[];
+  district: string | null;
+  acNo: number | null;
+  year: TnYearOrCurrent;
+  theme: MapTheme;
+  onSelectDistrict: (name: string) => void;
+  onSelectAc: (no: number) => void;
+  onReset: () => void;
 };
 
-type DistrictState = {
-  id: string;
-  name: string;
-  mesh: THREE.Mesh;
-  cap: THREE.MeshStandardMaterial;
-  side: THREE.MeshStandardMaterial;
-  line: THREE.LineBasicMaterial;
-  group: THREE.Group;
-  tone: number;
-  heat: number;
-  hover: number;
-  focus: number;
-  /** 0 = fully visible, 1 = fully isolated (faded out & hidden). */
-  isolate: number;
-  /** Projected XZ bounds of this district's geometry (for camera fitting). */
-  bounds: { minx: number; maxx: number; minz: number; maxz: number };
+const PAL = {
+  dark: { none: "#2b3442", side: "#1c2531", line: "rgba(205,215,228,.55)", sel: "#ffffff", label: "#e8edf4", halo: "rgba(6,10,18,.88)", bg: "rgba(16,22,30,.97)", border: "rgba(120,135,155,.35)" },
+  light: { none: "#e7ebef", side: "#d3d9e0", line: "rgba(60,78,96,.55)", sel: "#1f2937", label: "#1b2430", halo: "rgba(255,255,255,.94)", bg: "rgba(255,255,255,.98)", border: "rgba(20,24,31,.14)" },
 };
+const shade = (hex: string, amount: number) => {
+  const c = new THREE.Color(hex);
+  const hsl = { h: 0, s: 0, l: 0 };
+  c.getHSL(hsl);
+  return new THREE.Color().setHSL(hsl.h, hsl.s, Math.max(0.22, Math.min(0.68, hsl.l + amount)));
+};
+function shapeFor(feature: AcFeature | DistrictFeature, project: (p: [number, number]) => [number, number]): THREE.Shape[] {
+  const coords = (feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates) as number[][][][];
+  const shapes: THREE.Shape[] = [];
+  for (const poly of coords) {
+    if (!poly?.[0]?.length) continue;
+    const outer = poly[0].map(([lng, lat]) => {
+      const p = project([lng, lat]);
+      return new THREE.Vector2(p[0] - CX, p[1] - CZ);
+    });
+    if (outer.length < 3) continue;
+    const sh = new THREE.Shape(outer);
+    for (let h = 1; h < poly.length; h++) {
+      const hole = poly[h].map(([lng, lat]) => {
+        const p = project([lng, lat]);
+        return new THREE.Vector2(p[0] - CX, p[1] - CZ);
+      });
+      if (hole.length >= 3) sh.holes.push(new THREE.Path(hole));
+    }
+    shapes.push(sh);
+  }
+  return shapes;
+}
+function groupColorForAc(a: TnAc | undefined, year: TnYearOrCurrent): { color: string; share: number; group: string | null; count: number } {
+  if (!a) return { color: TN_NO_DATA, share: 0, group: null, count: 0 };
+  if (year === "2026") {
+    const g = a.surveyLeader;
+    return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? a.survey.shares?.[g] ?? 0 : 0, group: g, count: a.survey.valid };
+  }
+  const rec = a.actual[year];
+  const g = rec.winner;
+  return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? rec.shares?.[g] ?? 0 : 0, group: g, count: rec.available ? 1 : 0 };
+}
+function groupColorForDistrict(d: TnDistrict | undefined, year: TnYearOrCurrent): { color: string; share: number; group: string | null; count: number } {
+  if (!d) return { color: TN_NO_DATA, share: 0, group: null, count: 0 };
+  if (year === "2026") {
+    const g = tnLeader(d.survey.shares);
+    return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? d.survey.shares?.[g] ?? 0 : 0, group: g, count: d.survey.valid };
+  }
+  const rec = d.actual[year];
+  const g = tnLeader(rec.shares);
+  return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? rec.shares?.[g] ?? 0 : 0, group: g, count: rec.available ? 1 : 0 };
+}
 
-export default function TamilNaduMap(props: Props) {
-  const {
-    pollType, districts: pollData, selectedDistricts, hoveredDistrict, activePincode,
-    mode, layers, theme, intensityActive, mapScenario, surveyPins, districtStats, bandByName, liveValid, liveShare, scenarioRecorded, pollLabel, basisLabel, resetNonce,
-    onHoverDistrict, onSelectDistrict, onSelectPincode,
-  } = props;
-
+export default function TamilNaduMap({ acs, districts, district, acNo, year, theme, onSelectDistrict, onSelectAc, onReset }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
-  const pinRef = useRef<HTMLDivElement>(null);
-  const tipRef = useRef<{ x: number; y: number } | null>(null);
-  const [tip, setTip] = useState<MapTooltipData | null>(null);
   const [ready, setReady] = useState(false);
-  const [failed, setFailed] = useState(false);
-
-  const live = useRef({ pollType, districts: pollData, selectedDistricts, hoveredDistrict, activePincode, mode, layers, theme, intensityActive, mapScenario, surveyPins, districtStats, bandByName, liveValid, liveShare, scenarioRecorded, pollLabel, basisLabel, onHoverDistrict, onSelectDistrict, onSelectPincode });
-  live.current = { pollType, districts: pollData, selectedDistricts, hoveredDistrict, activePincode, mode, layers, theme, intensityActive, mapScenario, surveyPins, districtStats, bandByName, liveValid, liveShare, scenarioRecorded, pollLabel, basisLabel, onHoverDistrict, onSelectDistrict, onSelectPincode };
-
-  const apiRef = useRef<{ rebuildPins: () => void; setSelection: (selected: string[]) => void; reset: () => void } | null>(null);
-
-  // Planar identity projection (boundary rings are clockwise-wound, so a
-  // spherical projection would read Tamil Nadu as the complement of the globe).
-  const projection = useMemo(
-    () => geoIdentity().reflectY(true).fitExtent([[70, 70], [BOX - 70, BOX - 70]], FC as never),
-    [],
-  );
-  const projectLngLat = useCallback(
-    (lng: number, lat: number): [number, number] => {
-      const p = projection([lng, lat]);
-      return p ? [p[0] - CX, p[1] - CZ] : [0, 0];
-    },
-    [projection],
-  );
+  const [tip, setTip] = useState<{ x: number; y: number; title: string; sub: string; value: string; color: string } | null>(null);
+  const live = useRef({ acs, districts, district, acNo, year, theme, onSelectDistrict, onSelectAc, onReset });
+  live.current = { acs, districts, district, acNo, year, theme, onSelectDistrict, onSelectAc, onReset };
+  const acByNo = useMemo(() => new Map(acs.map((a) => [a.no, a])), [acs]);
+  const acRef = useRef(acByNo); acRef.current = acByNo;
+  const districtByName = useMemo(() => new Map(districts.map((d) => [d.name, d])), [districts]);
+  const districtRef = useRef(districtByName); districtRef.current = districtByName;
+  const apiRef = useRef<{
+    setSelection: (d: string | null, a: number | null, y: TnYearOrCurrent) => void;
+    resetCamera: () => void;
+  } | null>(null);
 
   useEffect(() => {
-    const host = hostRef.current!;
-    const canvas = canvasRef.current!;
+    const host = hostRef.current, canvas = canvasRef.current, labelRoot = labelRef.current;
+    if (!host || !canvas || !labelRoot) return;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    let renderer: THREE.WebGLRenderer;
-    try {
-      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
-    } catch {
-      setFailed(true);
-      return;
-    }
-    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
-    renderer.setClearAlpha(0);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1;
-
+    const P = PAL[theme];
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.setClearColor(0x000000, 0);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(34, 1, 1, 9000);
-
-    // neutral, restrained lighting for flat slate fills
     scene.add(new THREE.HemisphereLight(0xffffff, 0x808898, 1.05));
     const key = new THREE.DirectionalLight(0xffffff, 1.15);
-    key.position.set(-260, 620, 420);
+    key.position.set(-260, 620, 420); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
     scene.add(key);
     const fill = new THREE.DirectionalLight(0xaebacc, 0.45);
-    fill.position.set(420, 240, -520);
-    scene.add(fill);
+    fill.position.set(420, 240, -520); scene.add(fill);
+    const mapGroup = new THREE.Group(); scene.add(mapGroup);
+    let desired = { tx: 0, tz: 0, dist: 2050 };
+    const projection = geoIdentity().reflectY(true).fitExtent([[70, 70], [BOX - 70, BOX - 70]], D_FC as never);
+    const project = (p: [number, number]) => {
+      const q = projection(p);
+      return q ? ([q[0], q[1]] as [number, number]) : ([0, 0] as [number, number]);
+    };
 
-    const mapGroup = new THREE.Group();
-    scene.add(mapGroup);
-
-    const states: Record<string, DistrictState> = {};
+    type Unit = {
+      group: THREE.Group; mesh: THREE.Mesh; cap: THREE.MeshStandardMaterial; side: THREE.MeshStandardMaterial;
+      line: THREE.LineBasicMaterial; bounds: { minx: number; maxx: number; minz: number; maxz: number };
+      label: HTMLSpanElement; name: string; kind: "district" | "ac"; key: string; no?: number;
+    };
+    const districtsUnits = new Map<string, Unit>();
+    const acUnits = new Map<number, Unit>();
+    const acLayer = new Map<string, THREE.Group>();
     const pickables: THREE.Mesh[] = [];
-
-    for (const f of FC.features) {
-      const name = f.properties.district;
-      const polys = (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates) as number[][][][];
-      const shapes: THREE.Shape[] = [];
-      for (const poly of polys) {
-        const toVec = (ring: number[][]) => ring.map(([lng, lat]) => { const p = projection([lng, lat])!; return new THREE.Vector2(p[0] - CX, p[1] - CZ); });
-        const outer = toVec(poly[0]);
-        if (outer.length < 3) continue;
-        if (signedArea(poly[0]) < 0) outer.reverse();
-        const shape = new THREE.Shape(outer);
-        for (let h = 1; h < poly.length; h++) {
-          const hole = toVec(poly[h]);
-          if (hole.length < 3) continue;
-          if (signedArea(poly[h]) > 0) hole.reverse();
-          shape.holes.push(new THREE.Path(hole));
-        }
-        shapes.push(shape);
-      }
-      if (shapes.length === 0) continue;
-
-      const geo = new THREE.ExtrudeGeometry(shapes, { depth: DEPTH, bevelEnabled: false, curveSegments: 1 });
+    const labelEls: Unit[] = [];
+    const makeLabel = (text: string, kind: "district" | "ac") => {
+      const el = document.createElement("span");
+      el.textContent = text;
+      el.style.position = "absolute"; el.style.pointerEvents = "none"; el.style.transform = "translate(-50%,-50%)";
+      el.style.whiteSpace = "nowrap"; el.style.fontFamily = "inherit"; el.style.fontWeight = kind === "district" ? "600" : "500";
+      el.style.fontSize = kind === "district" ? "10px" : "8px"; el.style.zIndex = kind === "district" ? "4" : "3";
+      el.style.color = P.label; el.style.textShadow = `0 0 3px ${P.halo}, 0 0 2px ${P.halo}`;
+      el.style.transition = reduced ? "none" : "opacity .25s ease";
+      labelRoot.appendChild(el);
+      return el;
+    };
+    const addFeature = (f: AcFeature | DistrictFeature, kind: "district" | "ac") => {
+      const shapes = shapeFor(f, project);
+      if (!shapes.length) return null;
+      const geo = new THREE.ExtrudeGeometry(shapes, { depth: kind === "district" ? DEPTH : AC_DEPTH, bevelEnabled: false, curveSegments: 1 });
       geo.rotateX(Math.PI / 2);
-      geo.translate(0, DEPTH, 0);
-
-      const cap = new THREE.MeshStandardMaterial({ color: PAL.dark.fill.clone(), roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide, transparent: true, opacity: 1 });
-      const side = new THREE.MeshStandardMaterial({ color: PAL.dark.side.clone(), roughness: 1, metalness: 0.02, side: THREE.DoubleSide, transparent: true, opacity: 1 });
+      geo.translate(0, kind === "district" ? DEPTH : DEPTH + 1, 0);
+      const cap = new THREE.MeshStandardMaterial({ color: P.none, roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide });
+      const side = new THREE.MeshStandardMaterial({ color: P.side, roughness: 1, metalness: 0.02, side: THREE.DoubleSide });
       const mesh = new THREE.Mesh(geo, [cap, side]);
-      mesh.userData.id = name;
+      mesh.userData.kind = kind;
+      if (kind === "district") mesh.userData.district = f.properties.district;
+      else { mesh.userData.no = (f as AcFeature).properties.no; mesh.userData.district = (f as AcFeature).properties.district; }
+      mesh.castShadow = true; mesh.receiveShadow = true;
       pickables.push(mesh);
-
-      // district boundary line attached to the top surface
+      const g = new THREE.Group(); g.add(mesh);
       const pts: number[] = [];
-      const y = DEPTH + 0.06;
+      const polys = (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates) as number[][][][];
       let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
-      const addLoop = (ring: number[][]) => {
+      for (const poly of polys) for (const ring of poly) {
         for (let i = 0; i < ring.length; i++) {
-          const p = projection(ring[i] as [number, number])!;
-          const q = projection(ring[(i + 1) % ring.length] as [number, number])!;
+          const p = project([ring[i][0], ring[i][1]]);
+          const q = project([ring[(i + 1) % ring.length][0], ring[(i + 1) % ring.length][1]]);
           const px = p[0] - CX, pz = p[1] - CZ;
-          minx = Math.min(minx, px); maxx = Math.max(maxx, px);
-          minz = Math.min(minz, pz); maxz = Math.max(maxz, pz);
-          pts.push(px, y, pz, q[0] - CX, y, q[1] - CZ);
+          minx = Math.min(minx, px); maxx = Math.max(maxx, px); minz = Math.min(minz, pz); maxz = Math.max(maxz, pz);
+          pts.push(px, (kind === "district" ? DEPTH : DEPTH + AC_DEPTH) + 0.08, pz, q[0] - CX, (kind === "district" ? DEPTH : DEPTH + AC_DEPTH) + 0.08, q[1] - CZ);
         }
-      };
-      for (const poly of polys) poly.forEach(addLoop);
-      const lg = new THREE.BufferGeometry();
-      lg.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-      const line = new THREE.LineBasicMaterial({ color: PAL.dark.line.clone(), transparent: true, opacity: 1 });
-      const g = new THREE.Group();
-      // The boundary line is a child of the district group so it rises and hides
-      // with the district (no detached outline when isolated).
-      g.add(mesh);
-      g.add(new THREE.LineSegments(lg, line));
-      mapGroup.add(g);
-      const tone = 0.96 + (((name.charCodeAt(0) * 7 + name.length * 3) % 9) / 9) * 0.08;
-      states[name] = { id: name, name, mesh, cap, side, line, group: g, tone, heat: 0, hover: 0, focus: 1, isolate: 0, bounds: { minx, maxx, minz, maxz } };
+      }
+      const lineGeo = new THREE.BufferGeometry(); lineGeo.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+      const line = new THREE.LineBasicMaterial({ color: P.line, transparent: true, opacity: kind === "district" ? 0.9 : 0.62 });
+      g.add(new THREE.LineSegments(lineGeo, line));
+      const centroid = (f.properties as { centroid?: [number, number] }).centroid ?? [78.5, 11];
+      const c = project(centroid);
+      const label = makeLabel(kind === "district" ? (f.properties as { district: string }).district : (f as AcFeature).properties.name, kind);
+      const unit: Unit = { group: g, mesh, cap, side, line, bounds: { minx, maxx, minz, maxz }, label, name: kind === "district" ? (f.properties as DistrictFeature["properties"]).district : (f as AcFeature).properties.name, kind, key: kind === "district" ? "d:" + (f.properties as DistrictFeature["properties"]).district : "a:" + (f as AcFeature).properties.no, no: kind === "ac" ? (f as AcFeature).properties.no : undefined };
+      label.dataset.cx = String(c[0] - CX); label.dataset.cz = String(c[1] - CZ);
+      labelEls.push(unit);
+      return unit;
+    };
+    for (const f of D_FC.features) {
+      const u = addFeature(f, "district");
+      if (!u) continue;
+      districtsUnits.set(f.properties.district, u);
+      const layer = new THREE.Group(); layer.visible = false; u.group.add(layer); acLayer.set(f.properties.district, layer);
+      mapGroup.add(u.group);
     }
-
-    // NOTE: no separate state-outline layer — a flat line drawn at a fixed
-    // height detaches from the extruded surface (the cause of the stray white
-    // outline). The state edge is formed by the district side faces instead.
-
-    // ---- PIN-code markers: ordinary HTML map pins for the focused district ----
-    // Pincode survey areas are visual approximations unless official polygon
-    // boundaries are available.
-    const pinRoot = pinRef.current;
-    type PinEl = { el: HTMLButtonElement; path: SVGPathElement; label: HTMLSpanElement; pincode: string; district: string; lng: number; lat: number; samples: number; results: PartyResult; kind: "demo" | "survey"; valid: number; place: string | null; leader: string | null; leaderPct: number };
-    let pins: PinEl[] = [];
-    let pinReveal = 0; // 0..1 smooth reveal, ramped once the camera has settled
-    const pinHover = { current: null as string | null };
-    const clearPins = () => { for (const p of pins) { p.el.remove(); p.label.remove(); } pins = []; pinHover.current = null; };
-
-    // Original blue map pin (recovered from f9a4a54): #3d8bfd body, white
-    // outline, dark centre. Hover lightens, selected turns orange.
-    const PIN_SVG = '<svg width="18" height="26" viewBox="0 0 18 26" fill="none"><path d="M9 1C4.58 1 1 4.58 1 9c0 5.6 8 16 8 16s8-10.4 8-16c0-4.42-3.58-8-8-8Z" fill="#3d8bfd" stroke="rgba(255,255,255,.9)" stroke-width="1"/><circle cx="9" cy="9" r="3.1" fill="#04091a"/></svg>';
-
-    const makePin = (opts: { pin: string; district: string; lng: number; lat: number; samples: number; results: PartyResult; kind: "demo" | "survey"; valid: number; place: string | null; leader?: string | null; leaderPct?: number }) => {
-      const el = document.createElement("button");
-      el.type = "button";
-      el.setAttribute("aria-label", `PIN ${opts.pin}, ${opts.district}`);
-      el.className = "pointer-events-auto absolute left-0 top-0 flex cursor-pointer items-end justify-center outline-none will-change-transform";
-      // Comfortable invisible touch target: a larger button whose bottom-centre
-      // is the pin tip; the SVG keeps its clean 18×26 silhouette.
-      el.style.width = "34px";
-      el.style.height = "38px";
-      el.style.touchAction = "manipulation";
-      // Restrained depth: a soft drop-shadow, no glow.
-      el.style.filter = "drop-shadow(0 2px 2.5px rgba(0,0,0,.45))";
-      el.innerHTML = PIN_SVG;
-      const path = el.querySelector("path") as SVGPathElement;
-      el.addEventListener("mouseenter", () => (pinHover.current = opts.pin));
-      el.addEventListener("mouseleave", () => { if (pinHover.current === opts.pin) pinHover.current = null; });
-      el.addEventListener("click", (e) => { e.stopPropagation(); live.current.onSelectPincode(opts.pin); });
-      pinRoot!.appendChild(el);
-      const label = document.createElement("span");
-      label.textContent = opts.pin;
-      label.className = "pointer-events-none absolute left-0 top-0 whitespace-nowrap rounded bg-[#050b1f]/85 px-1 py-px text-[9.5px] font-medium tabular-nums text-white/85 will-change-transform";
-      label.style.opacity = "0";
-      pinRoot!.appendChild(label);
-      pins.push({ el, path, label, pincode: opts.pin, district: opts.district, lng: opts.lng, lat: opts.lat, samples: opts.samples, results: opts.results, kind: opts.kind, valid: opts.valid, place: opts.place, leader: opts.leader ?? null, leaderPct: opts.leaderPct ?? 0 });
-    };
-
-    const ZERO_RESULTS: PartyResult = { aiadmk: 0, dmk: 0, tvk: 0, others: 0 };
-
-    const rebuildPins = () => {
-      clearPins();
-      pinReveal = 0; // re-reveal smoothly after a selection change
-      if (!pinRoot) return;
-      const { mode: m, selectedDistricts: sel, layers: lay, intensityActive } = live.current;
-      if (m !== "pincode" || !lay.pins || !intensityActive) return;
-      if (sel.length === 0) return;
-      const focus = new Set(sel);
-      // Survey view only: reveal PINs for EVERY selected district, plotting only
-      // PINs with a postal-area reference coordinate. No synthetic markers.
-      for (const sp of live.current.surveyPins ?? []) {
-        if (!focus.has(sp.district)) continue;
-        makePin({ pin: sp.pin, district: sp.district, lng: sp.lng, lat: sp.lat, samples: sp.valid, results: ZERO_RESULTS, kind: "survey", valid: sp.valid, place: sp.place, leader: sp.leader ?? null, leaderPct: sp.leaderPct ?? 0 });
-      }
-    };
-    rebuildPins();
-
-    // ---- district labels ----
-    const labelRoot = labelRef.current;
-    const districtLabels: Record<string, HTMLSpanElement> = {};
-    if (labelRoot) {
-      // Labels are created for the districts that actually have geometry.
-      for (const districtName of Object.keys(states)) {
-        const el = document.createElement("span");
-        el.textContent = districtName;
-        el.className = "absolute left-0 top-0 whitespace-nowrap font-semibold tracking-[0.01em] will-change-transform";
-        el.style.transform = "translate(-50%,-50%)";
-        el.style.opacity = "0";
-        el.style.fontSize = "11px";
-        labelRoot.appendChild(el);
-        districtLabels[districtName] = el;
-      }
+    for (const f of AC_FC.features) {
+      const layer = acLayer.get(f.properties.district);
+      if (!layer) continue;
+      const u = addFeature(f, "ac");
+      if (!u) continue;
+      acUnits.set(f.properties.no, u);
+      layer.add(u.group);
     }
-
-    // ---- camera (3D, slightly above the plate) ----
-    let theta = 0.0, phi = 0.6, dist = 2020;
-    const target = new THREE.Vector3(0, 0, 0);
-    const desired = { tx: 0, tz: 0, dist: 2020 };
-    const labelV = new THREE.Vector3();
-    const oxBase = () => (typeof window !== "undefined" && window.innerWidth > 1280 ? 150 : typeof window !== "undefined" && window.innerWidth > 1024 ? 60 : 0);
-
-    const applyCamera = () => {
-      camera.position.set(
-        target.x + dist * Math.sin(phi) * Math.sin(theta),
-        dist * Math.cos(phi),
-        target.z + dist * Math.sin(phi) * Math.cos(theta),
-      );
-      camera.lookAt(target);
-    };
-
-    // Fit the camera to the selected district(s)' ACTUAL geometry bounds, inside
-    // the map area not covered by the side panels. Preserves shape/proportions.
-    const setSelection = (selected: string[]) => {
-      const hostRect = host.getBoundingClientRect();
-      const vw = Math.max(320, hostRect.width), vh = Math.max(320, hostRect.height);
-      const wide = typeof window !== "undefined" && window.innerWidth > 1024;
-      let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
-      for (const n of selected) {
-        const st = states[n];
-        if (!st) continue;
-        minx = Math.min(minx, st.bounds.minx); maxx = Math.max(maxx, st.bounds.maxx);
-        minz = Math.min(minz, st.bounds.minz); maxz = Math.max(maxz, st.bounds.maxz);
-      }
-      if (selected.length === 0 || !isFinite(minx)) { desired.tx = oxBase(); desired.tz = 0; desired.dist = 2020; return; }
-      const cx = (minx + maxx) / 2, cz = (minz + maxz) / 2;
-      const W = Math.max(70, maxx - minx), H = Math.max(70, maxz - minz);
-      const leftPx = wide ? 300 : 0, rightPx = wide ? 600 : 0;
-      const availW = Math.max(220, vw - leftPx - rightPx);
-      const availH = Math.max(220, vh - 130);
-      const aspect = availW / availH;
-      const fov = (camera.fov * Math.PI) / 180;
-      const horizHalf = Math.atan(Math.tan(fov / 2) * aspect);
-      const distH = (H / 2) / Math.tan(fov / 2);
-      const distW = (W / 2) / Math.tan(horizHalf);
-      const fit = clamp(Math.max(distH, distW) * 1.35, 550, 3200);
-      // Nudge the map left so the focused district sits in the panel-free middle.
-      const shiftPx = wide ? (leftPx - rightPx) / 2 : 0;
-      const worldPerPx = (2 * fit * Math.tan(fov / 2)) / availH;
-      desired.tx = cx - shiftPx * worldPerPx;
-      desired.tz = cz;
-      desired.dist = fit;
-    };
-
-    // ---- pointer / resize ----
-    const pointers = new Map<number, { x: number; y: number }>();
-    let dragging = false, dragMoved = false, lastX = 0, lastY = 0, pinchDist = 0;
-    const mouse = { x: 0, y: 0, px: -1, py: -1 };
-    let hovered: string | null = null;
-    const ray = new THREE.Raycaster();
-    const ndc = new THREE.Vector2();
-    const localPoint = (e: PointerEvent) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top, w: r.width, h: r.height }; };
-
-    const onPointerDown = (e: PointerEvent) => {
-      canvas.setPointerCapture(e.pointerId);
-      pointers.set(e.pointerId, localPoint(e));
-      if (pointers.size === 1) { dragging = true; dragMoved = false; lastX = e.clientX; lastY = e.clientY; }
-      else if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinchDist = Math.hypot(a.x - b.x, a.y - b.y); }
-    };
-    const onPointerMove = (e: PointerEvent) => {
-      const lp = localPoint(e);
-      mouse.x = (lp.x / lp.w) * 2 - 1; mouse.y = (lp.y / lp.h) * 2 - 1;
-      mouse.px = e.clientX; mouse.py = e.clientY;
-      if (pointers.has(e.pointerId)) pointers.set(e.pointerId, lp);
-      if (pointers.size === 2) {
-        const [a, b] = [...pointers.values()];
-        const d = Math.hypot(a.x - b.x, a.y - b.y);
-        if (pinchDist > 0) { dist = clamp(dist * (pinchDist / d), 700, 3200); desired.dist = dist; }
-        pinchDist = d; return;
-      }
-      if (dragging) {
-        const dx = e.clientX - lastX, dy = e.clientY - lastY;
-        lastX = e.clientX; lastY = e.clientY;
-        if (Math.abs(dx) + Math.abs(dy) > 2) dragMoved = true;
-        theta = clamp(theta - dx * 0.005, -0.6, 0.6);
-        phi = clamp(phi - dy * 0.004, 0.15, 1.2);
-        desired.tx = target.x; desired.tz = target.z; desired.dist = dist;
-      }
-    };
-    const onPointerUp = (e: PointerEvent) => {
-      pointers.delete(e.pointerId);
-      if (pointers.size < 2) pinchDist = 0;
-      if (pointers.size === 0) {
-        const wasDrag = dragMoved; dragging = false; dragMoved = false;
-        if (!wasDrag) {
-          if (hovered) live.current.onSelectDistrict(hovered);
-          else { live.current.onSelectPincode(null); live.current.onSelectDistrict(null); }
+    apiRef.current = {
+      setSelection: (d, a, y) => {
+        const activeD = d ? districtsUnits.get(d) : null;
+        const activeAC = a != null ? acUnits.get(a) : null;
+        for (const [name, u] of districtsUnits) {
+          const selected = !!activeD && name === activeD.name;
+          u.group.visible = activeD ? selected : true;
+          const acLayerGroup = acLayer.get(name); if (acLayerGroup) acLayerGroup.visible = selected;
+          const info = groupColorForDistrict(districtRef.current.get(name), y);
+          u.cap.color.set(info.color);
+          u.side.color.set(info.color);
+          u.line.color.set(selected ? P.sel : P.line);
+          u.line.opacity = selected ? 1 : 0.9;
+          u.mesh.position.y = selected ? 12 : 0;
+          u.label.style.opacity = activeD ? (selected ? "1" : "0") : "1";
+          u.label.style.fontSize = selected ? "12px" : "10px";
         }
-      }
-    };
-    const onWheel = (e: WheelEvent) => { e.preventDefault(); dist = clamp(dist * (1 + e.deltaY * 0.0012), 700, 3200); desired.dist = dist; };
-    const onLeave = () => { mouse.px = -1; mouse.py = -1; hovered = null; tipRef.current = null; };
-
-    canvas.addEventListener("pointerdown", onPointerDown);
-    canvas.addEventListener("pointermove", onPointerMove);
-    canvas.addEventListener("pointerup", onPointerUp);
-    canvas.addEventListener("pointercancel", onPointerUp);
-    canvas.addEventListener("pointerleave", onLeave);
-    canvas.addEventListener("wheel", onWheel, { passive: false });
-
-    let w = 1, h = 1;
-    const resize = () => {
-      const r = host.getBoundingClientRect();
-      w = Math.max(1, r.width); h = Math.max(1, r.height);
-      renderer.setSize(w, h, false);
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-    };
-    const ro = new ResizeObserver(resize);
-    ro.observe(host);
-    resize();
-
-    // ---- frame ----
-    // Elapsed-time-based transitions (frame-rate independent). Time constants
-    // approximate ~700 ms for camera/elevation and ~300 ms for material fades.
-    // Because each value eases from its CURRENT state, interrupted/rapid
-    // selections transition smoothly from wherever the animation is.
-    let lastFrame = performance.now();
-    const TAU_CAM = 220;   // ≈ 700 ms settle
-    const TAU_HEAT = 220;  // ≈ 700 ms selection/elevation
-    const TAU_HOVER = 95;  // ≈ 300 ms hover
-    const TAU_MAT = 85;    // ≈ 300 ms material fades
-    const frame = () => {
-      const now = performance.now();
-      const dt = Math.min(50, Math.max(1, now - lastFrame));
-      lastFrame = now;
-      const aCam = reduced ? 1 : 1 - Math.exp(-dt / TAU_CAM);
-      target.x += (desired.tx - target.x) * aCam;
-      target.z += (desired.tz - target.z) * aCam;
-      dist += (desired.dist - dist) * aCam;
-      applyCamera();
-
-      const { selectedDistricts: sel, hoveredDistrict: hv, activePincode: pin } = live.current;
-      const lay = live.current.layers;
-      const P = PAL[live.current.theme];
-      const selSet = sel.length ? new Set(sel) : null;
-
-      // hover raycast
-      let hoveredFound: string | null = null;
-      if (mouse.px >= 0) {
-        const r = canvas.getBoundingClientRect();
-        ndc.set(((mouse.px - r.left) / r.width) * 2 - 1, -(((mouse.py - r.top) / r.height) * 2 - 1));
-        ray.setFromCamera(ndc, camera);
-        // When a selection exists, only the selected districts are hit targets.
-        const activePickables = selSet ? pickables.filter((m) => selSet.has(m.userData.id as string)) : pickables;
-        const hit = ray.intersectObjects(activePickables, false)[0];
-        hoveredFound = hit ? (hit.object.userData.id as string) : null;
-      }
-      if (hoveredFound !== hovered) { hovered = hoveredFound; live.current.onHoverDistrict(hoveredFound); }
-      canvas.style.cursor = hovered || dragging ? (dragging ? "grabbing" : "pointer") : "grab";
-
-      const aHeat = reduced ? 1 : 1 - Math.exp(-dt / TAU_HEAT);
-      const aHover = reduced ? 1 : 1 - Math.exp(-dt / TAU_HOVER);
-      const aMat = reduced ? 1 : 1 - Math.exp(-dt / TAU_MAT);
-      for (const id in states) {
-        const st = states[id];
-        const isSelected = selSet ? selSet.has(st.name) : false;
-        const isHover = hv === id || hovered === id;
-        st.heat += ((isSelected ? 1 : 0) - st.heat) * aHeat;
-        st.hover += ((isHover ? 1 : 0) - st.hover) * aHover;
-        // Isolation: unselected districts fade out completely, then hide.
-        st.isolate += ((selSet && !isSelected ? 1 : 0) - st.isolate) * aMat;
-        const vis = 1 - st.isolate;
-        st.focus += ((selSet && !isSelected ? 0 : 1) - st.focus) * aHeat;
-        const useIntensity = live.current.intensityActive;
-        const bands = live.current.bandByName;
-        const band = bands ? bands[st.name] : undefined;
-        const baseFill = useIntensity
-          ? (band === undefined || band < 0 ? P.none.clone() : P.bands[Math.min(P.bands.length - 1, band)].clone())
-          : P.fill.clone().multiplyScalar(st.tone);
-        baseFill.multiplyScalar(0.55 + 0.45 * st.focus);
-        const target = baseFill.lerp(P.hover, st.hover * (1 - st.heat) * (selSet ? st.focus : 1)).lerp(P.sel, st.heat);
-        st.cap.color.lerp(target, aMat);
-        st.cap.opacity = vis;
-        st.side.color.lerp(P.side, aMat);
-        st.side.opacity = vis;
-        st.line.color.copy(P.line).lerp(P.selLine, st.heat);
-        st.line.opacity = (lay.boundaries ? (selSet ? (isSelected ? 0.95 : 0.3) : 0.9) : 0) * vis;
-        // Hide the mesh + line + hit target once fully faded.
-        st.group.visible = vis > 0.01;
-        // Selected districts lift with restrained elevation; unselected settle.
-        st.group.position.y = st.heat * 6 + st.hover * (selSet ? st.focus : 1) * 2;
-      }
-      // projection helper
-      const hostRect = host.getBoundingClientRect();
-      const toScreen = (x: number, y: number, z: number) => {
-        labelV.set(x, y, z).project(camera);
-        return { x: (labelV.x * 0.5 + 0.5) * hostRect.width, y: (-labelV.y * 0.5 + 0.5) * hostRect.height, behind: labelV.z > 1 };
-      };
-
-      // PIN pins — focused district, or statewide when nothing is selected
-      const pinDistrict = sel.length === 1 ? sel[0] : null;
-      const showPins = live.current.mode === "pincode" && lay.pins;
-      const hoverRef: { pos: { x: number; y: number } | null } = { pos: null };
-      const placedPinLabels: { x: number; y: number }[] = [];
-      // Reveal markers only after the camera is mostly settled (short fade).
-      const settled = Math.abs(desired.dist - dist) < desired.dist * 0.05 && Math.abs(desired.tx - target.x) < 30 && Math.abs(desired.tz - target.z) < 30;
-      pinReveal += ((settled ? 1 : 0) - pinReveal) * (reduced ? 1 : 1 - Math.exp(-dt / 120));
-      if (pins.length) {
-        const step = Math.max(1, Math.ceil(pins.length / 10));
-        pins.forEach((mk, i) => {
-          if (!showPins || pinReveal < 0.02) { if (mk.el.style.display !== "none") mk.el.style.display = "none"; if (mk.label.style.opacity !== "0") mk.label.style.opacity = "0"; return; }
-          const c = districtCentroid(mk.district);
-          const [cwx, cwz] = projectLngLat(c.lng, c.lat);
-          // Survey pins use their real postal-area coordinate; demo pins are spread.
-          const spreadF = mk.kind === "survey" ? 1 : clamp(0.26 / districtRadius(mk.district), 1, 3);
-          const [rwx, rwz] = projectLngLat(mk.lng, mk.lat);
-          // Anchor to the district's current elevated transform so pins ride its surface.
-          const elev = states[mk.district]?.group.position.y ?? 0;
-          const p = toScreen(cwx + (rwx - cwx) * spreadF, DEPTH + 3 + elev, cwz + (rwz - cwz) * spreadF);
-          if (p.behind) { mk.el.style.display = "none"; mk.label.style.opacity = "0"; return; }
-          mk.el.style.display = "";
-          mk.el.style.opacity = pinReveal.toFixed(2);
-          mk.el.style.pointerEvents = pinReveal > 0.5 ? "auto" : "none";
-          mk.el.style.transform = `translate(-50%,-100%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
-          const isSel = pin === mk.pincode;
-          const isHover = pinHover.current === mk.pincode;
-          // Original marker states (f9a4a54): blue → hover light-blue → selected orange.
-          mk.path.setAttribute("fill", isSel ? "#ff8a2b" : isHover ? "#79b0ff" : "#3d8bfd");
-          mk.el.style.zIndex = isSel ? "3" : isHover ? "2" : "1";
-          if (isHover) hoverRef.pos = { x: hostRect.left + p.x, y: hostRect.top + p.y };
-          const showLabel = isSel || isHover || (dist < 1100 && i % step === 0);
-          if (!showLabel) { if (mk.label.style.opacity !== "0") mk.label.style.opacity = "0"; return; }
-          // Collision handling: selected/hovered labels always show; other
-          // labels are hidden when they would overlap an already-placed label.
-          if (!isSel && !isHover && placedPinLabels.some((q) => Math.abs(q.x - p.x) < 36 && Math.abs(q.y - p.y) < 14)) {
-            if (mk.label.style.opacity !== "0") mk.label.style.opacity = "0";
-            return;
-          }
-          placedPinLabels.push({ x: p.x, y: p.y });
-          mk.label.style.transform = `translate(-50%,-165%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
-          mk.label.style.opacity = isSel ? "1" : "0.8";
-          mk.label.style.color = isSel ? "#ffffff" : "rgba(255,255,255,.85)";
-          mk.label.style.background = isSel ? "rgba(255,122,26,.9)" : "rgba(5,11,31,.85)";
-        });
-      }
-
-      // tooltip
-      if (hoverRef.pos) {
-        const mk = pins.find((x) => x.pincode === pinHover.current);
-        if (mk) {
-          const data = { kind: "pincode", pincode: mk.pincode, district: mk.district, samples: mk.valid, results: mk.results, pollType: live.current.pollType, survey: true, valid: mk.valid, postalPlace: mk.place, leader: mk.leader, leaderPct: mk.leaderPct } as MapTooltipData;
-          tipRef.current = { x: hoverRef.pos.x, y: hoverRef.pos.y };
-          setTip((prev) => (JSON.stringify(prev) === JSON.stringify(data) ? prev : data));
+        for (const [no, u] of acUnits) {
+          const info = groupColorForAc(acRef.current.get(no), y);
+          u.cap.color.set(activeAC && no === activeAC.no ? new THREE.Color(info.color).offsetHSL(0, 0, 0.08) : info.color);
+          u.side.color.set(info.color);
+          const inSelectedDistrict = !!activeD && u.mesh.userData.district === activeD.name;
+          u.group.visible = inSelectedDistrict;
+          u.mesh.position.y = activeAC && no === activeAC.no ? 14 : 2;
+          u.line.color.set(activeAC && no === activeAC.no ? P.sel : info.color);
+          u.line.opacity = activeAC && no === activeAC.no ? 1 : 0.35;
+          u.label.style.opacity = inSelectedDistrict ? "1" : "0";
+          u.label.style.fontSize = activeAC && no === activeAC.no ? "10px" : "8px";
         }
-      } else if (hovered && mouse.px >= 0 && !dragging) {
-        const ds = live.current.districtStats?.[hovered];
-        const count = ds?.count ?? live.current.liveValid?.[hovered] ?? 0;
-        const data = {
-          kind: "district", name: hovered, samples: count, results: { aiadmk: 0, dmk: 0, tvk: 0, others: 0 },
-          valid: count, leader: ds?.leader ?? null, leaderPct: ds?.leaderPct ?? 0, empty: ds ? ds.empty : count === 0,
-        } as MapTooltipData;
-        tipRef.current = { x: mouse.px, y: mouse.py };
-        setTip((prev) => (JSON.stringify(prev) === JSON.stringify(data) ? prev : data));
-      } else if (tipRef.current) { tipRef.current = null; setTip(null); }
-
-      // district labels — collision-aware, priority: hover/focus > selected > area
-      const zoomed = dist < 1500;
-      const placed: { x: number; y: number; w: number; h: number }[] = [];
-      const priority = (n: string) => (hv === n || pinDistrict === n ? 3 : selSet?.has(n) ? 2 : 0);
-      const order = Object.keys(states).sort((a, b) => {
-        const pa = priority(a), pb = priority(b);
-        return pa !== pb ? pb - pa : districtRadius(b) - districtRadius(a);
-      });
-      for (const name of order) {
-        const el = districtLabels[name];
-        if (!el) continue;
-        const focused = hv === name || pinDistrict === name;
-        const isSel = selSet ? selSet.has(name) : false;
-        const isolated = selSet ? !isSel : false; // unselected while a selection exists
-        const big = districtRadius(name) >= 0.18;
-        const want = lay.labels && !isolated && (focused || isSel || zoomed || (!selSet && big));
-        if (!want) { if (el.style.opacity !== "0") el.style.opacity = "0"; continue; }
-        const { lng, lat } = districtCentroid(name);
-        const [wx, wz] = projectLngLat(lng, lat);
-        const p = toScreen(wx, DEPTH + 8 + (states[name]?.group.position.y ?? 0), wz);
-        if (p.behind) { el.style.opacity = "0"; continue; }
-        const lw = name.length * 6.4 + 8, lh = 14;
-        const collide = placed.some((q) => Math.abs(q.x - p.x) < (q.w + lw) / 2 && Math.abs(q.y - p.y) < (q.h + lh) / 2);
-        if (collide && !focused && !isSel) { if (el.style.opacity !== "0") el.style.opacity = "0"; continue; }
-        placed.push({ x: p.x, y: p.y, w: lw, h: lh });
-        el.style.transform = `translate(-50%,-50%) translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
-        el.style.opacity = focused ? "1" : "0.82";
-        el.style.color = focused ? "var(--map-sel-line)" : isSel ? "var(--saffron-2)" : P.label;
-        el.style.textShadow = `0 1px 3px ${P.halo}, 0 0 6px ${P.halo}`;
-        el.style.fontSize = focused ? "12.5px" : "11px";
-      }
-
-      renderer.render(scene, camera);
+        // Camera
+        let bounds: { minx: number; maxx: number; minz: number; maxz: number } | null = null;
+        if (activeAC) bounds = activeAC.bounds;
+        else if (activeD) bounds = activeD.bounds;
+        const hostRect = host.getBoundingClientRect();
+        const vw = Math.max(320, hostRect.width), vh = Math.max(320, hostRect.height);
+        const wide = typeof window !== "undefined" && window.innerWidth > 1024;
+        let centerX = 0, centerZ = 0, dist = 2050;
+        if (bounds) {
+          centerX = (bounds.minx + bounds.maxx) / 2; centerZ = (bounds.minz + bounds.maxz) / 2;
+          const W = Math.max(60, bounds.maxx - bounds.minx), H = Math.max(60, bounds.maxz - bounds.minz);
+          const availW = Math.max(220, vw - (wide ? 680 : 0));
+          const availH = Math.max(220, vh - 90);
+          const fov = camera.fov * Math.PI / 180;
+          const fit = Math.max((H / 2) / Math.tan(fov / 2), (W / 2) / Math.tan(Math.atan(Math.tan(fov / 2) * (availW / availH)))) * 1.45;
+          dist = Math.max(550, Math.min(3300, fit));
+          const shift = wide ? -70 : 0;
+          const worldPerPx = (2 * dist * Math.tan(fov / 2)) / availH;
+          centerX += shift * worldPerPx;
+        }
+        desired.tx = centerX; desired.tz = centerZ; desired.dist = dist;
+      },
+      resetCamera: () => { desired.tx = 0; desired.tz = 0; desired.dist = 2050; },
     };
-    const stop = rafLoop(frame);
+    apiRef.current?.setSelection(live.current.district, live.current.acNo, live.current.year);
     setReady(true);
 
-    apiRef.current = {
-      rebuildPins,
-      setSelection,
-      reset: () => { theta = 0; phi = 0.6; dist = 2020; desired.tx = oxBase(); desired.tz = 0; desired.dist = 2020; },
+    let targetX = desired.tx, targetZ = desired.tz, targetDist = desired.dist;
+    let theta = 0, phi = 0.58;
+    let raf = 0, disposed = false, hoveredKey: string | null = null;
+    let drag: { x: number; y: number; moved: boolean } | null = null;
+    const ray = new THREE.Raycaster(); const ndc = new THREE.Vector2();
+    const updateCamera = () => {
+      if (!reduced) {
+        targetX += (desired.tx - targetX) * 0.08; targetZ += (desired.tz - targetZ) * 0.08; targetDist += (desired.dist - targetDist) * 0.08;
+        theta += (0 - theta) * 0.04; phi += (0.58 - phi) * 0.04;
+      } else { targetX = desired.tx; targetZ = desired.tz; targetDist = desired.dist; theta = 0; phi = 0.58; }
+      camera.position.set(targetX + targetDist * Math.sin(phi) * Math.sin(theta), targetDist * Math.cos(phi), targetZ + targetDist * Math.sin(phi) * Math.cos(theta));
+      camera.lookAt(targetX, 0, targetZ);
     };
+    const resize = () => {
+      const r = host.getBoundingClientRect(); renderer.setSize(Math.max(1, r.width), Math.max(1, r.height), false);
+      camera.aspect = Math.max(0.2, r.width / Math.max(1, r.height)); camera.updateProjectionMatrix();
+    };
+    resize();
+    const ro = new ResizeObserver(resize); ro.observe(host);
+    const render = () => {
+      updateCamera();
+      // Label screen placement
+      const rect = host.getBoundingClientRect();
+      for (const u of labelEls) {
+        if (u.label.style.opacity === "0") continue;
+        const x = Number(u.label.dataset.cx || 0), z = Number(u.label.dataset.cz || 0);
+        const p = new THREE.Vector3(x, u.kind === "district" ? DEPTH : DEPTH + AC_DEPTH, z).project(camera);
+        const sx = (p.x * 0.5 + 0.5) * rect.width, sy = (-p.y * 0.5 + 0.5) * rect.height;
+        u.label.style.transform = `translate(${sx}px,${sy}px) translate(-50%,-50%)`;
+      }
+      renderer.render(scene, camera);
+      if (!disposed) raf = requestAnimationFrame(render);
+    };
+    raf = requestAnimationFrame(render);
 
+    const onPointerMove = (e: PointerEvent) => {
+      const r = canvas.getBoundingClientRect();
+      ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1; ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      if (drag) {
+        const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+        if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
+        theta = Math.max(-0.6, Math.min(0.6, -dx * 0.004)); phi = Math.max(0.25, Math.min(1.1, 0.58 + dy * 0.003));
+        drag.x = e.clientX; drag.y = e.clientY; return;
+      }
+      ray.setFromCamera(ndc, camera);
+      const hits = ray.intersectObjects(pickables, false).filter((h) => h.object.visible && h.object.parent?.visible !== false);
+      const hit = hits.find((h) => h.object.userData.kind === "ac" && live.current.district != null) ?? hits.find((h) => h.object.userData.kind === "district");
+      if (hit) {
+        const data = hit.object.userData; const kind = data.kind as "district" | "ac";
+        const key = kind === "district" ? "d:" + data.district : "a:" + data.no;
+        if (key !== hoveredKey) {
+          hoveredKey = key; canvas.style.cursor = "pointer";
+          if (kind === "district") {
+            const info = groupColorForDistrict(districtRef.current.get(data.district), live.current.year);
+            setTip({ x: e.clientX, y: e.clientY, title: data.district, sub: live.current.year === "2026" ? "2026 survey-leading group" : `${live.current.year} AC winners`, value: `${info.group ?? "No data"} · ${tnPct(info.share)} · ${info.count.toLocaleString("en-IN")}`, color: info.color });
+          } else {
+            const a = acRef.current.get(data.no); const info = groupColorForAc(a, live.current.year);
+            setTip({ x: e.clientX, y: e.clientY, title: a?.name ?? `AC ${data.no}`, sub: `${data.district} · ${live.current.year === "2026" ? "survey" : live.current.year}`, value: `${info.group ?? "No data"} · ${tnPct(info.share)} · ${info.count.toLocaleString("en-IN")}`, color: info.color });
+          }
+        } else setTip((t) => t ? { ...t, x: e.clientX, y: e.clientY } : t);
+      } else { hoveredKey = null; canvas.style.cursor = "grab"; setTip(null); }
+    };
+    const onPointerDown = (e: PointerEvent) => { drag = { x: e.clientX, y: e.clientY, moved: false }; canvas.setPointerCapture(e.pointerId); canvas.style.cursor = "grabbing"; };
+    const onPointerUp = (e: PointerEvent) => {
+      const wasDrag = drag?.moved; drag = null; canvas.style.cursor = "grab";
+      if (wasDrag) return;
+      const r = canvas.getBoundingClientRect();
+      ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1; ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      ray.setFromCamera(ndc, camera);
+      const hits = ray.intersectObjects(pickables, false).filter((h) => h.object.visible);
+      const hit = hits.find((h) => h.object.userData.kind === "ac" && live.current.district != null) ?? hits.find((h) => h.object.userData.kind === "district");
+      if (!hit) { live.current.onReset(); return; }
+      if (hit.object.userData.kind === "district") live.current.onSelectDistrict(hit.object.userData.district as string);
+      else live.current.onSelectAc(hit.object.userData.no as number);
+    };
+    const onWheel = (e: WheelEvent) => { e.preventDefault(); desired.dist = Math.max(700, Math.min(3300, desired.dist * (1 + e.deltaY * 0.0012))); };
+    const onLeave = () => { hoveredKey = null; setTip(null); drag = null; };
+    canvas.addEventListener("pointermove", onPointerMove); canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointerup", onPointerUp); canvas.addEventListener("pointerleave", onLeave); canvas.addEventListener("wheel", onWheel, { passive: false });
     return () => {
-      stop();
-      ro.disconnect();
-      clearPins();
-      canvas.removeEventListener("pointerdown", onPointerDown);
-      canvas.removeEventListener("pointermove", onPointerMove);
-      canvas.removeEventListener("pointerup", onPointerUp);
-      canvas.removeEventListener("pointercancel", onPointerUp);
-      canvas.removeEventListener("pointerleave", onLeave);
-      canvas.removeEventListener("wheel", onWheel);
-      renderer.dispose();
-      scene.traverse((o) => {
-        const m = o as THREE.Mesh;
-        m.geometry?.dispose?.();
-        const mat = m.material as THREE.Material | THREE.Material[] | undefined;
-        (Array.isArray(mat) ? mat : mat ? [mat] : []).forEach((x) => x.dispose());
-      });
-      apiRef.current = null;
+      disposed = true; cancelAnimationFrame(raf); ro.disconnect();
+      canvas.removeEventListener("pointermove", onPointerMove); canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointerup", onPointerUp); canvas.removeEventListener("pointerleave", onLeave); canvas.removeEventListener("wheel", onWheel);
+      labelRoot.innerHTML = ""; renderer.dispose();
     };
-  }, [projection, projectLngLat]);
+  }, [theme]);
 
-  useEffect(() => { apiRef.current?.rebuildPins(); }, [mode, selectedDistricts, pollType, pollData, layers.pins, intensityActive, surveyPins]);
-  useEffect(() => { apiRef.current?.setSelection(selectedDistricts); }, [selectedDistricts]);
-  useEffect(() => { if (resetNonce) apiRef.current?.reset(); }, [resetNonce]);
+  useEffect(() => {
+    if (!ready) return;
+    apiRef.current?.setSelection(district, acNo, year);
+  }, [ready, district, acNo, year, acs, districts]);
 
   return (
-    <div ref={hostRef} className="relative h-full w-full">
-      <canvas ref={canvasRef} className="block h-full w-full touch-none" aria-label="2.5D map of Tamil Nadu districts" role="img" />
-      <div ref={labelRef} className="pointer-events-none absolute inset-0 z-[5] overflow-hidden" aria-hidden />
-      <div ref={pinRef} className="pointer-events-none absolute inset-0 z-[6] overflow-hidden" />
-
-      {!ready && !failed && <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">Loading Tamil Nadu…</div>}
-
-      {tip && tipRef.current && <MapTooltip data={tip} x={tipRef.current.x} y={tipRef.current.y} />}
-
-      {failed && (
-        <div className="absolute inset-0 grid place-items-center px-6 text-center text-sm text-muted-foreground">
-          3D map unavailable on this device. District information is listed below.
-        </div>
-      )}
-
-      {/* Accessible district information, kept outside the canvas */}
-      <ul className="sr-only" aria-label="Tamil Nadu districts and survey response counts">
-        {pollData.map((d) => {
-          const n = liveValid?.[d.district];
-          return <li key={d.district}>{d.district}: {(n ?? d.samples).toLocaleString("en-IN")} {n !== undefined ? "valid survey responses" : "samples"}</li>;
-        })}
-      </ul>
+    <div className="relative h-full w-full">
+      <div ref={hostRef} className="absolute inset-0">
+        <canvas ref={canvasRef} className="block h-full w-full touch-none" aria-label="3D map of Tamil Nadu districts and assembly constituencies" role="img" />
+        <div ref={labelRef} className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden />
+      </div>
+      {tip && <div className="pointer-events-none fixed z-[80] max-w-[240px] rounded-lg border border-border bg-card/95 px-2.5 py-2 text-[10px] shadow-xl backdrop-blur" style={{ left: Math.min(tip.x + 12, window.innerWidth - 255), top: Math.max(8, tip.y - 12) }}>
+        <div className="font-semibold" style={{ color: tip.color }}>{tip.title}</div>
+        <div className="text-[9px] text-muted-foreground">{tip.sub}</div>
+        <div className="mt-0.5 tabular-nums text-foreground/85">{tip.value}</div>
+      </div>}
+      <div className="sr-only" aria-live="polite">{tip ? `${tip.title}: ${tip.value}` : ""}</div>
     </div>
   );
 }

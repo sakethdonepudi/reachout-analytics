@@ -1,0 +1,26 @@
+import type { TnAggregates } from "@/lib/tamil-nadu/model";
+import { TN_GROUPS, TN_LABEL } from "@/lib/tamil-nadu/model";
+
+export default function AboutTamilNadu({ data }: { data: TnAggregates }) {
+  const survey = data.source.survey as { total?: number; valid?: number; blank?: number; invalid?: number; dateMin?: string; dateMax?: string; duplicateIds?: number } | undefined;
+  const history = data.source.history as Record<string, { source?: string; assemblies?: number; missingAcs?: number[] }> | undefined;
+  return (
+    <details className="group mx-auto max-w-[1720px] px-4 pb-10 lg:px-6">
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-[12px] font-semibold [&::-webkit-details-marker]:hidden">
+        About this data
+        <span className="rounded-full bg-saffron/15 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-saffron-2">Survey + history</span>
+        <span className="ml-auto text-[10px] font-normal text-muted-foreground transition-transform group-open:rotate-180">▾</span>
+      </summary>
+      <div className="space-y-2.5 rounded-b-xl border border-t-0 border-border bg-card px-4 py-3 text-[11px] leading-relaxed text-muted-foreground">
+        <p><b className="text-foreground/85">2026 measure.</b> The active workbook contains a 2026 exit-poll survey; its Opinion Poll sheet is empty. {survey?.valid?.toLocaleString("en-IN") ?? "—"} valid responses ({survey?.total?.toLocaleString("en-IN") ?? "—"} entries, {survey?.blank?.toLocaleString("en-IN") ?? "—"} blank, {survey?.invalid?.toLocaleString("en-IN") ?? "—"} invalid) collected {survey?.dateMin ?? "—"} to {survey?.dateMax ?? "—"}. This is a survey estimate, not an official result, and there is no validated 2026 seat model.</p>
+        <p><b className="text-foreground/85">Groups.</b> The active survey reports six source groups: {TN_GROUPS.map((g) => TN_LABEL[g]).join("; ")}. Individual alliance partners are not split because the survey reports combined responses. TVK did not contest 2011–2021. NTK and NOTA are not applicable in 2011. Those baselines are explicitly shown as not applicable, not as zero or missing.</p>
+        <p><b className="text-foreground/85">Historical sources.</b> 2011 and 2016 use the TCPD Tamil Nadu assembly dataset (ECI-derived, file version 2020-06-25). 2021 uses ECI candidate results via the Election2021 all_candidate dataset. The 2016 source has 232 of 234 seats: Aravakurichi (AC 134) and Thanjavur (AC 174) are absent. They are shown as no data, never zero. Two duplicate source blocks (2011 AC 140 and 2016 AC 195) were resolved to the block with the larger valid-vote base; they were never added together. Historical seats are counted from the verified winning candidate, not inferred from combined group vote share.</p>
+        <p><b className="text-foreground/85">Geography.</b> 234 assembly polygons and 38 district unions come from the post-2008 ECI-derived Tamil Nadu S22 shapefile in india-constituency-maps. District-level 2026 aggregates use only the {(survey as { recordedDistrictValid?: number } | undefined)?.recordedDistrictValid?.toLocaleString("en-IN") ?? "—"} valid records with a recorded or source-mapped district; {(survey as { estimatedDistrictValid?: number } | undefined)?.estimatedDistrictValid?.toLocaleString("en-IN") ?? "—"} valid records with an estimated district only are excluded from district display but remain in statewide totals. Assembly-level analysis uses {(survey as { acScopedValid?: number } | undefined)?.acScopedValid?.toLocaleString("en-IN") ?? "—"} valid records with an AC number; {(survey as { missingAcValid?: number } | undefined)?.missingAcValid?.toLocaleString("en-IN") ?? "—"} valid records without an AC remain statewide only. Four source-inferred AC rows are retained and disclosed; no respondent PIN or allocated district is treated as a recorded location.</p>
+        <p><b className="text-foreground/85">Survey rounds.</b> Entries are sorted by collection timestamp and stable Response ID. Round membership is entry-based; the final remainder is explicit. The current-vote denominator excludes blanks and invalid party labels. There is no recalled previous-election answer in the active workbook, so no swing projection formula is applied. The expanded analysis shows survey shares and their differences from the selected historical baseline.</p>
+        <p><b className="text-foreground/85">No invented constituency results.</b> The map colours assemblies only from verified historical winners or the active assembly-level survey leader. It does not copy district percentages into assemblies, and it does not turn a 2026 vote-share estimate into a seat projection.</p>
+        <p><b className="text-foreground/85">Provenance.</b> Survey workbook SHA-256 is retained in the generated metadata; {survey?.duplicateIds ?? 0} duplicate Response IDs were found. Historical source versions and geometry provenance are recorded with the generated bundle. Public pages expose aggregates only, never raw response IDs or raw rows.</p>
+        {history && <p><b className="text-foreground/85">Coverage.</b> {Object.entries(history).map(([y, h]) => `${y}: ${h.assemblies ?? "—"} assemblies`).join(" · ")}.</p>}
+      </div>
+    </details>
+  );
+}
