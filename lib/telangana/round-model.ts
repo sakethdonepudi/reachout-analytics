@@ -20,7 +20,7 @@ export const P7_COLOR: Record<P7, string> = {
   BRS: PARTY_COLOR.BRS,
   Congress: PARTY_COLOR.Congress,
   BJP: PARTY_COLOR.BJP,
-  AIMIM: PARTY_COLOR.AIMIM,
+  AIMIM: "#16A34A",
   TDP: "#EAB308",
   JSP: "#06B6D4",
   Others: PARTY_COLOR.Others,

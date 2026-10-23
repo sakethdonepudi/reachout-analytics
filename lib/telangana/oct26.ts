@@ -11,13 +11,13 @@ import bundle from "@/lib/data/telangana/oct26.json";
    State/district aggregates weight ACs by 2023 total votes.
    ===================================================================== */
 
-export type Party = "BRS" | "Congress" | "BJP" | "AIMIM" | "Others";
-export const PARTIES: Party[] = ["BRS", "Congress", "BJP", "AIMIM", "Others"];
+export type Party = "BRS" | "Congress" | "BJP" | "Others";
+export const PARTIES: Party[] = ["BRS", "Congress", "BJP", "Others"];
 export const PARTY_COLOR: Record<Party, string> = {
-  BRS: "#EC4899", Congress: "#2563EB", BJP: "#F97316", AIMIM: "#16A34A", Others: "#8B5CF6",
+  BRS: "#EC4899", Congress: "#2563EB", BJP: "#F97316", Others: "#8B5CF6",
 };
 export const PARTY_LABEL: Record<Party, string> = {
-  BRS: "BRS", Congress: "Congress+", BJP: "BJP", AIMIM: "AIMIM", Others: "Others",
+  BRS: "BRS", Congress: "Congress+", BJP: "BJP", Others: "Others",
 };
 export const NO_DATA_COLOR = "#9aa1ab";
 export type ShareSet = Record<Party, number>;
@@ -74,7 +74,6 @@ export type AcRow = {
   leader: Party | "Tie"; tied: Party[]; marginPp: number;
   sourceLeader: Party | null;
   override: Override | null;
-  aimimEstimate?: number; aimimUsedSwingPp?: number;
 };
 export type DistrictRow = {
   name: string; acs: number[]; votes2023: number;
@@ -84,10 +83,6 @@ export type DistrictRow = {
 export type Oct26 = {
   version: string; sourceFile: string; sourceHash: string; cutoff: string; shrinkFactor: number;
   parties: Party[]; labels: Record<string, string>; congressBasis: string; othersBasis: string;
-  aimimExtension?: {
-    version: string; method: string; baseline: string; cutoff: string; shrinkFactor: number; source: string;
-    cappedCount: number; cappedAcs: number[]; zeroResidualAcs: number[]; overrideAcs: number[]; note: string;
-  };
   devicesAvailable: boolean; pinDataAvailable: boolean;
   counts: {
     sourceIds: number; cutoffRows: number; answered2028: number; blank2028: number;
@@ -112,7 +107,7 @@ export type Oct26 = {
 };
 
 export const DATA = bundle as unknown as Oct26;
-export const EMPTY: ShareSet = { BRS: 0, Congress: 0, BJP: 0, AIMIM: 0, Others: 0 };
+export const EMPTY: ShareSet = { BRS: 0, Congress: 0, BJP: 0, Others: 0 };
 
 /* ---------------- aggregation ---------------- */
 export function weightedShares(acs: AcRow[], key: "actual" | "prediction"): ShareSet {

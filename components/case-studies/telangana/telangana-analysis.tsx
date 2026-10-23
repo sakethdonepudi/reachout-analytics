@@ -231,14 +231,18 @@ export default function TelanganaAnalysis({
     return metric === "share" ? proj[party] : proj[party] - baselineDetail[party] * 100;
   }, [metric, baselineDetail]);
   const unit = metric === "share" ? "%" : "pp";
-  const offset = 4;
-  const anchorValue = useCallback((year: HistoricYear, party: P7) =>
-    metric === "share"
-      ? hist[year][party] * 100
-      : (hist[year][party] - baselineDetail[party]) * 100, [metric, hist, baselineDetail]);
+  const anchorLabels = metric === "share" ? ["2014", "2018", "2023"] : ["2014 → 18", "2018 → 23"];
+  const offset = anchorLabels.length + 1;
+  const anchorTitle = (i: number) => metric === "share" ? `${anchorLabels[i]} actual` : `${anchorLabels[i]} actual swing`;
+  const anchorAt = useCallback((i: number, party: P7) => {
+    if (metric === "share") return hist[anchorLabels[i] as HistoricYear]?.[party] == null ? null : hist[anchorLabels[i] as HistoricYear][party] * 100;
+    const from = i === 0 ? "2014" : "2018";
+    const to = i === 0 ? "2018" : "2023";
+    return (hist[to as HistoricYear][party] - hist[from as HistoricYear][party]) * 100;
+  }, [metric, hist, anchorLabels]);
   const categories = useMemo(
-    () => ["2014", "2018", "2023", "", ...periods.map((r) => r.label)],
-    [periods],
+    () => [...anchorLabels, "", ...periods.map((r) => r.label)],
+    [anchorLabels, periods],
   );
   const selected = selectedPeriod ?? focusPeriod;
 
@@ -253,9 +257,7 @@ export default function TelanganaAnalysis({
       out.push({
         name: `${P7_LABEL[party]} · actual`, type: "line",
         data: [
-          { value: +anchorValue("2014", party).toFixed(2), symbolSize: baseline === "2014" ? 9 : 6 },
-          { value: +anchorValue("2018", party).toFixed(2), symbolSize: baseline === "2018" ? 9 : 6 },
-          { value: +anchorValue("2023", party).toFixed(2), symbolSize: baseline === "2023" ? 9 : 6 },
+          ...anchorLabels.map((_, i) => ({ value: anchorAt(i, party) == null ? null : +anchorAt(i, party)!.toFixed(2), symbolSize: 6 })),
           null,
           ...periods.map(() => null),
         ],
@@ -265,7 +267,7 @@ export default function TelanganaAnalysis({
       });
       out.push({
         name: `${P7_LABEL[party]} · projected`, type: "line",
-        data: [null, null, null, null, ...vals],
+        data: [...Array(offset).fill(null), ...vals],
         color: P7_COLOR[party], symbol: "circle", symbolSize: 5.5,
         lineStyle: { color: P7_COLOR[party], width: 2.1, type: "solid" },
         itemStyle: { color: P7_COLOR[party] }, emphasis: { focus: "series" }, z: 5,
@@ -325,7 +327,7 @@ export default function TelanganaAnalysis({
       });
     }
     return out;
-  }, [parties, periods, projections, valueOf, hist, baseline, metric, showMedian, highlightOutliers, reduced, selected, categories, p, unit, anchorValue]);
+  }, [parties, periods, projections, valueOf, hist, baseline, metric, showMedian, highlightOutliers, reduced, selected, categories, p, unit, anchorAt, anchorLabels, offset]);
 
   const chartOption = useMemo(() => ({
     animation: !reduced, animationDuration: 450, animationEasing: "cubicOut",
@@ -337,10 +339,9 @@ export default function TelanganaAnalysis({
         const list = Array.isArray(params) ? params as { dataIndex: number }[] : [];
         const index = list[0]?.dataIndex ?? -1;
         if (index < 0) return "";
-        if (index < 3) {
-          const year = BASELINES[index];
-          const rows = parties.map((party) => `<div style="display:flex;justify-content:space-between;gap:14px"><span><i style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${P7_COLOR[party]};margin-right:5px"></i>${P7_LABEL[party]}</span><b>${anchorValue(year, party).toFixed(2)}${unit}</b></div>`).join("");
-          return `<div style="font-weight:600;margin-bottom:3px">${year} actual${metric === "swing" ? ` · vs ${baseline}` : ""}</div>` + rows;
+        if (index < anchorLabels.length) {
+          const rows = parties.map((party) => { const v = anchorAt(index, party); return v == null ? "" : `<div style="display:flex;justify-content:space-between;gap:14px"><span><i style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${P7_COLOR[party]};margin-right:5px"></i>${P7_LABEL[party]}</span><b>${v.toFixed(2)}${unit}</b></div>`; }).join("");
+          return `<div style="font-weight:600;margin-bottom:3px">${anchorTitle(index)}</div>` + rows;
         }
         const pi = index - offset;
         const per = periods[pi];
@@ -364,12 +365,19 @@ export default function TelanganaAnalysis({
       splitLine: { lineStyle: { color: p.grid } }, axisLine: { show: false }, axisTick: { show: false },
     },
     series,
-  }), [series, categories, metric, offset, periods, projections, parties, valueOf, hist, p, reduced, unit, anchorValue, baseline]);
+  }), [series, categories, metric, offset, periods, projections, parties, valueOf, hist, p, reduced, unit, anchorAt, anchorLabels]);
 
   const medianRows = parties.map((party) => {
     const vals = projections.map((pr) => valueOf(pr, party)).filter((v): v is number => v != null);
     return { party, median: boxStats(vals)?.median ?? null };
   });
+
+  const latestIndex = periods.length - 1;
+  const latestPeriod = latestIndex >= 0 ? periods[latestIndex] : null;
+  const latestProjection = latestIndex >= 0 ? projections[latestIndex] : null;
+  const latestLeader = latestProjection ? P7S.reduce((best, party) => (latestProjection[party] > (latestProjection[best] ?? 0) ? party : best), P7S[0]) : null;
+  const latestLeaderShare = latestLeader && latestProjection ? latestProjection[latestLeader] : null;
+  const latestLeaderSwing = latestLeader && latestProjection ? latestProjection[latestLeader] - baselineDetail[latestLeader] * 100 : null;
 
   const distPeriods = useMemo<DistPeriod[]>(() => {
     if (!data) return [];
@@ -483,8 +491,9 @@ export default function TelanganaAnalysis({
           <div className="inline-flex gap-1" role="group" aria-label="Round size">
             {(["388", "688"] as const).map((n) => <button key={n} type="button" aria-pressed={roundSize === n} onClick={() => setRoundSize(n)} className={cn("rounded-full border px-2 py-1 text-[10px]", roundSize === n ? "border-foreground/40 bg-muted/40 text-foreground" : "border-border text-muted-foreground")}>Samples {n}</button>)}
           </div>
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Parties">
+          <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Parties">
             {P7S.map((party) => <button key={party} type="button" aria-pressed={parties.includes(party)} onClick={() => setParties((prev) => prev.includes(party) ? (prev.length > 1 ? prev.filter((x) => x !== party) : prev) : [...prev, party])} className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px]", parties.includes(party) ? "border-border text-foreground" : "border-border/60 text-muted-foreground opacity-45")}><span className="size-2 rounded-sm" style={{ background: P7_COLOR[party] }} />{P7_LABEL[party]}</button>)}
+            <button type="button" onClick={() => setParties([...P7S])} className={cn("rounded-full border px-2 py-1 text-[10px]", parties.length === P7S.length ? "border-foreground/40 bg-muted/40 text-foreground" : "border-border text-muted-foreground hover:text-foreground")}>All parties</button>
           </div>
           <span className="text-[10px] text-muted-foreground">Range <b className="font-medium text-foreground/80">{data?.dateMin ?? "—"} – {data?.dateMax ?? "—"}</b></span>
           <button type="button" aria-pressed={showMedian} onClick={() => setShowMedian((v) => !v)} className={cn("rounded-full border px-2 py-1 text-[10px]", showMedian ? "border-foreground/40 bg-muted/40 text-foreground" : "border-border text-muted-foreground")}>Show median</button>
@@ -492,7 +501,22 @@ export default function TelanganaAnalysis({
           <button type="button" onClick={() => { setMetric("share"); setBaseline("2023"); setSmooth("raw"); setRoundSize("388"); setParties([...P7S]); setShowMedian(true); setHighlightOutliers(true); setDistUnit("day"); setResetKey((k) => k + 1); }} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground"><RotateCcw className="size-3" /> Reset</button>
         </div>
 
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-2 text-[10px] text-muted-foreground">
+          <span>Collection <b className="text-foreground/80">{data?.dateMin && data?.dateMax ? `${data.dateMin.slice(0, 10)} – ${data.dateMax.slice(0, 10)}` : "—"}</b></span>
+          <span>Rounds <b className="text-foreground/80">{periods.length || "—"}</b></span>
+          <span>Latest <b className="text-foreground/80">{latestPeriod ? dateOf(latestPeriod.end) : "—"}</b></span>
+          {latestLeader && <span className="ml-auto">Latest leader <b style={{ color: P7_COLOR[latestLeader] }}>{P7_LABEL[latestLeader]}</b> <b className="text-foreground/80">{latestLeaderShare == null ? "—" : `${latestLeaderShare.toFixed(2)}%`}</b> {latestLeaderSwing == null ? "" : `· ${signed(latestLeaderSwing)} pp`}</span>}
+        </div>
+
         <div className="space-y-5 px-4 pb-8 pt-4">
+          {latestProjection && (
+            <section aria-label="Latest party summary">
+              <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 className="font-display text-[15px] font-semibold">Latest round · party summary</h3><span className="text-[10px] text-muted-foreground">{latestPeriod ? `${latestPeriod.label} · ${dates(latestPeriod.start, latestPeriod.end)}` : ""}</span></div>
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
+                {parties.map((party) => { const v = latestProjection[party]; const sw = latestProjection[party] - baselineDetail[party] * 100; return <div key={party} className="rounded-lg border border-border bg-card/70 px-2.5 py-2"><div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: P7_COLOR[party] }}><span className="size-1.5 rounded-sm" style={{ background: P7_COLOR[party] }} />{P7_LABEL[party]}</div><div className="mt-1 font-display text-[17px] tabular-nums text-foreground">{v.toFixed(2)}%</div><div className="text-[9px] tabular-nums text-muted-foreground">{sw == null ? "—" : `${signed(sw)} pp`} vs {baseline}</div></div>; })}
+              </div>
+            </section>
+          )}
           {error && <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-600 dark:text-rose-400">{error}</div>}
           {loading && !data && <div className="grid h-48 place-items-center text-[12px] text-muted-foreground">Loading survey periods…</div>}
 
@@ -566,7 +590,7 @@ export default function TelanganaAnalysis({
 
               <section>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div><h3 className="font-display text-[15px] font-semibold">District projection</h3><p className="mt-0.5 text-[10px] text-muted-foreground">2028 AC-based model · AIMIM extracted from Others · weighted by 2023 votes.</p></div>
+                  <div><h3 className="font-display text-[15px] font-semibold">District projection</h3><p className="mt-0.5 text-[10px] text-muted-foreground">2028 final AC model · four-group · weighted by 2023 votes.</p></div>
                   <div className="flex items-center gap-1 text-[10px] text-muted-foreground">Sort
                     <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="rounded-md border border-border bg-background px-1.5 py-1 text-[10px] text-foreground"><option value="name">Name</option><option value="leader">2028 leader</option><option value="margin">Margin</option></select>
                   </div>
@@ -574,7 +598,7 @@ export default function TelanganaAnalysis({
                 <div className="mt-2 max-h-72 overflow-auto rounded-xl border border-border">
                   <table className="w-full border-collapse text-[10.5px]">
                     <caption className="sr-only">District 2028 AC model projection</caption>
-                    <thead className="sticky top-0 z-10 bg-card"><tr className="text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">District</th><th className="px-2 py-1.5">2028 leader</th><th className="px-2 py-1.5 text-right">BRS</th><th className="px-2 py-1.5 text-right">Congress+</th><th className="px-2 py-1.5 text-right">BJP</th><th className="px-2 py-1.5 text-right">AIMIM</th><th className="px-2 py-1.5 text-right">Others</th><th className="px-2 py-1.5 text-right">Margin</th></tr></thead>
+                    <thead className="sticky top-0 z-10 bg-card"><tr className="text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">District</th><th className="px-2 py-1.5">2028 leader</th><th className="px-2 py-1.5 text-right">BRS</th><th className="px-2 py-1.5 text-right">Congress+</th><th className="px-2 py-1.5 text-right">BJP</th><th className="px-2 py-1.5 text-right">Others</th><th className="px-2 py-1.5 text-right">Margin</th></tr></thead>
                     <tbody>
                       {sortedDistricts.map((d) => (
                         <tr key={d.name} className={cn("cursor-pointer border-t border-border/60 hover:bg-muted/30", scope === `d:${d.name}` && "bg-saffron/10")} onClick={() => { setScope(`d:${d.name}`); onSelectDistrict(d.name); }}>
@@ -583,7 +607,6 @@ export default function TelanganaAnalysis({
                           <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.BRS)}</td>
                           <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.Congress)}</td>
                           <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.BJP)}</td>
-                          <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.AIMIM)}</td>
                           <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.Others)}</td>
                           <td className="px-2 py-1 text-right tabular-nums">{d.marginPp.toFixed(1)} pp</td>
                         </tr>

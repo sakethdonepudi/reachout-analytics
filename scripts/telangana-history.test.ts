@@ -23,14 +23,14 @@ check("2014/2018/2023 each have 119 assemblies and the supplied vote totals", ()
   assert.equal(new Set(HISTORY.years["2023"].acs.map((a) => a.no)).size, 119);
 });
 
-check("historical shares separate AIMIM from Others in every year", () => {
+check("historical four-group shares reconcile in every year", () => {
   assert.deepEqual(HISTORY.years["2014"].shares, { BRS: 0.340407, Congress: 0.259078, BJP: 0.070344, Others: 0.330171 });
   assert.deepEqual(HISTORY.years["2018"].shares, { BRS: 0.468738, Congress: 0.288292, BJP: 0.070086, Others: 0.172885 });
   assert.deepEqual(HISTORY.years["2023"].shares, { BRS: 0.373463, Congress: 0.397448, BJP: 0.138973, Others: 0.090115 });
   const expected = {
-    "2014": { BRS: 0.340407, Congress: 0.259078, BJP: 0.070344, AIMIM: 0.037366, Others: 0.292805 },
-    "2018": { BRS: 0.468738, Congress: 0.288292, BJP: 0.070086, AIMIM: 0.027112, Others: 0.145773 },
-    "2023": { BRS: 0.373463, Congress: 0.397448, BJP: 0.138973, AIMIM: 0.022158, Others: 0.067957 },
+    "2014": { BRS: 0.340407, Congress: 0.259078, BJP: 0.070344, Others: 0.330171 },
+    "2018": { BRS: 0.468738, Congress: 0.288292, BJP: 0.070086, Others: 0.172885 },
+    "2023": { BRS: 0.373463, Congress: 0.397448, BJP: 0.138973, Others: 0.090115 },
   } as const;
   for (const year of ["2014", "2018", "2023"] as const) {
     const shares = historicalShares(DATA.acs, year);
@@ -49,11 +49,12 @@ check("historical winner counts match the source audit", () => {
   }
 });
 
-check("2028 numeric leads and Kodangal tie are unchanged", () => {
-  assert.deepEqual(DATA.statewide.leads, { BJP: 13, Congress: 27, BRS: 70, AIMIM: 7, Others: 1, Tie: 1 });
+check("final 2028 numeric leads and Kodangal result", () => {
+  assert.deepEqual(DATA.statewide.leads, { BJP: 13, Congress: 30, BRS: 68, Others: 8 });
   const k = DATA.acs.find((a) => a.no === 72)!;
-  assert.equal(k.leader, "Tie");
-  assert.deepEqual(k.tied.sort(), ["BRS", "Congress"]);
+  assert.equal(k.leader, "Congress");
+  assert.equal(k.tied.length, 0);
+  assert.equal(k.override, null);
 });
 
 check("Kodangal keeps its historical winners across 2014, 2018 and 2023", () => {
@@ -169,17 +170,16 @@ check("every historical winner has a distinct party colour and label", () => {
   assert.equal(winnerLabel("Others"), "Others");
 });
 
-check("AIMIM 2028 is a separate modelled series with preserved totals", () => {
+check("compact prediction stays four-group while historical AIMIM remains available", () => {
   const leadCounts = Object.values(DATA.statewide.leads).reduce((sum, n) => sum + n, 0);
   assert.equal(leadCounts, 119);
-  assert.ok((DATA.statewide.leads.AIMIM ?? 0) > 0);
+  assert.equal("AIMIM" in DATA.statewide.prediction, false);
   for (const a of DATA.acs) {
-    assert.ok("AIMIM" in a.prediction);
+    assert.equal("AIMIM" in a.prediction, false);
     const total = PARTIES.reduce((sum, p) => sum + a.prediction[p], 0);
     assert.ok(near(total, 1, 2e-5), `AC ${a.no}`);
-    assert.ok(a.prediction.AIMIM <= (a.aimimEstimate ?? 0) + 1e-6, `AC ${a.no}`);
-    assert.equal(leaderOf(a.prediction).leader === null, false);
   }
+  assert.ok(near(HISTORY.years["2023"].aimim, 0.022158, 1e-6));
 });
 
 console.log(`\n${passed} checks passed.`);

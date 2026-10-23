@@ -14,7 +14,7 @@ import { read, utils } from "xlsx";
 
 const XLSX =
   process.env.TG_ROUNDS_XLSX ||
-  path.resolve(process.cwd(), ".context/attachments/QhSZpw/TG-2028-AC-Swing_19Oct Updated (1).xlsx");
+  path.resolve(process.cwd(), ".context/attachments/flkjTm/saketh_TG.xlsx");
 const OUT = path.resolve(process.cwd(), "lib/data/telangana/rounds.json");
 const PARTIES = ["BRS", "Congress", "BJP", "AIMIM", "TDP", "JSP", "Others"];
 
@@ -144,8 +144,8 @@ for (const [d, list] of districts) scopes[`d:${d}`] = scopeData(d, list);
 for (const [a, list] of acs) scopes[`a:${a}`] = scopeData(`AC ${a}`, list);
 
 const bundle = {
-  version: "tg-rounds-2026-10-22-v2",
-  source: "TG-2028-AC-Swing_19Oct Updated (1).xlsx · Data sheet",
+  version: "tg-rounds-2026-10-23-final",
+  source: "saketh_TG.xlsx · Data sheet",
   parties: PARTIES,
   entries: entries.length,
   dateMin: entries[0]?.date.slice(0, 10) ?? null,
