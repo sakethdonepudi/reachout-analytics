@@ -81,18 +81,25 @@ export function winnerLabel(party: string | null | undefined): string {
 /** Winner colour shaded by that winner's vote share. */
 export const winnerShade = (party: string, share: number) => shadeHex(winnerColour(party), share);
 
-/** Four-group shares for a historical year, weighted by that election's votes. */
+/** Historical shares with AIMIM extracted from the comparison table's Others. */
 export function historicalShares(acs: AcRow[], year: HistoricYear): ShareSet {
   let weight = 0;
-  const out: ShareSet = { BRS: 0, Congress: 0, BJP: 0, Others: 0 };
+  let aimim = 0;
+  const out: ShareSet = { BRS: 0, Congress: 0, BJP: 0, AIMIM: 0, Others: 0 };
   for (const a of acs) {
     const rec = yearMaps[year].get(a.no);
     if (!rec || !(rec.total > 0)) continue;
     weight += rec.total;
-    for (const p of PARTIES) out[p] += rec.shares[p] * rec.total;
+    for (const p of ["BRS", "Congress", "BJP"] as const) out[p] += rec.shares[p] * rec.total;
+    aimim += rec.detail.AIMIM * rec.total;
+    out.Others += rec.shares.Others * rec.total;
   }
   if (!weight) return { ...out };
-  for (const p of PARTIES) out[p] /= weight;
+  out.BRS /= weight;
+  out.Congress /= weight;
+  out.BJP /= weight;
+  out.Others = Math.max(0, out.Others / weight - aimim / weight);
+  out.AIMIM = aimim / weight;
   return out;
 }
 

@@ -590,7 +590,7 @@ export default function TelanganaAnalysis({
 
               <section>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div><h3 className="font-display text-[15px] font-semibold">District projection</h3><p className="mt-0.5 text-[10px] text-muted-foreground">2028 final AC model · four-group · weighted by 2023 votes.</p></div>
+                  <div><h3 className="font-display text-[15px] font-semibold">District projection</h3><p className="mt-0.5 text-[10px] text-muted-foreground">2028 final AC model · AIMIM extracted from Others · weighted by 2023 votes.</p></div>
                   <div className="flex items-center gap-1 text-[10px] text-muted-foreground">Sort
                     <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="rounded-md border border-border bg-background px-1.5 py-1 text-[10px] text-foreground"><option value="name">Name</option><option value="leader">2028 leader</option><option value="margin">Margin</option></select>
                   </div>
@@ -598,7 +598,7 @@ export default function TelanganaAnalysis({
                 <div className="mt-2 max-h-72 overflow-auto rounded-xl border border-border">
                   <table className="w-full border-collapse text-[10.5px]">
                     <caption className="sr-only">District 2028 AC model projection</caption>
-                    <thead className="sticky top-0 z-10 bg-card"><tr className="text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">District</th><th className="px-2 py-1.5">2028 leader</th><th className="px-2 py-1.5 text-right">BRS</th><th className="px-2 py-1.5 text-right">Congress+</th><th className="px-2 py-1.5 text-right">BJP</th><th className="px-2 py-1.5 text-right">Others</th><th className="px-2 py-1.5 text-right">Margin</th></tr></thead>
+                    <thead className="sticky top-0 z-10 bg-card"><tr className="text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">District</th><th className="px-2 py-1.5">2028 leader</th><th className="px-2 py-1.5 text-right">BRS</th><th className="px-2 py-1.5 text-right">Congress+</th><th className="px-2 py-1.5 text-right">BJP</th><th className="px-2 py-1.5 text-right">AIMIM</th><th className="px-2 py-1.5 text-right">Others</th><th className="px-2 py-1.5 text-right">Margin</th></tr></thead>
                     <tbody>
                       {sortedDistricts.map((d) => (
                         <tr key={d.name} className={cn("cursor-pointer border-t border-border/60 hover:bg-muted/30", scope === `d:${d.name}` && "bg-saffron/10")} onClick={() => { setScope(`d:${d.name}`); onSelectDistrict(d.name); }}>
@@ -607,6 +607,7 @@ export default function TelanganaAnalysis({
                           <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.BRS)}</td>
                           <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.Congress)}</td>
                           <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.BJP)}</td>
+                          <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.AIMIM)}</td>
                           <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.Others)}</td>
                           <td className="px-2 py-1 text-right tabular-nums">{d.marginPp.toFixed(1)} pp</td>
                         </tr>

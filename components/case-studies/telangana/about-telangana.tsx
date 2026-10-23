@@ -5,6 +5,7 @@ import { HISTORY } from "@/lib/telangana/history";
 export default function AboutTelangana({ data }: { data: Oct26 }) {
   const c = data.counts;
   const s = data.statewide;
+  const ext = data.aimimExtension;
   return (
     <details className="group mx-auto max-w-[1720px] px-4 pb-10 lg:px-6">
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-[12px] font-semibold [&::-webkit-details-marker]:hidden">
@@ -21,40 +22,49 @@ export default function AboutTelangana({ data }: { data: Oct26 }) {
           not an observed result or a latest-round survey percentage.
         </p>
         <p>
-          <b className="text-foreground/85">Compact model.</b> The compact map and comparison use the final workbook&apos;s
-          four-group AC model: BRS/TRS family, <b>Congress+</b> (INC + CPI, not INC alone), BJP and Others. The final numeric
-          predictions produce {s.leads.BRS ?? 0} BRS, {s.leads.Congress ?? 0} Congress, {s.leads.BJP ?? 0} BJP and
-          {s.leads.Others ?? 0} Others leading assemblies. The 2023-vote-weighted shares are BRS{" "}
+          <b className="text-foreground/85">Parties.</b> The compact comparison displays BRS/TRS, <b>Congress+</b> (INC + CPI,
+          not INC alone), BJP, <b>AIMIM</b> and Others. The final workbook prediction is four-group and folds AIMIM into Others.
+          AIMIM is extracted through the documented extension below and subtracted from that assembly&apos;s Others residual, so
+          it is not double-counted. The final leaders are BRS {s.leads.BRS ?? 0}, Congress {s.leads.Congress ?? 0}, BJP{" "}
+          {s.leads.BJP ?? 0}, AIMIM {s.leads.AIMIM ?? 0}, Others {s.leads.Others ?? 0}, total 119. Weighted shares are BRS{" "}
           {(s.prediction.BRS * 100).toFixed(2)}%, Congress+ {(s.prediction.Congress * 100).toFixed(2)}%, BJP{" "}
-          {(s.prediction.BJP * 100).toFixed(2)}%, Others {(s.prediction.Others * 100).toFixed(2)}%.
+          {(s.prediction.BJP * 100).toFixed(2)}%, AIMIM {(s.prediction.AIMIM * 100).toFixed(2)}%, Others{" "}
+          {(s.prediction.Others * 100).toFixed(2)}%.
         </p>
         <p>
-          <b className="text-foreground/85">Historical identity.</b> The historical maps retain detailed winning-party identity —
-          TRS, Congress, BJP, AIMIM, TDP, BSP, YSRCP, CPI, CPM, AIFB and Independent. The compact prediction remains four-group;
-          AIMIM is not invented as a separate compact percentage. The expanded round tracker uses the reference&apos;s separate
-          seven-party series where the underlying answers support them.
+          <b className="text-foreground/85">AIMIM extraction.</b> {ext?.method ?? "The final workbook folds AIMIM into Others. The extension uses 2023 ECI AIMIM actual plus the AIMIM survey swing."}{" "}
+          Baseline: {ext?.baseline ?? "2023 ECI AIMIM votes / total votes"}. Model cutoff: {ext?.cutoff ?? data.modelCutoff ?? "—"};{" "}
+          {ext?.cappedCount === 0 ? "no assembly was constrained by a smaller Others residual" : `${ext?.cappedCount ?? 0} assembly(ies) were capped by the available Others residual`}.
+          The raw AIMIM survey share is not used as the prediction, and Others is never divided arbitrarily. Every five-party
+          vector is normalised to 100% before rounding.
+        </p>
+        <p>
+          <b className="text-foreground/85">Historical identity.</b> Historical maps retain detailed winning-party identity —
+          TRS, Congress, BJP, AIMIM, TDP, BSP, YSRCP, CPI, CPM, AIFB and Independent. The expanded round tracker also carries
+          separate AIMIM, TDP and Janasena series where the underlying answers support them.
         </p>
         <p>
           <b className="text-foreground/85">Map colour.</b> For 2014, 2018 and 2023, each assembly is filled by its actual winner
           in that party&apos;s colour, shaded by the winner&apos;s vote share. For 2028 it is filled by the final workbook&apos;s
-          leading predicted group (BRS/TRS pink, Congress/INC blue, BJP saffron, Others muted purple), shaded by the predicted
-          share. The final workbook contains no prediction overrides.
+          leading predicted party after the AIMIM extraction (BRS/TRS pink, Congress/INC blue, BJP saffron, AIMIM green, Others
+          muted purple). The final workbook contains no prediction override; Kodangal is not a tie.
         </p>
         <p>
           <b className="text-foreground/85">Final workbook.</b> {fmtInt(c.sourceIds)} distinct Entry IDs; {fmtInt(c.cutoffRows)} entries;
           {" "}{fmtInt(c.answered2028)} answered the 2028 question and {fmtInt(c.blank2028)} left it blank;{" "}
           {fmtInt(c.answeredRecall2023)} answered the 2023 recall and {fmtInt(c.blankRecall2023)} are blank. The projection sheet
-          headers are detected on row 1, its English assembly-name column is <b>A/c</b>, 119 AC IDs and 33 district groups are
-          validated, and trailing formatted/blank rows are ignored. Summary and pivot values are not used as authoritative
-          totals.
+          headers are on row 1, with the English assembly-name column <b>A/c</b>; 119 AC IDs and 33 district groups are validated,
+          and trailing formatted/blank rows are ignored. All eight sheets were read and audited. The stale <b>Sheet3</b> pivot
+          (66/32) is ignored; the AC rows give 68/30/13/8 four-group leaders before the AIMIM extraction. Summary/pivot totals are
+          not treated as authoritative.
         </p>
         <p>
           <b className="text-foreground/85">Round model.</b> The expanded tracker is separate from the compact AC model. It sorts
-          all {fmtInt(c.cutoffRows)} entries by Entry Date then Entry ID, builds 13 rounds for the 388 option (twelve 388-entry
-          rounds and a final 434) and 8 rounds for 688 (seven 688-entry rounds and a final 274), and uses separate answered
-          denominators for 2028 intention and 2023 recall. Projected 2028 = 2023 actual + (2028 intention share − recalled 2023
-          share), with negatives clipped and the seven-party vector normalised to 100%. TDP and Janasena were not recalled-2023
-          answer options, so their recall share is recorded as zero; raw answers are unchanged.
+          all {fmtInt(c.cutoffRows)} entries by Entry Date then Entry ID, builds 13 rounds for 388 (twelve 388-entry rounds and a
+          final 434) and 8 rounds for 688 (seven 688-entry rounds and a final 274), and uses separate answered denominators for
+          2028 intention and 2023 recall. Projected 2028 = 2023 actual + (2028 intention share − recalled 2023 share), with
+          negatives clipped and the seven-party vector normalised to 100%. TDP and Janasena were not recalled-2023 answer options,
+          so their recall share is recorded as zero; raw answers are unchanged.
         </p>
         <p>
           <b className="text-foreground/85">Swing statistics.</b> Survey-period medians and outliers use inclusive quartiles and

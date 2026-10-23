@@ -23,14 +23,14 @@ check("2014/2018/2023 each have 119 assemblies and the supplied vote totals", ()
   assert.equal(new Set(HISTORY.years["2023"].acs.map((a) => a.no)).size, 119);
 });
 
-check("historical four-group shares reconcile in every year", () => {
+check("historical shares separate AIMIM from Others in every year", () => {
   assert.deepEqual(HISTORY.years["2014"].shares, { BRS: 0.340407, Congress: 0.259078, BJP: 0.070344, Others: 0.330171 });
   assert.deepEqual(HISTORY.years["2018"].shares, { BRS: 0.468738, Congress: 0.288292, BJP: 0.070086, Others: 0.172885 });
   assert.deepEqual(HISTORY.years["2023"].shares, { BRS: 0.373463, Congress: 0.397448, BJP: 0.138973, Others: 0.090115 });
   const expected = {
-    "2014": { BRS: 0.340407, Congress: 0.259078, BJP: 0.070344, Others: 0.330171 },
-    "2018": { BRS: 0.468738, Congress: 0.288292, BJP: 0.070086, Others: 0.172885 },
-    "2023": { BRS: 0.373463, Congress: 0.397448, BJP: 0.138973, Others: 0.090115 },
+    "2014": { BRS: 0.340407, Congress: 0.259078, BJP: 0.070344, AIMIM: 0.037366, Others: 0.292805 },
+    "2018": { BRS: 0.468738, Congress: 0.288292, BJP: 0.070086, AIMIM: 0.027112, Others: 0.145773 },
+    "2023": { BRS: 0.373463, Congress: 0.397448, BJP: 0.138973, AIMIM: 0.022158, Others: 0.067957 },
   } as const;
   for (const year of ["2014", "2018", "2023"] as const) {
     const shares = historicalShares(DATA.acs, year);
@@ -49,8 +49,8 @@ check("historical winner counts match the source audit", () => {
   }
 });
 
-check("final 2028 numeric leads and Kodangal result", () => {
-  assert.deepEqual(DATA.statewide.leads, { BJP: 13, Congress: 30, BRS: 68, Others: 8 });
+check("final 2028 numeric leads after AIMIM extraction", () => {
+  assert.deepEqual(DATA.statewide.leads, { BJP: 13, Congress: 30, BRS: 68, AIMIM: 7, Others: 1 });
   const k = DATA.acs.find((a) => a.no === 72)!;
   assert.equal(k.leader, "Congress");
   assert.equal(k.tied.length, 0);
@@ -170,14 +170,15 @@ check("every historical winner has a distinct party colour and label", () => {
   assert.equal(winnerLabel("Others"), "Others");
 });
 
-check("compact prediction stays four-group while historical AIMIM remains available", () => {
+check("compact prediction carries AIMIM separately and preserves totals", () => {
   const leadCounts = Object.values(DATA.statewide.leads).reduce((sum, n) => sum + n, 0);
   assert.equal(leadCounts, 119);
-  assert.equal("AIMIM" in DATA.statewide.prediction, false);
+  assert.ok((DATA.statewide.leads.AIMIM ?? 0) > 0);
   for (const a of DATA.acs) {
-    assert.equal("AIMIM" in a.prediction, false);
+    assert.ok("AIMIM" in a.prediction);
     const total = PARTIES.reduce((sum, p) => sum + a.prediction[p], 0);
     assert.ok(near(total, 1, 2e-5), `AC ${a.no}`);
+    assert.ok((a.prediction.AIMIM ?? 0) <= (a.aimimEstimate ?? 0) + 1e-6, `AC ${a.no}`);
   }
   assert.ok(near(HISTORY.years["2023"].aimim, 0.022158, 1e-6));
 });

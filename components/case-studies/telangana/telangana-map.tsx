@@ -16,9 +16,9 @@ import { brandMarker } from "@/lib/telangana/brands";
    is filled by its leading 2028 prediction party, with a party-hue light-to-
    dark shade for that party's predicted share. Ties are split equally
    between the tied parties' colours; missing predictions are neutral grey.
-   The compact 2028 prediction is four-group. AIMIM remains a separate series
-   in the expanded round tracker and in detailed historical results, not in
-   the compact workbook prediction.
+   The compact 2028 prediction adds AIMIM as a separate series extracted from
+   the final four-group Others residual; AIMIM is also separate in detailed
+   historical results and in the expanded round tracker.
    District grouping is the workbook's analytical AC grouping, not an
    official administrative boundary.
    ===================================================================== */
