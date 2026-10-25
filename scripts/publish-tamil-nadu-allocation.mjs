@@ -5,6 +5,10 @@
 import fs from "node:fs";
 import { MongoClient } from "mongodb";
 
+if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production") {
+  console.log("Tamil Nadu allocation publish skipped: non-production deployment.");
+  process.exit(0);
+}
 const uri = process.env.MONGODB_URI;
 if (!uri || !/^mongodb(\+srv)?:\/\//.test(uri)) {
   console.log("Tamil Nadu allocation publish skipped: MONGODB_URI not available.");
