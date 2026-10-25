@@ -25,7 +25,7 @@ const TamilNaduAnalysis = dynamic(() => import("./tamil-nadu-analysis"), {
 type Option = { value: string; label: string; hint?: string };
 const LABEL = "text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
 const YEARS: { id: TnYearOrCurrent; label: string }[] = [
-  { id: "2011", label: "2011" }, { id: "2016", label: "2016" }, { id: "2021", label: "2021" }, { id: "2026", label: "2026 survey" },
+  { id: "2011", label: "2011" }, { id: "2016", label: "2016" }, { id: "2021", label: "2021" }, { id: "2026", label: "2026 combined" },
 ];
 
 function SearchSelect({ label, value, options, placeholder, onChange }: {
@@ -114,7 +114,7 @@ export default function TamilNaduDashboard() {
   const currentDistrict = district ? districts.find((d) => d.name === district) ?? null : null;
   const baselineYear: TnYear = year === "2026" ? "2021" : year;
   const baseline = currentAc?.actual[baselineYear] ?? currentDistrict?.actual[baselineYear] ?? data?.statewide.actual[baselineYear] ?? null;
-  const currentSurvey = currentAc?.survey ?? currentDistrict?.survey ?? data?.statewide.survey ?? null;
+  const currentSurvey = currentAc?.combined ?? currentDistrict?.combined ?? data?.statewide.combined ?? null;
   const emptySeats = TN_GROUPS.reduce((o, g) => (o[g] = 0, o), {} as Record<TnGroup, number>);
   const projectedSeats = currentAc
     ? { ...emptySeats, ...(currentAc.projected.leader ? { [currentAc.projected.leader]: 1 } : {}) }
@@ -122,7 +122,7 @@ export default function TamilNaduDashboard() {
   const actualSeats = currentAc
     ? { ...emptySeats, ...(currentAc.actual2026.winner ? { [currentAc.actual2026.winner]: 1 } : {}) }
     : currentDistrict?.actualSeats ?? data?.statewide.actualSeats ?? emptySeats;
-  const currentLabel = !district && !currentAc ? "2026 all responses" : "2026 adjusted";
+  const currentLabel = !district && !currentAc ? "2026 all responses" : "2026 combined";
   const currentLeader = currentSurvey ? tnLeader(currentSurvey.shares) : null;
   const scopeLabel = currentAc ? currentAc.name : currentDistrict ? currentDistrict.name : "Tamil Nadu";
   const isStatewide = !district && !currentAc;
@@ -196,7 +196,7 @@ export default function TamilNaduDashboard() {
             <SearchSelect label="District" value={district ?? ""} options={districtOptions} placeholder="Select a district" onChange={(v) => selectDistrict(v || null)} />
             <SearchSelect label="Assembly" value={acNo != null ? String(acNo) : ""} options={assemblyOptions} placeholder="Select an assembly" onChange={(v) => selectAc(v ? Number(v) : null)} />
             <div>
-              <span className={LABEL}>{year === "2026" ? "2026 adjusted survey leaders" : `${year} group leaders`}</span>
+              <span className={LABEL}>{year === "2026" ? "2026 combined survey leaders" : `${year} group leaders`}</span>
               <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] font-medium text-muted-foreground">
                 {legend.map((item) => <span key={item.key} className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15" style={{ background: item.colour }} /><span className="truncate">{item.label}</span></span>)}
                 <span className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px]" style={{ background: TN_NO_DATA }} /><span className="truncate">No data</span></span>

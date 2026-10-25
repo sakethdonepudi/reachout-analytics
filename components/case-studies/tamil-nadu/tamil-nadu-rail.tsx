@@ -214,7 +214,7 @@ export default function TamilNaduRail({
                 <tfoot><tr className="border-t border-border bg-muted/20 text-[9px]"><td className="px-1.5 py-1">Total</td><td className="px-1.5 py-1 text-right tabular-nums">{seatTotal}</td><td className="px-1.5 py-1 text-right tabular-nums">{actualTotal}</td></tr></tfoot>
               </table>
             </div>
-            <p className="rounded-md border border-border/70 bg-muted/20 px-2 py-1.5 text-[9px] leading-relaxed text-muted-foreground">Projected seats use the workbook&apos;s adjusted AC leaders; Actual 2026 seats use the corresponding ECI result rows. Totals are derived, not hardcoded.</p>
+            <p className="rounded-md border border-border/70 bg-muted/20 px-2 py-1.5 text-[9px] leading-relaxed text-muted-foreground">Projected seats use combined-count AC leaders; Actual 2026 seats use the corresponding ECI result rows. Totals are derived, not hardcoded.</p>
           </div>
         )}
       </div>

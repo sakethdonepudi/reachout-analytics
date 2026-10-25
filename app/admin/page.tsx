@@ -8,6 +8,7 @@ import { Logo } from "@/components/site/navbar";
 import ThemeToggle from "@/components/site/theme-toggle";
 import AboutEditor from "@/components/admin/about-editor";
 import TelanganaAdmin from "@/components/admin/telangana-admin";
+import TamilNaduAdmin from "@/components/admin/tamil-nadu-admin";
 import { cn } from "@/lib/utils";
 import type { Row as PollRow } from "@/lib/poll-data";
 
@@ -331,7 +332,23 @@ export default function AdminPortal() {
             </div>
           )}
 
-          {section === "overview" && caseId !== "telangana" && (
+          {section === "overview" && caseId === "tamil-nadu" && (
+            <div>
+              <h1 className="font-display text-2xl font-semibold">Overview · Tamil Nadu</h1>
+              <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">Tamil Nadu uses the final aggregate 2026 workbook, not individual-response import. The Poll Data section previews and publishes the geographic allocation of 882 district-only and 19,867 location-missing votes, and exports the recorded-only, allocated and combined components.</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button onClick={() => setSection("poll")} className="rounded-lg bg-saffron px-3 py-1.5 text-[12.5px] font-semibold text-[#241203]">Open Tamil Nadu allocation</button>
+                <a href="/api/admin/tamil-nadu/export?format=xlsx" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">Export allocation</a>
+                <Link href="/case-studies/tamil-nadu" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">View public page</Link>
+              </div>
+              <div className="mt-6 rounded-2xl border border-border bg-card/60 p-4 text-[12px] text-muted-foreground">
+                <p className="font-semibold text-foreground/80">Public basis</p>
+                <p className="mt-1">Combined counts = recorded + allocated district-only + allocated unlocated. Geographic shares are recalculated from those counts; the workbook&apos;s previous statewide shift is not applied again. Actual and historical results are untouched.</p>
+              </div>
+            </div>
+          )}
+
+          {section === "overview" && caseId !== "telangana" && caseId !== "tamil-nadu" && (
             <div>
               <h1 className="font-display text-2xl font-semibold">Overview · {activeCase?.title}</h1>
               <p className="mt-1 text-[13px] text-muted-foreground">Publication: {activeCase?.published ? "published — visible on the public dashboard" : "draft — private until published"}</p>
@@ -382,7 +399,14 @@ export default function AdminPortal() {
           )}
 
           {section === "poll" && caseId === "telangana" && <TelanganaAdmin />}
-          {section === "poll" && caseId !== "telangana" && (
+          {section === "poll" && caseId === "tamil-nadu" && (
+            <div>
+              <h1 className="font-display text-2xl font-semibold">Poll Data · Tamil Nadu</h1>
+              <p className="mt-1 text-[13px] text-muted-foreground">Preview, export and publish the aggregate geographic allocation. Individual-response import is not used for this aggregate workbook.</p>
+              <TamilNaduAdmin />
+            </div>
+          )}
+          {section === "poll" && caseId !== "telangana" && caseId !== "tamil-nadu" && (
             <div>
               <h1 className="font-display text-2xl font-semibold">Poll Data · {activeCase?.title}</h1>
               <div className="mt-4 flex flex-wrap items-center gap-3">

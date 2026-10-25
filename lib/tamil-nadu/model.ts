@@ -31,14 +31,28 @@ export type TnActualYear = {
   total?: number;
 };
 export type TnSurvey = { valid: number; counts: TnCounts; shares: TnShares | null };
+export type TnCombined = TnSurvey & { leader: TnLeader; runnerUp: TnLeader; marginPp: number };
 export type TnProjected = { leader: TnLeader; marginPp: number; confidence: string; winner?: TnLeader };
+export type TnWorkbook = { adjustedShares: TnShares | null; projection: TnProjected; match: boolean };
 export type TnActual2026 = { alliance: string; party: string; winner: TnLeader };
+export type TnAllocationMeta = {
+  version: string; method: string; sourceImportId: string; sourceFile: string; sourceHash: string; priority: string;
+  recorded: { assembly: TnCounts; district: TnCounts; districtOnly: TnCounts; unlocated: TnCounts; statewide: TnCounts };
+  allocated: { districtOnly: TnCounts; unlocated: TnCounts };
+  combined: { assembly: TnCounts; district: TnCounts; statewide: TnCounts };
+  workbook: { projectedSeats: Record<TnGroup, number>; accuracy: number; note: string };
+  reconcile: { assemblyRecorded: number; districtOnlyAllocated: number; unlocatedAllocated: number; combinedAssembly: number; combinedDistrict: number; combinedStatewide: number; partyTotalsUnchanged: boolean; acDistrictEqual: boolean; districtStateEqual: boolean; noDoubleCount: boolean };
+};
 
 export type TnAc = {
   no: number; name: string; district: string; districtEci: string;
   actual: Record<TnYear, TnActualYear>;
-  survey: TnSurvey;
-  surveyLeader: TnLeader;
+  recorded: TnSurvey;
+  recordedLeader: TnLeader;
+  allocatedDistrictOnly: TnCounts;
+  allocatedUnlocated: TnCounts;
+  combined: TnCombined;
+  workbook: TnWorkbook;
   projected: TnProjected;
   actual2026: TnActual2026;
   match: boolean;
@@ -47,7 +61,12 @@ export type TnAc = {
 export type TnDistrict = {
   name: string; acs: number[];
   actual: Record<TnYear, TnActualYear>;
-  survey: TnSurvey;
+  recorded: TnSurvey;
+  recordedLeader: TnLeader;
+  allocatedDistrictOnly: TnCounts;
+  allocatedUnlocated: TnCounts;
+  combined: TnCombined;
+  workbook: { adjustedShares: TnShares | null; projectedSeats: Record<TnGroup, number>; seatProjection: { leader: string; marginPp: number } };
   projectedSeats: Record<TnGroup, number>;
   actualSeats: Record<TnGroup, number>;
   seatProjection: { leader: string; marginPp: number };
@@ -70,15 +89,18 @@ export type TnAggregates = {
   years: TnYear[];
   presence: Record<TnYear, Record<TnGroup, boolean>>;
   referenceShare: { party: TnGroup; value: number; label: string; workbookValue: number; note: string };
+  allocation: TnAllocationMeta;
   statewide: {
     name: string;
     actual: Record<TnYear, TnActualYear>;
-    survey: TnSurvey;
-    surveyLeader: TnLeader;
+    recorded: TnSurvey;
+    combined: TnCombined;
     counts: { total: number; located: number; unlocated: number };
     projectedSeats: Record<TnGroup, number>;
+    workbookProjectedSeats: Record<TnGroup, number>;
     actualSeats: Record<TnGroup, number>;
     accuracy: number;
+    workbookAccuracy: number;
   };
   districts: TnDistrict[];
   acs: TnAc[];

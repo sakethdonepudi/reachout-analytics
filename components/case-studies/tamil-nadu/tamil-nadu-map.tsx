@@ -73,8 +73,8 @@ function shapeFor(feature: AcFeature | DistrictFeature, project: (p: [number, nu
 function groupColorForAc(a: TnAc | undefined, year: TnYearOrCurrent): { color: string; share: number; group: string | null; count: number } {
   if (!a) return { color: TN_NO_DATA, share: 0, group: null, count: 0 };
   if (year === "2026") {
-    const g = a.surveyLeader;
-    return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? a.survey.shares?.[g] ?? 0 : 0, group: g, count: a.survey.valid };
+    const g = a.combined.leader;
+    return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? a.combined.shares?.[g] ?? 0 : 0, group: g, count: a.combined.valid };
   }
   const rec = a.actual[year];
   const g = rec.winner;
@@ -83,8 +83,8 @@ function groupColorForAc(a: TnAc | undefined, year: TnYearOrCurrent): { color: s
 function groupColorForDistrict(d: TnDistrict | undefined, year: TnYearOrCurrent): { color: string; share: number; group: string | null; count: number } {
   if (!d) return { color: TN_NO_DATA, share: 0, group: null, count: 0 };
   if (year === "2026") {
-    const g = tnLeader(d.survey.shares);
-    return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? d.survey.shares?.[g] ?? 0 : 0, group: g, count: d.survey.valid };
+    const g = d.combined.leader;
+    return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? d.combined.shares?.[g] ?? 0 : 0, group: g, count: d.combined.valid };
   }
   const rec = d.actual[year];
   const g = tnLeader(rec.shares);
@@ -213,7 +213,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         const activeD = d ? districtsUnits.get(d) : null;
         const activeAC = a != null ? acUnits.get(a) : null;
         const mobileState = typeof window !== "undefined" && window.innerWidth < 640;
-        const mobileLabels = new Set([...districtsUnits.keys()].sort((aKey, bKey) => (districtRef.current.get(bKey)?.survey.valid ?? 0) - (districtRef.current.get(aKey)?.survey.valid ?? 0)).slice(0, 10));
+        const mobileLabels = new Set([...districtsUnits.keys()].sort((aKey, bKey) => (districtRef.current.get(bKey)?.combined.valid ?? 0) - (districtRef.current.get(aKey)?.combined.valid ?? 0)).slice(0, 10));
         for (const [name, u] of districtsUnits) {
           const selected = !!activeD && name === activeD.name;
           u.group.visible = activeD ? selected : true;
@@ -322,10 +322,10 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
           hoveredKey = key; canvas.style.cursor = "pointer";
           if (kind === "district") {
             const info = groupColorForDistrict(districtRef.current.get(data.district), live.current.year);
-            setTip({ x: e.clientX, y: e.clientY, title: data.district, sub: live.current.year === "2026" ? "2026 adjusted survey leader" : `${live.current.year} group leader`, value: `${info.group ?? "No data"} · ${tnPct(info.share)} · ${info.count.toLocaleString("en-IN")}`, color: info.color });
+            setTip({ x: e.clientX, y: e.clientY, title: data.district, sub: live.current.year === "2026" ? "2026 combined survey leader" : `${live.current.year} group leader`, value: `${info.group ?? "No data"} · ${tnPct(info.share)} · ${info.count.toLocaleString("en-IN")}`, color: info.color });
           } else {
             const a = acRef.current.get(data.no); const info = groupColorForAc(a, live.current.year);
-            setTip({ x: e.clientX, y: e.clientY, title: a?.name ?? `AC ${data.no}`, sub: `${data.district} · ${live.current.year === "2026" ? "adjusted survey" : live.current.year}`, value: `${info.group ?? "No data"} · ${tnPct(info.share)} · ${info.count.toLocaleString("en-IN")}`, color: info.color });
+            setTip({ x: e.clientX, y: e.clientY, title: a?.name ?? `AC ${data.no}`, sub: `${data.district} · ${live.current.year === "2026" ? "combined survey" : live.current.year}`, value: `${info.group ?? "No data"} · ${tnPct(info.share)} · ${info.count.toLocaleString("en-IN")}`, color: info.color });
           }
         } else setTip((t) => t ? { ...t, x: e.clientX, y: e.clientY } : t);
       } else { hoveredKey = null; canvas.style.cursor = "grab"; setTip(null); }
