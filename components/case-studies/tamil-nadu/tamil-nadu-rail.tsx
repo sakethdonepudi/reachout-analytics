@@ -159,7 +159,7 @@ export default function TamilNaduRail({
       <div className="mt-2 overflow-hidden rounded-lg border border-border">
         <table className="w-full table-fixed border-collapse text-[10.5px]">
           <caption className="sr-only">{scope.label} {baselineLabel} result and 2026 exit-poll estimate</caption>
-          <colgroup><col className="w-[44%]" /><col className="w-[19%]" /><col className="w-[22%]" /><col className="w-[15%]" /></colgroup>
+          <colgroup><col className="w-[49%]" /><col className="w-[17%]" /><col className="w-[20%]" /><col className="w-[14%]" /></colgroup>
           <thead>
             <tr className="bg-muted/30 text-left text-[8.5px] uppercase tracking-wide text-muted-foreground">
               <th scope="col" className="px-1.5 py-1.5 font-semibold">Party / group</th>
@@ -174,7 +174,7 @@ export default function TamilNaduRail({
               return (
                 <tr key={g} className="border-t border-border/60">
                   <th scope="row" className="px-1.5 py-1.5 text-left font-medium">
-                    <span className="flex items-center gap-1"><span className="size-1.5 shrink-0 rounded-sm" style={{ background: TN_COLOR[g] }} /><span className="leading-tight">{TN_LABEL[g]}</span></span>
+                    <span className="flex items-center gap-1"><span className="size-1.5 shrink-0 rounded-sm" style={{ background: TN_COLOR[g] }} /><span className="pr-1 text-[9.5px] leading-tight">{TN_LABEL[g]}</span></span>
                   </th>
                   <td className="px-1 py-1.5 text-right tabular-nums text-muted-foreground" title={baselineTitle(g)}>{tnPct(b)}</td>
                   <td className="px-1 py-1.5 text-right tabular-nums font-semibold">{tnPct(c)}</td>

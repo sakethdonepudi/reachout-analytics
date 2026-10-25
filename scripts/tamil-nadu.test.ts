@@ -107,6 +107,32 @@ check("234 assemblies, 38 districts and complete geometry", () => {
   }
 });
 
+check("all 234 AC IDs and all 38 canonical district mappings resolve to valid colours", () => {
+  const aliases: Record<string, string> = {
+    Kanyakumari: "Kanniyakumari", Nilgiris: "The Nilgiris", Thiruvarur: "Tiruvarur",
+    Thoothukkudi: "Thoothukudi", Viluppuram: "Villupuram",
+  };
+  const byNo = new Map(aggregates.acs.map((a) => [a.no, a]));
+  for (const f of acGeo.features) {
+    const a = byNo.get(f.properties.no);
+    assert.ok(a, `Unmatched AC geometry ${f.properties.no}`);
+    assert.ok(a!.combined.leader, `No combined leader for AC ${a!.no}`);
+    const leader = a!.combined.leader as Group;
+    assert.equal(TN_COLOR[leader], aggregates.colors[leader]);
+  }
+  const byDistrict = new Map(aggregates.districts.map((d) => [d.name, d]));
+  for (const f of districtGeo.features) {
+    const current = aliases[f.properties.district] ?? f.properties.district;
+    const d = byDistrict.get(current);
+    assert.ok(d, `Unmatched district geometry ${f.properties.district} -> ${current}`);
+    assert.ok(d!.combined.leader, `No combined leader for district ${current}`);
+    const leader = d!.combined.leader as Group;
+    assert.ok(TN_COLOR[leader], `No colour for ${current}`);
+    assert.notEqual(TN_COLOR[leader], "#94A3B8", `Grey valid district ${current}`);
+  }
+  assert.equal([...byDistrict.keys()].filter((n) => !districtGeo.features.some((f) => (aliases[f.properties.district] ?? f.properties.district) === n)).length, 0);
+});
+
 check("recorded assembly and district totals are preserved", () => {
   assert.equal(sum(aggregates.acs.map((a) => a.recorded.valid)), 10_567);
   assert.equal(sum(aggregates.districts.map((d) => d.recorded.valid)), 11_449);

@@ -14,7 +14,10 @@ export async function GET() {
   const current = aggregates as TnAggregates;
   const matches = !!published && published.sourceHash === current.sourceHash && published.allocationVersion === current.allocation.version;
   const bundle = (matches ? published!.bundle : current) as TnAggregates;
-  return NextResponse.json(bundle, {
+  // The public surface is district-only. AC IDs are validated and retained in
+  // admin/export, but are not exposed through the public aggregate endpoint.
+  const { acs: _assemblyRows, ...publicBundle } = bundle;
+  return NextResponse.json(publicBundle, {
     headers: {
       "Cache-Control": "no-store, max-age=0",
       "X-TN-Data-Source": matches ? "published" : "bundled",

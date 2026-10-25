@@ -93,7 +93,6 @@ export default function TamilNaduDashboard() {
   const [data, setData] = useState<TnAggregates | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [district, setDistrict] = useState<string | null>(null);
-  const [acNo, setAcNo] = useState<number | null>(null);
   const [year, setYear] = useState<TnYearOrCurrent>("2026");
   const [tab, setTab] = useState<TnTab>("change");
   const [chartOpen, setChartOpen] = useState(false);
@@ -108,24 +107,18 @@ export default function TamilNaduDashboard() {
     return () => controller.abort();
   }, []);
 
-  const acs = data?.acs ?? [];
   const districts = data?.districts ?? [];
-  const currentAc = acNo != null ? acs.find((a) => a.no === acNo) ?? null : null;
   const currentDistrict = district ? districts.find((d) => d.name === district) ?? null : null;
   const baselineYear: TnYear = year === "2026" ? "2021" : year;
-  const baseline = currentAc?.actual[baselineYear] ?? currentDistrict?.actual[baselineYear] ?? data?.statewide.actual[baselineYear] ?? null;
-  const currentSurvey = currentAc?.combined ?? currentDistrict?.combined ?? data?.statewide.combined ?? null;
+  const baseline = currentDistrict?.actual[baselineYear] ?? data?.statewide.actual[baselineYear] ?? null;
+  const currentSurvey = currentDistrict?.combined ?? data?.statewide.combined ?? null;
   const emptySeats = TN_GROUPS.reduce((o, g) => (o[g] = 0, o), {} as Record<TnGroup, number>);
-  const projectedSeats = currentAc
-    ? { ...emptySeats, ...(currentAc.projected.leader ? { [currentAc.projected.leader]: 1 } : {}) }
-    : currentDistrict?.projectedSeats ?? data?.statewide.projectedSeats ?? emptySeats;
-  const actualSeats = currentAc
-    ? { ...emptySeats, ...(currentAc.actual2026.winner ? { [currentAc.actual2026.winner]: 1 } : {}) }
-    : currentDistrict?.actualSeats ?? data?.statewide.actualSeats ?? emptySeats;
-  const currentLabel = !district && !currentAc ? "2026 all responses" : "2026 combined";
+  const projectedSeats = currentDistrict?.projectedSeats ?? data?.statewide.projectedSeats ?? emptySeats;
+  const actualSeats = currentDistrict?.actualSeats ?? data?.statewide.actualSeats ?? emptySeats;
+  const currentLabel = !currentDistrict ? "2026 all responses" : "2026 combined";
   const currentLeader = currentSurvey ? tnLeader(currentSurvey.shares) : null;
-  const scopeLabel = currentAc ? currentAc.name : currentDistrict ? currentDistrict.name : "Tamil Nadu";
-  const isStatewide = !district && !currentAc;
+  const scopeLabel = currentDistrict ? currentDistrict.name : "Tamil Nadu";
+  const isStatewide = !currentDistrict;
 
   const scope = useMemo<TnScopeResult>(() => {
     const b = baseline?.shares ?? {};
@@ -148,19 +141,10 @@ export default function TamilNaduDashboard() {
     };
   }, [baseline, baselineYear, currentLeader, currentSurvey, data?.presence, projectedSeats, actualSeats, currentLabel, scopeLabel]);
 
-  const districtOptions: Option[] = useMemo(() => [{ value: "", label: "All Tamil Nadu" }, ...districts.map((d) => ({ value: d.name, label: d.name, hint: `${d.acs.length} ACs` }))], [districts]);
-  const assemblyOptions: Option[] = useMemo(() => {
-    const pool = district ? acs.filter((a) => a.district === district) : acs;
-    return [{ value: "", label: district ? `All assemblies in ${district}` : "All assemblies" }, ...pool.map((a) => ({ value: String(a.no), label: `${a.no}. ${a.name}`, hint: district ? undefined : a.district }))];
-  }, [acs, district]);
+  const districtOptions: Option[] = useMemo(() => [{ value: "", label: "All Tamil Nadu" }, ...districts.map((d) => ({ value: d.name, label: d.name }))], [districts]);
 
-  const selectDistrict = useCallback((name: string | null) => { setDistrict(name); setAcNo(null); }, []);
-  const selectAc = useCallback((no: number | null) => {
-    if (no == null) { setAcNo(null); return; }
-    const a = acs.find((x) => x.no === no);
-    if (a) { setDistrict(a.district); setAcNo(no); }
-  }, [acs]);
-  const reset = useCallback(() => { setDistrict(null); setAcNo(null); }, []);
+  const selectDistrict = useCallback((name: string | null) => { setDistrict(name); }, []);
+  const reset = useCallback(() => { setDistrict(null); }, []);
   const openAnalysis = useCallback(() => { expandFocus.current = document.activeElement as HTMLElement | null; setChartOpen(true); }, []);
   const closeAnalysis = useCallback(() => { setChartOpen(false); requestAnimationFrame(() => expandFocus.current?.focus()); }, []);
 
@@ -168,6 +152,7 @@ export default function TamilNaduDashboard() {
     if (year === "2026") return TN_GROUPS.map((g) => ({ key: g, label: TN_LABEL[g], colour: TN_COLOR[g] }));
     return TN_GROUPS.filter((g) => data?.presence[year][g]).map((g) => ({ key: g, label: TN_LABEL[g], colour: TN_COLOR[g] }));
   }, [year, data?.presence]);
+  const hasNoData = useMemo(() => districts.some((d) => year === "2026" ? !d.combined.leader : !tnLeader(d.actual[year].shares)), [districts, year]);
 
   if (error && !data) {
     return <main className="grid min-h-screen place-items-center bg-background px-6 text-center"><div><h1 className="font-display text-2xl font-semibold">Tamil Nadu data unavailable</h1><p className="mt-2 text-sm text-muted-foreground">{error}</p></div></main>;
@@ -194,21 +179,20 @@ export default function TamilNaduDashboard() {
               </div>
             </div>
             <SearchSelect label="District" value={district ?? ""} options={districtOptions} placeholder="Select a district" onChange={(v) => selectDistrict(v || null)} />
-            <SearchSelect label="Assembly" value={acNo != null ? String(acNo) : ""} options={assemblyOptions} placeholder="Select an assembly" onChange={(v) => selectAc(v ? Number(v) : null)} />
             <div>
-              <span className={LABEL}>{year === "2026" ? "2026 combined survey leaders" : `${year} group leaders`}</span>
-              <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] font-medium text-muted-foreground">
-                {legend.map((item) => <span key={item.key} className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15" style={{ background: item.colour }} /><span className="truncate">{item.label}</span></span>)}
-                <span className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px]" style={{ background: TN_NO_DATA }} /><span className="truncate">No data</span></span>
+              <span className={LABEL}>{year === "2026" ? "2026 combined district leaders" : `${year} district leaders`}</span>
+              <div className="mt-1.5 grid grid-cols-1 gap-x-2 gap-y-1 text-[9.5px] font-medium text-muted-foreground">
+                {legend.map((item) => <span key={item.key} className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15" style={{ background: item.colour }} /><span className="leading-tight">{item.label}</span></span>)}
+                {hasNoData && <span className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px]" style={{ background: TN_NO_DATA }} /><span className="truncate">No data</span></span>}
               </div>
             </div>
-            {(district || currentAc) && <button type="button" onClick={reset} className="flex w-full items-center gap-2 rounded-lg border border-border px-2.5 py-2 text-left text-[11.5px] font-semibold hover:border-saffron/40"><RotateCcw className="size-3.5" /> Reset to Tamil Nadu</button>}
+            {district && <button type="button" onClick={reset} className="flex w-full items-center gap-2 rounded-lg border border-border px-2.5 py-2 text-left text-[11.5px] font-semibold hover:border-saffron/40"><RotateCcw className="size-3.5" /> Reset to Tamil Nadu</button>}
           </div>
         </aside>
 
         <div className="relative z-0 mt-4 h-[52svh] min-h-[360px] overflow-hidden rounded-2xl border border-border bg-card lg:absolute lg:inset-x-0 lg:top-16 lg:bottom-0 lg:mt-0 lg:h-auto lg:rounded-none lg:border-0 lg:bg-transparent">
-          <TamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} theme={(theme === "light" ? "light" : "dark") as MapTheme} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={reset} />
-          {(district || currentAc) && (
+          <TamilNaduMap districts={districts} district={district} year={year} theme={(theme === "light" ? "light" : "dark") as MapTheme} onSelectDistrict={selectDistrict} onReset={reset} />
+          {district && (
             <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 lg:left-[312px]">
               <button type="button" onClick={reset} className="inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:border-saffron/50"><ArrowLeft className="size-3" /> Tamil Nadu</button>
               <button type="button" onClick={reset} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:border-saffron/50"><RotateCcw className="size-3" /> Reset</button>
@@ -225,7 +209,7 @@ export default function TamilNaduDashboard() {
 
       {chartOpen && (
         <TamilNaduAnalysis open={chartOpen} onClose={closeAnalysis} data={data} theme={theme === "light" ? "light" : "dark"}
-          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} />
+          initialScope={district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} />
       )}
     </div>
   );
