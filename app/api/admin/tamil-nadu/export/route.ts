@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
     ["AC = district", a.reconcile.acDistrictEqual],
     ["district = state", a.reconcile.districtStateEqual],
     ["No double count", a.reconcile.noDoubleCount],
+    ["Combination rule", "AC: recorded + district-only + unlocated. District: recorded + unlocated; district-only is already included in recorded."],
     ["Workbook projected seats", JSON.stringify(a.workbook.projectedSeats)],
     ["Workbook accuracy", a.workbook.accuracy],
   ];

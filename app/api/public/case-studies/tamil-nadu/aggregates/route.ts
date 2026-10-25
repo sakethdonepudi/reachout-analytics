@@ -12,8 +12,13 @@ export async function GET() {
   // safe fallback. Never cache this route: a publish must be visible on reload.
   const published = await getPublishedAllocation();
   const current = aggregates as TnAggregates;
-  const bundle = (published && published.sourceHash === current.sourceHash && published.allocationVersion === current.allocation.version
-    ? published.bundle
-    : current) as TnAggregates;
-  return NextResponse.json(bundle, { headers: { "Cache-Control": "no-store, max-age=0" } });
+  const matches = !!published && published.sourceHash === current.sourceHash && published.allocationVersion === current.allocation.version;
+  const bundle = (matches ? published!.bundle : current) as TnAggregates;
+  return NextResponse.json(bundle, {
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+      "X-TN-Data-Source": matches ? "published" : "bundled",
+      "X-TN-Allocation-Version": bundle.allocation.version,
+    },
+  });
 }

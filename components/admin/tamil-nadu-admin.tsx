@@ -66,7 +66,7 @@ export default function TamilNaduAdmin() {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"><MapIcon className="size-4" /> Tamil Nadu geographic allocation</h2>
-          <p className="mt-1 text-[12px] text-muted-foreground">Aggregate allocation of the existing 882 district-only and 19,867 location-missing votes. Recorded source counts are preserved separately.</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">Aggregate allocation of the existing 882 district-only and 19,867 location-missing votes. Recorded source counts are preserved separately. AC combined = recorded + district-only + unlocated; district combined = recorded + unlocated (district-only is already inside recorded).</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <a href="/api/admin/tamil-nadu/export?format=xlsx" className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[11.5px] hover:bg-elevated"><Download className="size-3.5" /> Export allocation</a>
