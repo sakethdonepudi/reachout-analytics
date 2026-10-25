@@ -212,6 +212,8 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       setSelection: (d, a, y) => {
         const activeD = d ? districtsUnits.get(d) : null;
         const activeAC = a != null ? acUnits.get(a) : null;
+        const mobileState = typeof window !== "undefined" && window.innerWidth < 640;
+        const mobileLabels = new Set([...districtsUnits.keys()].sort((aKey, bKey) => (districtRef.current.get(bKey)?.survey.valid ?? 0) - (districtRef.current.get(aKey)?.survey.valid ?? 0)).slice(0, 10));
         for (const [name, u] of districtsUnits) {
           const selected = !!activeD && name === activeD.name;
           u.group.visible = activeD ? selected : true;
@@ -222,13 +224,16 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
           u.line.color.set(selected ? P.sel : P.line);
           u.line.opacity = selected ? 1 : 0.9;
           u.mesh.position.y = selected ? 12 : 0;
-          u.label.style.opacity = activeD ? (selected ? "1" : "0") : "1";
+          u.label.style.opacity = activeD ? (selected ? "1" : "0") : (mobileState && !mobileLabels.has(name) ? "0" : "1");
           u.label.style.fontSize = selected ? "12px" : "10px";
         }
         for (const [no, u] of acUnits) {
           const info = groupColorForAc(acRef.current.get(no), y);
-          u.cap.color.set(activeAC && no === activeAC.no ? new THREE.Color(info.color).offsetHSL(0, 0, 0.08) : info.color);
-          u.side.color.set(info.color);
+          const acSelected = !!activeAC && no === activeAC.no;
+          u.cap.color.set(acSelected ? new THREE.Color(info.color).offsetHSL(0, 0, 0.16) : info.color);
+          u.cap.emissive.set(acSelected ? info.color : "#000000");
+          u.cap.emissiveIntensity = acSelected ? 0.55 : 0;
+          u.side.color.set(acSelected ? new THREE.Color(info.color).offsetHSL(0, 0, 0.1) : info.color);
           const inSelectedDistrict = !!activeD && u.mesh.userData.district === activeD.name;
           u.group.visible = inSelectedDistrict;
           u.mesh.position.y = activeAC && no === activeAC.no ? 14 : 2;
@@ -239,20 +244,19 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         }
         // Camera
         let bounds: { minx: number; maxx: number; minz: number; maxz: number } | null = null;
-        if (activeAC) bounds = activeAC.bounds;
-        else if (activeD) bounds = activeD.bounds;
+        if (activeD) bounds = activeD.bounds;
         const hostRect = host.getBoundingClientRect();
         const vw = Math.max(320, hostRect.width), vh = Math.max(320, hostRect.height);
         const wide = typeof window !== "undefined" && window.innerWidth > 1024;
         let centerX = 0, centerZ = 0, dist = 2050;
         if (bounds) {
           centerX = (bounds.minx + bounds.maxx) / 2; centerZ = (bounds.minz + bounds.maxz) / 2;
-          const W = Math.max(60, bounds.maxx - bounds.minx), H = Math.max(60, bounds.maxz - bounds.minz);
+          const W = Math.max(1, bounds.maxx - bounds.minx), H = Math.max(1, bounds.maxz - bounds.minz);
           const availW = Math.max(220, vw - (wide ? 680 : 0));
           const availH = Math.max(220, vh - 90);
           const fov = camera.fov * Math.PI / 180;
-          const fit = Math.max((H / 2) / Math.tan(fov / 2), (W / 2) / Math.tan(Math.atan(Math.tan(fov / 2) * (availW / availH)))) * 1.45;
-          dist = Math.max(550, Math.min(3300, fit));
+          const fit = Math.max((H / 2) / Math.tan(fov / 2), (W / 2) / Math.tan(Math.atan(Math.tan(fov / 2) * (availW / availH)))) * (activeAC ? 1.3 : 1.45);
+          dist = Math.max(90, Math.min(3300, fit));
           const shift = wide ? -70 : 0;
           const worldPerPx = (2 * dist * Math.tan(fov / 2)) / availH;
           centerX += shift * worldPerPx;
@@ -318,10 +322,10 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
           hoveredKey = key; canvas.style.cursor = "pointer";
           if (kind === "district") {
             const info = groupColorForDistrict(districtRef.current.get(data.district), live.current.year);
-            setTip({ x: e.clientX, y: e.clientY, title: data.district, sub: live.current.year === "2026" ? "2026 survey-leading group" : `${live.current.year} AC winners`, value: `${info.group ?? "No data"} · ${tnPct(info.share)} · ${info.count.toLocaleString("en-IN")}`, color: info.color });
+            setTip({ x: e.clientX, y: e.clientY, title: data.district, sub: live.current.year === "2026" ? "2026 adjusted survey leader" : `${live.current.year} group leader`, value: `${info.group ?? "No data"} · ${tnPct(info.share)} · ${info.count.toLocaleString("en-IN")}`, color: info.color });
           } else {
             const a = acRef.current.get(data.no); const info = groupColorForAc(a, live.current.year);
-            setTip({ x: e.clientX, y: e.clientY, title: a?.name ?? `AC ${data.no}`, sub: `${data.district} · ${live.current.year === "2026" ? "survey" : live.current.year}`, value: `${info.group ?? "No data"} · ${tnPct(info.share)} · ${info.count.toLocaleString("en-IN")}`, color: info.color });
+            setTip({ x: e.clientX, y: e.clientY, title: a?.name ?? `AC ${data.no}`, sub: `${data.district} · ${live.current.year === "2026" ? "adjusted survey" : live.current.year}`, value: `${info.group ?? "No data"} · ${tnPct(info.share)} · ${info.count.toLocaleString("en-IN")}`, color: info.color });
           }
         } else setTip((t) => t ? { ...t, x: e.clientX, y: e.clientY } : t);
       } else { hoveredKey = null; canvas.style.cursor = "grab"; setTip(null); }
@@ -339,7 +343,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       if (hit.object.userData.kind === "district") live.current.onSelectDistrict(hit.object.userData.district as string);
       else live.current.onSelectAc(hit.object.userData.no as number);
     };
-    const onWheel = (e: WheelEvent) => { e.preventDefault(); desired.dist = Math.max(700, Math.min(3300, desired.dist * (1 + e.deltaY * 0.0012))); };
+    const onWheel = (e: WheelEvent) => { e.preventDefault(); desired.dist = Math.max(35, Math.min(3300, desired.dist * (1 + e.deltaY * 0.0012))); };
     const onLeave = () => { hoveredKey = null; setTip(null); drag = null; };
     canvas.addEventListener("pointermove", onPointerMove); canvas.addEventListener("pointerdown", onPointerDown);
     canvas.addEventListener("pointerup", onPointerUp); canvas.addEventListener("pointerleave", onLeave); canvas.addEventListener("wheel", onWheel, { passive: false });

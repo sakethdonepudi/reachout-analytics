@@ -7,7 +7,7 @@ import { ArrowLeft, Check, ChevronDown, RotateCcw, Search } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import {
-  TN_COLOR, TN_GROUPS, TN_LABEL, TN_NO_DATA, tnLeader, tnPct, tnScopeKey, type TnAggregates, type TnGroup, type TnShares, type TnYear, type TnYearOrCurrent,
+  TN_COLOR, TN_GROUPS, TN_LABEL, TN_NO_DATA, tnLeader, tnPct, type TnAggregates, type TnGroup, type TnShares, type TnYear, type TnYearOrCurrent,
 } from "@/lib/tamil-nadu/model";
 import TamilNaduRail, { type TnScopeResult, type TnTab } from "./tamil-nadu-rail";
 import AboutTamilNadu from "./about-tamil-nadu";
@@ -115,14 +115,14 @@ export default function TamilNaduDashboard() {
   const baselineYear: TnYear = year === "2026" ? "2021" : year;
   const baseline = currentAc?.actual[baselineYear] ?? currentDistrict?.actual[baselineYear] ?? data?.statewide.actual[baselineYear] ?? null;
   const currentSurvey = currentAc?.survey ?? currentDistrict?.survey ?? data?.statewide.survey ?? null;
-  const baselineSeats = currentAc
-    ? (currentAc.actual[baselineYear]?.winner ? { [currentAc.actual[baselineYear].winner as TnGroup]: 1 } as Record<TnGroup, number> : TN_GROUPS.reduce((o, g) => (o[g] = 0, o), {} as Record<TnGroup, number>))
-    : currentDistrict?.seats[baselineYear] ?? data?.statewide.seats[baselineYear] ?? TN_GROUPS.reduce((o, g) => (o[g] = 0, o), {} as Record<TnGroup, number>);
-  const baselineCoverage = currentAc
-    ? { available: baseline?.available ? 1 : 0, total: 1 }
-    : currentDistrict
-      ? { available: currentDistrict.coverage[baselineYear], total: currentDistrict.acs.length }
-      : { available: data?.statewide.coverage[baselineYear] ?? 0, total: 234 };
+  const emptySeats = TN_GROUPS.reduce((o, g) => (o[g] = 0, o), {} as Record<TnGroup, number>);
+  const projectedSeats = currentAc
+    ? { ...emptySeats, ...(currentAc.projected.leader ? { [currentAc.projected.leader]: 1 } : {}) }
+    : currentDistrict?.projectedSeats ?? data?.statewide.projectedSeats ?? emptySeats;
+  const actualSeats = currentAc
+    ? { ...emptySeats, ...(currentAc.actual2026.winner ? { [currentAc.actual2026.winner]: 1 } : {}) }
+    : currentDistrict?.actualSeats ?? data?.statewide.actualSeats ?? emptySeats;
+  const currentLabel = !district && !currentAc ? "2026 all responses" : "2026 adjusted";
   const currentLeader = currentSurvey ? tnLeader(currentSurvey.shares) : null;
   const scopeLabel = currentAc ? currentAc.name : currentDistrict ? currentDistrict.name : "Tamil Nadu";
   const isStatewide = !district && !currentAc;
@@ -143,10 +143,10 @@ export default function TamilNaduDashboard() {
       baselineAvailable: !!baseline?.available,
       currentValid: currentSurvey?.valid ?? 0,
       presence: data?.presence ?? { "2011": {}, "2016": {}, "2021": {} } as Record<TnYear, Record<TnGroup, boolean>>,
-      baselineSeats, baselineCoverage,
+      projectedSeats, actualSeats, currentLabel,
       surveyLeader: currentLeader,
     };
-  }, [baseline, baselineCoverage, baselineSeats, baselineYear, currentLeader, currentSurvey, data?.presence, scopeLabel]);
+  }, [baseline, baselineYear, currentLeader, currentSurvey, data?.presence, projectedSeats, actualSeats, currentLabel, scopeLabel]);
 
   const districtOptions: Option[] = useMemo(() => [{ value: "", label: "All Tamil Nadu" }, ...districts.map((d) => ({ value: d.name, label: d.name, hint: `${d.acs.length} ACs` }))], [districts]);
   const assemblyOptions: Option[] = useMemo(() => {
@@ -184,7 +184,8 @@ export default function TamilNaduDashboard() {
           </Link>
           <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Tamil Nadu</p>
           <h1 className="mt-1 font-display text-[clamp(27px,3.2vw,40px)] font-semibold leading-[1.02] tracking-[-0.03em]">ReachOut&apos;s Election Intelligence</h1>
-          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">Assembly election history and the active 2026 exit-poll survey. Survey estimates are not official results.</p>
+          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">Assembly election history, the 2026 exit-poll analysis and Actual 2026 seat results. Survey estimates are not official results.</p>
+          {isStatewide && <p className="mt-2 inline-flex items-baseline gap-1.5 rounded-full border border-border bg-card/70 px-2.5 py-1 text-[10.5px]"><span className="font-semibold uppercase tracking-[0.1em] text-muted-foreground">Reference share</span><b style={{ color: TN_COLOR.TVK }}>TVK {(data.referenceShare.value * 100).toFixed(2)}%</b></p>}
           <div className="mt-5 space-y-3">
             <div>
               <span className={LABEL}>Election year</span>
@@ -195,7 +196,7 @@ export default function TamilNaduDashboard() {
             <SearchSelect label="District" value={district ?? ""} options={districtOptions} placeholder="Select a district" onChange={(v) => selectDistrict(v || null)} />
             <SearchSelect label="Assembly" value={acNo != null ? String(acNo) : ""} options={assemblyOptions} placeholder="Select an assembly" onChange={(v) => selectAc(v ? Number(v) : null)} />
             <div>
-              <span className={LABEL}>{year === "2026" ? "2026 survey-leading groups" : `${year} AC winners`}</span>
+              <span className={LABEL}>{year === "2026" ? "2026 adjusted survey leaders" : `${year} group leaders`}</span>
               <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] font-medium text-muted-foreground">
                 {legend.map((item) => <span key={item.key} className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15" style={{ background: item.colour }} /><span className="truncate">{item.label}</span></span>)}
                 <span className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px]" style={{ background: TN_NO_DATA }} /><span className="truncate">No data</span></span>

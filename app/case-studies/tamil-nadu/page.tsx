@@ -5,7 +5,7 @@ import TamilNaduDashboard from "@/components/case-studies/tamil-nadu/tamil-nadu-
 export const metadata: Metadata = {
   title: "Tamil Nadu — ReachOut's Election Intelligence",
   description:
-    "Interactive Tamil Nadu assembly election intelligence: 2011, 2016 and 2021 verified results, the 2026 exit-poll survey, a 3D district and assembly map, and survey-round analysis.",
+    "Interactive Tamil Nadu assembly election intelligence: 2011, 2016 and 2021 historical comparisons, the final 2026 exit-poll aggregate analysis, Actual 2026 seat results, a 3D district and assembly map, and geographic distributions.",
 };
 
 export default function TamilNaduCaseStudyPage() {

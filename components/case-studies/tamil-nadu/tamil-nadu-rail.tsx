@@ -21,8 +21,9 @@ export type TnScopeResult = {
   baselineAvailable: boolean;
   currentValid: number;
   presence: Record<TnYear, Record<TnGroup, boolean>>;
-  baselineSeats: Record<TnGroup, number>;
-  baselineCoverage: { available: number; total: number };
+  projectedSeats: Record<TnGroup, number>;
+  actualSeats: Record<TnGroup, number>;
+  currentLabel: string;
   surveyLeader: TnGroup | null;
 };
 
@@ -137,8 +138,9 @@ export default function TamilNaduRail({
   }, [scope, baselineLabel, p, reduced, theme]);
 
   const chartHeight = 176;
-  const seats = TN_GROUPS.filter((g) => (scope.baselineSeats[g] ?? 0) > 0);
-  const maxSeat = Math.max(1, ...seats.map((g) => scope.baselineSeats[g]));
+  const seatRows = TN_GROUPS.filter((g) => (scope.projectedSeats[g] ?? 0) > 0 || (scope.actualSeats[g] ?? 0) > 0);
+  const seatTotal = seatRows.reduce((s2, g) => s2 + (scope.projectedSeats[g] ?? 0), 0);
+  const actualTotal = seatRows.reduce((s2, g) => s2 + (scope.actualSeats[g] ?? 0), 0);
   return (
     <section aria-label="Tamil Nadu comparison" className="rounded-2xl border border-border bg-card/95 p-3 shadow-[0_18px_50px_-30px_rgba(15,20,30,0.55)] backdrop-blur-xl">
       <div className="flex items-start justify-between gap-2">
@@ -157,12 +159,12 @@ export default function TamilNaduRail({
       <div className="mt-2 overflow-hidden rounded-lg border border-border">
         <table className="w-full table-fixed border-collapse text-[10.5px]">
           <caption className="sr-only">{scope.label} {baselineLabel} result and 2026 exit-poll estimate</caption>
-          <colgroup><col className="w-[39%]" /><col className="w-[20%]" /><col className="w-[24%]" /><col className="w-[17%]" /></colgroup>
+          <colgroup><col className="w-[44%]" /><col className="w-[19%]" /><col className="w-[22%]" /><col className="w-[15%]" /></colgroup>
           <thead>
             <tr className="bg-muted/30 text-left text-[8.5px] uppercase tracking-wide text-muted-foreground">
               <th scope="col" className="px-1.5 py-1.5 font-semibold">Party / group</th>
               <th scope="col" className="px-1 py-1.5 text-right font-semibold">{baselineLabel} result</th>
-              <th scope="col" className="px-1 py-1.5 text-right font-semibold">2026 exit-poll</th>
+              <th scope="col" className="px-1 py-1.5 text-right font-semibold">{scope.currentLabel}</th>
               <th scope="col" className="px-1 py-1.5 text-right font-semibold">Change (pp)</th>
             </tr>
           </thead>
@@ -172,7 +174,7 @@ export default function TamilNaduRail({
               return (
                 <tr key={g} className="border-t border-border/60">
                   <th scope="row" className="px-1.5 py-1.5 text-left font-medium">
-                    <span className="flex items-center gap-1"><span className="size-1.5 shrink-0 rounded-sm" style={{ background: TN_COLOR[g] }} /><span className="truncate">{TN_LABEL[g]}</span></span>
+                    <span className="flex items-center gap-1"><span className="size-1.5 shrink-0 rounded-sm" style={{ background: TN_COLOR[g] }} /><span className="leading-tight">{TN_LABEL[g]}</span></span>
                   </th>
                   <td className="px-1 py-1.5 text-right tabular-nums text-muted-foreground" title={baselineTitle(g)}>{tnPct(b)}</td>
                   <td className="px-1 py-1.5 text-right tabular-nums font-semibold">{tnPct(c)}</td>
@@ -186,7 +188,7 @@ export default function TamilNaduRail({
 
       <details className="mt-1.5 text-[9px] leading-relaxed text-muted-foreground">
         <summary className="cursor-pointer select-none">Comparison notes</summary>
-        <p className="mt-1">TVK did not contest 2011–2021; NTK and NOTA are not applicable in 2011. Those baselines are shown as “—”, not zero or missing. 2016 results cover 232 of 234 seats; Aravakurichi and Thanjavur are no data.</p>
+        <p className="mt-1">No Others bucket: the workbook already includes Others under DMK+. TVK did not contest 2011–2021; NTK and NOTA are not applicable in 2011. Those baselines are shown as “—”, not zero or missing. 2016 results cover 232 of 234 seats; Aravakurichi and Thanjavur are no data.</p>
       </details>
 
       <div className="mt-2 flex gap-1 border-b border-border" role="tablist" aria-label="Comparison views">
@@ -204,17 +206,15 @@ export default function TamilNaduRail({
         {tab === "share" && <><p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">2026 exit-poll estimate share</p><EChart option={shareOption} height={chartHeight} reduced={reduced} ariaLabel={`2026 exit-poll estimate share for ${scope.label}`} /></>}
         {tab === "seats" && (
           <div className="space-y-2">
-            <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{baselineLabel} actual AC winners · {scope.baselineCoverage.available}/{scope.baselineCoverage.total} verified</p>
-            <div className="space-y-1">
-              {seats.length === 0 ? <p className="text-[10px] text-muted-foreground">No verified seat result at this scope.</p> : seats.sort((a, b) => (scope.baselineSeats[b] ?? 0) - (scope.baselineSeats[a] ?? 0)).map((g) => (
-                <div key={g} className="flex items-center gap-2 text-[10px]">
-                  <span className="w-[116px] shrink-0 truncate font-medium" style={{ color: TN_COLOR[g] }}>{TN_LABEL[g]}</span>
-                  <span className="h-2 flex-1 overflow-hidden rounded-sm bg-muted/40"><span className="block h-full rounded-sm" style={{ width: `${((scope.baselineSeats[g] ?? 0) / maxSeat) * 100}%`, background: TN_COLOR[g] }} /></span>
-                  <span className="w-7 text-right tabular-nums">{scope.baselineSeats[g] ?? 0}</span>
-                </div>
-              ))}
+            <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">2026 projected vs actual seats</p>
+            <div className="overflow-hidden rounded-md border border-border">
+              <table className="w-full border-collapse text-[10px]">
+                <thead><tr className="bg-muted/30 text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-1.5 py-1 text-left">Party / group</th><th className="px-1.5 py-1 text-right">Projected</th><th className="px-1.5 py-1 text-right">Actual 2026</th></tr></thead>
+                <tbody>{seatRows.map((g) => <tr key={g} className="border-t border-border/60"><td className="px-1.5 py-1"><span className="inline-flex items-center gap-1" style={{ color: TN_COLOR[g] }}><span className="size-1.5 rounded-sm" style={{ background: TN_COLOR[g] }} />{TN_LABEL[g]}</span></td><td className="px-1.5 py-1 text-right tabular-nums">{scope.projectedSeats[g] ?? 0}</td><td className="px-1.5 py-1 text-right font-semibold tabular-nums">{scope.actualSeats[g] ?? 0}</td></tr>)}</tbody>
+                <tfoot><tr className="border-t border-border bg-muted/20 text-[9px]"><td className="px-1.5 py-1">Total</td><td className="px-1.5 py-1 text-right tabular-nums">{seatTotal}</td><td className="px-1.5 py-1 text-right tabular-nums">{actualTotal}</td></tr></tfoot>
+              </table>
             </div>
-            <p className="rounded-md border border-border/70 bg-muted/20 px-2 py-1.5 text-[9px] leading-relaxed text-muted-foreground">No validated 2026 seat model. The 2026 column is a vote-share exit-poll estimate; no seats are projected.</p>
+            <p className="rounded-md border border-border/70 bg-muted/20 px-2 py-1.5 text-[9px] leading-relaxed text-muted-foreground">Projected seats use the workbook&apos;s adjusted AC leaders; Actual 2026 seats use the corresponding ECI result rows. Totals are derived, not hardcoded.</p>
           </div>
         )}
       </div>

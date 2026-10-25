@@ -417,7 +417,7 @@ eq("no zero-response districts → nothing allocated", noZero.allocated, 0);
 eq("no-zero note", noZero.note, "No zero-response districts found");
 eq("all eligible remain unassigned", noZero.unassigned, noZero.eligible);
 const missing = allRefs[0];
-const rows2 = allRefs.filter((d) => d !== missing).map((d, i) => ({ responseId: `R${i}`, district: d, ac: "", party: "TVK", zone: "North", status: "valid" }));
+const rows2: { responseId: string; district: string; ac: string; party: string; zone: string; status: string; estimatedDistrict?: string }[] = allRefs.filter((d) => d !== missing).map((d, i) => ({ responseId: `R${i}`, district: d, ac: "", party: "TVK", zone: "North", status: "valid" }));
 for (let i = 0; i < 3; i++) rows2.push({ responseId: `B${i}`, district: "", ac: "", party: "TVK", zone: "North", status: "valid" });
 for (let i = 3; i < 5; i++) rows2.push({ responseId: `B${i}`, district: "", ac: "", party: "NTK", zone: "North", status: "valid" });
 const alloc = allocateMissingGeography(rows2);
