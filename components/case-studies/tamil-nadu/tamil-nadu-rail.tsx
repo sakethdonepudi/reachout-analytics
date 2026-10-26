@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Maximize2 } from "lucide-react";
-import { TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_SEAT_GROUPS, tnPct, type TnGroup, type TnSeatGroup, type TnShares, type TnYear } from "@/lib/tamil-nadu/model";
+import { TN_COLOR, TN_SURVEY_GROUPS, TN_LABEL, TN_FULL, TN_SEAT_GROUPS, tnPct, type TnGroup, type TnSeatGroup, type TnShares, type TnYear } from "@/lib/tamil-nadu/model";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
 import { cn } from "@/lib/utils";
@@ -74,6 +74,7 @@ export default function TamilNaduRail({
   };
 
   const visibleGroups = TN_SURVEY_GROUPS;
+  const partners = (g: TnGroup) => TN_FULL[g].split("+").slice(1).join(" + ");
   const changeOption = useMemo(() => {
     const values = visibleGroups.map(changeValue).filter((v): v is number => v != null);
     const vals = Math.max(0.5, ...values.map((v) => Math.abs(v)));
@@ -179,7 +180,7 @@ export default function TamilNaduRail({
               return (
                 <tr key={g} className="border-t border-border/60">
                   <th scope="row" className="px-1.5 py-1.5 text-left font-medium">
-                    <span className="flex items-center gap-1"><span className="size-1.5 shrink-0 rounded-sm" style={{ background: TN_COLOR[g] }} /><span className="leading-tight">{TN_LABEL[g]}</span></span>
+                    <span className="flex items-start gap-1"><span className="mt-1 size-1.5 shrink-0 rounded-sm" style={{ background: TN_COLOR[g] }} /><span className="min-w-0"><span className="block leading-tight">{TN_LABEL[g]}</span>{partners(g) && <span className="mt-0.5 block text-[7.5px] font-normal leading-tight text-muted-foreground">{partners(g)}</span>}</span></span>
                   </th>
                   <td className="px-1 py-1.5 text-right tabular-nums text-muted-foreground" title={baselineTitle(g)}>{tnPct(b)}</td>
                   <td className="px-1 py-1.5 text-right tabular-nums font-semibold">{tnPct(c)}</td>
@@ -215,11 +216,10 @@ export default function TamilNaduRail({
             <div className="overflow-hidden rounded-md border border-border">
               <table className="w-full border-collapse text-[10px]">
                 <thead><tr className="bg-muted/30 text-[8px] uppercase tracking-wide text-muted-foreground"><th className="px-1 py-1 text-left">Party</th><th className="px-1 py-1 text-right">Original</th><th className="px-1 py-1 text-right">Model</th><th className="px-1 py-1 text-right">Final</th><th className="px-1 py-1 text-right">Actual</th></tr></thead>
-                <tbody>{seatRows.map((g) => <tr key={g} className="border-t border-border/60"><td className="px-1 py-1"><span className="inline-flex items-center gap-1" style={{ color: TN_COLOR[g] }}><span className="size-1.5 rounded-sm" style={{ background: TN_COLOR[g] }} />{TN_LABEL[g]}</span></td><td className="px-1 py-1 text-right tabular-nums">{scope.originalSeats[g] ?? 0}</td><td className="px-1 py-1 text-right tabular-nums">{scope.modelSeats[g] ?? 0}</td><td className="px-1 py-1 text-right tabular-nums">{scope.finalSeats[g] ?? 0}</td><td className="px-1 py-1 text-right font-semibold tabular-nums">{scope.actualSeats[g] ?? 0}</td></tr>)}</tbody>
+                <tbody>{seatRows.map((g) => <tr key={g} className="border-t border-border/60"><td className="px-1 py-1"><span className="inline-flex items-start gap-1" style={{ color: TN_COLOR[g] }}><span className="mt-1 size-1.5 shrink-0 rounded-sm" style={{ background: TN_COLOR[g] }} /><span className="min-w-0"><span className="block leading-tight">{TN_LABEL[g]}</span>{partners(g) && <span className="mt-0.5 block text-[7px] font-normal leading-tight text-muted-foreground">{partners(g)}</span>}</span></span></td><td className="px-1 py-1 text-right tabular-nums">{scope.originalSeats[g] ?? 0}</td><td className="px-1 py-1 text-right tabular-nums">{scope.modelSeats[g] ?? 0}</td><td className="px-1 py-1 text-right tabular-nums">{scope.finalSeats[g] ?? 0}</td><td className="px-1 py-1 text-right font-semibold tabular-nums">{scope.actualSeats[g] ?? 0}</td></tr>)}</tbody>
                 <tfoot><tr className="border-t border-border bg-muted/20 text-[9px]"><td className="px-1 py-1">Total</td><td className="px-1 py-1 text-right tabular-nums">{originalTotal}</td><td className="px-1 py-1 text-right tabular-nums">{modelTotal}</td><td className="px-1 py-1 text-right tabular-nums">{finalTotal}</td><td className="px-1 py-1 text-right tabular-nums">{actualTotal}</td></tr></tfoot>
               </table>
             </div>
-            <p className="rounded-md border border-border/70 bg-muted/20 px-2 py-1.5 text-[9px] leading-relaxed text-muted-foreground">Original = Saket&apos;s calls; Model = statewide-fit calls; Final = district-calibrated calls; Actual = ECI 2026. Seat colours are never used for district map colours.</p>
           </div>
         )}
       </div>
