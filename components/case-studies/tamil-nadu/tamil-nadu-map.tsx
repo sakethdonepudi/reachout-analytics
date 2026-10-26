@@ -43,7 +43,6 @@ type Props = {
   district: string | null;
   acNo: number | null;
   year: TnYearOrCurrent;
-  mode: "survey" | "calibrated";
   theme: MapTheme;
   onSelectDistrict: (name: string) => void;
   onSelectAc: (no: number) => void;
@@ -88,13 +87,9 @@ function shapeFor(feature: AcFeature | DistrictFeature, project: (p: [number, nu
   }
   return shapes;
 }
-function groupColorForAc(a: TnAc | undefined, year: TnYearOrCurrent, mode: "survey" | "calibrated"): { color: string; share: number | null; group: string | null; count: number; label: string } {
+function groupColorForAc(a: TnAc | undefined, year: TnYearOrCurrent): { color: string; share: number | null; group: string | null; count: number; label: string } {
   if (!a) return { color: TN_NO_DATA, share: 0, group: null, count: 0, label: "No data" };
   if (year === "2026") {
-    if (mode === "calibrated") {
-      const g = a.final.leader;
-      return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: null, group: g, count: 0, label: "Calibrated call" };
-    }
     const g = a.survey.leader;
     return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? a.survey.shares?.[g] ?? 0 : 0, group: g ?? null, count: a.survey.valid, label: "Survey share" };
   }
@@ -102,13 +97,9 @@ function groupColorForAc(a: TnAc | undefined, year: TnYearOrCurrent, mode: "surv
   const g = rec.winner;
   return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? rec.shares?.[g] ?? 0 : 0, group: g, count: rec.available ? 1 : 0, label: `${year} share` };
 }
-function groupColorForDistrict(d: TnDistrict | undefined, year: TnYearOrCurrent, mode: "survey" | "calibrated"): { color: string; share: number | null; group: string | null; count: number; label: string } {
+function groupColorForDistrict(d: TnDistrict | undefined, year: TnYearOrCurrent): { color: string; share: number | null; group: string | null; count: number; label: string } {
   if (!d) return { color: TN_NO_DATA, share: 0, group: null, count: 0, label: "No data" };
   if (year === "2026") {
-    if (mode === "calibrated") {
-      const g = [...(Object.keys(d.finalSeats) as (keyof typeof d.finalSeats)[])].sort((a, b) => d.finalSeats[b] - d.finalSeats[a])[0] ?? null;
-      return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: null, group: g, count: Object.values(d.finalSeats).reduce((a, b) => a + b, 0), label: "Calibrated seats" };
-    }
     const g = d.survey.leader;
     return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? d.survey.shares?.[g] ?? 0 : 0, group: g ?? null, count: d.survey.valid, label: "Survey share" };
   }
@@ -117,20 +108,20 @@ function groupColorForDistrict(d: TnDistrict | undefined, year: TnYearOrCurrent,
   return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? rec.shares?.[g] ?? 0 : 0, group: g, count: rec.available ? 1 : 0, label: `${year} share` };
 }
 
-export default function TamilNaduMap({ acs, districts, district, acNo, year, mode, theme, onSelectDistrict, onSelectAc, onReset }: Props) {
+export default function TamilNaduMap({ acs, districts, district, acNo, year, theme, onSelectDistrict, onSelectAc, onReset }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [tip, setTip] = useState<{ x: number; y: number; title: string; sub: string; value: string; color: string } | null>(null);
-  const live = useRef({ acs, districts, district, acNo, year, mode, theme, onSelectDistrict, onSelectAc, onReset });
-  live.current = { acs, districts, district, acNo, year, mode, theme, onSelectDistrict, onSelectAc, onReset };
+  const live = useRef({ acs, districts, district, acNo, year, theme, onSelectDistrict, onSelectAc, onReset });
+  live.current = { acs, districts, district, acNo, year, theme, onSelectDistrict, onSelectAc, onReset };
   const acByNo = useMemo(() => new Map(acs.map((a) => [a.no, a])), [acs]);
   const acRef = useRef(acByNo); acRef.current = acByNo;
   const districtByName = useMemo(() => new Map(districts.map((d) => [d.name, d])), [districts]);
   const districtRef = useRef(districtByName); districtRef.current = districtByName;
   const apiRef = useRef<{
-    setSelection: (d: string | null, a: number | null, y: TnYearOrCurrent, m: "survey" | "calibrated") => void;
+    setSelection: (d: string | null, a: number | null, y: TnYearOrCurrent) => void;
     resetCamera: () => void;
   } | null>(null);
 
@@ -358,7 +349,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, mod
     };
 
     apiRef.current = {
-      setSelection: (d, a, y, m) => {
+      setSelection: (d, a, y) => {
         const activeD = d ? districtsUnits.get(d) : null;
         const activeAC = a != null ? acUnits.get(a) : null;
         hoveredKey = null; hoveredNo = null; setTip(null); canvas.style.cursor = "grab";
@@ -368,14 +359,14 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, mod
         for (const [name, u] of districtsUnits) {
           const selected = !!activeD && name === activeD.name;
           const acLayerGroup = acLayer.get(name); if (acLayerGroup) acLayerGroup.visible = !!activeD && selected;
-          const info = groupColorForDistrict(districtRef.current.get(canonicalDistrict(name)), y, m);
+          const info = groupColorForDistrict(districtRef.current.get(canonicalDistrict(name)), y);
           u.cap.color.set(info.color); u.side.color.set(info.color);
           startUnit(u, activeD ? 0 : 1, activeD ? 0 : 0.9, 0, activeD ? selected : true);
           u.label.style.opacity = activeD ? (selected && !activeAC ? "1" : "0") : (mobileState && !mobileLabels.has(name) ? "0" : "1");
           u.label.style.fontSize = selected ? "12px" : "10px";
         }
         for (const [no, u] of acUnits) {
-          const info = groupColorForAc(acRef.current.get(no), y, m);
+          const info = groupColorForAc(acRef.current.get(no), y);
           const acSelected = !!activeAC && no === activeAC.no;
           const inSelectedDistrict = !!activeD && canonicalDistrict(u.mesh.userData.district) === activeD.name;
           const visible = !!activeD && (activeAC ? acSelected : inSelectedDistrict);
@@ -415,7 +406,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, mod
       },
       resetCamera: () => startCamera({ tx: 0, tz: 0, ty: 0, dist: 2050, theta: 0, phi: 0.58 }),
     };
-    apiRef.current?.setSelection(live.current.district, live.current.acNo, live.current.year, live.current.mode);
+    apiRef.current?.setSelection(live.current.district, live.current.acNo, live.current.year);
     setReady(true);
 
     let raf = 0, disposed = false;
@@ -512,12 +503,12 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, mod
         canvas.style.cursor = "pointer";
         if (kind === "district") {
           showAccent(live.current.acNo, true);
-          const info = groupColorForDistrict(districtRef.current.get(canonicalDistrict(data.district)), live.current.year, live.current.mode);
-          setTip({ x: e.clientX, y: e.clientY, title: canonicalDistrict(data.district), sub: live.current.year === "2026" ? (live.current.mode === "calibrated" ? "2026 calibrated call" : "2026 survey leader") : `${live.current.year} group leader`, value: `${info.group ? TN_FULL[info.group as keyof typeof TN_FULL] : "No data"}${info.share == null ? " · calibrated call" : ` · ${tnPct(info.share)}`}${info.count ? ` · ${info.count.toLocaleString("en-IN")}` : ""}`, color: info.color });
+          const info = groupColorForDistrict(districtRef.current.get(canonicalDistrict(data.district)), live.current.year);
+          setTip({ x: e.clientX, y: e.clientY, title: canonicalDistrict(data.district), sub: live.current.year === "2026" ? "2026 estimated vote share" : `${live.current.year} group leader`, value: `${info.group ? TN_FULL[info.group as keyof typeof TN_FULL] : "No data"} · ${tnPct(info.share)}${info.count ? ` · ${info.count.toLocaleString("en-IN")}` : ""}`, color: info.color });
         } else {
           showAccent(data.no as number, data.no === live.current.acNo);
-          const a = acRef.current.get(data.no as number); const info = groupColorForAc(a, live.current.year, live.current.mode);
-          setTip({ x: e.clientX, y: e.clientY, title: a?.name ?? `AC ${data.no}`, sub: `${canonicalDistrict(data.district)} · ${live.current.year === "2026" ? (live.current.mode === "calibrated" ? "calibrated call" : "survey") : live.current.year}`, value: `${info.group ? TN_FULL[info.group as keyof typeof TN_FULL] : "No data"}${info.share == null ? " · calibrated call" : ` · ${tnPct(info.share)}`}${info.count ? ` · ${info.count.toLocaleString("en-IN")}` : ""}`, color: info.color });
+          const a = acRef.current.get(data.no as number); const info = groupColorForAc(a, live.current.year);
+          setTip({ x: e.clientX, y: e.clientY, title: a?.name ?? `AC ${data.no}`, sub: `${canonicalDistrict(data.district)} · ${live.current.year === "2026" ? "estimated vote share" : live.current.year}`, value: `${info.group ? TN_FULL[info.group as keyof typeof TN_FULL] : "No data"} · ${tnPct(info.share)}${info.count ? ` · ${info.count.toLocaleString("en-IN")}` : ""}`, color: info.color });
         }
       } else setTip((t) => t ? { ...t, x: e.clientX, y: e.clientY } : t);
     };
@@ -557,8 +548,8 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, mod
 
   useEffect(() => {
     if (!ready) return;
-    apiRef.current?.setSelection(district, acNo, year, mode);
-  }, [ready, district, acNo, year, mode, acs, districts]);
+    apiRef.current?.setSelection(district, acNo, year);
+  }, [ready, district, acNo, year, acs, districts]);
 
   return (
     <div className="relative h-full w-full">

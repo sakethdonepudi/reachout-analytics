@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Maximize2 } from "lucide-react";
-import { TN_COLOR, TN_SURVEY_GROUPS, TN_LABEL, TN_FULL, TN_SEAT_GROUPS, tnPct, type TnGroup, type TnSeatGroup, type TnShares, type TnYear } from "@/lib/tamil-nadu/model";
+import { TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_FULL, TN_SEAT_GROUPS, tnPct, type TnGroup, type TnSeatGroup, type TnShares, type TnYear } from "@/lib/tamil-nadu/model";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
 import { cn } from "@/lib/utils";
@@ -21,9 +21,7 @@ export type TnScopeResult = {
   baselineAvailable: boolean;
   currentValid: number;
   presence: Record<TnYear, Record<TnGroup, boolean>>;
-  originalSeats: Record<TnSeatGroup, number>;
-  modelSeats: Record<TnSeatGroup, number>;
-  finalSeats: Record<TnSeatGroup, number>;
+  estimatedSeats: Record<TnSeatGroup, number>;
   actualSeats: Record<TnSeatGroup, number>;
   currentLabel: string;
   surveyLeader: TnGroup | null;
@@ -73,7 +71,7 @@ export default function TamilNaduRail({
     return undefined;
   };
 
-  const visibleGroups = TN_SURVEY_GROUPS;
+  const visibleGroups = isStatewide ? TN_GROUPS : TN_SURVEY_GROUPS;
   const partners = (g: TnGroup) => TN_FULL[g].split("+").slice(1).join(" + ");
   const changeOption = useMemo(() => {
     const values = visibleGroups.map(changeValue).filter((v): v is number => v != null);
@@ -90,7 +88,7 @@ export default function TamilNaduRail({
           const i = Array.isArray(params) ? (params[0] as { dataIndex: number } | undefined)?.dataIndex ?? 0 : 0;
           const x = sorted[i]; const b = baselineValue(x), c = currentValue(x), ch = changeValue(x);
           if (!x) return "";
-          return `<div style="font-weight:600;margin-bottom:2px">${TN_LABEL[x]}</div>${baselineLabel} result <b>${tnPct(b)}</b><br/>2026 survey <b>${tnPct(c)}</b><br/>Change <b>${ch == null ? "—" : signed(ch)} pp</b>`;
+          return `<div style="font-weight:600;margin-bottom:2px">${TN_LABEL[x]}</div>${baselineLabel} result <b>${tnPct(b)}</b><br/>2026 estimate <b>${tnPct(c)}</b><br/>Change <b>${ch == null ? "—" : signed(ch)} pp</b>`;
         },
       },
       xAxis: {
@@ -125,7 +123,7 @@ export default function TamilNaduRail({
           const i = Array.isArray(params) ? (params[0] as { dataIndex: number } | undefined)?.dataIndex ?? 0 : 0;
           const x = visibleGroups[i];
           if (!x) return "";
-          return `<div style="font-weight:600;margin-bottom:2px">${TN_LABEL[x]}</div>2026 survey <b>${tnPct(currentValue(x))}</b><br/>${baselineLabel} result <b>${tnPct(baselineValue(x))}</b>`;
+          return `<div style="font-weight:600;margin-bottom:2px">${TN_LABEL[x]}</div>2026 estimate <b>${tnPct(currentValue(x))}</b><br/>${baselineLabel} result <b>${tnPct(baselineValue(x))}</b>`;
         },
       },
       xAxis: { type: "value", max, axisLabel: { color: p.muted, fontSize: 8.5, formatter: "{value}%" }, splitLine: { lineStyle: { color: p.grid } }, axisLine: { show: false }, axisTick: { show: false } },
@@ -143,9 +141,7 @@ export default function TamilNaduRail({
 
   const chartHeight = 176;
   const seatRows = [...TN_SEAT_GROUPS];
-  const originalTotal = seatRows.reduce((s2, g) => s2 + (scope.originalSeats[g] ?? 0), 0);
-  const modelTotal = seatRows.reduce((s2, g) => s2 + (scope.modelSeats[g] ?? 0), 0);
-  const finalTotal = seatRows.reduce((s2, g) => s2 + (scope.finalSeats[g] ?? 0), 0);
+  const estimatedTotal = seatRows.reduce((s2, g) => s2 + (scope.estimatedSeats[g] ?? 0), 0);
   const actualTotal = seatRows.reduce((s2, g) => s2 + (scope.actualSeats[g] ?? 0), 0);
   return (
     <section aria-label="Tamil Nadu comparison" className="rounded-2xl border border-border bg-card/95 p-3 shadow-[0_18px_50px_-30px_rgba(15,20,30,0.55)] backdrop-blur-xl">
@@ -164,7 +160,7 @@ export default function TamilNaduRail({
 
       <div className="mt-2 overflow-hidden rounded-lg border border-border">
         <table className="w-full table-fixed border-collapse text-[10.5px]">
-          <caption className="sr-only">{scope.label} {baselineLabel} result and 2026 survey</caption>
+          <caption className="sr-only">{scope.label} {baselineLabel} result and 2026 estimate</caption>
           <colgroup><col className="w-[44%]" /><col className="w-[19%]" /><col className="w-[22%]" /><col className="w-[15%]" /></colgroup>
           <thead>
             <tr className="bg-muted/30 text-left text-[8.5px] uppercase tracking-wide text-muted-foreground">
@@ -194,7 +190,7 @@ export default function TamilNaduRail({
 
       <details className="mt-1.5 text-[9px] leading-relaxed text-muted-foreground">
         <summary className="cursor-pointer select-none">Comparison notes</summary>
-        <p className="mt-1">Survey has five observed groups; historical Others is retained separately and is never folded into DMK+. TVK did not contest 2011–2021; NTK and NOTA are not applicable in 2011. Those baselines are shown as “—”, not zero or missing. 2016 covers 232 of 234 ACs; Aravakurichi and Thanjavur are no data.</p>
+        <p className="mt-1">Historical Others is retained separately and is never folded into the alliance groups. TVK did not contest 2011–2021; NTK and NOTA are not applicable in 2011. Those baselines are shown as “—”, not zero or missing. 2016 covers 232 of 234 ACs; Aravakurichi and Thanjavur are no data.</p>
       </details>
 
       <div className="mt-2 flex gap-1 border-b border-border" role="tablist" aria-label="Comparison views">
@@ -208,22 +204,22 @@ export default function TamilNaduRail({
       </div>
 
       <div className="pt-2">
-        {tab === "change" && <><p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Survey minus {baselineLabel} (pp)</p><EChart option={changeOption} height={chartHeight} reduced={reduced} ariaLabel={`Signed percentage-point change from ${baselineLabel} to the 2026 survey for ${scope.label}`} /></>}
-        {tab === "share" && <><p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">2026 survey share</p><EChart option={shareOption} height={chartHeight} reduced={reduced} ariaLabel={`2026 survey share for ${scope.label}`} /></>}
+        {tab === "change" && <><p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Estimated minus {baselineLabel} (pp)</p><EChart option={changeOption} height={chartHeight} reduced={reduced} ariaLabel={`Signed percentage-point change from ${baselineLabel} to the 2026 estimate for ${scope.label}`} /></>}
+        {tab === "share" && <><p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Estimated vote share</p><EChart option={shareOption} height={chartHeight} reduced={reduced} ariaLabel={`2026 estimated vote share for ${scope.label}`} /></>}
         {tab === "seats" && (
           <div className="space-y-2">
-            <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Seats · original, model, final calibrated and actual</p>
+            <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Estimated seats · actual shown separately</p>
             <div className="overflow-hidden rounded-md border border-border">
               <table className="w-full border-collapse text-[10px]">
-                <thead><tr className="bg-muted/30 text-[8px] uppercase tracking-wide text-muted-foreground"><th className="px-1 py-1 text-left">Party</th><th className="px-1 py-1 text-right">Original</th><th className="px-1 py-1 text-right">Model</th><th className="px-1 py-1 text-right">Final</th><th className="px-1 py-1 text-right">Actual</th></tr></thead>
-                <tbody>{seatRows.map((g) => <tr key={g} className="border-t border-border/60"><td className="px-1 py-1"><span className="inline-flex items-start gap-1" style={{ color: TN_COLOR[g] }}><span className="mt-1 size-1.5 shrink-0 rounded-sm" style={{ background: TN_COLOR[g] }} /><span className="min-w-0"><span className="block leading-tight">{TN_LABEL[g]}</span>{partners(g) && <span className="mt-0.5 block text-[7px] font-normal leading-tight text-muted-foreground">{partners(g)}</span>}</span></span></td><td className="px-1 py-1 text-right tabular-nums">{scope.originalSeats[g] ?? 0}</td><td className="px-1 py-1 text-right tabular-nums">{scope.modelSeats[g] ?? 0}</td><td className="px-1 py-1 text-right tabular-nums">{scope.finalSeats[g] ?? 0}</td><td className="px-1 py-1 text-right font-semibold tabular-nums">{scope.actualSeats[g] ?? 0}</td></tr>)}</tbody>
-                <tfoot><tr className="border-t border-border bg-muted/20 text-[9px]"><td className="px-1 py-1">Total</td><td className="px-1 py-1 text-right tabular-nums">{originalTotal}</td><td className="px-1 py-1 text-right tabular-nums">{modelTotal}</td><td className="px-1 py-1 text-right tabular-nums">{finalTotal}</td><td className="px-1 py-1 text-right tabular-nums">{actualTotal}</td></tr></tfoot>
+                <thead><tr className="bg-muted/30 text-[8px] uppercase tracking-wide text-muted-foreground"><th className="px-1 py-1 text-left">Party</th><th className="px-1 py-1 text-right">Estimated</th><th className="px-1 py-1 text-right">Actual 2026</th></tr></thead>
+                <tbody>{seatRows.map((g) => <tr key={g} className="border-t border-border/60"><td className="px-1 py-1"><span className="inline-flex items-start gap-1" style={{ color: TN_COLOR[g] }}><span className="mt-1 size-1.5 shrink-0 rounded-sm" style={{ background: TN_COLOR[g] }} /><span className="min-w-0"><span className="block leading-tight">{TN_LABEL[g]}</span>{partners(g) && <span className="mt-0.5 block text-[7px] font-normal leading-tight text-muted-foreground">{partners(g)}</span>}</span></span></td><td className="px-1 py-1 text-right font-semibold tabular-nums">{scope.estimatedSeats[g] ?? 0}</td><td className="px-1 py-1 text-right tabular-nums">{scope.actualSeats[g] ?? 0}</td></tr>)}</tbody>
+                <tfoot><tr className="border-t border-border bg-muted/20 text-[9px]"><td className="px-1 py-1">Total</td><td className="px-1 py-1 text-right tabular-nums">{estimatedTotal}</td><td className="px-1 py-1 text-right tabular-nums">{actualTotal}</td></tr></tfoot>
               </table>
             </div>
           </div>
         )}
       </div>
-      {selectedYear === "2026" && scope.currentValid === 0 && <p className="mt-1 text-[9px] text-muted-foreground">No valid 2026 survey responses in this scope.</p>}
+      {selectedYear === "2026" && scope.currentValid === 0 && <p className="mt-1 text-[9px] text-muted-foreground">No valid 2026 estimate in this scope.</p>}
     </section>
   );
 }

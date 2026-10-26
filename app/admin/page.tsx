@@ -406,6 +406,7 @@ export default function AdminPortal() {
                 <a href="/api/admin/tamil-nadu/export?format=xlsx" className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] hover:bg-elevated"><Download className="size-4" /> Export final workbook aggregates</a>
                 <Link href="/case-studies/tamil-nadu" className="rounded-full border border-border px-3.5 py-2 text-[12.5px] text-muted-foreground hover:text-foreground">View public page</Link>
               </div>
+              <p className="mt-3 max-w-2xl text-[12px] leading-relaxed text-muted-foreground">Full calibration weights, cross-validation metrics, layer definitions and source audit remain available in the exported workbook.</p>
             </div>
           )}
           {section === "poll" && caseId !== "telangana" && caseId !== "tamil-nadu" && (

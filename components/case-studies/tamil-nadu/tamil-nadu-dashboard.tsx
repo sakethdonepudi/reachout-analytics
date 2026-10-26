@@ -95,7 +95,6 @@ export default function TamilNaduDashboard() {
   const [district, setDistrict] = useState<string | null>(null);
   const [acNo, setAcNo] = useState<number | null>(null);
   const [year, setYear] = useState<TnYearOrCurrent>("2026");
-  const [mode, setMode] = useState<"survey" | "calibrated">("survey");
   const [tab, setTab] = useState<TnTab>("change");
   const [chartOpen, setChartOpen] = useState(false);
   const expandFocus = useRef<HTMLElement | null>(null);
@@ -115,45 +114,39 @@ export default function TamilNaduDashboard() {
   const currentDistrict = district ? districts.find((d) => d.name === district) ?? null : null;
   const baselineYear: TnYear = year === "2026" ? "2021" : year;
   const baseline = currentAc?.historical[baselineYear] ?? currentDistrict?.historical[baselineYear] ?? data?.statewide.historical[baselineYear] ?? null;
-  const currentSurvey = currentAc?.survey ?? currentDistrict?.survey ?? data?.statewide.survey ?? null;
+  const currentSurvey = currentAc?.survey ?? currentDistrict?.survey ?? null;
+  const isStatewide = !district && !currentAc;
+  const estimatedShares = isStatewide ? data?.statewide.calibrated.shares ?? {} : currentSurvey?.shares ?? {};
+  const estimatedValid = isStatewide ? data?.statewide.calibrated.valid ?? 0 : currentSurvey?.valid ?? 0;
+  const currentLeader = tnLeader(estimatedShares);
   const emptySeats = TN_SEAT_GROUPS.reduce((o, g) => (o[g] = 0, o), {} as Record<TnSeatGroup, number>);
-  const originalSeats = currentAc
-    ? { ...emptySeats, ...(currentAc.original.leader ? { [currentAc.original.leader]: 1 } : {}) }
-    : currentDistrict?.originalSeats ?? data?.statewide.originalSeats ?? emptySeats;
-  const modelSeats = currentAc
-    ? { ...emptySeats, ...(currentAc.model.leader ? { [currentAc.model.leader]: 1 } : {}) }
-    : currentDistrict?.modelSeats ?? data?.statewide.modelSeats ?? emptySeats;
-  const finalSeats = currentAc
+  const estimatedSeats = currentAc
     ? { ...emptySeats, ...(currentAc.final.leader ? { [currentAc.final.leader]: 1 } : {}) }
     : currentDistrict?.finalSeats ?? data?.statewide.finalSeats ?? emptySeats;
   const actualSeats = currentAc
     ? { ...emptySeats, ...(currentAc.actual2026.winner ? { [currentAc.actual2026.winner]: 1 } : {}) }
     : currentDistrict?.actualSeats ?? data?.statewide.actualSeats ?? emptySeats;
-  const currentLabel = !district && !currentAc ? "survey all responses" : "survey";
-  const currentLeader = currentSurvey ? tnLeader(currentSurvey.shares) : null;
   const scopeLabel = currentAc ? currentAc.name : currentDistrict ? currentDistrict.name : "Tamil Nadu";
-  const isStatewide = !district && !currentAc;
 
   const scope = useMemo<TnScopeResult>(() => {
     const b = baseline?.shares ?? {};
-    const c = currentSurvey?.shares ?? {};
     const change: TnShares = {};
     for (const g of TN_GROUPS) {
       const present = data?.presence[baselineYear][g] ?? false;
       const bv = b[g];
-      const cv = c[g];
-      change[g] = present && bv != null && cv != null && (currentSurvey?.valid ?? 0) > 0 ? (cv - bv) * 100 : undefined;
+      const cv = estimatedShares[g];
+      change[g] = present && bv != null && cv != null && estimatedValid > 0 ? (cv - bv) * 100 : undefined;
     }
     return {
       label: scopeLabel, baselineYear,
-      baseline: b, current: c, change,
+      baseline: b, current: estimatedShares, change,
       baselineAvailable: !!baseline?.available,
-      currentValid: currentSurvey?.valid ?? 0,
+      currentValid: estimatedValid,
       presence: data?.presence ?? { "2011": {}, "2016": {}, "2021": {} } as Record<TnYear, Record<TnGroup, boolean>>,
-      originalSeats, modelSeats, finalSeats, actualSeats, currentLabel,
+      estimatedSeats, actualSeats, currentLabel: "Estimated vote share",
       surveyLeader: currentLeader,
     };
-  }, [baseline, baselineYear, currentLeader, currentSurvey, data?.presence, originalSeats, modelSeats, finalSeats, actualSeats, currentLabel, scopeLabel]);
+  }, [baseline, baselineYear, currentLeader, estimatedShares, estimatedValid, data?.presence, estimatedSeats, actualSeats, scopeLabel]);
 
   const districtOptions: Option[] = useMemo(() => [{ value: "", label: "All Tamil Nadu" }, ...districts.map((d) => ({ value: d.name, label: d.name, hint: `${d.acs.length} ACs` }))], [districts]);
   const assemblyOptions: Option[] = useMemo(() => {
@@ -173,12 +166,9 @@ export default function TamilNaduDashboard() {
   const closeAnalysis = useCallback(() => { setChartOpen(false); requestAnimationFrame(() => expandFocus.current?.focus()); }, []);
 
   const legend = useMemo(() => {
-    if (year === "2026") {
-      const active = mode === "calibrated" ? TN_SEAT_GROUPS : TN_SURVEY_GROUPS;
-      return active.map((g) => ({ key: g, label: TN_LABEL[g], colour: TN_COLOR[g] }));
-    }
+    if (year === "2026") return TN_SURVEY_GROUPS.map((g) => ({ key: g, label: TN_LABEL[g], colour: TN_COLOR[g] }));
     return TN_GROUPS.filter((g) => data?.presence[year][g]).map((g) => ({ key: g, label: TN_LABEL[g], colour: TN_COLOR[g] }));
-  }, [year, mode, data?.presence]);
+  }, [year, data?.presence]);
 
   if (error && !data) {
     return <main className="grid min-h-screen place-items-center bg-background px-6 text-center"><div><h1 className="font-display text-2xl font-semibold">Tamil Nadu data unavailable</h1><p className="mt-2 text-sm text-muted-foreground">{error}</p></div></main>;
@@ -199,22 +189,16 @@ export default function TamilNaduDashboard() {
             <div>
               <span className={LABEL}>Election year</span>
               <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-border p-0.5" role="group" aria-label="Election year">
-                {YEARS.map((y) => <button key={y.id} type="button" aria-pressed={year === y.id} onClick={() => { setYear(y.id); if (y.id !== "2026") setMode("survey"); }} className={cn("rounded-md px-2 py-1.5 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60", year === y.id ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>{y.label}</button>)}
-              </div>
-            </div>
-            <div>
-              <span className={LABEL}>Map basis</span>
-              <div className={cn("mt-1 flex gap-1 rounded-lg border border-border p-0.5", year !== "2026" && "opacity-45")} role="group" aria-label="Map basis">
-                {([["survey", "Survey votes"], ["calibrated", "Calibrated calls"]] as const).map(([id, label]) => <button key={id} type="button" disabled={year !== "2026"} aria-pressed={mode === id} onClick={() => setMode(id)} className={cn("flex-1 rounded-md px-1.5 py-1.5 text-[9.5px] font-medium disabled:cursor-not-allowed", mode === id ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>{label}</button>)}
+                {YEARS.map((y) => <button key={y.id} type="button" aria-pressed={year === y.id} onClick={() => setYear(y.id)} className={cn("rounded-md px-2 py-1.5 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60", year === y.id ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>{y.label}</button>)}
               </div>
             </div>
             <SearchSelect label="District" value={district ?? ""} options={districtOptions} placeholder="Select a district" onChange={(v) => selectDistrict(v || null)} />
             <SearchSelect label="Assembly" value={acNo != null ? String(acNo) : ""} options={assemblyOptions} placeholder={district ? "Select an assembly" : "Select a district first"} disabled={!district} onChange={(v) => selectAc(v ? Number(v) : null)} />
             <div>
-              <span className={LABEL}>{year === "2026" ? (mode === "calibrated" ? "2026 calibrated seat calls" : "2026 survey-leading parties") : `${year} group leaders`}</span>
+              <span className={LABEL}>{year === "2026" ? "Estimated vote-share leaders" : `${year} group leaders`}</span>
               <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] font-medium text-muted-foreground">
                 {legend.map((item) => <span key={item.key} className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15" style={{ background: item.colour }} /><span className="truncate">{item.label}</span></span>)}
-                {mode === "survey" && year === "2026" ? <span className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px]" style={{ background: TN_NO_DATA }} /><span className="truncate">No data</span></span> : null}
+                <span className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px]" style={{ background: TN_NO_DATA }} /><span className="truncate">No data</span></span>
               </div>
             </div>
             {(district || currentAc) && <button type="button" onClick={resetToState} className="flex w-full items-center gap-2 rounded-lg border border-border px-2.5 py-2 text-left text-[11.5px] font-semibold hover:border-saffron/40"><RotateCcw className="size-3.5" /> Reset to Tamil Nadu</button>}
@@ -222,8 +206,7 @@ export default function TamilNaduDashboard() {
         </aside>
 
         <div className="relative z-0 mt-4 h-[52svh] min-h-[360px] overflow-hidden rounded-2xl border border-border bg-card lg:absolute lg:inset-x-0 lg:top-16 lg:bottom-0 lg:mt-0 lg:h-auto lg:rounded-none lg:border-0 lg:bg-transparent">
-          <TamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} mode={mode} theme={(theme === "light" ? "light" : "dark") as MapTheme} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={resetToState} />
-          {year === "2026" && mode === "calibrated" && <div className="absolute bottom-3 left-3 z-20 rounded-full border border-border bg-card/90 px-2.5 py-1 text-[10px] text-muted-foreground shadow-sm backdrop-blur lg:left-[312px]">Calibrated seat calls · not vote share</div>}
+          <TamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} theme={(theme === "light" ? "light" : "dark") as MapTheme} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={resetToState} />
           {(district || currentAc) && (
             <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 lg:left-[312px]">
               <button type="button" onClick={resetToState} className="inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:border-saffron/50"><ArrowLeft className="size-3" /> Tamil Nadu</button>
