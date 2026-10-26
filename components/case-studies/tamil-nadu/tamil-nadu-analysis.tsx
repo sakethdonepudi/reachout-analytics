@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RotateCcw, X } from "lucide-react";
 import {
-  TN_COLOR, TN_GROUPS, TN_LABEL, tnLeader,
-  type TnAggregates, type TnGroup, type TnShares, type TnYear,
+  TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_SEAT_GROUPS, TN_FULL, tnLeader,
+  type TnAggregates, type TnGroup, type TnSeatGroup, type TnShares, type TnYear,
 } from "@/lib/tamil-nadu/model";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
@@ -59,9 +59,9 @@ const pct = (v: number | null | undefined) => (v == null || !Number.isFinite(v) 
 const changePp = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(1)}pp`);
 const rawValue = (d: unknown): unknown => (d && typeof d === "object" && "value" in d ? (d as { value: unknown }).value : d);
 const numericValue = (d: unknown): number | null => { const v = rawValue(d); if (typeof v === "number") return v; if (Array.isArray(v) && typeof v[1] === "number") return v[1]; return null; };
-const emptySeats = () => Object.fromEntries(TN_GROUPS.map((g) => [g, 0])) as Record<TnGroup, number>;
+const emptySeats = () => Object.fromEntries(TN_SEAT_GROUPS.map((g) => [g, 0])) as Record<TnSeatGroup, number>;
 
-export default function TamilNaduAnalysis({ open, onClose, data, theme, initialScope, defaultBaseline, onSelectDistrict }: {
+export default function TamilNaduAnalysis({ open, onClose, data, theme, initialScope, defaultBaseline, onSelectDistrict, onSelectAc }: {
   open: boolean;
   onClose: () => void;
   data: TnAggregates;
@@ -69,6 +69,7 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
   initialScope: string;
   defaultBaseline: TnYear;
   onSelectDistrict: (name: string) => void;
+  onSelectAc: (no: number) => void;
 }) {
   const reduced = usePrefersReducedMotion();
   const p = palette(theme);
@@ -76,11 +77,11 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
   const closeRef = useRef<HTMLButtonElement>(null);
   const [scope, setScope] = useState(initialScope);
   const [baselineYear, setBaselineYear] = useState<TnYear>(defaultBaseline);
-  const [parties, setParties] = useState<TnGroup[]>([...TN_GROUPS]);
+  const [parties, setParties] = useState<TnGroup[]>([...TN_SURVEY_GROUPS]);
   const [showMedian, setShowMedian] = useState(true);
   const [highlightOutliers, setHighlightOutliers] = useState(true);
-  const [tableMode, setTableMode] = useState<"share" | "change">("share");
-  const [sortBy, setSortBy] = useState<"name" | "leader" | "votes">("name");
+  const [distUnit, setDistUnit] = useState<"district" | "assembly">("district");
+  const [sortBy, setSortBy] = useState<"name" | "leader" | "responses">("name");
 
   useEffect(() => { if (open) setScope(initialScope); }, [open, initialScope]);
   useEffect(() => { if (open) setBaselineYear(defaultBaseline); }, [open, defaultBaseline]);
@@ -108,23 +109,38 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
   }, [open, onClose]);
 
   const scopeRecord = useMemo(() => {
+    if (scope.startsWith("a:")) return data.acs.find((a) => a.no === Number(scope.slice(2))) ?? data.acs[0];
     if (scope.startsWith("d:")) return data.districts.find((d) => d.name === scope.slice(2)) ?? data.districts[0];
     return data.statewide;
   }, [data, scope]);
-  const scopeName = scope.startsWith("d:") ? scope.slice(2) : "Tamil Nadu";
-  const scopeIsState = !scope.startsWith("d:");
-  const current = scopeRecord.combined;
-  const baseline = scopeRecord.actual[baselineYear] ?? null;
+  const scopeName = scope.startsWith("a:")
+    ? data.acs.find((a) => a.no === Number(scope.slice(2)))?.name ?? "Assembly"
+    : scope.startsWith("d:") ? scope.slice(2) : "Tamil Nadu";
+  const scopeIsState = !scope.startsWith("a:") && !scope.startsWith("d:");
+  const current = scopeRecord.survey;
+  const baseline = scopeRecord.historical[baselineYear] ?? null;
   const baselineShares = baseline?.shares ?? null;
   const currentShares = current.shares ?? {};
   const currentLeader = tnLeader(currentShares);
-  const currentLabel = scopeIsState ? "All responses" : "Combined";
+  const currentLabel = scopeIsState ? "Survey all responses" : "Survey";
 
-  const projectedSeats = useMemo(() => {
-    if (scope.startsWith("d:")) return data.districts.find((d) => d.name === scope.slice(2))?.projectedSeats ?? emptySeats();
-    return data.statewide.projectedSeats;
+  const originalSeats = useMemo(() => {
+    if (scope.startsWith("a:")) { const ac = data.acs.find((a) => a.no === Number(scope.slice(2))); return { ...emptySeats(), ...(ac?.original.leader ? { [ac.original.leader]: 1 } : {}) }; }
+    if (scope.startsWith("d:")) return data.districts.find((d) => d.name === scope.slice(2))?.originalSeats ?? emptySeats();
+    return data.statewide.originalSeats;
+  }, [data, scope]);
+  const modelSeats = useMemo(() => {
+    if (scope.startsWith("a:")) { const ac = data.acs.find((a) => a.no === Number(scope.slice(2))); return { ...emptySeats(), ...(ac?.model.leader ? { [ac.model.leader]: 1 } : {}) }; }
+    if (scope.startsWith("d:")) return data.districts.find((d) => d.name === scope.slice(2))?.modelSeats ?? emptySeats();
+    return data.statewide.modelSeats;
+  }, [data, scope]);
+  const finalSeats = useMemo(() => {
+    if (scope.startsWith("a:")) { const ac = data.acs.find((a) => a.no === Number(scope.slice(2))); return { ...emptySeats(), ...(ac?.final.leader ? { [ac.final.leader]: 1 } : {}) }; }
+    if (scope.startsWith("d:")) return data.districts.find((d) => d.name === scope.slice(2))?.finalSeats ?? emptySeats();
+    return data.statewide.finalSeats;
   }, [data, scope]);
   const actualSeats = useMemo(() => {
+    if (scope.startsWith("a:")) { const ac = data.acs.find((a) => a.no === Number(scope.slice(2))); return { ...emptySeats(), ...(ac?.actual2026.winner ? { [ac.actual2026.winner]: 1 } : {}) }; }
     if (scope.startsWith("d:")) return data.districts.find((d) => d.name === scope.slice(2))?.actualSeats ?? emptySeats();
     return data.statewide.actualSeats;
   }, [data, scope]);
@@ -147,7 +163,7 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
     return {
       animationDuration: reduced ? 0 : 450,
       grid: { left: 44, right: 12, top: 34, bottom: 42 },
-      legend: { top: 0, left: 0, itemWidth: 9, itemHeight: 9, textStyle: { color: p.muted, fontSize: 10 }, data: [`${baselineYear} result`, "2026 combined"] },
+      legend: { top: 0, left: 0, itemWidth: 9, itemHeight: 9, textStyle: { color: p.muted, fontSize: 10 }, data: [`${baselineYear} result`, `2026 survey`] },
       tooltip: {
         ...tooltipStyle(p), trigger: "axis", axisPointer: { type: "shadow" },
         valueFormatter: (v: unknown) => (typeof v === "number" ? `${v.toFixed(2)}%` : "—"),
@@ -156,19 +172,21 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
       yAxis: { type: "value", max: 60, axisLabel: { color: p.muted, fontSize: 9, formatter: "{value}%" }, splitLine: { lineStyle: { color: p.grid } } },
       series: [
         { id: "baseline", name: `${baselineYear} result`, type: "bar", data: baseData, barMaxWidth: 22, itemStyle: { borderRadius: [3, 3, 0, 0] }, emphasis: { focus: "series" } },
-        { id: "current", name: "2026 combined", type: "bar", data: currentData, barMaxWidth: 22, itemStyle: { borderRadius: [3, 3, 0, 0] }, emphasis: { focus: "series" } },
+        { id: "current", name: "2026 survey", type: "bar", data: currentData, barMaxWidth: 22, itemStyle: { borderRadius: [3, 3, 0, 0] }, emphasis: { focus: "series" } },
       ],
     };
   }, [baseline?.available, baselineShares, baselineYear, currentShares, data.presence, parties, p, reduced]);
 
   const distribution = useMemo(() => {
-    const units = data.districts.map((d) => ({ name: d.name, shares: d.combined.shares, valid: d.combined.valid }));
+    const units = distUnit === "district"
+      ? data.districts.map((d) => ({ name: d.name, shares: d.survey.shares, valid: d.survey.valid }))
+      : data.acs.map((a) => ({ name: `${a.no}. ${a.name}`, shares: a.survey.shares, valid: a.survey.valid }));
     const rows = parties.map((g) => ({ group: g, values: units.map((u) => u.shares?.[g]).filter((v): v is number => v != null && Number.isFinite(v)).map((v) => v * 100) }));
     const boxes = rows.map((r) => { const st = boxStats(r.values); return st ? [st.whiskerLow, st.q1, st.median, st.q3, st.whiskerHigh] : null; });
     const medians = rows.map((r) => { const st = boxStats(r.values); return st ? st.median : null; });
     const outliers = rows.flatMap((r, i) => { const st = boxStats(r.values); return st ? st.outliers.map((v) => [i, v]) : []; });
     return { units, rows, boxes, medians, outliers };
-  }, [data, parties]);
+  }, [data, distUnit, parties]);
 
   const distributionOption = useMemo(() => ({
     animationDuration: reduced ? 0 : 450,
@@ -212,26 +230,40 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
   const seatOption = useMemo(() => ({
     animationDuration: reduced ? 0 : 450,
     grid: { left: 34, right: 12, top: 34, bottom: 38 },
-    legend: { top: 0, left: 0, itemWidth: 9, itemHeight: 9, textStyle: { color: p.muted, fontSize: 10 }, data: ["Projected", "Actual 2026"] },
+    legend: { top: 0, left: 0, itemWidth: 9, itemHeight: 9, textStyle: { color: p.muted, fontSize: 10 }, data: ["Original", "Model", "Final calibrated", "Actual 2026"] },
     tooltip: { ...tooltipStyle(p), trigger: "axis", axisPointer: { type: "shadow" } },
-    xAxis: { type: "category", data: TN_GROUPS.map((g) => TN_LABEL[g]), axisLabel: { color: p.muted, fontSize: 9, interval: 0, rotate: 20 }, axisLine: { lineStyle: { color: p.axis } }, axisTick: { show: false } },
+    xAxis: { type: "category", data: TN_SEAT_GROUPS.map((g) => TN_LABEL[g]), axisLabel: { color: p.muted, fontSize: 9, interval: 0 }, axisLine: { lineStyle: { color: p.axis } }, axisTick: { show: false } },
     yAxis: { type: "value", minInterval: 1, axisLabel: { color: p.muted, fontSize: 9 }, splitLine: { lineStyle: { color: p.grid } } },
     series: [
-      { id: "projected", name: "Projected", type: "bar", data: TN_GROUPS.map((g) => ({ value: projectedSeats[g] ?? 0, itemStyle: { color: TN_COLOR[g], opacity: 0.35 } })), barMaxWidth: 26, label: { show: true, position: "top", color: p.muted, fontSize: 9 } },
-      { id: "actual", name: "Actual 2026", type: "bar", data: TN_GROUPS.map((g) => ({ value: actualSeats[g] ?? 0, itemStyle: { color: TN_COLOR[g] } })), barMaxWidth: 26, label: { show: true, position: "top", color: p.text, fontSize: 9, fontWeight: 600 } },
+      { id: "original", name: "Original", type: "bar", data: TN_SEAT_GROUPS.map((g) => ({ value: originalSeats[g] ?? 0, itemStyle: { color: TN_COLOR[g], opacity: 0.25 } })), barMaxWidth: 20, label: { show: true, position: "top", color: p.muted, fontSize: 9 } },
+      { id: "model", name: "Model", type: "bar", data: TN_SEAT_GROUPS.map((g) => ({ value: modelSeats[g] ?? 0, itemStyle: { color: TN_COLOR[g], opacity: 0.45 } })), barMaxWidth: 20, label: { show: true, position: "top", color: p.muted, fontSize: 9 } },
+      { id: "final", name: "Final calibrated", type: "bar", data: TN_SEAT_GROUPS.map((g) => ({ value: finalSeats[g] ?? 0, itemStyle: { color: TN_COLOR[g], opacity: 0.7 } })), barMaxWidth: 20, label: { show: true, position: "top", color: p.text, fontSize: 9 } },
+      { id: "actual", name: "Actual 2026", type: "bar", data: TN_SEAT_GROUPS.map((g) => ({ value: actualSeats[g] ?? 0, itemStyle: { color: TN_COLOR[g] } })), barMaxWidth: 24, label: { show: true, position: "top", color: p.text, fontSize: 9, fontWeight: 600 } },
     ],
-  }), [actualSeats, p, projectedSeats, reduced]);
+  }), [actualSeats, finalSeats, originalSeats, p, reduced]);
 
   const districtsSorted = useMemo(() => {
     const rows = [...data.districts];
-    if (sortBy === "leader") rows.sort((a, b) => (TN_GROUPS.indexOf(b.combined.leader ?? "TVK") - TN_GROUPS.indexOf(a.combined.leader ?? "TVK")) || a.name.localeCompare(b.name));
-    else if (sortBy === "votes") rows.sort((a, b) => b.combined.valid - a.combined.valid);
+    if (sortBy === "leader") rows.sort((a, b) => (TN_GROUPS.indexOf(b.surveyLeader ?? "TVK") - TN_GROUPS.indexOf(a.surveyLeader ?? "TVK")) || a.name.localeCompare(b.name));
+    else if (sortBy === "responses") rows.sort((a, b) => b.survey.valid - a.survey.valid);
     else rows.sort((a, b) => a.name.localeCompare(b.name));
     return rows;
   }, [data.districts, sortBy]);
 
-  const totalProjected = TN_GROUPS.reduce((s, g) => s + (projectedSeats[g] ?? 0), 0);
-  const totalActual = TN_GROUPS.reduce((s, g) => s + (actualSeats[g] ?? 0), 0);
+  const districtChartOption = useMemo(() => ({
+    animationDuration: reduced ? 0 : 450,
+    grid: { left: 38, right: 14, top: 30, bottom: 28 },
+    legend: { top: 0, left: 0, itemWidth: 9, itemHeight: 9, textStyle: { color: p.muted, fontSize: 9 } },
+    tooltip: { ...tooltipStyle(p), trigger: "axis" },
+    xAxis: { type: "category", data: data.districts.map((d) => d.name), axisLabel: { show: false }, axisLine: { lineStyle: { color: p.axis } }, axisTick: { show: false } },
+    yAxis: { type: "value", axisLabel: { color: p.muted, fontSize: 8, formatter: "{value}%" }, splitLine: { lineStyle: { color: p.grid } } },
+    series: parties.map((g) => ({ id: `d-${g}`, name: TN_LABEL[g], type: "line", symbol: "none", lineStyle: { color: TN_COLOR[g], width: 1.3 }, data: data.districts.map((d) => +((d.survey.shares?.[g] ?? 0) * 100).toFixed(2)) })),
+  }), [data.districts, parties, p, reduced]);
+
+  const totalOriginal = TN_SEAT_GROUPS.reduce((s, g) => s + (originalSeats[g] ?? 0), 0);
+  const totalModel = TN_SEAT_GROUPS.reduce((s, g) => s + (modelSeats[g] ?? 0), 0);
+  const totalFinal = TN_SEAT_GROUPS.reduce((s, g) => s + (finalSeats[g] ?? 0), 0);
+  const totalActual = TN_SEAT_GROUPS.reduce((s, g) => s + (actualSeats[g] ?? 0), 0);
 
   if (!open) return null;
 
@@ -241,7 +273,7 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
         <div className="sticky top-0 z-30 flex items-start justify-between gap-3 border-b border-border bg-card/95 px-4 py-3 backdrop-blur-xl">
           <div className="min-w-0">
             <h2 id="tn-analysis-title" className="font-display text-lg font-semibold leading-tight">Tamil Nadu analysis</h2>
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{scopeName} · 2026 combined vote analysis · {currentLabel} · aggregate workbook</p>
+            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{scopeName} · 2026 final calibrated aggregate · {currentLabel}</p>
           </div>
           <button ref={closeRef} type="button" onClick={onClose} aria-label="Close analysis" className="grid size-8 shrink-0 place-items-center rounded-full border border-border text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60"><X className="size-4" /></button>
         </div>
@@ -252,18 +284,21 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
               {BASELINES.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
           </label>
+          <div className="inline-flex rounded-full border border-border p-0.5" role="group" aria-label="Distribution geography">
+            {([["district", "Districts"], ["assembly", "Assemblies"]] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={distUnit === id} onClick={() => setDistUnit(id)} className={cn("rounded-full px-2.5 py-1 text-[10px]", distUnit === id ? "bg-foreground text-background" : "text-muted-foreground")}>{label}</button>)}
+          </div>
           <div className="flex flex-wrap gap-1" role="group" aria-label="Parties">
-            {TN_GROUPS.map((g) => <button key={g} type="button" aria-pressed={parties.includes(g)} onClick={() => setParties((prev) => prev.includes(g) ? (prev.length > 1 ? prev.filter((x) => x !== g) : prev) : [...prev, g])} className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px]", parties.includes(g) ? "border-border text-foreground" : "border-border/60 text-muted-foreground opacity-45")}><span className="size-2 rounded-sm" style={{ background: TN_COLOR[g] }} />{TN_LABEL[g]}</button>)}
+            {TN_SURVEY_GROUPS.map((g) => <button key={g} type="button" aria-pressed={parties.includes(g)} onClick={() => setParties((prev) => prev.includes(g) ? (prev.length > 1 ? prev.filter((x) => x !== g) : prev) : [...prev, g])} className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px]", parties.includes(g) ? "border-border text-foreground" : "border-border/60 text-muted-foreground opacity-45")}><span className="size-2 rounded-sm" style={{ background: TN_COLOR[g] }} />{TN_LABEL[g]}</button>)}
           </div>
           <button type="button" aria-pressed={showMedian} onClick={() => setShowMedian((v) => !v)} className={cn("rounded-full border px-2 py-1 text-[10px]", showMedian ? "border-foreground/40 bg-muted/40 text-foreground" : "border-border text-muted-foreground")}>Show median</button>
           <button type="button" aria-pressed={highlightOutliers} onClick={() => setHighlightOutliers((v) => !v)} className={cn("rounded-full border px-2 py-1 text-[10px]", highlightOutliers ? "border-foreground/40 bg-muted/40 text-foreground" : "border-border text-muted-foreground")}>Highlight outliers</button>
-          <button type="button" onClick={() => { setParties([...TN_GROUPS]); setBaselineYear(defaultBaseline); setShowMedian(true); setHighlightOutliers(true); setTableMode("share"); setSortBy("name"); }} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground"><RotateCcw className="size-3" /> Reset</button>
-          <span className="text-[10px] text-muted-foreground">TVK reference <b className="font-medium text-foreground/80">{(data.referenceShare.value * 100).toFixed(2)}%</b> · statewide workbook <b className="font-medium text-foreground/80">{(((data.statewide.combined.shares?.TVK ?? 0) * 100)).toFixed(2)}%</b></span>
+          <button type="button" onClick={() => { setParties([...TN_SURVEY_GROUPS]); setBaselineYear(defaultBaseline); setShowMedian(true); setHighlightOutliers(true); setDistUnit("district"); setSortBy("name"); }} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground"><RotateCcw className="size-3" /> Reset</button>
+          <span className="text-[10px] text-muted-foreground">TVK survey <b className="font-medium text-foreground/80">{(((data.statewide.survey.shares?.TVK ?? 0) * 100)).toFixed(2)}%</b> · result-calibrated <b className="font-medium text-foreground/80">{(((data.statewide.calibrated.shares.TVK ?? 0) * 100)).toFixed(2)}%</b></span>
         </div>
 
         <div className="space-y-5 overflow-y-auto px-4 pb-10 pt-4">
           <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            {TN_GROUPS.map((g) => {
+            {TN_SURVEY_GROUPS.map((g) => {
               const v = currentShares[g];
               const c = change[g];
               return (
@@ -276,71 +311,107 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
             })}
           </section>
 
+          {scopeIsState && (
+          <section>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div><h3 className="font-display text-[15px] font-semibold">Statewide vote-share layers</h3><p className="mt-0.5 text-[10px] text-muted-foreground">Survey · result-calibrated · Actual 2026. Others is a calibrated/actual residual and not an observed survey response.</p></div>
+              <span className="text-[10px] text-muted-foreground">Local calibrated/actual shares are unavailable</span>
+            </div>
+            <div className="mt-2 overflow-x-auto rounded-xl border border-border">
+              <table className="w-full min-w-[520px] border-collapse text-[10.5px]"><caption className="sr-only">Statewide survey, calibrated and actual vote shares</caption>
+                <thead><tr className="bg-muted/30 text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">Party</th><th className="px-2 py-1.5 text-right">Survey</th><th className="px-2 py-1.5 text-right">Result-calibrated</th><th className="px-2 py-1.5 text-right">Actual 2026</th></tr></thead>
+                <tbody>{TN_GROUPS.map((g) => <tr key={g} className="border-t border-border/60"><td className="px-2 py-1.5" style={{ color: TN_COLOR[g] }}>{TN_LABEL[g]}{g === "Others" ? <span className="ml-1 text-[8px] text-muted-foreground">residual</span> : null}</td><td className="px-2 py-1.5 text-right tabular-nums">{g === "Others" ? "—" : pct(data.statewide.survey.shares?.[g])}</td><td className="px-2 py-1.5 text-right tabular-nums">{pct(data.statewide.calibrated.shares[g])}</td><td className="px-2 py-1.5 text-right tabular-nums">{pct(data.statewide.actualVoteShares.shares[g])}</td></tr>)}</tbody>
+              </table>
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {[["Original calls correct", data.metrics.originalCorrect], ["Final calibrated calls correct", data.metrics.finalCorrect], ["Model-only CV correct", data.metrics.modelCvCorrect], ["Final CV with imposed district totals", data.metrics.finalCvCorrect]].map(([label, value]) => <div key={String(label)} className="rounded-lg border border-border bg-muted/10 px-2.5 py-2"><p className="font-display text-lg font-semibold tabular-nums">{value}/234</p><p className="text-[9px] uppercase tracking-[0.08em] text-muted-foreground">{String(label)}</p></div>)}
+            </div>
+            <p className="mt-1.5 text-[9px] leading-relaxed text-muted-foreground">The result-calibrated layer is a hindcast fitted using declared 2026 results; agreement with fitted targets is not independent validation. The 161/234 cross-validation figure still imposes result-derived district totals.</p>
+          </section>
+          )}
+          {!scopeIsState && <p className="text-[10px] text-muted-foreground">Local actual and calibrated vote shares are unavailable; this view shows survey shares and separate seat-call layers.</p>}
+
           <section>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
-                <h3 className="font-display text-[15px] font-semibold">2026 combined vote share vs {baselineYear}</h3>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">Numeric historical shares only · 2026 {currentLabel.toLowerCase()} measure · no time series</p>
+                <h3 className="font-display text-[15px] font-semibold">Survey vote share vs {baselineYear}</h3>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">Numeric historical shares only · survey measure · no time series</p>
               </div>
-              <span className="text-[10px] text-muted-foreground">{current.valid.toLocaleString("en-IN")} {scopeIsState ? "responses" : "combined votes"} · {currentLeader ? TN_LABEL[currentLeader] : "—"} leads</span>
+              <span className="text-[10px] text-muted-foreground">{current.valid.toLocaleString("en-IN")} {scopeIsState ? "responses" : "survey votes"} · {currentLeader ? TN_LABEL[currentLeader] : "—"} leads</span>
             </div>
-            <EChart option={historicalOption} height={290} reduced={reduced} replaceSeries ariaLabel={`2026 combined vote shares compared with ${baselineYear} for ${scopeName}`} />
-            <p className="mt-0.5 text-[9px] text-muted-foreground">Historical shares are regrouped to the same five groups; historical Others are included under DMK+. TVK did not contest 2011–2021, so it has no historical bar.</p>
+            <EChart option={historicalOption} height={290} reduced={reduced} replaceSeries ariaLabel={`2026 exit-poll shares compared with ${baselineYear} for ${scopeName}`} />
+            <p className="mt-0.5 text-[9px] text-muted-foreground">Historical shares are retained with a separate Others group; unrelated historical parties are not folded into DMK+. TVK did not contest 2011–2021, so it has no historical bar.</p>
           </section>
 
           <section>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
-                <h3 className="font-display text-[15px] font-semibold">District distribution</h3>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">All 38 districts · combined party vote shares · median and IQR across districts</p>
+                <h3 className="font-display text-[15px] font-semibold">Survey geographic distribution</h3>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">{distUnit === "district" ? "All 38 districts" : "All 234 assemblies"} · survey vote shares · median and IQR across {distUnit === "district" ? "districts" : "assemblies"}</p>
               </div>
               <span className="text-[10px] text-muted-foreground">Box Q1–Q3 · whiskers 1.5×IQR · rings outliers</span>
             </div>
             {showMedian && <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[9.5px] text-muted-foreground">{distribution.rows.map((r) => { const st = boxStats(r.values); return st ? <span key={r.group} className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: TN_COLOR[r.group] }} />{TN_LABEL[r.group]} median <b className="tabular-nums text-foreground/80">{st.median.toFixed(1)}%</b></span> : null; })}</div>}
-            <EChart option={distributionOption} height={320} reduced={reduced} replaceSeries ariaLabel="Distribution of combined 2026 party shares across districts" />
+            <EChart option={distributionOption} height={320} reduced={reduced} replaceSeries ariaLabel={`Distribution of survey 2026 shares across ${distUnit === "district" ? "districts" : "assemblies"}`} />
           </section>
 
           <section>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
-                <h3 className="font-display text-[15px] font-semibold">Projected vs Actual 2026 seats</h3>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">Seat summary only; not used for district colours · {scopeName}</p>
+                <h3 className="font-display text-[15px] font-semibold">Survey, calibrated and actual seats</h3>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">Original calls, statewide-fit model calls, final district-calibrated calls and Actual 2026 · {scopeName}</p>
               </div>
-              <span className="text-[10px] text-muted-foreground">Projected {totalProjected} · Actual {totalActual}</span>
+              <span className="text-[10px] text-muted-foreground">Original {totalOriginal} · Model {totalModel} · Final {totalFinal} · Actual {totalActual}</span>
             </div>
             <div className="mt-2 grid gap-3 lg:grid-cols-[1.2fr_1fr]">
-              <EChart option={seatOption} height={250} reduced={reduced} replaceSeries ariaLabel={`Projected and Actual 2026 seats for ${scopeName}`} />
+              <EChart option={seatOption} height={250} reduced={reduced} replaceSeries ariaLabel={`Original, final calibrated and Actual 2026 seats for ${scopeName}`} />
               <div className="overflow-hidden rounded-xl border border-border self-start">
-                <table className="w-full border-collapse text-[10.5px]"><caption className="sr-only">Projected and actual 2026 seats</caption>
-                  <thead><tr className="bg-muted/30 text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">Group</th><th className="px-2 py-1.5 text-right">Projected</th><th className="px-2 py-1.5 text-right">Actual 2026</th><th className="px-2 py-1.5 text-right">Difference</th></tr></thead>
-                  <tbody>{TN_GROUPS.map((g) => <tr key={g} className="border-t border-border/60"><td className="px-2 py-1.5"><span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: TN_COLOR[g] }} />{TN_LABEL[g]}</span></td><td className="px-2 py-1.5 text-right tabular-nums">{projectedSeats[g] ?? 0}</td><td className="px-2 py-1.5 text-right font-semibold tabular-nums">{actualSeats[g] ?? 0}</td><td className={cn("px-2 py-1.5 text-right tabular-nums", (projectedSeats[g] ?? 0) === (actualSeats[g] ?? 0) ? "text-muted-foreground" : "text-foreground")}>{(projectedSeats[g] ?? 0) - (actualSeats[g] ?? 0) > 0 ? "+" : ""}{(projectedSeats[g] ?? 0) - (actualSeats[g] ?? 0)}</td></tr>)}</tbody>
-                  <tfoot><tr className="border-t border-border bg-muted/20 text-[10px]"><td className="px-2 py-1.5">Total</td><td className="px-2 py-1.5 text-right tabular-nums">{totalProjected}</td><td className="px-2 py-1.5 text-right tabular-nums">{totalActual}</td><td className="px-2 py-1.5 text-right tabular-nums">{totalProjected - totalActual}</td></tr></tfoot>
+                <table className="w-full border-collapse text-[10.5px]"><caption className="sr-only">Original, final calibrated and actual 2026 seats</caption>
+                  <thead><tr className="bg-muted/30 text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">Group</th><th className="px-2 py-1.5 text-right">Original</th><th className="px-2 py-1.5 text-right">Model</th><th className="px-2 py-1.5 text-right">Final</th><th className="px-2 py-1.5 text-right">Actual</th></tr></thead>
+                  <tbody>{TN_SEAT_GROUPS.map((g) => <tr key={g} className="border-t border-border/60"><td className="px-2 py-1.5"><span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: TN_COLOR[g] }} />{TN_LABEL[g]}</span></td><td className="px-2 py-1.5 text-right tabular-nums">{originalSeats[g] ?? 0}</td><td className="px-2 py-1.5 text-right tabular-nums">{modelSeats[g] ?? 0}</td><td className="px-2 py-1.5 text-right tabular-nums">{finalSeats[g] ?? 0}</td><td className="px-2 py-1.5 text-right font-semibold tabular-nums">{actualSeats[g] ?? 0}</td></tr>)}</tbody>
+                  <tfoot><tr className="border-t border-border bg-muted/20 text-[10px]"><td className="px-2 py-1.5">Total</td><td className="px-2 py-1.5 text-right tabular-nums">{totalOriginal}</td><td className="px-2 py-1.5 text-right tabular-nums">{totalModel}</td><td className="px-2 py-1.5 text-right tabular-nums">{totalFinal}</td><td className="px-2 py-1.5 text-right tabular-nums">{totalActual}</td></tr></tfoot>
                 </table>
               </div>
             </div>
-            <p className="mt-1 text-[9px] text-muted-foreground">Actual 2026 is shown as seats, not as a vote share. Statewide prediction accuracy: {data.statewide.accuracy}/234 constituency calls.</p>
+            <p className="mt-1 text-[9px] text-muted-foreground">Original calls correct {data.metrics.originalCorrect}/234; statewide-fit model {data.metrics.modelCorrect}/234; final district-calibrated {data.metrics.finalCorrect}/234; final cross-validation with district totals imposed {data.metrics.finalCvCorrect}/234. Seats are never used for survey district colours.</p>
           </section>
 
           <section>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div><h3 className="font-display text-[15px] font-semibold">District vote shares</h3><p className="mt-0.5 text-[10px] text-muted-foreground">Combined party votes ÷ combined party-choice votes in each district · click a district to select it</p></div>
-              <div className="flex items-center gap-2">
-                <div className="inline-flex rounded-full border border-border p-0.5" role="group" aria-label="District table measure">
-                  {([["share", "Share"], ["change", `Change vs ${baselineYear}`]] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={tableMode === id} onClick={() => setTableMode(id)} className={cn("rounded-full px-2 py-1 text-[10px]", tableMode === id ? "bg-foreground text-background" : "text-muted-foreground")}>{label}</button>)}
-                </div>
-                <label className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">Sort<select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="rounded-md border border-border bg-background px-1.5 py-1 text-[10px] text-foreground"><option value="name">Name</option><option value="leader">2026 leader</option><option value="votes">Votes</option></select></label>
-              </div>
+              <div><h3 className="font-display text-[15px] font-semibold">District shares</h3><p className="mt-0.5 text-[10px] text-muted-foreground">Survey shares · current 38-district grouping · click a district to select it</p></div>
+              <label className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">Sort<select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="rounded-md border border-border bg-background px-1.5 py-1 text-[10px] text-foreground"><option value="name">Name</option><option value="leader">2026 leader</option><option value="responses">Responses</option></select></label>
             </div>
             <div className="mt-2 max-h-80 overflow-auto rounded-xl border border-border">
-              <table className="w-full min-w-[720px] border-collapse text-[10px]"><caption className="sr-only">District combined 2026 shares</caption>
-                <thead className="sticky top-0 z-10 bg-card"><tr className="text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">District</th><th className="px-2 py-1.5 text-right">Combined votes</th><th className="px-2 py-1.5">Leader</th>{parties.map((g) => <th key={g} className="whitespace-nowrap px-2 py-1.5 text-right" style={{ color: TN_COLOR[g] }}>{tableMode === "share" ? TN_LABEL[g] : `Δ ${TN_LABEL[g]}`}</th>)}</tr></thead>
-                <tbody>{districtsSorted.map((d) => { const lead = d.combined.leader; const base = d.actual[baselineYear]; return <tr key={d.name} onClick={() => { setScope(`d:${d.name}`); onSelectDistrict(d.name); }} className={cn("cursor-pointer border-t border-border/60 hover:bg-muted/30", scope === `d:${d.name}` && "bg-saffron/10")}><td className="px-2 py-1 font-medium">{d.name}</td><td className="px-2 py-1 text-right tabular-nums text-muted-foreground">{d.combined.valid.toLocaleString("en-IN")}</td><td className="px-2 py-1">{lead ? <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: TN_COLOR[lead] }} />{TN_LABEL[lead]}</span> : "—"}</td>{parties.map((g) => { const cur = d.combined.shares?.[g]; const b = base?.shares?.[g]; const available = base?.available && data.presence[baselineYear][g] && cur != null && b != null; return <td key={g} className="px-2 py-1 text-right tabular-nums">{tableMode === "share" ? (cur == null ? "—" : `${(cur * 100).toFixed(1)}`) : (available ? `${cur - b > 0 ? "+" : ""}${((cur - b) * 100).toFixed(1)}` : "—")}</td>; })}</tr>; })}</tbody>
+              <table className="w-full min-w-[720px] border-collapse text-[10px]"><caption className="sr-only">District survey shares and seat-call totals</caption>
+                <thead className="sticky top-0 z-10 bg-card"><tr className="text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">District</th><th className="px-2 py-1.5 text-right">Survey votes</th><th className="px-2 py-1.5">Leader</th>{parties.map((g) => <th key={g} className="whitespace-nowrap px-2 py-1.5 text-right" style={{ color: TN_COLOR[g] }}>{TN_LABEL[g]}</th>)}<th className="px-2 py-1.5 text-right">Orig.</th><th className="px-2 py-1.5 text-right">Model</th><th className="px-2 py-1.5 text-right">Final</th><th className="px-2 py-1.5 text-right">Actual</th></tr></thead>
+                <tbody>{districtsSorted.map((d) => { const lead = d.surveyLeader; return <tr key={d.name} onClick={() => { setScope(`d:${d.name}`); onSelectDistrict(d.name); }} className={cn("cursor-pointer border-t border-border/60 hover:bg-muted/30", scope === `d:${d.name}` && "bg-saffron/10")}><td className="px-2 py-1 font-medium">{d.name}</td><td className="px-2 py-1 text-right tabular-nums text-muted-foreground">{d.survey.valid.toLocaleString("en-IN")}</td><td className="px-2 py-1">{lead ? <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: TN_COLOR[lead] }} />{TN_LABEL[lead]}</span> : "—"}</td>{parties.map((g) => <td key={g} className="px-2 py-1 text-right tabular-nums">{d.survey.shares?.[g] == null ? "—" : `${(d.survey.shares[g] * 100).toFixed(1)}`}</td>)}<td className="px-2 py-1 text-right tabular-nums">{TN_SEAT_GROUPS.reduce((s, g) => s + (d.originalSeats[g] ?? 0), 0)}</td><td className="px-2 py-1 text-right tabular-nums">{TN_SEAT_GROUPS.reduce((s, g) => s + (d.modelSeats[g] ?? 0), 0)}</td><td className="px-2 py-1 text-right tabular-nums">{TN_SEAT_GROUPS.reduce((s, g) => s + (d.finalSeats[g] ?? 0), 0)}</td><td className="px-2 py-1 text-right tabular-nums">{TN_SEAT_GROUPS.reduce((s, g) => s + (d.actualSeats[g] ?? 0), 0)}</td></tr>; })}</tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div><h3 className="font-display text-[15px] font-semibold">District comparison chart</h3><p className="mt-0.5 text-[10px] text-muted-foreground">Survey vote share by district · direct recorded district counts · no seats</p></div>
+              <span className="text-[10px] text-muted-foreground">38 districts</span>
+            </div>
+            <EChart option={districtChartOption} height={260} reduced={reduced} replaceSeries ariaLabel="Survey vote share by district" />
+          </section>
+
+          <section>
+            <div className="flex items-baseline justify-between gap-2">
+              <div><h3 className="font-display text-[15px] font-semibold">Assembly comparison</h3><p className="mt-0.5 text-[10px] text-muted-foreground">Survey shares and original / model / final calibrated / actual calls · 234 assemblies</p></div>
+              <span className="text-[10px] text-muted-foreground">{data.acs.length} assemblies</span>
+            </div>
+            <div className="mt-2 max-h-[360px] overflow-auto rounded-xl border border-border">
+              <table className="w-full min-w-[700px] border-collapse text-[10px]"><caption className="sr-only">Assembly survey shares and calls</caption>
+                <thead className="sticky top-0 z-10 bg-card"><tr className="text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">AC</th><th className="px-2 py-1.5">Constituency</th><th className="px-2 py-1.5">District</th>{parties.map((g) => <th key={g} className="whitespace-nowrap px-2 py-1.5 text-right" style={{ color: TN_COLOR[g] }}>{TN_LABEL[g]}</th>)}<th className="px-2 py-1.5">Original</th><th className="px-2 py-1.5">Model</th><th className="px-2 py-1.5">Final</th><th className="px-2 py-1.5">Actual</th></tr></thead>
+                <tbody>{data.acs.map((a) => <tr key={a.no} tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") { setScope(`a:${a.no}`); onSelectAc(a.no); } }} onClick={() => { setScope(`a:${a.no}`); onSelectAc(a.no); }} className={cn("cursor-pointer border-t border-border/60 hover:bg-muted/30 focus:bg-muted/30", scope === `a:${a.no}` && "bg-saffron/10")}><td className="px-2 py-1 tabular-nums text-muted-foreground">{a.no}</td><td className="px-2 py-1 font-medium">{a.name}</td><td className="px-2 py-1 text-muted-foreground">{a.district}</td>{parties.map((g) => <td key={g} className="px-2 py-1 text-right tabular-nums">{a.survey.shares?.[g] == null ? "—" : `${(a.survey.shares[g] * 100).toFixed(1)}`}</td>)}<td className="px-2 py-1 text-muted-foreground">{a.original.leader ? TN_LABEL[a.original.leader] : "—"}</td><td className="px-2 py-1 text-muted-foreground">{a.model.leader ? TN_LABEL[a.model.leader] : "—"}</td><td className="px-2 py-1 text-muted-foreground">{a.final.leader ? TN_LABEL[a.final.leader] : "—"}</td><td className="px-2 py-1 text-muted-foreground">{a.actual2026.winner ? TN_LABEL[a.actual2026.winner] : "—"}</td></tr>)}</tbody>
               </table>
             </div>
           </section>
 
           <p className="text-[9px] leading-relaxed text-muted-foreground">
-            Statewide shares use all 31,316 responses. District views use combined counts: recorded votes plus the documented within-district allocation and the statewide location-missing allocation. The workbook&apos;s previous shift is not applied again. There is no Others bucket; Others is already included under DMK+. No survey rounds, collection dates, smoothing windows or fabricated time distributions are shown because this workbook is an aggregate export.
+            Statewide survey shares use all 31,672 party-choice responses. District and assembly survey shares use direct recorded counts; the 20,749 missing-location responses remain statewide only. Result-calibrated and actual shares are separate statewide series; local actual/calibrated vote shares are not supplied. Seat calls are separate from vote share. No survey rounds, collection dates, smoothing windows or fabricated time distributions are shown because this workbook is an aggregate export.
           </p>
         </div>
       </div>

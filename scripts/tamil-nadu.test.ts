@@ -2,305 +2,217 @@ import assert from "node:assert/strict";
 import aggregates from "@/lib/data/tamil-nadu/aggregates.json";
 import acGeo from "@/lib/data/tamil-nadu/tn-acs.json";
 import districtGeo from "@/lib/data/tamil-nadu/tn-districts.json";
-import { TN_COLOR, TN_GROUPS, tnLeader } from "@/lib/tamil-nadu/model";
+import { TN_COLOR, TN_GROUPS, TN_SEAT_GROUPS } from "@/lib/tamil-nadu/model";
 
 let passed = 0;
 const check = (name: string, fn: () => void) => { fn(); passed += 1; console.log(`  ✓ ${name}`); };
 const near = (a: number, b: number, e = 1e-5) => Math.abs(a - b) <= e;
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 type Group = (typeof TN_GROUPS)[number];
+type SeatGroup = (typeof TN_SEAT_GROUPS)[number];
 const countsSum = (c: Record<Group, number>) => sum(TN_GROUPS.map((g) => c[g] ?? 0));
-const seatsSum = (o: Record<Group, number>) => sum(TN_GROUPS.map((g) => o[g] ?? 0));
+const seatsSum = (o: Record<SeatGroup, number>) => sum(TN_SEAT_GROUPS.map((g) => o[g] ?? 0));
 
-console.log("Tamil Nadu 2026 aggregate workbook + geographic allocation");
+console.log("Tamil Nadu 2026 final calibrated workbook");
 
-check("final workbook counts and all-response statewide denominator", () => {
-  assert.equal(aggregates.source.totalResponses, 31_316);
-  assert.equal(aggregates.source.locatedResponses, 11_449);
-  assert.equal(aggregates.source.unlocatedResponses, 19_867);
+check("final source counts and six-sheet audit", () => {
+  assert.equal(aggregates.version, "tn-2026-saket-v3");
+  assert.equal(aggregates.source.totalResponses, 31_672);
+  assert.equal(aggregates.source.withAc, 10_923);
+  assert.equal(aggregates.source.noAc, 20_749);
   assert.equal(aggregates.source.constituencies, 234);
   assert.equal(aggregates.source.districts, 38);
-  assert.deepEqual(aggregates.source.crosswalk, { matched: 234, unresolved: 0, method: "assembly name + District (2026 ECI grouping)", duplicateNames: ["Tiruppattur"] });
-  assert.deepEqual(aggregates.statewide.counts, { total: 31_316, located: 11_449, unlocated: 19_867 });
-  assert.equal(aggregates.statewide.recorded.valid, 31_316);
-  assert.equal(aggregates.statewide.combined.valid, 31_316);
-  assert.equal(countsSum(aggregates.statewide.combined.counts), 31_316);
+  assert.match(aggregates.sourceImportId, /^tn-saket-v3-[a-f0-9]{16}$/);
+  assert.match(aggregates.sourceHash, /^[a-f0-9]{64}$/);
+  assert.equal(aggregates.source.audit.length, 6);
+  assert.ok(aggregates.source.audit.some((s) => s.sheet === "Sheet1" && s.used.includes("ignored")));
+  assert.ok(aggregates.source.archive.includes("previous-allocation"));
+  assert.equal(aggregates.allocation, null);
+  assert.equal(aggregates.reference, null);
 });
 
-check("five groups, no Others bucket, distinct colours", () => {
-  assert.deepEqual(TN_GROUPS, ["TVK", "AIADMK+BJP+PMK+AMMK", "DMK+INC+VCK", "NTK", "NOTA"]);
-  assert.deepEqual(aggregates.groups, [...TN_GROUPS]);
-  assert.equal((TN_GROUPS as readonly string[]).includes("Others"), false);
-  assert.ok(TN_GROUPS.every((g) => TN_COLOR[g]));
-  assert.equal(new Set(TN_GROUPS.map((g) => TN_COLOR[g].toLowerCase())).size, TN_GROUPS.length);
+check("statewide survey counts and shares are from all responses", () => {
+  const s = aggregates.statewide.survey;
+  assert.equal(s.valid, 31_672);
+  assert.deepEqual(aggregates.statewide.counts, { total: 31_672, withAc: 10_923, noAc: 20_749 });
+  assert.deepEqual(s.counts, { TVK: 10_866, "AIADMK+BJP+PMK+AMMK": 8_866, "DMK+INC+VCK": 9_518, NTK: 2_173, NOTA: 249, Others: 0 });
+  assert.ok(near(s.shares?.TVK ?? 0, 0.343079, 1e-5));
+  assert.ok(near(s.shares?.["AIADMK+BJP+PMK+AMMK"] ?? 0, 0.279932, 1e-5));
+  assert.ok(near(s.shares?.["DMK+INC+VCK"] ?? 0, 0.300518, 1e-5));
+  assert.ok(near(s.shares?.NTK ?? 0, 0.068609, 1e-5));
+  assert.ok(near(s.shares?.NOTA ?? 0, 0.007862, 1e-5));
+  assert.ok(near(sum(TN_GROUPS.map((g) => s.shares?.[g] ?? 0)), 1, 1e-5));
 });
 
-check("statewide shares are workbook-derived and total 100%", () => {
-  const s = aggregates.statewide.combined.shares;
-  assert.ok(s);
-  assert.deepEqual(aggregates.statewide.combined.counts, { TVK: 10_892, "AIADMK+BJP+PMK+AMMK": 8_856, "DMK+INC+VCK": 9_146, NTK: 2_173, NOTA: 249 });
-  assert.ok(near(s.TVK, 0.347809, 1e-5));
-  assert.ok(near(s["AIADMK+BJP+PMK+AMMK"], 0.282795, 1e-5));
-  assert.ok(near(s["DMK+INC+VCK"], 0.292055, 1e-5));
-  assert.ok(near(s.NTK, 0.069389, 1e-5));
-  assert.ok(near(s.NOTA, 0.007951, 1e-5));
-  assert.ok(near(sum(TN_GROUPS.map((g) => s[g] ?? 0)), 1, 1e-5));
+check("result-calibrated and Actual 2026 statewide shares are separate series", () => {
+  const c = aggregates.statewide.calibrated.shares;
+  const a = aggregates.statewide.actualVoteShares.shares;
+  assert.ok(near(c.TVK ?? 0, 0.3502, 1e-6));
+  assert.ok(near(c["DMK+INC+VCK"] ?? 0, 0.314, 1e-6));
+  assert.ok(near(c["AIADMK+BJP+PMK+AMMK"] ?? 0, 0.2721, 1e-6));
+  assert.ok(near(c.NTK ?? 0, 0.04, 1e-6));
+  assert.ok(near(c.NOTA ?? 0, 0.0041, 1e-6));
+  assert.ok(near(c.Others ?? 0, 0.0196, 1e-6));
+  for (const g of TN_GROUPS) assert.ok(near(c[g] ?? 0, a[g] ?? 0, 1e-6), g);
+  assert.ok(near(sum(TN_GROUPS.map((g) => c[g] ?? 0)), 1, 1e-5));
+  assert.ok(aggregates.statewide.calibrated.note.includes("not an observed survey response"));
+  assert.notDeepEqual(aggregates.statewide.survey.shares, aggregates.statewide.calibrated.shares);
+  assert.notDeepEqual(aggregates.statewide.survey.shares, aggregates.statewide.actualVoteShares.shares);
 });
 
-check("TVK reference 34.80 is separate from the 34.78 workbook value", () => {
-  assert.equal(aggregates.referenceShare.party, "TVK");
-  assert.equal(aggregates.referenceShare.label, "Reference share");
-  assert.ok(near(aggregates.referenceShare.value, 0.348, 1e-12));
-  assert.ok(near(aggregates.referenceShare.workbookValue, 0.347809, 1e-5));
-  assert.notEqual(aggregates.referenceShare.value, aggregates.referenceShare.workbookValue);
-  assert.equal(aggregates.statewide.combined.counts.TVK, 10_892);
+check("concise labels, full alliance labels and palette distinct", () => {
+  assert.equal(aggregates.labels["AIADMK+BJP+PMK+AMMK"], "AIADMK+");
+  assert.equal(aggregates.labels["DMK+INC+VCK"], "DMK+");
+  assert.equal(aggregates.fullLabels["AIADMK+BJP+PMK+AMMK"], "AIADMK+BJP+PMK+AMMK");
+  assert.equal(aggregates.fullLabels["DMK+INC+VCK"], "DMK+INC+VCK");
+  assert.equal(TN_GROUPS.length, 6);
+  assert.deepEqual([...TN_SEAT_GROUPS], ["TVK", "AIADMK+BJP+PMK+AMMK", "DMK+INC+VCK"]);
+  assert.equal(new Set(TN_GROUPS.map((g) => TN_COLOR[g])).size, TN_GROUPS.length);
+  assert.equal(TN_COLOR.TVK, "#EAB308");
+  assert.equal(TN_COLOR["AIADMK+BJP+PMK+AMMK"], "#16A34A");
+  assert.equal(TN_COLOR["DMK+INC+VCK"], "#DC2626");
+  assert.equal(TN_COLOR.NTK, "#7C3AED");
+  assert.equal(TN_COLOR.NOTA, "#64748B");
 });
 
-check("allocation metadata has method, source import ID and version", () => {
-  const a = aggregates.allocation;
-  assert.equal(a.version, "tn-geographic-allocation-v1");
-  assert.ok(a.method.includes("integer division"));
-  assert.ok(a.method.includes("location-missing"));
-  assert.match(a.sourceImportId, /^tn-aggregate-[a-f0-9]{16}$/);
-  assert.match(a.sourceHash, /^[a-f0-9]{64}$/);
-  assert.equal(a.priority, "Zero recorded total first, then AC ID");
-  assert.equal(a.sourceFile, aggregates.sourceFile);
-});
-
-check("recorded, district-only, unlocated and combined markers reconcile", () => {
-  const a = aggregates.allocation;
-  assert.equal(countsSum(a.recorded.assembly), 10_567);
-  assert.equal(countsSum(a.recorded.district), 11_449);
-  assert.equal(countsSum(a.recorded.districtOnly), 882);
-  assert.equal(countsSum(a.recorded.unlocated), 19_867);
-  assert.equal(countsSum(a.recorded.statewide), 31_316);
-  assert.equal(countsSum(a.allocated.districtOnly), 882);
-  assert.equal(countsSum(a.allocated.unlocated), 19_867);
-  assert.equal(countsSum(a.combined.assembly), 31_316);
-  assert.equal(countsSum(a.combined.district), 31_316);
-  assert.equal(countsSum(a.combined.statewide), 31_316);
-  assert.deepEqual(a.recorded.unlocated, { TVK: 6_399, "AIADMK+BJP+PMK+AMMK": 5_703, "DMK+INC+VCK": 6_310, NTK: 1_278, NOTA: 177 });
-  assert.equal(a.reconcile.assemblyRecorded, 10_567);
-  assert.equal(a.reconcile.districtOnlyAllocated, 882);
-  assert.equal(a.reconcile.unlocatedAllocated, 19_867);
-  assert.equal(a.reconcile.combinedAssembly, 31_316);
-  assert.equal(a.reconcile.combinedDistrict, 31_316);
-  assert.equal(a.reconcile.combinedStatewide, 31_316);
-  assert.equal(a.reconcile.partyTotalsUnchanged, true);
-  assert.equal(a.reconcile.acDistrictEqual, true);
-  assert.equal(a.reconcile.districtStateEqual, true);
-  assert.equal(a.reconcile.noDoubleCount, true);
-});
-
-check("234 assemblies, 38 districts and complete geometry", () => {
+check("234 ACs and 38 districts reconcile to recorded survey counts", () => {
   assert.equal(aggregates.acs.length, 234);
   assert.equal(aggregates.districts.length, 38);
   assert.equal(new Set(aggregates.acs.map((a) => a.no)).size, 234);
-  assert.equal(acGeo.features.length, 234);
-  assert.equal(districtGeo.features.length, 38);
-  assert.ok(aggregates.acs.every((a) => a.district && a.districtEci));
-  assert.ok(aggregates.districts.every((d) => d.coverage.acs > 0));
-  for (const f of acGeo.features) {
-    assert.ok(f.properties.no >= 1 && f.properties.no <= 234);
-    assert.ok(f.properties.district);
-    assert.ok(Array.isArray(f.properties.centroid) && f.properties.centroid.length === 2);
-  }
-});
-
-check("all 234 AC IDs and all 38 canonical district mappings resolve to valid colours", () => {
-  const aliases: Record<string, string> = {
-    Kanyakumari: "Kanniyakumari", Nilgiris: "The Nilgiris", Thiruvarur: "Tiruvarur",
-    Thoothukkudi: "Thoothukudi", Viluppuram: "Villupuram",
-  };
-  const byNo = new Map(aggregates.acs.map((a) => [a.no, a]));
-  for (const f of acGeo.features) {
-    const a = byNo.get(f.properties.no);
-    assert.ok(a, `Unmatched AC geometry ${f.properties.no}`);
-    assert.ok(a!.combined.leader, `No combined leader for AC ${a!.no}`);
-    const leader = a!.combined.leader as Group;
-    assert.equal(TN_COLOR[leader], aggregates.colors[leader]);
-  }
-  const byDistrict = new Map(aggregates.districts.map((d) => [d.name, d]));
-  for (const f of districtGeo.features) {
-    const current = aliases[f.properties.district] ?? f.properties.district;
-    const d = byDistrict.get(current);
-    assert.ok(d, `Unmatched district geometry ${f.properties.district} -> ${current}`);
-    assert.ok(d!.combined.leader, `No combined leader for district ${current}`);
-    const leader = d!.combined.leader as Group;
-    assert.ok(TN_COLOR[leader], `No colour for ${current}`);
-    assert.notEqual(TN_COLOR[leader], "#94A3B8", `Grey valid district ${current}`);
-  }
-  assert.equal([...byDistrict.keys()].filter((n) => !districtGeo.features.some((f) => (aliases[f.properties.district] ?? f.properties.district) === n)).length, 0);
-});
-
-check("recorded assembly and district totals are preserved", () => {
-  assert.equal(sum(aggregates.acs.map((a) => a.recorded.valid)), 10_567);
-  assert.equal(sum(aggregates.districts.map((d) => d.recorded.valid)), 11_449);
-  assert.equal(aggregates.statewide.counts.total - aggregates.acs.reduce((s, a) => s + a.recorded.valid, 0), 20_749);
-  for (const d of aggregates.districts) {
-    assert.equal(d.recorded.valid, d.coverage.responses);
-    assert.equal(countsSum(d.recorded.counts), d.recorded.valid);
-  }
-});
-
-check("combined AC counts equal recorded + district-only + unlocated", () => {
+  assert.equal(new Set(aggregates.acs.map((a) => a.district)).size, 38);
+  assert.equal(sum(aggregates.acs.map((a) => a.survey.valid)), 10_923);
+  assert.equal(sum(aggregates.districts.map((d) => d.survey.valid)), 10_923);
   for (const a of aggregates.acs) {
-    assert.equal(a.combined.valid, countsSum(a.combined.counts));
-    for (const g of TN_GROUPS) {
-      assert.equal(a.combined.counts[g], a.recorded.counts[g] + a.allocatedDistrictOnly[g] + a.allocatedUnlocated[g], `${a.no} ${g}`);
+    assert.equal(a.survey.valid, countsSum(a.survey.counts));
+    assert.ok(near(sum(TN_GROUPS.map((g) => a.survey.shares?.[g] ?? 0)), 1, 1e-5), a.name);
+    assert.equal(a.surveyLeader, a.survey.leader);
+  }
+  for (const d of aggregates.districts) {
+    assert.equal(d.survey.valid, countsSum(d.survey.counts));
+    assert.equal(d.survey.valid, sum(d.acs.map((no) => aggregates.acs.find((a) => a.no === no)!.survey.valid)));
+    assert.ok(near(sum(TN_GROUPS.map((g) => d.survey.shares?.[g] ?? 0)), 1, 1e-5), d.name);
+  }
+  assert.equal(aggregates.statewide.survey.valid, 10_923 + 20_749);
+});
+
+check("original, final calibrated and actual seat totals are separate and reconcile", () => {
+  assert.deepEqual(aggregates.statewide.originalSeats, { TVK: 106, "AIADMK+BJP+PMK+AMMK": 51, "DMK+INC+VCK": 77 });
+  assert.deepEqual(aggregates.statewide.finalSeats, { TVK: 108, "AIADMK+BJP+PMK+AMMK": 53, "DMK+INC+VCK": 73 });
+  assert.deepEqual(aggregates.statewide.modelSeats, { TVK: 108, "AIADMK+BJP+PMK+AMMK": 53, "DMK+INC+VCK": 73 });
+  assert.deepEqual(aggregates.statewide.actualSeats, { TVK: 108, "AIADMK+BJP+PMK+AMMK": 53, "DMK+INC+VCK": 73 });
+  assert.equal(seatsSum(aggregates.statewide.originalSeats), 234);
+  assert.equal(seatsSum(aggregates.statewide.finalSeats), 234);
+  assert.equal(seatsSum(aggregates.statewide.actualSeats), 234);
+  for (const g of TN_SEAT_GROUPS) {
+    const original = aggregates.acs.filter((a) => a.original.leader === g).length;
+    const final = aggregates.acs.filter((a) => a.final.leader === g).length;
+    const actual = aggregates.acs.filter((a) => a.actual2026.winner === g).length;
+    assert.equal(original, aggregates.statewide.originalSeats[g], g);
+    assert.equal(final, aggregates.statewide.finalSeats[g], g);
+    assert.equal(actual, aggregates.statewide.actualSeats[g], g);
+  }
+  assert.notEqual(aggregates.metrics.originalCorrect, aggregates.metrics.finalCorrect);
+  assert.equal(aggregates.metrics.originalCorrect, 104);
+  assert.equal(aggregates.metrics.finalCorrect, 164);
+  assert.equal(aggregates.metrics.modelCorrect, 134);
+  assert.equal(aggregates.metrics.modelCvCorrect, 126);
+  assert.equal(aggregates.metrics.finalCvCorrect, 161);
+  assert.equal(aggregates.calibration.withinTolerance, "38 of 38");
+  assert.equal("shares" in aggregates.statewide.actualVoteShares, true);
+  for (const d of aggregates.districts) assert.equal("shares" in (d as unknown as { actual2026?: unknown }), false);
+});
+
+check("district seat rollups reconcile to AC calls, not a separate colour source", () => {
+  for (const d of aggregates.districts) {
+    const members = d.acs.map((no) => aggregates.acs.find((a) => a.no === no)!);
+    for (const g of TN_SEAT_GROUPS) {
+      assert.equal(d.originalSeats[g], members.filter((a) => a.original.leader === g).length, `${d.name} original ${g}`);
+      assert.equal(d.finalSeats[g], members.filter((a) => a.final.leader === g).length, `${d.name} final ${g}`);
+      assert.equal(d.actualSeats[g], members.filter((a) => a.actual2026.winner === g).length, `${d.name} actual ${g}`);
     }
+    assert.equal(seatsSum(d.finalSeats), members.length);
+    assert.equal(seatsSum(d.actualSeats), members.length);
   }
-  assert.equal(sum(aggregates.acs.map((a) => a.combined.valid)), 31_316);
-  assert.equal(sum(aggregates.acs.map((a) => countsSum(a.allocatedDistrictOnly))), 882);
-  assert.equal(sum(aggregates.acs.map((a) => countsSum(a.allocatedUnlocated))), 19_867);
+  assert.deepEqual(TN_SEAT_GROUPS.map((g) => sum(aggregates.districts.map((d) => d.modelSeats[g]))), TN_SEAT_GROUPS.map((g) => aggregates.statewide.modelSeats[g]));
+  assert.deepEqual(TN_SEAT_GROUPS.map((g) => sum(aggregates.districts.map((d) => d.finalSeats[g]))), TN_SEAT_GROUPS.map((g) => aggregates.statewide.finalSeats[g]));
+  assert.deepEqual(TN_SEAT_GROUPS.map((g) => sum(aggregates.districts.map((d) => d.actualSeats[g]))), TN_SEAT_GROUPS.map((g) => aggregates.statewide.actualSeats[g]));
 });
 
-check("combined district counts equal recorded district + unlocated, not district-only again", () => {
-  const byNo = new Map(aggregates.acs.map((a) => [a.no, a]));
-  for (const d of aggregates.districts) {
-    const members = d.acs.map((no) => byNo.get(no)!);
-    const allocatedUnlocated = Object.fromEntries(TN_GROUPS.map((g) => [g, sum(members.map((a) => a.allocatedUnlocated[g]))]));
-    for (const g of TN_GROUPS) {
-      assert.equal(d.combined.counts[g], d.recorded.counts[g] + allocatedUnlocated[g], `${d.name} ${g}`);
-      assert.equal(d.allocatedDistrictOnly[g], sum(members.map((a) => a.allocatedDistrictOnly[g])), `${d.name} district-only ${g}`);
-      assert.equal(d.combined.counts[g], sum(members.map((a) => a.combined.counts[g])), `${d.name} ${g}`);
-    }
-    assert.equal(countsSum(d.allocatedUnlocated), sum(members.map((a) => countsSum(a.allocatedUnlocated))));
-    assert.equal(d.combined.valid, d.recorded.valid + countsSum(d.allocatedUnlocated));
-  }
-  assert.equal(sum(aggregates.districts.map((d) => d.combined.valid)), 31_316);
-});
-
-check("every party total is unchanged and no vote is counted twice", () => {
-  for (const g of TN_GROUPS) {
-    assert.equal(sum(aggregates.acs.map((a) => a.recorded.counts[g])), aggregates.allocation.recorded.assembly[g]);
-    assert.equal(sum(aggregates.acs.map((a) => a.combined.counts[g])), aggregates.statewide.combined.counts[g]);
-    assert.equal(sum(aggregates.districts.map((d) => d.combined.counts[g])), aggregates.statewide.combined.counts[g]);
-    assert.equal(aggregates.allocation.recorded.assembly[g] + aggregates.allocation.recorded.districtOnly[g] + aggregates.allocation.recorded.unlocated[g], aggregates.statewide.combined.counts[g]);
-  }
-});
-
-check("unlocated remainder is deterministic and prioritises zero-recorded ACs then AC ID", () => {
-  const nota = aggregates.acs.map((a) => a.allocatedUnlocated.NOTA);
-  assert.equal(nota.filter((x) => x === 1).length, 177);
-  assert.equal(nota.filter((x) => x === 0).length, 57);
-  assert.deepEqual(aggregates.acs.slice(0, 177).map((a) => a.allocatedUnlocated.NOTA), Array(177).fill(1));
-  assert.deepEqual(aggregates.acs.slice(177).map((a) => a.allocatedUnlocated.NOTA), Array(57).fill(0));
-  for (const g of TN_GROUPS) {
-    const total = aggregates.allocation.recorded.unlocated[g];
-    const base = Math.floor(total / 234);
-    assert.ok(aggregates.acs.every((a) => a.allocatedUnlocated[g] === base || a.allocatedUnlocated[g] === base + 1), g);
-  }
-  // Each party's extra unit count matches the integer remainder.
-  for (const g of TN_GROUPS) {
-    const total = aggregates.allocation.recorded.unlocated[g];
-    assert.equal(aggregates.acs.filter((a) => a.allocatedUnlocated[g] === Math.floor(total / 234) + 1).length, total % 234, g);
-  }
-});
-
-check("district-only allocation stays inside the recorded district", () => {
-  const byNo = new Map(aggregates.acs.map((a) => [a.no, a]));
-  for (const d of aggregates.districts) {
-    const members = d.acs.map((no) => byNo.get(no)!);
-    for (const g of TN_GROUPS) {
-      assert.equal(d.allocatedDistrictOnly[g], d.recorded.counts[g] - sum(members.map((a) => a.recorded.counts[g])), `${d.name} ${g}`);
-      assert.equal(sum(members.map((a) => a.allocatedDistrictOnly[g])), d.allocatedDistrictOnly[g], `${d.name} ${g}`);
-    }
-  }
-});
-
-check("combined shares total 100% and leaders/margins derive from combined counts", () => {
+check("original, final and actual calls stay distinguishable per AC", () => {
   for (const a of aggregates.acs) {
-    const total = countsSum(a.combined.counts);
-    assert.ok(near(sum(TN_GROUPS.map((g) => a.combined.shares[g] ?? 0)), 1, 1e-5), a.name);
-    assert.equal(tnLeader(a.combined.shares), a.combined.leader);
-    assert.equal(a.projected.leader, a.combined.leader);
-    const sorted = [...TN_GROUPS].sort((x, y) => a.combined.counts[y] - a.combined.counts[x]);
-    assert.equal(a.combined.runnerUp, sorted[1]);
-    assert.ok(near(a.combined.marginPp, ((a.combined.counts[sorted[0]] - a.combined.counts[sorted[1]]) / total) * 100, 0.02));
-  }
-  for (const d of aggregates.districts) {
-    assert.ok(near(sum(TN_GROUPS.map((g) => d.combined.shares[g] ?? 0)), 1, 1e-5), d.name);
-    assert.equal(tnLeader(d.combined.shares), d.combined.leader);
-  }
-});
-
-check("projected seats and accuracy are recalculated from combined leaders; workbook originals stay recoverable", () => {
-  assert.deepEqual(aggregates.statewide.projectedSeats, { TVK: 187, "AIADMK+BJP+PMK+AMMK": 22, "DMK+INC+VCK": 25, NTK: 0, NOTA: 0 });
-  assert.equal(seatsSum(aggregates.statewide.projectedSeats), 234);
-  assert.deepEqual(aggregates.statewide.workbookProjectedSeats, { TVK: 115, "AIADMK+BJP+PMK+AMMK": 60, "DMK+INC+VCK": 56, NTK: 3, NOTA: 0 });
-  assert.equal(aggregates.statewide.workbookAccuracy, 110);
-  assert.equal(aggregates.statewide.accuracy, aggregates.acs.filter((a) => a.match).length);
-  assert.equal(aggregates.statewide.accuracy, 116);
-  for (const a of aggregates.acs) {
-    assert.equal(a.projected.leader, a.combined.leader);
-    assert.equal(a.match, a.projected.leader === a.actual2026.winner);
-    assert.ok(a.workbook.projection.leader);
-    assert.ok(a.workbook.adjustedShares);
-  }
-  for (const d of aggregates.districts) {
-    const projected = Object.fromEntries(TN_GROUPS.map((g) => [g, d.acs.filter((no) => aggregates.acs.find((a) => a.no === no)!.combined.leader === g).length]));
-    assert.deepEqual(d.projectedSeats, projected);
-    assert.ok(d.workbook.projectedSeats);
-  }
-});
-
-check("actual 2026 and historical results are untouched", () => {
-  assert.deepEqual(aggregates.statewide.actualSeats, { TVK: 108, "AIADMK+BJP+PMK+AMMK": 53, "DMK+INC+VCK": 73, NTK: 0, NOTA: 0 });
-  for (const a of aggregates.acs) {
+    assert.ok(a.original.leader);
+    assert.ok(a.final.leader);
+    assert.ok(a.actual2026.winner);
+    assert.equal(a.original.correct, a.original.leader === a.actual2026.winner);
+    assert.equal(a.final.correct, a.final.leader === a.actual2026.winner);
+    assert.equal(a.match, a.final.correct);
     assert.equal("shares" in a.actual2026, false);
   }
+  assert.equal(aggregates.acs.filter((a) => a.original.correct).length, 104);
+  assert.equal(aggregates.acs.filter((a) => a.final.correct).length, 164);
+});
+
+check("historical data retains six groups and does not fold Others into DMK+", () => {
   for (const y of ["2011", "2016", "2021"] as const) {
-    assert.ok(aggregates.statewide.actual[y].available);
-    assert.ok(near(sum(TN_GROUPS.map((g) => aggregates.statewide.actual[y].shares?.[g] ?? 0)), 1, 1e-5), y);
-    for (const d of aggregates.districts) assert.equal(d.actual[y].available, true, `${d.name} ${y}`);
+    const s = aggregates.statewide.historical[y];
+    assert.ok(s.available);
+    assert.ok(near(sum(TN_GROUPS.map((g) => s.shares?.[g] ?? 0)), 1, 1e-5), y);
+    assert.ok(s.shares?.Others != null);
+    assert.equal(aggregates.presence[y].TVK, false);
+    for (const d of aggregates.districts) assert.equal(d.historical[y].available, true, `${d.name} ${y}`);
   }
-  assert.equal(aggregates.acs.find((a) => a.no === 134)!.actual["2016"].available, false);
-  assert.equal(aggregates.acs.find((a) => a.no === 174)!.actual["2016"].available, false);
-  assert.equal(aggregates.acs.filter((a) => !a.actual["2016"].available).length, 2);
-  assert.equal(aggregates.presence["2011"].TVK, false);
   assert.equal(aggregates.presence["2011"].NTK, false);
   assert.equal(aggregates.presence["2011"].NOTA, false);
+  assert.equal(aggregates.acs.find((a) => a.no === 134)!.historical["2016"].available, false);
+  assert.equal(aggregates.acs.find((a) => a.no === 174)!.historical["2016"].available, false);
+  assert.equal(aggregates.acs.filter((a) => a.historical["2016"].available).length, 232);
 });
 
-check("workbook adjusted shares are preserved separately and not applied again", () => {
-  const a = aggregates.acs[0];
-  assert.ok(a.workbook.adjustedShares);
-  assert.ok(near(sum(TN_GROUPS.map((g) => a.workbook.adjustedShares?.[g] ?? 0)), 1, 1e-5));
-  assert.notDeepEqual(a.combined.shares, a.workbook.adjustedShares);
-  for (const ac of aggregates.acs) {
-    assert.ok(ac.combined.shares);
-    assert.ok(ac.recorded.shares);
-    assert.ok(near(sum(TN_GROUPS.map((g) => ac.recorded.shares?.[g] ?? 0)), 1, 1e-5));
+check("all 234 AC and 38 district geometry mappings resolve to configured colours", () => {
+  const aliases: Record<string, string> = { Kanyakumari: "Kanniyakumari", Nilgiris: "The Nilgiris", Thiruvarur: "Tiruvarur", Thoothukkudi: "Thoothukudi", Viluppuram: "Villupuram" };
+  const acMap = new Map(aggregates.acs.map((a) => [a.no, a]));
+  for (const f of acGeo.features) {
+    const a = acMap.get(f.properties.no);
+    assert.ok(a, `unmatched AC geometry ${f.properties.no}`);
+    assert.ok(a!.surveyLeader, `no survey leader AC ${a!.no}`);
+    const acLeader = a!.surveyLeader as Group;
+    assert.ok(TN_COLOR[acLeader], `no colour AC ${a!.no}`);
+    assert.notEqual(TN_COLOR[acLeader], "#94A3B8", `grey AC ${a!.no}`);
   }
-  assert.equal(aggregates.source.normalisation.ac.count, 22);
-});
-
-check("all nine workbook sheets were read; private sheets stay private", () => {
-  const names = aggregates.source.audit.map((a) => a.sheet);
-  assert.deepEqual(names, ["Summary", "Statewide Votes", "AC Results", "District Results", "AC vs Actual 2026", "District vs Actual 2026", "Who Voted How", "Model Validation", "Significant Variables"]);
-  for (const s of ["Who Voted How", "Model Validation", "Significant Variables"]) {
-    assert.ok(aggregates.source.audit.find((a) => a.sheet === s)?.used.includes("private"));
+  const dMap = new Map(aggregates.districts.map((d) => [d.name, d]));
+  for (const f of districtGeo.features) {
+    const current = aliases[f.properties.district] ?? f.properties.district;
+    const d = dMap.get(current);
+    assert.ok(d, `unmatched district geometry ${f.properties.district} -> ${current}`);
+    assert.ok(d!.surveyLeader, `no survey leader district ${current}`);
+    const districtLeader = d!.surveyLeader as Group;
+    assert.ok(TN_COLOR[districtLeader], `no colour district ${current}`);
+    assert.notEqual(TN_COLOR[districtLeader], "#94A3B8", `grey district ${current}`);
   }
+  assert.equal(acMap.size, 234);
+  assert.equal(dMap.size, 38);
 });
 
-check("no survey rounds, dates or raw respondent records are invented", () => {
+check("no old allocation or old statewide reference is active", () => {
+  const text = JSON.stringify(aggregates);
+  assert.equal(text.includes("34.80"), false);
+  assert.equal(text.includes("34.78"), false);
+  assert.equal(text.includes("tn-geographic-allocation"), false);
+  assert.equal(text.includes("31,316"), false);
+  assert.equal(text.includes("31672"), true);
+  assert.equal(text.includes("19867"), false);
+  assert.equal(text.includes("20749"), true);
+});
+
+check("no unsupported time, round or raw-response structures", () => {
   const text = JSON.stringify(aggregates);
   assert.equal(text.includes("rounds388"), false);
   assert.equal(text.includes("blocks50"), false);
-  assert.equal(text.includes("Response ID"), false);
   assert.equal(text.includes("entryId"), false);
+  assert.equal(text.includes("Response ID"), false);
   assert.equal("rounds" in aggregates, false);
-  assert.equal("dateMin" in aggregates.source, false);
+  assert.equal("dateMin" in aggregates, false);
   assert.equal("smoothing" in aggregates, false);
-});
-
-check("current 38-district grouping is used and ECI grouping is retained for audit", () => {
-  assert.equal(new Set(aggregates.acs.map((a) => a.district)).size, 38);
-  assert.equal(new Set(aggregates.acs.map((a) => a.districtEci)).size, 38);
-  assert.ok(aggregates.source.districtPolicy.includes("Current 38-district"));
-  assert.equal(new Set(aggregates.acs.map((a) => a.name)).size, 233);
-  assert.equal(aggregates.acs.filter((a) => a.name === "Tiruppattur").length, 2);
 });
 
 console.log(`\n${passed} checks passed.`);

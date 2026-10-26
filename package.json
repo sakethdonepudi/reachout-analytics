@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "vercel-build": "npm run build && node scripts/publish-tamil-nadu-allocation.mjs"
+    "vercel-build": "npm run build && node scripts/publish-tamil-nadu-snapshot.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

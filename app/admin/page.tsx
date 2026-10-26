@@ -8,7 +8,6 @@ import { Logo } from "@/components/site/navbar";
 import ThemeToggle from "@/components/site/theme-toggle";
 import AboutEditor from "@/components/admin/about-editor";
 import TelanganaAdmin from "@/components/admin/telangana-admin";
-import TamilNaduAdmin from "@/components/admin/tamil-nadu-admin";
 import { cn } from "@/lib/utils";
 import type { Row as PollRow } from "@/lib/poll-data";
 
@@ -335,15 +334,15 @@ export default function AdminPortal() {
           {section === "overview" && caseId === "tamil-nadu" && (
             <div>
               <h1 className="font-display text-2xl font-semibold">Overview · Tamil Nadu</h1>
-              <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">Tamil Nadu uses the final aggregate 2026 workbook, not individual-response import. The Poll Data section previews and publishes the geographic allocation of 882 district-only and 19,867 location-missing votes, and exports the recorded-only, allocated and combined components.</p>
+              <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">Tamil Nadu uses the final calibrated aggregate workbook, not individual-response import. Survey votes, Saket&apos;s original calls, statewide-fit model calls, final district-calibrated calls and Actual 2026 results are separate layers. The previous geographic-allocation snapshot is archived privately and is not read.</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <button onClick={() => setSection("poll")} className="rounded-lg bg-saffron px-3 py-1.5 text-[12.5px] font-semibold text-[#241203]">Open Tamil Nadu allocation</button>
-                <a href="/api/admin/tamil-nadu/export?format=xlsx" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">Export allocation</a>
+                <button onClick={() => setSection("poll")} className="rounded-lg bg-saffron px-3 py-1.5 text-[12.5px] font-semibold text-[#241203]">Open Tamil Nadu source overview</button>
+                <a href="/api/admin/tamil-nadu/export?format=xlsx" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">Export final aggregates</a>
                 <Link href="/case-studies/tamil-nadu" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">View public page</Link>
               </div>
               <div className="mt-6 rounded-2xl border border-border bg-card/60 p-4 text-[12px] text-muted-foreground">
-                <p className="font-semibold text-foreground/80">Public basis</p>
-                <p className="mt-1">Combined counts = recorded + allocated district-only + allocated unlocated. Geographic shares are recalculated from those counts; the workbook&apos;s previous statewide shift is not applied again. Actual and historical results are untouched.</p>
+                <p className="font-semibold text-foreground/80">Source and geography</p>
+                <p className="mt-1">31,672 party-choice responses; 10,923 with an assembly and 20,749 in the <span className="font-mono">NO DIST, AC</span> aggregate. The missing-location aggregate remains statewide only: it is not allocated to a district or assembly. Survey map colours come from direct district and assembly survey counts, never from seats or calibrated calls.</p>
               </div>
             </div>
           )}
@@ -402,8 +401,11 @@ export default function AdminPortal() {
           {section === "poll" && caseId === "tamil-nadu" && (
             <div>
               <h1 className="font-display text-2xl font-semibold">Poll Data · Tamil Nadu</h1>
-              <p className="mt-1 text-[13px] text-muted-foreground">Preview, export and publish the aggregate geographic allocation. Individual-response import is not used for this aggregate workbook.</p>
-              <TamilNaduAdmin />
+              <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">The final calibrated aggregate workbook is active. Survey votes, Saket&apos;s original calls, statewide-fit model calls, final district-calibrated calls and actual 2026 results are separate layers. The previous allocation snapshot is archived privately and is not used.</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a href="/api/admin/tamil-nadu/export?format=xlsx" className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] hover:bg-elevated"><Download className="size-4" /> Export final workbook aggregates</a>
+                <Link href="/case-studies/tamil-nadu" className="rounded-full border border-border px-3.5 py-2 text-[12.5px] text-muted-foreground hover:text-foreground">View public page</Link>
+              </div>
             </div>
           )}
           {section === "poll" && caseId !== "telangana" && caseId !== "tamil-nadu" && (
@@ -682,7 +684,22 @@ export default function AdminPortal() {
             </div>
           )}
 
-          {section === "history" && caseId !== "telangana" && (
+          {section === "history" && caseId === "tamil-nadu" && (
+            <div>
+              <h1 className="font-display text-2xl font-semibold">Source History · Tamil Nadu</h1>
+              <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">The active build uses <b className="text-foreground/85">tn-2026-saket-v3</b>, generated from <span className="font-mono">SAKET_TN_District_Estimate_calibrated_v3.xlsx</span>. The previous workbook and geographic-allocation snapshot are retained privately under the archive path and are not queried.</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a href="/api/admin/tamil-nadu/export?format=xlsx" className="rounded-lg bg-saffron px-3 py-1.5 text-[12.5px] font-semibold text-[#241203]">Export source aggregates</a>
+                <Link href="/case-studies/tamil-nadu" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">View public page</Link>
+              </div>
+              <div className="mt-5 rounded-2xl border border-border bg-card/60 p-4 text-[12px] text-muted-foreground">
+                <p className="font-semibold text-foreground/80">Layer policy</p>
+                <p className="mt-1">Survey counts are kept separate from Saket&apos;s original calls, statewide-fit model calls, final district-calibrated calls and Actual 2026. No individual-response import or date/round series exists for this aggregate workbook.</p>
+              </div>
+            </div>
+          )}
+
+          {section === "history" && caseId !== "telangana" && caseId !== "tamil-nadu" && (
             <div>
               <h1 className="font-display text-2xl font-semibold">Import History</h1>
               <p className="mt-1 text-[13px] text-muted-foreground">Scoped to {activeCase?.title}. Uploader, timestamp, filename, counts and outcome.</p>

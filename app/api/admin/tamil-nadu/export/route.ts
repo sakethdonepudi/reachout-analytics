@@ -3,134 +3,59 @@ import { utils, write } from "xlsx";
 import aggregates from "@/lib/data/tamil-nadu/aggregates.json";
 import type { TnAggregates } from "@/lib/tamil-nadu/model";
 import { requireAdmin } from "@/lib/auth";
-import { getPublishedAllocation } from "@/lib/tamil-nadu/allocation-store";
+import { getPublishedSnapshot } from "@/lib/tamil-nadu/snapshot-store";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-const GROUPS = ["TVK", "AIADMK+BJP+PMK+AMMK", "DMK+INC+VCK", "NTK", "NOTA"] as const;
-const pct = (n: number | undefined) => (n == null ? "" : Math.round(n * 10000) / 100);
+const pct = (v: number | undefined) => (v == null ? "" : Math.round(v * 10000) / 100);
 
 export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req);
   if ("deny" in auth) return auth.deny;
-  const published = await getPublishedAllocation();
+  const published = await getPublishedSnapshot();
   const bundle = (published?.bundle ?? aggregates) as TnAggregates;
   const format = req.nextUrl.searchParams.get("format") === "json" ? "json" : "xlsx";
   if (format === "json") {
-    return new Response(JSON.stringify({ publishedAt: published?.publishedAt ?? null, allocation: bundle.allocation, districts: bundle.districts, acs: bundle.acs }, null, 2), {
-      headers: { "Content-Type": "application/json", "Content-Disposition": `attachment; filename="Tamil_Nadu_allocation_${new Date().toISOString().slice(0, 10)}.json"`, "Cache-Control": "no-store" },
+    return new Response(JSON.stringify({ publishedAt: published?.publishedAt ?? null, ...bundle }, null, 2), {
+      headers: { "Content-Type": "application/json", "Content-Disposition": `attachment; filename="Tamil_Nadu_final_aggregates_${new Date().toISOString().slice(0, 10)}.json"`, "Cache-Control": "no-store" },
     });
   }
-
   const wb = utils.book_new();
-  const a = bundle.allocation;
-  const summary = [
+  const summaryRows = [
     ["Item", "Value"],
-    ["Allocation version", a.version],
-    ["Method", a.method],
-    ["Priority", a.priority],
-    ["Source import ID", a.sourceImportId],
-    ["Source file", a.sourceFile],
-    ["Source SHA-256", a.sourceHash],
-    ["Published at", published?.publishedAt ?? "not published"],
-    ["Recorded assembly", Object.values(a.recorded.assembly).reduce((x, y) => x + y, 0)],
-    ["Recorded district", Object.values(a.recorded.district).reduce((x, y) => x + y, 0)],
-    ["District-only allocated", Object.values(a.allocated.districtOnly).reduce((x, y) => x + y, 0)],
-    ["Unlocated allocated", Object.values(a.allocated.unlocated).reduce((x, y) => x + y, 0)],
-    ["Combined assembly", a.reconcile.combinedAssembly],
-    ["Combined district", a.reconcile.combinedDistrict],
-    ["Combined statewide", a.reconcile.combinedStatewide],
-    ["Party totals unchanged", a.reconcile.partyTotalsUnchanged],
-    ["AC = district", a.reconcile.acDistrictEqual],
-    ["district = state", a.reconcile.districtStateEqual],
-    ["No double count", a.reconcile.noDoubleCount],
-    ["Combination rule", "AC: recorded + district-only + unlocated. District: recorded + unlocated; district-only is already included in recorded."],
-    ["Workbook projected seats", JSON.stringify(a.workbook.projectedSeats)],
-    ["Workbook accuracy", a.workbook.accuracy],
+    ["Source version", bundle.version], ["Source import ID", bundle.sourceImportId], ["Source file", bundle.sourceFile], ["Source SHA-256", bundle.sourceHash],
+    ["Total party-choice responses", bundle.source.totalResponses], ["With AC", bundle.source.withAc], ["NO DIST, AC", bundle.source.noAc],
+    ["Constituencies", bundle.source.constituencies], ["Districts", bundle.source.districts], ["Published at", published?.publishedAt ?? "not published"],
+    ["Survey TVK %", pct(bundle.statewide.survey.shares?.TVK)], ["Calibrated TVK %", pct(bundle.statewide.calibrated.shares.TVK)], ["Actual TVK %", pct(bundle.statewide.actualVoteShares.shares.TVK)],
+    ["Original seats TVK/AIADMK+/DMK+", JSON.stringify(bundle.statewide.originalSeats)], ["Final calibrated seats", JSON.stringify(bundle.statewide.finalSeats)], ["Actual seats", JSON.stringify(bundle.statewide.actualSeats)],
+    ["Original calls correct", bundle.metrics.originalCorrect], ["Survey leaders correct", bundle.metrics.surveyLeaderCorrect], ["Model fitted correct", bundle.metrics.modelCorrect], ["Model CV correct", bundle.metrics.modelCvCorrect], ["Final calibrated correct", bundle.metrics.finalCorrect], ["Final CV with imposed district totals", bundle.metrics.finalCvCorrect],
   ];
-  for (const g of GROUPS) {
-    summary.push([`Recorded assembly · ${g}`, a.recorded.assembly[g]]);
-    summary.push([`Recorded district · ${g}`, a.recorded.district[g]]);
-    summary.push([`District-only · ${g}`, a.recorded.districtOnly[g]]);
-    summary.push([`Unlocated · ${g}`, a.recorded.unlocated[g]]);
-    summary.push([`Combined · ${g}`, a.combined.statewide[g]]);
-  }
-  utils.book_append_sheet(wb, utils.json_to_sheet(summary), "Allocation summary");
-
-  const assemblyRows = bundle.acs.map((ac) => {
-    const row: Record<string, string | number | boolean> = {
-      "AC No": ac.no, Assembly: ac.name, District: ac.district, "District (ECI)": ac.districtEci,
-      "Recorded total": ac.recorded.valid, "District-only total": ac.allocatedDistrictOnly ? Object.values(ac.allocatedDistrictOnly).reduce((x, y) => x + y, 0) : 0,
-      "Unlocated total": ac.allocatedUnlocated ? Object.values(ac.allocatedUnlocated).reduce((x, y) => x + y, 0) : 0,
-      "Combined total": ac.combined.valid,
-      "Combined leader": ac.combined.leader ?? "", "Combined margin (pp)": ac.combined.marginPp,
-      "Projected leader": ac.projected.leader ?? "", "Projected confidence": ac.projected.confidence,
-      "Workbook adjusted leader": ac.workbook.projection.leader ?? "", "Workbook margin (pp)": ac.workbook.projection.marginPp,
-      "Workbook confidence": ac.workbook.projection.confidence, "Actual 2026": ac.actual2026.winner ?? "", Match: ac.match,
-    };
-    for (const g of GROUPS) {
-      row[`Recorded ${g}`] = ac.recorded.counts[g];
-      row[`District-only ${g}`] = ac.allocatedDistrictOnly[g];
-      row[`Unlocated ${g}`] = ac.allocatedUnlocated[g];
-      row[`Combined ${g}`] = ac.combined.counts[g];
-      row[`Combined share ${g} %`] = pct(ac.combined.shares?.[g]);
-    }
-    return row;
-  });
-  utils.book_append_sheet(wb, utils.json_to_sheet(assemblyRows), "Assembly allocation");
-
-  const districtRows = bundle.districts.map((d) => {
-    const row: Record<string, string | number> = {
-      District: d.name, ACs: d.acs.length, "Recorded total": d.recorded.valid,
-      "District-only total": Object.values(d.allocatedDistrictOnly).reduce((x, y) => x + y, 0),
-      "Unlocated total": Object.values(d.allocatedUnlocated).reduce((x, y) => x + y, 0),
-      "Combined total": d.combined.valid, "Combined leader": d.combined.leader ?? "", "Combined margin (pp)": d.combined.marginPp,
-      "Projected seats": JSON.stringify(d.projectedSeats), "Actual 2026 seats": JSON.stringify(d.actualSeats),
-      "Workbook projected seats": JSON.stringify(d.workbook.projectedSeats),
-    };
-    for (const g of GROUPS) {
-      row[`Recorded ${g}`] = d.recorded.counts[g];
-      row[`District-only ${g}`] = d.allocatedDistrictOnly[g];
-      row[`Unlocated ${g}`] = d.allocatedUnlocated[g];
-      row[`Combined ${g}`] = d.combined.counts[g];
-      row[`Combined share ${g} %`] = pct(d.combined.shares?.[g]);
-    }
-    return row;
-  });
-  utils.book_append_sheet(wb, utils.json_to_sheet(districtRows), "District allocation");
-
-  const stateRows = GROUPS.map((g) => ({
-    Group: g, "Recorded statewide": bundle.statewide.recorded.counts[g],
-    "Combined statewide": bundle.statewide.combined.counts[g],
-    "Combined share %": pct(bundle.statewide.combined.shares?.[g]),
-    "District-only": a.recorded.districtOnly[g], Unlocated: a.recorded.unlocated[g],
-    "Combined projected seats": bundle.statewide.projectedSeats[g], "Workbook projected seats": bundle.statewide.workbookProjectedSeats[g],
-    "Actual 2026 seats": bundle.statewide.actualSeats[g],
+  utils.book_append_sheet(wb, utils.json_to_sheet(summaryRows), "Summary");
+  const acRows = bundle.acs.map((a) => ({
+    "AC No": a.no, AC: a.name, District: a.district, "Survey n": a.survey.valid,
+    "TVK votes": a.survey.counts.TVK, "AIADMK+ votes": a.survey.counts["AIADMK+BJP+PMK+AMMK"], "DMK+ votes": a.survey.counts["DMK+INC+VCK"], "NTK votes": a.survey.counts.NTK, "NOTA votes": a.survey.counts.NOTA,
+    "TVK %": pct(a.survey.shares?.TVK), "AIADMK+ %": pct(a.survey.shares?.["AIADMK+BJP+PMK+AMMK"]), "DMK+ %": pct(a.survey.shares?.["DMK+INC+VCK"]), "NTK %": pct(a.survey.shares?.NTK), "NOTA %": pct(a.survey.shares?.NOTA),
+    "Saket call": a.original.leader ?? "", "Saket match": a.original.correct,
+    "Model call": a.model.leader ?? "", "Model P(win)": a.model.probability, "Model match": a.model.correct,
+    "Final calibrated call": a.final.leader ?? "", "Final P(win)": a.final.probability, "Final match": a.final.correct,
+    "Actual 2026 winner": a.actual2026.winner ?? "", "Actual party": a.actual2026.party,
   }));
-  utils.book_append_sheet(wb, utils.json_to_sheet(stateRows), "Statewide");
-
-  const reconciliation = [
-    { Check: "Recorded assembly", Value: a.reconcile.assemblyRecorded, Expected: 10_567, Pass: a.reconcile.assemblyRecorded === 10_567 },
-    { Check: "District-only allocated", Value: a.reconcile.districtOnlyAllocated, Expected: 882, Pass: a.reconcile.districtOnlyAllocated === 882 },
-    { Check: "Unlocated allocated", Value: a.reconcile.unlocatedAllocated, Expected: 19_867, Pass: a.reconcile.unlocatedAllocated === 19_867 },
-    { Check: "Combined assembly", Value: a.reconcile.combinedAssembly, Expected: 31_316, Pass: a.reconcile.combinedAssembly === 31_316 },
-    { Check: "Combined district", Value: a.reconcile.combinedDistrict, Expected: 31_316, Pass: a.reconcile.combinedDistrict === 31_316 },
-    { Check: "Party totals unchanged", Value: a.reconcile.partyTotalsUnchanged, Expected: true, Pass: a.reconcile.partyTotalsUnchanged },
-    { Check: "AC = district", Value: a.reconcile.acDistrictEqual, Expected: true, Pass: a.reconcile.acDistrictEqual },
-    { Check: "District = state", Value: a.reconcile.districtStateEqual, Expected: true, Pass: a.reconcile.districtStateEqual },
-    { Check: "No double count", Value: a.reconcile.noDoubleCount, Expected: true, Pass: a.reconcile.noDoubleCount },
-    { Check: "Combined projected accuracy", Value: bundle.statewide.accuracy, Expected: "derived", Pass: true },
-    { Check: "Workbook original accuracy", Value: bundle.statewide.workbookAccuracy, Expected: 110, Pass: bundle.statewide.workbookAccuracy === 110 },
-  ];
-  utils.book_append_sheet(wb, utils.json_to_sheet(reconciliation), "Reconciliation");
-
+  utils.book_append_sheet(wb, utils.json_to_sheet(acRows), "AC estimates");
+  const districtRows = bundle.districts.map((d) => ({
+    District: d.name, ACs: d.acs.length, "Survey n": d.survey.valid,
+    "TVK votes": d.survey.counts.TVK, "AIADMK+ votes": d.survey.counts["AIADMK+BJP+PMK+AMMK"], "DMK+ votes": d.survey.counts["DMK+INC+VCK"], "NTK votes": d.survey.counts.NTK, "NOTA votes": d.survey.counts.NOTA,
+    "Survey leader": d.surveyLeader ?? "", "Original seats": JSON.stringify(d.originalSeats), "Final seats": JSON.stringify(d.finalSeats), "Actual seats": JSON.stringify(d.actualSeats),
+  }));
+  utils.book_append_sheet(wb, utils.json_to_sheet(districtRows), "District estimates");
+  const histRows = [];
+  for (const y of bundle.years) for (const a of bundle.acs) { const h = a.historical[y]; if (h.available && h.shares) histRows.push({ Year: y, "AC No": a.no, AC: a.name, District: a.district, ...Object.fromEntries(bundle.groups.map((g) => [`${g} %`, pct(h.shares?.[g])])) }); }
+  utils.book_append_sheet(wb, utils.json_to_sheet(histRows), "Historical AC shares");
+  utils.book_append_sheet(wb, utils.json_to_sheet(bundle.calibration.notes.map((n) => ({ Note: n }))), "Calibration notes");
+  const provenance = bundle.source.audit.map((x) => ({ Sheet: x.sheet, Rows: x.rows, Use: x.used }));
+  provenance.push({ Sheet: "Notes", Rows: bundle.source.notes.length, Use: bundle.source.notes.join(" | ") });
+  utils.book_append_sheet(wb, utils.json_to_sheet(provenance), "Provenance");
   const buf = write(wb, { type: "buffer", bookType: "xlsx" });
   return new Response(new Uint8Array(buf), {
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="Tamil_Nadu_allocation_${new Date().toISOString().slice(0, 10)}.xlsx"`,
-      "Cache-Control": "no-store",
-    },
+    headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename="Tamil_Nadu_final_aggregates_${new Date().toISOString().slice(0, 10)}.xlsx"`, "Cache-Control": "no-store" },
   });
 }

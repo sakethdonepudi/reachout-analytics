@@ -1,27 +1,22 @@
 import { NextResponse } from "next/server";
 import aggregates from "@/lib/data/tamil-nadu/aggregates.json";
 import type { TnAggregates } from "@/lib/tamil-nadu/model";
-import { getPublishedAllocation } from "@/lib/tamil-nadu/allocation-store";
+import { getPublishedSnapshot } from "@/lib/tamil-nadu/snapshot-store";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
-  // The admin publish workflow stores the last approved aggregate bundle. If
-  // storage is unavailable, the bundled, build-verified snapshot remains the
-  // safe fallback. Never cache this route: a publish must be visible on reload.
-  const published = await getPublishedAllocation();
+  // Prefer the last approved snapshot; fall back to the build-verified bundle.
+  const published = await getPublishedSnapshot();
   const current = aggregates as TnAggregates;
-  const matches = !!published && published.sourceHash === current.sourceHash && published.allocationVersion === current.allocation.version;
+  const matches = !!published && published.sourceHash === current.sourceHash && published.sourceVersion === current.version;
   const bundle = (matches ? published!.bundle : current) as TnAggregates;
-  // The public surface is district-only. AC IDs are validated and retained in
-  // admin/export, but are not exposed through the public aggregate endpoint.
-  const { acs: _assemblyRows, ...publicBundle } = bundle;
-  return NextResponse.json(publicBundle, {
+  return NextResponse.json(bundle, {
     headers: {
       "Cache-Control": "no-store, max-age=0",
       "X-TN-Data-Source": matches ? "published" : "bundled",
-      "X-TN-Allocation-Version": bundle.allocation.version,
+      "X-TN-Source-Version": bundle.version,
     },
   });
 }

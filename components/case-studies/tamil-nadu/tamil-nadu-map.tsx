@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { geoIdentity } from "d3-geo";
+import AC_GEO from "@/lib/data/tamil-nadu/tn-acs.json";
 import DISTRICT_GEO from "@/lib/data/tamil-nadu/tn-districts.json";
 import {
-  TN_COLOR, TN_NO_DATA, tnLeader, tnPct,
-  type TnDistrict, type TnYearOrCurrent,
+  TN_COLOR, TN_LABEL, TN_FULL, TN_NO_DATA, tnLeader, tnPct,
+  type TnAc, type TnDistrict, type TnYearOrCurrent,
 } from "@/lib/tamil-nadu/model";
 
 export type MapTheme = "light" | "dark";
@@ -14,27 +15,31 @@ export type MapMode = "state" | "district";
 
 const BOX = 1000;
 const DEPTH = 10;
+const AC_DEPTH = 3;
 const CX = BOX / 2;
 const CZ = BOX / 2;
-const DISTRICT_ALIAS: Record<string, string> = {
-  Kanyakumari: "Kanniyakumari",
-  Nilgiris: "The Nilgiris",
-  Thiruvarur: "Tiruvarur",
-  Thoothukkudi: "Thoothukudi",
-  Viluppuram: "Villupuram",
-};
-const canonicalDistrict = (name: string) => DISTRICT_ALIAS[name] ?? name;
 
+type AcFeature = { type: "Feature"; properties: { no: number; name: string; district: string; centroid?: [number, number] }; geometry: { type: string; coordinates: unknown } };
 type DistrictFeature = { type: "Feature"; properties: { district: string; centroid?: [number, number] }; geometry: { type: string; coordinates: unknown } };
+type FC = { type: "FeatureCollection"; features: AcFeature[] };
 type DFC = { type: "FeatureCollection"; features: DistrictFeature[] };
+const AC_FC = AC_GEO as unknown as FC;
 const D_FC = DISTRICT_GEO as unknown as DFC;
 
+const DISTRICT_ALIAS: Record<string, string> = {
+  Kanyakumari: "Kanniyakumari", Nilgiris: "The Nilgiris", Thiruvarur: "Tiruvarur", Thoothukkudi: "Thoothukudi", Viluppuram: "Villupuram",
+};
+const canonicalDistrict = (name: string) => DISTRICT_ALIAS[name] ?? name;
 type Props = {
+  acs: TnAc[];
   districts: TnDistrict[];
   district: string | null;
+  acNo: number | null;
   year: TnYearOrCurrent;
+  mode: "survey" | "calibrated";
   theme: MapTheme;
   onSelectDistrict: (name: string) => void;
+  onSelectAc: (no: number) => void;
   onReset: () => void;
 };
 
@@ -48,7 +53,7 @@ const shade = (hex: string, amount: number) => {
   c.getHSL(hsl);
   return new THREE.Color().setHSL(hsl.h, hsl.s, Math.max(0.22, Math.min(0.68, hsl.l + amount)));
 };
-function shapeFor(feature: DistrictFeature, project: (p: [number, number]) => [number, number]): THREE.Shape[] {
+function shapeFor(feature: AcFeature | DistrictFeature, project: (p: [number, number]) => [number, number]): THREE.Shape[] {
   const coords = (feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates) as number[][][][];
   const shapes: THREE.Shape[] = [];
   for (const poly of coords) {
@@ -70,29 +75,49 @@ function shapeFor(feature: DistrictFeature, project: (p: [number, number]) => [n
   }
   return shapes;
 }
-function districtColor(d: TnDistrict | undefined, year: TnYearOrCurrent): { color: string; share: number; group: string | null; count: number } {
-  if (!d) return { color: TN_NO_DATA, share: 0, group: null, count: 0 };
+function groupColorForAc(a: TnAc | undefined, year: TnYearOrCurrent, mode: "survey" | "calibrated"): { color: string; share: number | null; group: string | null; count: number; label: string } {
+  if (!a) return { color: TN_NO_DATA, share: 0, group: null, count: 0, label: "No data" };
   if (year === "2026") {
-    const g = d.combined.leader;
-    return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? d.combined.shares?.[g] ?? 0 : 0, group: g, count: d.combined.valid };
+    if (mode === "calibrated") {
+      const g = a.final.leader;
+      return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: null, group: g, count: 0, label: "Calibrated call" };
+    }
+    const g = a.survey.leader;
+    return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? a.survey.shares?.[g] ?? 0 : 0, group: g ?? null, count: a.survey.valid, label: "Survey share" };
   }
-  const rec = d.actual[year];
+  const rec = a.historical[year];
+  const g = rec.winner;
+  return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? rec.shares?.[g] ?? 0 : 0, group: g, count: rec.available ? 1 : 0, label: `${year} share` };
+}
+function groupColorForDistrict(d: TnDistrict | undefined, year: TnYearOrCurrent, mode: "survey" | "calibrated"): { color: string; share: number | null; group: string | null; count: number; label: string } {
+  if (!d) return { color: TN_NO_DATA, share: 0, group: null, count: 0, label: "No data" };
+  if (year === "2026") {
+    if (mode === "calibrated") {
+      const g = [...(Object.keys(d.finalSeats) as (keyof typeof d.finalSeats)[])].sort((a, b) => d.finalSeats[b] - d.finalSeats[a])[0] ?? null;
+      return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: null, group: g, count: Object.values(d.finalSeats).reduce((a, b) => a + b, 0), label: "Calibrated seats" };
+    }
+    const g = d.survey.leader;
+    return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? d.survey.shares?.[g] ?? 0 : 0, group: g ?? null, count: d.survey.valid, label: "Survey share" };
+  }
+  const rec = d.historical[year];
   const g = tnLeader(rec.shares);
-  return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? rec.shares?.[g] ?? 0 : 0, group: g, count: rec.available ? 1 : 0 };
+  return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? rec.shares?.[g] ?? 0 : 0, group: g, count: rec.available ? 1 : 0, label: `${year} share` };
 }
 
-export default function TamilNaduMap({ districts, district, year, theme, onSelectDistrict, onReset }: Props) {
+export default function TamilNaduMap({ acs, districts, district, acNo, year, mode, theme, onSelectDistrict, onSelectAc, onReset }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [tip, setTip] = useState<{ x: number; y: number; title: string; sub: string; value: string; color: string } | null>(null);
-  const live = useRef({ districts, district, year, theme, onSelectDistrict, onReset });
-  live.current = { districts, district, year, theme, onSelectDistrict, onReset };
+  const live = useRef({ acs, districts, district, acNo, year, mode, theme, onSelectDistrict, onSelectAc, onReset });
+  live.current = { acs, districts, district, acNo, year, mode, theme, onSelectDistrict, onSelectAc, onReset };
+  const acByNo = useMemo(() => new Map(acs.map((a) => [a.no, a])), [acs]);
+  const acRef = useRef(acByNo); acRef.current = acByNo;
   const districtByName = useMemo(() => new Map(districts.map((d) => [d.name, d])), [districts]);
   const districtRef = useRef(districtByName); districtRef.current = districtByName;
   const apiRef = useRef<{
-    setSelection: (d: string | null, y: TnYearOrCurrent) => void;
+    setSelection: (d: string | null, a: number | null, y: TnYearOrCurrent, m: "survey" | "calibrated") => void;
     resetCamera: () => void;
   } | null>(null);
 
@@ -125,36 +150,39 @@ export default function TamilNaduMap({ districts, district, year, theme, onSelec
     type Unit = {
       group: THREE.Group; mesh: THREE.Mesh; cap: THREE.MeshStandardMaterial; side: THREE.MeshStandardMaterial;
       line: THREE.LineBasicMaterial; bounds: { minx: number; maxx: number; minz: number; maxz: number };
-      label: HTMLSpanElement; name: string; key: string;
+      label: HTMLSpanElement; name: string; kind: "district" | "ac"; key: string; no?: number;
     };
-    const units = new Map<string, Unit>();
+    const districtsUnits = new Map<string, Unit>();
+    const acUnits = new Map<number, Unit>();
+    const acLayer = new Map<string, THREE.Group>();
     const pickables: THREE.Mesh[] = [];
     const labelEls: Unit[] = [];
-    const makeLabel = (text: string) => {
+    const makeLabel = (text: string, kind: "district" | "ac") => {
       const el = document.createElement("span");
       el.textContent = text;
       el.style.position = "absolute"; el.style.pointerEvents = "none"; el.style.transform = "translate(-50%,-50%)";
-      el.style.whiteSpace = "nowrap"; el.style.fontFamily = "inherit"; el.style.fontWeight = "600";
-      el.style.fontSize = "10px"; el.style.zIndex = "4";
+      el.style.whiteSpace = "nowrap"; el.style.fontFamily = "inherit"; el.style.fontWeight = kind === "district" ? "600" : "500";
+      el.style.fontSize = kind === "district" ? "10px" : "8px"; el.style.zIndex = kind === "district" ? "4" : "3";
       el.style.color = P.label; el.style.textShadow = `0 0 3px ${P.halo}, 0 0 2px ${P.halo}`;
       el.style.transition = reduced ? "none" : "opacity .25s ease";
       labelRoot.appendChild(el);
       return el;
     };
-    for (const f of D_FC.features) {
-      const key = canonicalDistrict(f.properties.district);
+    const addFeature = (f: AcFeature | DistrictFeature, kind: "district" | "ac") => {
       const shapes = shapeFor(f, project);
-      if (!shapes.length) continue;
-      const geo = new THREE.ExtrudeGeometry(shapes, { depth: DEPTH, bevelEnabled: false, curveSegments: 1 });
+      if (!shapes.length) return null;
+      const geo = new THREE.ExtrudeGeometry(shapes, { depth: kind === "district" ? DEPTH : AC_DEPTH, bevelEnabled: false, curveSegments: 1 });
       geo.rotateX(Math.PI / 2);
-      geo.translate(0, DEPTH, 0);
+      geo.translate(0, kind === "district" ? DEPTH : DEPTH + 1, 0);
       const cap = new THREE.MeshStandardMaterial({ color: P.none, roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide });
       const side = new THREE.MeshStandardMaterial({ color: P.side, roughness: 1, metalness: 0.02, side: THREE.DoubleSide });
       const mesh = new THREE.Mesh(geo, [cap, side]);
-      mesh.userData.district = key;
+      mesh.userData.kind = kind;
+      if (kind === "district") mesh.userData.district = canonicalDistrict(f.properties.district);
+      else { mesh.userData.no = (f as AcFeature).properties.no; mesh.userData.district = canonicalDistrict((f as AcFeature).properties.district); }
       mesh.castShadow = true; mesh.receiveShadow = true;
       pickables.push(mesh);
-      const group = new THREE.Group(); group.add(mesh);
+      const g = new THREE.Group(); g.add(mesh);
       const pts: number[] = [];
       const polys = (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates) as number[][][][];
       let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
@@ -164,43 +192,77 @@ export default function TamilNaduMap({ districts, district, year, theme, onSelec
           const q = project([ring[(i + 1) % ring.length][0], ring[(i + 1) % ring.length][1]]);
           const px = p[0] - CX, pz = p[1] - CZ;
           minx = Math.min(minx, px); maxx = Math.max(maxx, px); minz = Math.min(minz, pz); maxz = Math.max(maxz, pz);
-          pts.push(px, DEPTH + 0.08, pz, q[0] - CX, DEPTH + 0.08, q[1] - CZ);
+          pts.push(px, (kind === "district" ? DEPTH : DEPTH + AC_DEPTH) + 0.08, pz, q[0] - CX, (kind === "district" ? DEPTH : DEPTH + AC_DEPTH) + 0.08, q[1] - CZ);
         }
       }
       const lineGeo = new THREE.BufferGeometry(); lineGeo.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-      const line = new THREE.LineBasicMaterial({ color: P.line, transparent: true, opacity: 0.9 });
-      group.add(new THREE.LineSegments(lineGeo, line));
-      const centroid = f.properties.centroid ?? [78.5, 11];
+      const line = new THREE.LineBasicMaterial({ color: P.line, transparent: true, opacity: kind === "district" ? 0.9 : 0.62 });
+      g.add(new THREE.LineSegments(lineGeo, line));
+      const centroid = (f.properties as { centroid?: [number, number] }).centroid ?? [78.5, 11];
       const c = project(centroid);
-      const label = makeLabel(key);
+      const label = makeLabel(kind === "district" ? canonicalDistrict((f.properties as { district: string }).district) : (f as AcFeature).properties.name, kind);
+      const unit: Unit = { group: g, mesh, cap, side, line, bounds: { minx, maxx, minz, maxz }, label, name: kind === "district" ? canonicalDistrict((f.properties as DistrictFeature["properties"]).district) : (f as AcFeature).properties.name, kind, key: kind === "district" ? "d:" + canonicalDistrict((f.properties as DistrictFeature["properties"]).district) : "a:" + (f as AcFeature).properties.no, no: kind === "ac" ? (f as AcFeature).properties.no : undefined };
       label.dataset.cx = String(c[0] - CX); label.dataset.cz = String(c[1] - CZ);
-      const unit: Unit = { group, mesh, cap, side, line, bounds: { minx, maxx, minz, maxz }, label, name: key, key };
-      units.set(key, unit);
       labelEls.push(unit);
-      mapGroup.add(group);
+      return unit;
+    };
+    for (const f of D_FC.features) {
+      const u = addFeature(f, "district");
+      if (!u) continue;
+      const districtKey = canonicalDistrict(f.properties.district);
+      districtsUnits.set(districtKey, u);
+      const layer = new THREE.Group(); layer.visible = false; u.group.add(layer); acLayer.set(districtKey, layer);
+      mapGroup.add(u.group);
     }
-
+    for (const f of AC_FC.features) {
+      const layer = acLayer.get(canonicalDistrict(f.properties.district));
+      if (!layer) continue;
+      const u = addFeature(f, "ac");
+      if (!u) continue;
+      acUnits.set(f.properties.no, u);
+      layer.add(u.group);
+    }
     apiRef.current = {
-      setSelection: (d, y) => {
-        const activeName = d ? canonicalDistrict(d) : null;
-        const active = activeName ? units.get(activeName) : null;
-        const mobile = typeof window !== "undefined" && window.innerWidth < 640;
-        const mobileLabels = new Set([...units.keys()].sort((a, b) => (districtRef.current.get(b)?.combined.valid ?? 0) - (districtRef.current.get(a)?.combined.valid ?? 0)).slice(0, 10));
-        for (const [name, u] of units) {
-          const selected = !!active && name === active.name;
-          u.group.visible = active ? selected : true;
-          const info = districtColor(districtRef.current.get(name), y);
+      setSelection: (d, a, y, m) => {
+        const activeD = d ? districtsUnits.get(d) : null;
+        const activeAC = a != null ? acUnits.get(a) : null;
+        const mobileState = typeof window !== "undefined" && window.innerWidth < 640;
+        const mobileLabels = new Set([...districtsUnits.keys()].sort((aKey, bKey) => (districtRef.current.get(bKey)?.survey.valid ?? 0) - (districtRef.current.get(aKey)?.survey.valid ?? 0)).slice(0, 10));
+        for (const [name, u] of districtsUnits) {
+          const selected = !!activeD && name === activeD.name;
+          u.group.visible = activeD ? selected : true;
+          u.mesh.visible = !activeD;
+          const acLayerGroup = acLayer.get(name); if (acLayerGroup) acLayerGroup.visible = selected;
+          const info = groupColorForDistrict(districtRef.current.get(canonicalDistrict(name)), y, m);
           u.cap.color.set(info.color);
           u.side.color.set(info.color);
           u.line.color.set(selected ? P.sel : P.line);
           u.line.opacity = selected ? 1 : 0.9;
+          u.line.visible = !(activeAC && selected);
           u.mesh.position.y = selected ? 12 : 0;
-          u.label.style.opacity = active ? (selected ? "1" : "0") : (mobile && !mobileLabels.has(name) ? "0" : "1");
+          u.label.style.opacity = activeD ? (selected && !activeAC ? "1" : "0") : (mobileState && !mobileLabels.has(name) ? "0" : "1");
           u.label.style.fontSize = selected ? "12px" : "10px";
-          u.cap.needsUpdate = true; u.side.needsUpdate = true; u.line.needsUpdate = true;
         }
-        let bounds: Unit["bounds"] | null = null;
-        if (active) bounds = active.bounds;
+        for (const [no, u] of acUnits) {
+          const info = groupColorForAc(acRef.current.get(no), y, m);
+          const acSelected = !!activeAC && no === activeAC.no;
+          u.cap.color.set(acSelected ? new THREE.Color(info.color).offsetHSL(0, 0, 0.16) : info.color);
+          u.cap.emissive.set(acSelected ? info.color : "#000000");
+          u.cap.emissiveIntensity = acSelected ? 0.55 : 0;
+          u.side.color.set(acSelected ? new THREE.Color(info.color).offsetHSL(0, 0, 0.1) : info.color);
+          const inSelectedDistrict = !!activeD && canonicalDistrict(u.mesh.userData.district) === activeD.name;
+          const visible = activeAC ? no === activeAC.no : inSelectedDistrict;
+          u.group.visible = visible;
+          u.mesh.position.y = activeAC && no === activeAC.no ? 2 : 2;
+          u.line.color.set(activeAC && no === activeAC.no ? P.sel : activeD ? P.line : info.color);
+          u.line.opacity = activeAC && no === activeAC.no ? 1 : activeD ? 0.55 : 0.35;
+          u.label.style.opacity = visible ? "1" : "0";
+          u.label.style.fontSize = activeAC && no === activeAC.no ? "10px" : "8px";
+        }
+        // Camera
+        let bounds: { minx: number; maxx: number; minz: number; maxz: number } | null = null;
+        if (activeAC) bounds = activeAC.bounds;
+        else if (activeD) bounds = activeD.bounds;
         const hostRect = host.getBoundingClientRect();
         const vw = Math.max(320, hostRect.width), vh = Math.max(320, hostRect.height);
         const wide = typeof window !== "undefined" && window.innerWidth > 1024;
@@ -211,8 +273,8 @@ export default function TamilNaduMap({ districts, district, year, theme, onSelec
           const availW = Math.max(220, vw - (wide ? 680 : 0));
           const availH = Math.max(220, vh - 90);
           const fov = camera.fov * Math.PI / 180;
-          const fit = Math.max((H / 2) / Math.tan(fov / 2), (W / 2) / Math.tan(Math.atan(Math.tan(fov / 2) * (availW / availH)))) * 1.35;
-          dist = Math.max(90, Math.min(3300, fit));
+          const fit = Math.max((H / 2) / Math.tan(fov / 2), (W / 2) / Math.tan(Math.atan(Math.tan(fov / 2) * (availW / availH)))) * (activeAC ? 1.8 : 1.45);
+          dist = Math.max(45, Math.min(3300, fit));
           const shift = wide ? -70 : 0;
           const worldPerPx = (2 * dist * Math.tan(fov / 2)) / availH;
           centerX += shift * worldPerPx;
@@ -221,7 +283,7 @@ export default function TamilNaduMap({ districts, district, year, theme, onSelec
       },
       resetCamera: () => { desired.tx = 0; desired.tz = 0; desired.dist = 2050; },
     };
-    apiRef.current?.setSelection(live.current.district, live.current.year);
+    apiRef.current?.setSelection(live.current.district, live.current.acNo, live.current.year, live.current.mode);
     setReady(true);
 
     let targetX = desired.tx, targetZ = desired.tz, targetDist = desired.dist;
@@ -245,11 +307,12 @@ export default function TamilNaduMap({ districts, district, year, theme, onSelec
     const ro = new ResizeObserver(resize); ro.observe(host);
     const render = () => {
       updateCamera();
+      // Label screen placement
       const rect = host.getBoundingClientRect();
       for (const u of labelEls) {
         if (u.label.style.opacity === "0") continue;
         const x = Number(u.label.dataset.cx || 0), z = Number(u.label.dataset.cz || 0);
-        const p = new THREE.Vector3(x, DEPTH, z).project(camera);
+        const p = new THREE.Vector3(x, u.kind === "district" ? DEPTH : DEPTH + AC_DEPTH, z).project(camera);
         const sx = (p.x * 0.5 + 0.5) * rect.width, sy = (-p.y * 0.5 + 0.5) * rect.height;
         u.label.style.transform = `translate(${sx}px,${sy}px) translate(-50%,-50%)`;
       }
@@ -258,26 +321,30 @@ export default function TamilNaduMap({ districts, district, year, theme, onSelec
     };
     raf = requestAnimationFrame(render);
 
-    const pickDistrict = (e: PointerEvent) => {
+    const onPointerMove = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
       ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1; ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
-      ray.setFromCamera(ndc, camera);
-      const hits = ray.intersectObjects(pickables, false).filter((h) => h.object.visible && h.object.parent?.visible !== false);
-      return hits[0]?.object.userData.district as string | undefined;
-    };
-    const onPointerMove = (e: PointerEvent) => {
       if (drag) {
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
         theta = Math.max(-0.6, Math.min(0.6, -dx * 0.004)); phi = Math.max(0.25, Math.min(1.1, 0.58 + dy * 0.003));
         drag.x = e.clientX; drag.y = e.clientY; return;
       }
-      const name = pickDistrict(e);
-      if (name) {
-        if (name !== hoveredKey) {
-          hoveredKey = name; canvas.style.cursor = "pointer";
-          const info = districtColor(districtRef.current.get(name), live.current.year);
-          setTip({ x: e.clientX, y: e.clientY, title: name, sub: live.current.year === "2026" ? "2026 combined district share" : `${live.current.year} district share`, value: `${info.group ?? "No data"} · ${tnPct(info.share)} · ${info.count.toLocaleString("en-IN")}`, color: info.color });
+      ray.setFromCamera(ndc, camera);
+      const hits = ray.intersectObjects(pickables, false).filter((h) => h.object.visible && h.object.parent?.visible !== false);
+      const hit = hits.find((h) => h.object.userData.kind === "ac" && live.current.district != null) ?? hits.find((h) => h.object.userData.kind === "district");
+      if (hit) {
+        const data = hit.object.userData; const kind = data.kind as "district" | "ac";
+        const key = kind === "district" ? "d:" + data.district : "a:" + data.no;
+        if (key !== hoveredKey) {
+          hoveredKey = key; canvas.style.cursor = "pointer";
+          if (kind === "district") {
+            const info = groupColorForDistrict(districtRef.current.get(canonicalDistrict(data.district)), live.current.year, live.current.mode);
+            setTip({ x: e.clientX, y: e.clientY, title: data.district, sub: live.current.year === "2026" ? "2026 combined survey leader" : `${live.current.year} group leader`, value: `${info.group ?? "No data"} · ${tnPct(info.share)} · ${info.count.toLocaleString("en-IN")}`, color: info.color });
+          } else {
+            const a = acRef.current.get(data.no); const info = groupColorForAc(a, live.current.year, live.current.mode);
+            setTip({ x: e.clientX, y: e.clientY, title: a?.name ?? `AC ${data.no}`, sub: `${data.district} · ${live.current.year === "2026" ? "combined survey" : live.current.year}`, value: `${info.group ?? "No data"} · ${tnPct(info.share)} · ${info.count.toLocaleString("en-IN")}`, color: info.color });
+          }
         } else setTip((t) => t ? { ...t, x: e.clientX, y: e.clientY } : t);
       } else { hoveredKey = null; canvas.style.cursor = "grab"; setTip(null); }
     };
@@ -285,11 +352,16 @@ export default function TamilNaduMap({ districts, district, year, theme, onSelec
     const onPointerUp = (e: PointerEvent) => {
       const wasDrag = drag?.moved; drag = null; canvas.style.cursor = "grab";
       if (wasDrag) return;
-      const name = pickDistrict(e);
-      if (!name) { live.current.onReset(); return; }
-      live.current.onSelectDistrict(canonicalDistrict(name));
+      const r = canvas.getBoundingClientRect();
+      ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1; ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      ray.setFromCamera(ndc, camera);
+      const hits = ray.intersectObjects(pickables, false).filter((h) => h.object.visible);
+      const hit = hits.find((h) => h.object.userData.kind === "ac" && live.current.district != null) ?? hits.find((h) => h.object.userData.kind === "district");
+      if (!hit) { live.current.onReset(); return; }
+      if (hit.object.userData.kind === "district") live.current.onSelectDistrict(canonicalDistrict(hit.object.userData.district as string));
+      else live.current.onSelectAc(hit.object.userData.no as number);
     };
-    const onWheel = (e: WheelEvent) => { e.preventDefault(); desired.dist = Math.max(90, Math.min(3300, desired.dist * (1 + e.deltaY * 0.0012))); };
+    const onWheel = (e: WheelEvent) => { e.preventDefault(); desired.dist = Math.max(35, Math.min(3300, desired.dist * (1 + e.deltaY * 0.0012))); };
     const onLeave = () => { hoveredKey = null; setTip(null); drag = null; };
     canvas.addEventListener("pointermove", onPointerMove); canvas.addEventListener("pointerdown", onPointerDown);
     canvas.addEventListener("pointerup", onPointerUp); canvas.addEventListener("pointerleave", onLeave); canvas.addEventListener("wheel", onWheel, { passive: false });
@@ -303,13 +375,13 @@ export default function TamilNaduMap({ districts, district, year, theme, onSelec
 
   useEffect(() => {
     if (!ready) return;
-    apiRef.current?.setSelection(district, year);
-  }, [ready, district, year, districts]);
+    apiRef.current?.setSelection(district, acNo, year, mode);
+  }, [ready, district, acNo, year, mode, acs, districts]);
 
   return (
     <div className="relative h-full w-full">
       <div ref={hostRef} className="absolute inset-0">
-        <canvas ref={canvasRef} className="block h-full w-full touch-none" aria-label="3D map of Tamil Nadu districts" role="img" />
+        <canvas ref={canvasRef} className="block h-full w-full touch-none" aria-label="3D map of Tamil Nadu districts and assembly constituencies" role="img" />
         <div ref={labelRef} className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden />
       </div>
       {tip && <div className="pointer-events-none fixed z-[80] max-w-[240px] rounded-lg border border-border bg-card/95 px-2.5 py-2 text-[10px] shadow-xl backdrop-blur" style={{ left: Math.min(tip.x + 12, window.innerWidth - 255), top: Math.max(8, tip.y - 12) }}>
