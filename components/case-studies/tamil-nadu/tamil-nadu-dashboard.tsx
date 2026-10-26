@@ -168,7 +168,7 @@ export default function TamilNaduDashboard() {
     const a = acs.find((x) => x.no === no);
     if (a) { setDistrict(a.district); setAcNo(no); }
   }, [acs]);
-  const reset = useCallback(() => { setDistrict(null); setAcNo(null); }, []);
+  const resetToState = useCallback(() => { setDistrict(null); setAcNo(null); }, []);
   const openAnalysis = useCallback(() => { expandFocus.current = document.activeElement as HTMLElement | null; setChartOpen(true); }, []);
   const closeAnalysis = useCallback(() => { setChartOpen(false); requestAnimationFrame(() => expandFocus.current?.focus()); }, []);
 
@@ -195,8 +195,6 @@ export default function TamilNaduDashboard() {
           </Link>
           <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Tamil Nadu</p>
           <h1 className="mt-1 font-display text-[clamp(27px,3.2vw,40px)] font-semibold leading-[1.02] tracking-[-0.03em]">ReachOut&apos;s Election Intelligence</h1>
-          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">Assembly election history, the 2026 exit-poll analysis and Actual 2026 seat results. Survey estimates are not official results.</p>
-          {isStatewide && <p className="mt-2 inline-flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-full border border-border bg-card/70 px-2.5 py-1 text-[10.5px]"><span><span className="font-semibold uppercase tracking-[0.08em] text-muted-foreground">Survey TVK</span> <b style={{ color: TN_COLOR.TVK }}>{((data.statewide.survey.shares?.TVK ?? 0) * 100).toFixed(2)}%</b></span><span><span className="font-semibold uppercase tracking-[0.08em] text-muted-foreground">Result-calibrated</span> <b style={{ color: TN_COLOR.TVK }}>{((data.statewide.calibrated.shares.TVK ?? 0) * 100).toFixed(2)}%</b></span></p>}
           <div className="mt-5 space-y-3">
             <div>
               <span className={LABEL}>Election year</span>
@@ -219,17 +217,17 @@ export default function TamilNaduDashboard() {
                 {mode === "survey" && year === "2026" ? <span className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px]" style={{ background: TN_NO_DATA }} /><span className="truncate">No data</span></span> : null}
               </div>
             </div>
-            {(district || currentAc) && <button type="button" onClick={reset} className="flex w-full items-center gap-2 rounded-lg border border-border px-2.5 py-2 text-left text-[11.5px] font-semibold hover:border-saffron/40"><RotateCcw className="size-3.5" /> Reset to Tamil Nadu</button>}
+            {(district || currentAc) && <button type="button" onClick={resetToState} className="flex w-full items-center gap-2 rounded-lg border border-border px-2.5 py-2 text-left text-[11.5px] font-semibold hover:border-saffron/40"><RotateCcw className="size-3.5" /> Reset to Tamil Nadu</button>}
           </div>
         </aside>
 
         <div className="relative z-0 mt-4 h-[52svh] min-h-[360px] overflow-hidden rounded-2xl border border-border bg-card lg:absolute lg:inset-x-0 lg:top-16 lg:bottom-0 lg:mt-0 lg:h-auto lg:rounded-none lg:border-0 lg:bg-transparent">
-          <TamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} mode={mode} theme={(theme === "light" ? "light" : "dark") as MapTheme} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={reset} />
+          <TamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} mode={mode} theme={(theme === "light" ? "light" : "dark") as MapTheme} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={resetToState} />
           {year === "2026" && mode === "calibrated" && <div className="absolute bottom-3 left-3 z-20 rounded-full border border-border bg-card/90 px-2.5 py-1 text-[10px] text-muted-foreground shadow-sm backdrop-blur lg:left-[312px]">Calibrated seat calls · not vote share</div>}
           {(district || currentAc) && (
             <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 lg:left-[312px]">
-              <button type="button" onClick={reset} className="inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:border-saffron/50"><ArrowLeft className="size-3" /> Tamil Nadu</button>
-              <button type="button" onClick={reset} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:border-saffron/50"><RotateCcw className="size-3" /> Reset</button>
+              <button type="button" onClick={resetToState} className="inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:border-saffron/50"><ArrowLeft className="size-3" /> Tamil Nadu</button>
+              <button type="button" onClick={resetToState} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:border-saffron/50"><RotateCcw className="size-3" /> Reset</button>
             </div>
           )}
         </div>

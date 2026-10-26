@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RotateCcw, X } from "lucide-react";
 import {
-  TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_SEAT_GROUPS, TN_FULL, tnLeader,
+  TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_SEAT_GROUPS,
   type TnAggregates, type TnGroup, type TnSeatGroup, type TnShares, type TnYear,
 } from "@/lib/tamil-nadu/model";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
@@ -121,7 +121,6 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
   const baseline = scopeRecord.historical[baselineYear] ?? null;
   const baselineShares = baseline?.shares ?? null;
   const currentShares = current.shares ?? {};
-  const currentLeader = tnLeader(currentShares);
   const currentLabel = scopeIsState ? "Survey all responses" : "Survey";
 
   const originalSeats = useMemo(() => {
@@ -293,7 +292,6 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
           <button type="button" aria-pressed={showMedian} onClick={() => setShowMedian((v) => !v)} className={cn("rounded-full border px-2 py-1 text-[10px]", showMedian ? "border-foreground/40 bg-muted/40 text-foreground" : "border-border text-muted-foreground")}>Show median</button>
           <button type="button" aria-pressed={highlightOutliers} onClick={() => setHighlightOutliers((v) => !v)} className={cn("rounded-full border px-2 py-1 text-[10px]", highlightOutliers ? "border-foreground/40 bg-muted/40 text-foreground" : "border-border text-muted-foreground")}>Highlight outliers</button>
           <button type="button" onClick={() => { setParties([...TN_SURVEY_GROUPS]); setBaselineYear(defaultBaseline); setShowMedian(true); setHighlightOutliers(true); setDistUnit("district"); setSortBy("name"); }} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground"><RotateCcw className="size-3" /> Reset</button>
-          <span className="text-[10px] text-muted-foreground">TVK survey <b className="font-medium text-foreground/80">{(((data.statewide.survey.shares?.TVK ?? 0) * 100)).toFixed(2)}%</b> · result-calibrated <b className="font-medium text-foreground/80">{(((data.statewide.calibrated.shares.TVK ?? 0) * 100)).toFixed(2)}%</b></span>
         </div>
 
         <div className="space-y-5 overflow-y-auto px-4 pb-10 pt-4">
@@ -314,8 +312,7 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
           {scopeIsState && (
           <section>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div><h3 className="font-display text-[15px] font-semibold">Statewide vote-share layers</h3><p className="mt-0.5 text-[10px] text-muted-foreground">Survey · result-calibrated · Actual 2026. Others is a calibrated/actual residual and not an observed survey response.</p></div>
-              <span className="text-[10px] text-muted-foreground">Local calibrated/actual shares are unavailable</span>
+              <div><h3 className="font-display text-[15px] font-semibold">Statewide vote-share layers</h3></div>
             </div>
             <div className="mt-2 overflow-x-auto rounded-xl border border-border">
               <table className="w-full min-w-[520px] border-collapse text-[10.5px]"><caption className="sr-only">Statewide survey, calibrated and actual vote shares</caption>
@@ -323,13 +320,8 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
                 <tbody>{TN_GROUPS.map((g) => <tr key={g} className="border-t border-border/60"><td className="px-2 py-1.5" style={{ color: TN_COLOR[g] }}>{TN_LABEL[g]}{g === "Others" ? <span className="ml-1 text-[8px] text-muted-foreground">residual</span> : null}</td><td className="px-2 py-1.5 text-right tabular-nums">{g === "Others" ? "—" : pct(data.statewide.survey.shares?.[g])}</td><td className="px-2 py-1.5 text-right tabular-nums">{pct(data.statewide.calibrated.shares[g])}</td><td className="px-2 py-1.5 text-right tabular-nums">{pct(data.statewide.actualVoteShares.shares[g])}</td></tr>)}</tbody>
               </table>
             </div>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {[["Original calls correct", data.metrics.originalCorrect], ["Final calibrated calls correct", data.metrics.finalCorrect], ["Model-only CV correct", data.metrics.modelCvCorrect], ["Final CV with imposed district totals", data.metrics.finalCvCorrect]].map(([label, value]) => <div key={String(label)} className="rounded-lg border border-border bg-muted/10 px-2.5 py-2"><p className="font-display text-lg font-semibold tabular-nums">{value}/234</p><p className="text-[9px] uppercase tracking-[0.08em] text-muted-foreground">{String(label)}</p></div>)}
-            </div>
-            <p className="mt-1.5 text-[9px] leading-relaxed text-muted-foreground">The result-calibrated layer is a hindcast fitted using declared 2026 results; agreement with fitted targets is not independent validation. The 161/234 cross-validation figure still imposes result-derived district totals.</p>
           </section>
           )}
-          {!scopeIsState && <p className="text-[10px] text-muted-foreground">Local actual and calibrated vote shares are unavailable; this view shows survey shares and separate seat-call layers.</p>}
 
           <section>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -337,9 +329,8 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
                 <h3 className="font-display text-[15px] font-semibold">Survey vote share vs {baselineYear}</h3>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">Numeric historical shares only · survey measure · no time series</p>
               </div>
-              <span className="text-[10px] text-muted-foreground">{current.valid.toLocaleString("en-IN")} {scopeIsState ? "responses" : "survey votes"} · {currentLeader ? TN_LABEL[currentLeader] : "—"} leads</span>
             </div>
-            <EChart option={historicalOption} height={290} reduced={reduced} replaceSeries ariaLabel={`2026 exit-poll shares compared with ${baselineYear} for ${scopeName}`} />
+            <EChart option={historicalOption} height={290} reduced={reduced} replaceSeries ariaLabel={`2026 survey shares compared with ${baselineYear} for ${scopeName}`} />
             <p className="mt-0.5 text-[9px] text-muted-foreground">Historical shares are retained with a separate Others group; unrelated historical parties are not folded into DMK+. TVK did not contest 2011–2021, so it has no historical bar.</p>
           </section>
 
@@ -373,7 +364,7 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
                 </table>
               </div>
             </div>
-            <p className="mt-1 text-[9px] text-muted-foreground">Original calls correct {data.metrics.originalCorrect}/234; statewide-fit model {data.metrics.modelCorrect}/234; final district-calibrated {data.metrics.finalCorrect}/234; final cross-validation with district totals imposed {data.metrics.finalCvCorrect}/234. Seats are never used for survey district colours.</p>
+            <p className="mt-1 text-[9px] text-muted-foreground">Seat calls are separate from survey vote share and are never used for survey district colours.</p>
           </section>
 
           <section>
@@ -410,9 +401,6 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
             </div>
           </section>
 
-          <p className="text-[9px] leading-relaxed text-muted-foreground">
-            Statewide survey shares use all 31,672 party-choice responses. District and assembly survey shares use direct recorded counts; the 20,749 missing-location responses remain statewide only. Result-calibrated and actual shares are separate statewide series; local actual/calibrated vote shares are not supplied. Seat calls are separate from vote share. No survey rounds, collection dates, smoothing windows or fabricated time distributions are shown because this workbook is an aggregate export.
-          </p>
         </div>
       </div>
     </div>
