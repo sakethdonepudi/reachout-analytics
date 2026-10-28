@@ -6,8 +6,8 @@ import { geoIdentity } from "d3-geo";
 import AC_GEO from "@/lib/data/tamil-nadu/tn-acs.json";
 import DISTRICT_GEO from "@/lib/data/tamil-nadu/tn-districts.json";
 import {
-  TN_COLOR, TN_LABEL, TN_FULL, TN_NO_DATA, tnLeader, tnPct,
-  type TnAc, type TnDistrict, type TnYearOrCurrent,
+  TN_COLOR, TN_GROUPS, TN_LABEL, TN_NO_DATA, tnPct,
+  type TnAc, type TnDistrict, type TnGroup, type TnShares, type TnYearOrCurrent,
 } from "@/lib/tamil-nadu/model";
 
 export type MapTheme = "light" | "dark";
@@ -87,25 +87,50 @@ function shapeFor(feature: AcFeature | DistrictFeature, project: (p: [number, nu
   }
   return shapes;
 }
-function groupColorForAc(a: TnAc | undefined, year: TnYearOrCurrent): { color: string; share: number | null; group: string | null; count: number; label: string } {
-  if (!a) return { color: TN_NO_DATA, share: 0, group: null, count: 0, label: "No data" };
-  if (year === "2026") {
-    const g = a.survey.leader;
-    return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? a.survey.shares?.[g] ?? 0 : 0, group: g ?? null, count: a.survey.valid, label: "Survey share" };
-  }
-  const rec = a.historical[year];
-  const g = rec.winner;
-  return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? rec.shares?.[g] ?? 0 : 0, group: g, count: rec.available ? 1 : 0, label: `${year} share` };
+type BlendInfo = {
+  first: TnGroup | null; second: TnGroup | null;
+  firstShare: number | null; secondShare: number | null;
+  p1: number; p2: number; marginPp: number | null;
+  color1: string; color2: string; color: string; label: string;
+};
+function blendFromShares(shares: TnShares | null | undefined, label: string): BlendInfo {
+  const ranked = TN_GROUPS
+    .map((g) => ({ g, v: Math.max(0, shares?.[g] ?? 0) }))
+    .filter((x) => x.v > 0)
+    .sort((a, b) => b.v - a.v);
+  if (!ranked.length) return { first: null, second: null, firstShare: null, secondShare: null, p1: 0, p2: 0, marginPp: null, color1: TN_NO_DATA, color2: TN_NO_DATA, color: TN_NO_DATA, label: "No data" };
+  const first = ranked[0]; const second = ranked[1] ?? null;
+  const total = first.v + (second?.v ?? 0) || 1;
+  const p1 = first.v / total; const p2 = second ? second.v / total : 0;
+  return {
+    first: first.g, second: second?.g ?? null,
+    firstShare: first.v, secondShare: second?.v ?? null,
+    p1, p2, marginPp: second ? Math.max(0, (first.v - second.v) * 100) : 100,
+    color1: TN_COLOR[first.g], color2: second ? TN_COLOR[second.g] : TN_COLOR[first.g],
+    color: TN_COLOR[first.g], label,
+  };
 }
-function groupColorForDistrict(d: TnDistrict | undefined, year: TnYearOrCurrent): { color: string; share: number | null; group: string | null; count: number; label: string } {
-  if (!d) return { color: TN_NO_DATA, share: 0, group: null, count: 0, label: "No data" };
-  if (year === "2026") {
-    const g = d.survey.leader;
-    return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? d.survey.shares?.[g] ?? 0 : 0, group: g ?? null, count: d.survey.valid, label: "Survey share" };
-  }
-  const rec = d.historical[year];
-  const g = tnLeader(rec.shares);
-  return { color: g ? TN_COLOR[g] : TN_NO_DATA, share: g ? rec.shares?.[g] ?? 0 : 0, group: g, count: rec.available ? 1 : 0, label: `${year} share` };
+function blendForAc(a: TnAc | undefined, year: TnYearOrCurrent): BlendInfo {
+  if (!a) return blendFromShares(null, "No data");
+  if (year === "2026") return blendFromShares(a.survey.shares, "2026 estimate");
+  const rec = a.historical[year];
+  return blendFromShares(rec.shares, `${year} result`);
+}
+function blendForDistrict(d: TnDistrict | undefined, year: TnYearOrCurrent): BlendInfo {
+  if (!d) return blendFromShares(null, "No data");
+  if (year === "2026") return blendFromShares(d.survey.shares, "2026 estimate");
+  return blendFromShares(d.historical[year].shares, `${year} result`);
+}
+function blendColor(blend: BlendInfo, t: number): THREE.Color {
+  if (!blend.first) return new THREE.Color(TN_NO_DATA);
+  if (!blend.second) return new THREE.Color(blend.color1);
+  // Keep broad recognizable zones and a soft transition around the lead split.
+  const center = Math.max(0.12, Math.min(0.88, blend.p1));
+  const edge = 0.13;
+  const lo = Math.max(0, center - edge), hi = Math.min(1, center + edge);
+  const u = Math.max(0, Math.min(1, (t - lo) / Math.max(0.0001, hi - lo)));
+  const f = u * u * (3 - 2 * u);
+  return new THREE.Color(blend.color1).lerp(new THREE.Color(blend.color2), f);
 }
 
 export default function TamilNaduMap({ acs, districts, district, acNo, year, theme, onSelectDistrict, onSelectAc, onReset }: Props) {
@@ -183,8 +208,12 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       const geo = new THREE.ExtrudeGeometry(shapes, { depth: kind === "district" ? DEPTH : AC_DEPTH, bevelEnabled: false, curveSegments: 1 });
       geo.rotateX(Math.PI / 2);
       geo.translate(0, kind === "district" ? DEPTH : DEPTH + 1, 0);
-      const cap = new THREE.MeshStandardMaterial({ color: P.none, roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide, transparent: true });
-      const side = new THREE.MeshStandardMaterial({ color: P.side, roughness: 1, metalness: 0.02, side: THREE.DoubleSide, transparent: true });
+      const vertexCount = geo.getAttribute("position")?.count ?? 0;
+      const defaultColors = new Float32Array(vertexCount * 3);
+      for (let i = 0; i < defaultColors.length; i += 3) { defaultColors[i] = 1; defaultColors[i + 1] = 1; defaultColors[i + 2] = 1; }
+      geo.setAttribute("color", new THREE.BufferAttribute(defaultColors, 3));
+      const cap = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide, transparent: true, vertexColors: true });
+      const side = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 1, metalness: 0.02, side: THREE.DoubleSide, transparent: true, vertexColors: true });
       const mesh = new THREE.Mesh(geo, [cap, side]);
       mesh.userData.kind = kind;
       if (kind === "district") mesh.userData.district = canonicalDistrict(f.properties.district);
@@ -348,6 +377,36 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       districtOutline.visible = districtOpacity > 0.01;
     };
 
+    const gradientAxis = new THREE.Vector2(0.86, 0.5).normalize();
+    const applyGradient = (u: Unit, blend: BlendInfo) => {
+      const geo = u.mesh.geometry;
+      const position = geo.getAttribute("position");
+      if (!position) return;
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < position.count; i++) {
+        const x = position.getX(i), z = position.getZ(i);
+        const t = x * gradientAxis.x + z * gradientAxis.y;
+        lo = Math.min(lo, t); hi = Math.max(hi, t);
+      }
+      const colors = new Float32Array(position.count * 3);
+      for (let i = 0; i < position.count; i++) {
+        const x = position.getX(i), z = position.getZ(i);
+        const t = hi > lo ? ((x * gradientAxis.x + z * gradientAxis.y) - lo) / (hi - lo) : 0.5;
+        const c = blendColor(blend, t);
+        colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+      }
+      geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      u.cap.color.set("#ffffff"); u.side.color.set("#ffffff");
+      u.cap.vertexColors = true; u.side.vertexColors = true;
+      u.cap.needsUpdate = true; u.side.needsUpdate = true;
+    };
+    const tipValue = (b: BlendInfo) => {
+      if (!b.first) return "No data";
+      const first = `${TN_LABEL[b.first]} ${tnPct(b.firstShare)}`;
+      const second = b.second ? ` · ${TN_LABEL[b.second]} ${tnPct(b.secondShare)}` : "";
+      return `${first}${second} · lead ${b.marginPp == null ? "—" : b.marginPp.toFixed(1)} pp`;
+    };
+
     apiRef.current = {
       setSelection: (d, a, y) => {
         const activeD = d ? districtsUnits.get(d) : null;
@@ -359,21 +418,20 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         for (const [name, u] of districtsUnits) {
           const selected = !!activeD && name === activeD.name;
           const acLayerGroup = acLayer.get(name); if (acLayerGroup) acLayerGroup.visible = !!activeD && selected;
-          const info = groupColorForDistrict(districtRef.current.get(canonicalDistrict(name)), y);
-          u.cap.color.set(info.color); u.side.color.set(info.color);
+          const blend = blendForDistrict(districtRef.current.get(canonicalDistrict(name)), y);
+          applyGradient(u, blend);
           startUnit(u, activeD ? 0 : 1, activeD ? 0 : 0.9, 0, activeD ? selected : true);
           u.label.style.opacity = activeD ? (selected && !activeAC ? "1" : "0") : (mobileState && !mobileLabels.has(name) ? "0" : "1");
           u.label.style.fontSize = selected ? "12px" : "10px";
         }
         for (const [no, u] of acUnits) {
-          const info = groupColorForAc(acRef.current.get(no), y);
+          const blend = blendForAc(acRef.current.get(no), y);
           const acSelected = !!activeAC && no === activeAC.no;
           const inSelectedDistrict = !!activeD && canonicalDistrict(u.mesh.userData.district) === activeD.name;
           const visible = !!activeD && (activeAC ? acSelected : inSelectedDistrict);
-          u.cap.color.set(acSelected ? new THREE.Color(info.color).offsetHSL(0, 0, 0.12) : info.color);
-          u.cap.emissive.set(acSelected ? info.color : "#000000");
-          u.cap.emissiveIntensity = acSelected ? 0.42 : 0;
-          u.side.color.set(acSelected ? new THREE.Color(info.color).offsetHSL(0, 0, 0.08) : info.color);
+          applyGradient(u, blend);
+          u.cap.emissive.set(acSelected && blend.first ? blend.color1 : "#000000");
+          u.cap.emissiveIntensity = acSelected ? 0.32 : 0;
           startUnit(u, visible ? 1 : 0, 0, activeD ? (acSelected ? SELECTED_LIFT : AC_LIFT) : 0, visible);
           u.label.style.opacity = visible ? "1" : "0";
           u.label.style.fontSize = acSelected ? "10px" : "8px";
@@ -503,12 +561,12 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         canvas.style.cursor = "pointer";
         if (kind === "district") {
           showAccent(live.current.acNo, true);
-          const info = groupColorForDistrict(districtRef.current.get(canonicalDistrict(data.district)), live.current.year);
-          setTip({ x: e.clientX, y: e.clientY, title: canonicalDistrict(data.district), sub: live.current.year === "2026" ? "2026 estimated vote share" : `${live.current.year} group leader`, value: `${info.group ? TN_FULL[info.group as keyof typeof TN_FULL] : "No data"} · ${tnPct(info.share)}${info.count ? ` · ${info.count.toLocaleString("en-IN")}` : ""}`, color: info.color });
+          const blend = blendForDistrict(districtRef.current.get(canonicalDistrict(data.district)), live.current.year);
+          setTip({ x: e.clientX, y: e.clientY, title: canonicalDistrict(data.district), sub: live.current.year === "2026" ? "2026 estimated vote share" : `${live.current.year} result`, value: tipValue(blend), color: blend.color });
         } else {
           showAccent(data.no as number, data.no === live.current.acNo);
-          const a = acRef.current.get(data.no as number); const info = groupColorForAc(a, live.current.year);
-          setTip({ x: e.clientX, y: e.clientY, title: a?.name ?? `AC ${data.no}`, sub: `${canonicalDistrict(data.district)} · ${live.current.year === "2026" ? "estimated vote share" : live.current.year}`, value: `${info.group ? TN_FULL[info.group as keyof typeof TN_FULL] : "No data"} · ${tnPct(info.share)}${info.count ? ` · ${info.count.toLocaleString("en-IN")}` : ""}`, color: info.color });
+          const a = acRef.current.get(data.no as number); const blend = blendForAc(a, live.current.year);
+          setTip({ x: e.clientX, y: e.clientY, title: a?.name ?? `AC ${data.no}`, sub: `${canonicalDistrict(data.district)} · ${live.current.year === "2026" ? "estimated vote share" : live.current.year}`, value: tipValue(blend), color: blend.color });
         }
       } else setTip((t) => t ? { ...t, x: e.clientX, y: e.clientY } : t);
     };
