@@ -5,7 +5,7 @@ import {
   ArrowRight, ArrowUpRight, BookOpenCheck, CheckCircle2, CircleCheck, FileText,
   FlaskConical, Globe2, GraduationCap, PenLine, ScrollText, Sparkles,
 } from "lucide-react";
-import Navbar from "@/components/site/navbar";
+import Navbar, { Logo } from "@/components/site/navbar";
 import Reveal from "@/components/site/reveal";
 import ServicesEnquiry from "@/components/site/services-enquiry";
 import { CONTACT } from "@/lib/cases";
@@ -122,7 +122,7 @@ export default function ResearchContentPage() {
 
         <footer className="border-t border-border">
           <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10 sm:px-10 lg:flex-row lg:items-center lg:justify-between">
-            <div><p className="font-display text-lg font-semibold">Reach<span className="text-saffron">Out</span> Analytics</p><p className="mt-1 max-w-md text-[12px] leading-relaxed text-muted-foreground">{CONTACT.address}</p></div>
+            <div><Logo /><p className="mt-2 max-w-md text-[12px] leading-relaxed text-muted-foreground">{CONTACT.address}</p></div>
             <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2 text-[12.5px] font-medium text-muted-foreground"><Link href="/services" className="hover:text-foreground">Services</Link><Link href="/services/research-content" className="hover:text-foreground">Research & Content</Link><Link href="/case-studies" className="hover:text-foreground">Case Studies</Link><Link href="/about" className="hover:text-foreground">About Us</Link><Link href="/#contact" className="hover:text-foreground">Contact</Link></nav>
           </div>
           <div className="border-t border-border/70 py-4 text-center text-[11.5px] text-muted-foreground">© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</div>

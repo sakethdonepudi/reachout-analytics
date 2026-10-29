@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 320 320" role="img" aria-labelledby="title desc">
+<title id="title">Reachout Analytics symbol</title>
+<desc id="desc">Geometric blue R monogram with a lime accent on a neutral rounded background.</desc>
+<rect width="320" height="320" rx="68" fill="#F8F7F3"/>
+<g transform="translate(30 30) scale(0.8)"><g transform="translate(45 33)" fill="#1714F5">
+<path d="M8 0H187C241 0 274 32 274 78C274 112 260 137 235 153L194 107C206 102 212 92 212 81C212 66 202 58 186 58H59Z"/>
+<path d="M88 90H157L290 268H210Z"/>
+<path d="M4 199L78 135V190L4 253Z"/>
+<path fill="#C9FA00" d="M4 268L78 203V268Z"/>
+</g></g>
+</svg>

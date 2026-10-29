@@ -18,17 +18,12 @@ const LINKS = [
   { label: "Contact", href: "/#contact" },
 ];
 
-export function Logo({ className }: { className?: string }) {
+export function Logo({ className, variant = "auto" }: { className?: string; variant?: "auto" | "dark" }) {
+  const light = <img src="/brand/reachout-logo-light.svg" alt="Reachout Analytics" width={1290} height={285} className="h-full w-full object-contain object-left dark:hidden" decoding="async" draggable={false} />;
+  const dark = <img src="/brand/reachout-logo-dark.svg" alt="Reachout Analytics" width={1290} height={285} className="h-full w-full object-contain object-left" decoding="async" draggable={false} />;
   return (
-    <Link href="/#top" className={cn("flex shrink-0 items-center gap-2.5 whitespace-nowrap font-display text-[17px] font-semibold tracking-tight text-foreground", className)}>
-      <span className="grid gap-[3px]" aria-hidden>
-        <b className="block h-[3px] w-5 -skew-x-[20deg] rounded-full bg-saffron" />
-        <b className="block h-[3px] w-4 -skew-x-[20deg] rounded-full bg-foreground" />
-        <b className="block h-[3px] w-3 -skew-x-[20deg] rounded-full bg-[#2fbf4a]" />
-      </span>
-      <span>
-        Reach<span className="text-saffron">Out</span> Analytics
-      </span>
+    <Link href="/#top" aria-label="Reachout Analytics" className={cn("relative block h-[34px] w-[150px] shrink-0 transition-opacity hover:opacity-85 sm:h-[42px] sm:w-[185px]", className)}>
+      {variant === "dark" ? dark : <>{light}<span className="hidden dark:block">{dark}</span></>}
     </Link>
   );
 }
