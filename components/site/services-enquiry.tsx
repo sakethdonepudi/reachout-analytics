@@ -109,7 +109,7 @@ export default function ServicesEnquiry() {
             </div>
             <label className="mt-4 block">
               <span className={label}>Service category *</span>
-              <select value={values.service} onChange={(e) => change("service", e.target.value)} required className={cn(field, "appearance-none")} aria-invalid={!selected && !!error}>
+              <select value={values.service} onChange={(e) => change("service", e.target.value)} required className={field} aria-invalid={!selected && !!error}>
                 <option value="">Select a service area</option>
                 <optgroup label="Political Intelligence">{SERVICE_CATEGORIES.slice(0, 6).map((s) => <option key={s} value={s}>{s}</option>)}</optgroup>
                 <optgroup label="Data & Business Analytics">{SERVICE_CATEGORIES.slice(6).map((s) => <option key={s} value={s}>{s}</option>)}</optgroup>
