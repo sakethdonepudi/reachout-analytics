@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { geoIdentity } from "d3-geo";
 import { rafLoop } from "@/lib/raf-loop";
-import { PARTY_COLOR, PARTY_LABEL, NO_DATA_COLOR, fmtPct, leaderOf, partyShade, type AcRow, type Party } from "@/lib/telangana/oct26";
-import { DEVICE_AC, historicalAc, winnerColour, winnerLabel, winnerShade, type ElectionYear } from "@/lib/telangana/history";
+import { PARTIES, PARTY_COLOR, PARTY_LABEL, NO_DATA_COLOR, fmtPct, type AcRow, type Party, type ShareSet } from "@/lib/telangana/oct26";
+import { DEVICE_AC, historicalAc, type ElectionYear } from "@/lib/telangana/history";
+import { MAP_STYLE, addMapLights, createScreenLine, setScreenLinePoints, updateLineResolution, gradientColor, topTwo, labelSize, type TopTwo } from "@/lib/map-style";
 import { brandMarker } from "@/lib/telangana/brands";
 
 /* =====================================================================
@@ -88,31 +89,9 @@ const signedArea = (r: number[][]) => {
 };
 
 const PAL = {
-  dark: { none: "#2b3442", side: "#1c2531", line: "rgb(190,202,218)", sel: "#ffffff", label: "#e8edf4", halo: "rgba(6,10,18,.86)" },
-  light: { none: "#e7ebef", side: "#d3d9e0", line: "rgb(70,86,104)", sel: "#7a1f4d", label: "#1b2430", halo: "rgba(255,255,255,.94)" },
+  dark: { none: "#2b3442", side: "#1c2531", line: "rgb(210,222,238)", hover: "#93c5fd", sel: "#ffffff", label: "#e8edf4", halo: "rgba(6,10,18,.86)" },
+  light: { none: "#e7ebef", side: "#d3d9e0", line: "rgb(40,58,78)", hover: "#1d4ed8", sel: "#111827", label: "#1b2430", halo: "rgba(255,255,255,.94)" },
 };
-
-/** Equal-width party bands for a tied assembly, mapped once across the cap. */
-function tieTexture(colors: string[]): THREE.CanvasTexture {
-  const size = 128;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
-  const band = size / colors.length;
-  colors.forEach((color, i) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(Math.floor(i * band), 0, Math.ceil(band) + 1, size);
-    if (i > 0) {
-      ctx.fillStyle = "rgba(255,255,255,.55)";
-      ctx.fillRect(Math.round(i * band) - 0.5, 0, 1, size);
-    }
-  });
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
-  return texture;
-}
 
 export default function TelanganaMap({ acs, district, ac, year, layer, theme, onSelectDistrict, onSelectAc, onReset }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -162,30 +141,47 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(34, 1, 1, 9000);
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x808898, 1.05));
-    const key = new THREE.DirectionalLight(0xffffff, 1.15);
-    key.position.set(-260, 620, 420);
-    scene.add(key);
-    const fill = new THREE.DirectionalLight(0xaebacc, 0.45);
-    fill.position.set(420, 240, -520);
-    scene.add(fill);
+    addMapLights(scene);
 
     const projection = geoIdentity().reflectY(true).fitExtent([[70, 70], [BOX - 70, BOX - 70]], geo as never);
     const project = (lng: number, lat: number): [number, number] => {
       const p = projection([lng, lat]);
       return p ? [p[0] - BOX / 2, p[1] - BOX / 2] : [0, 0];
     };
+    const resolution = new THREE.Vector2(1, 1);
+    const blendFor = (shares: ShareSet): TopTwo<Party> => topTwo(shares, PARTIES);
+    const applyBlend = (geom: THREE.BufferGeometry, blend: TopTwo<Party>) => {
+      const pos = geom.getAttribute("position");
+      if (!pos) return;
+      const ax = MAP_STYLE.gradient.axisX, az = MAP_STYLE.gradient.axisZ;
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < pos.count; i++) {
+        const t = pos.getX(i) * ax + pos.getZ(i) * az;
+        lo = Math.min(lo, t); hi = Math.max(hi, t);
+      }
+      const c1 = blend.first ? PARTY_COLOR[blend.first] : NO_DATA_COLOR;
+      const c2 = blend.second ? PARTY_COLOR[blend.second] : c1;
+      const colors = new Float32Array(pos.count * 3);
+      for (let i = 0; i < pos.count; i++) {
+        const t = hi > lo ? ((pos.getX(i) * ax + pos.getZ(i) * az) - lo) / (hi - lo) : 0.5;
+        const c = blend.first ? gradientColor(c1, c2, blend.p1, t) : new THREE.Color(NO_DATA_COLOR);
+        colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+      }
+      geom.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    };
 
     type Entry = {
       no: number; district: string;
       group3: THREE.Group; mesh: THREE.Mesh;
-      cap: THREE.MeshStandardMaterial; side: THREE.MeshStandardMaterial; line: THREE.LineBasicMaterial;
-      fills: Record<ElectionYear, { color: THREE.Color; texture: THREE.CanvasTexture | null }>;
+      cap: THREE.MeshStandardMaterial; side: THREE.MeshStandardMaterial;
+      fills: Record<ElectionYear, TopTwo<Party>>; gradientYear: ElectionYear;
       heat: number; hover: number; isolate: number; dim: number; elev: number;
       bounds: { minx: number; maxx: number; minz: number; maxz: number }; cx: number; cz: number;
     };
     const entries = new Map<number, Entry>();
     const byGroup = new Map<string, number[]>();
+    const acEdgeByGroup = new Map<string, Map<string, number[]>>();
+    const acEdgeByNo = new Map<number, number[]>();
     const pickables: THREE.Mesh[] = [];
     const acMap = new Map(live.current.acs.map((a) => [a.no, a]));
 
@@ -213,30 +209,21 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
       geom.translate(0, DEPTH, 0);
 
       const rec = acMap.get(f.properties.acNo);
-      const lead = rec ? leaderOf(rec.prediction) : { leader: null, tied: [] as Party[], marginPp: 0 };
-      let fillHex = NO_DATA_COLOR;
-      let texture: THREE.CanvasTexture | null = null;
-      if (rec && rec.answered2028 > 0) {
-        if (lead.tied.length > 1) {
-          texture = tieTexture(lead.tied.map((p) => partyShade(p, rec.prediction[p])));
-          fillHex = "#ffffff";
-        } else if (lead.leader) {
-          fillHex = partyShade(lead.leader, rec.prediction[lead.leader]);
-        }
-      }
-      const fills: Record<ElectionYear, { color: THREE.Color; texture: THREE.CanvasTexture | null }> = {
-        "2028": { color: new THREE.Color(fillHex), texture },
-        "2014": { color: new THREE.Color(NO_DATA_COLOR), texture: null },
-        "2018": { color: new THREE.Color(NO_DATA_COLOR), texture: null },
-        "2023": { color: new THREE.Color(NO_DATA_COLOR), texture: null },
+      const fills: Record<ElectionYear, TopTwo<Party>> = {
+        "2028": blendFor(rec?.prediction ?? { BRS: 0, Congress: 0, BJP: 0, AIMIM: 0, Others: 0 }),
+        "2014": { first: null, second: null, firstShare: 0, secondShare: 0, p1: 0, p2: 0, marginPp: null },
+        "2018": { first: null, second: null, firstShare: 0, secondShare: 0, p1: 0, p2: 0, marginPp: null },
+        "2023": { first: null, second: null, firstShare: 0, secondShare: 0, p1: 0, p2: 0, marginPp: null },
       };
       for (const y of ["2014", "2018", "2023"] as const) {
         const h = historicalAc(y, f.properties.acNo);
-        if (h) fills[y] = { color: new THREE.Color(winnerShade(h.winnerParty, h.winnerShare)), texture: null };
+        if (h) fills[y] = blendFor(h.shares);
       }
       const initial = fills[live.current.year];
-      const cap = new THREE.MeshStandardMaterial({ color: new THREE.Color(initial.texture ? "#ffffff" : initial.color), roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide, transparent: true, opacity: 1 });
-      const side = new THREE.MeshStandardMaterial({ color: new THREE.Color(P.side), roughness: 1, metalness: 0.02, side: THREE.DoubleSide, transparent: true, opacity: 1 });
+      applyBlend(geom, initial);
+      const cap = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: MAP_STYLE.surface.roughness, metalness: MAP_STYLE.surface.metalness, side: THREE.DoubleSide, transparent: true, opacity: 1, vertexColors: true });
+      const side = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 1, metalness: MAP_STYLE.surface.metalness, side: THREE.DoubleSide, transparent: true, opacity: 1, vertexColors: true });
+      side.color.setScalar(MAP_STYLE.surface.sideDarken);
       const mesh = new THREE.Mesh(geom, [cap, side]);
       mesh.userData.acNo = f.properties.acNo;
       pickables.push(mesh);
@@ -244,44 +231,28 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
       const group3 = new THREE.Group();
       group3.add(mesh);
 
-      const pts: number[] = [];
       let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
+      const groupEdges = acEdgeByGroup.get(f.properties.group) ?? new Map<string, number[]>();
+      acEdgeByGroup.set(f.properties.group, groupEdges);
+      const acPts: number[] = [];
       for (const poly of rings) for (const ring of poly) {
         for (let i = 0; i < ring.length; i++) {
           const [px, pz] = project(ring[i][0], ring[i][1]);
           const [qx, qz] = project(ring[(i + 1) % ring.length][0], ring[(i + 1) % ring.length][1]);
           minx = Math.min(minx, px); maxx = Math.max(maxx, px);
           minz = Math.min(minz, pz); maxz = Math.max(maxz, pz);
-          pts.push(px, DEPTH + 0.06, pz, qx, DEPTH + 0.06, qz);
+          acPts.push(px, DEPTH + 0.06, pz, qx, DEPTH + 0.06, qz);
+          const ka = `${px.toFixed(3)},${pz.toFixed(3)}`, kb = `${qx.toFixed(3)},${qz.toFixed(3)}`;
+          const ek = ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+          if (!groupEdges.has(ek)) groupEdges.set(ek, [px, DEPTH + 0.06, pz, qx, DEPTH + 0.06, qz]);
         }
       }
-      const lg = new THREE.BufferGeometry();
-      lg.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-      const line = new THREE.LineBasicMaterial({ color: new THREE.Color(P.line), transparent: true, opacity: 0.55 });
-      group3.add(new THREE.LineSegments(lg, line));
+      acEdgeByNo.set(f.properties.acNo, acPts);
       scene.add(group3);
 
-      if (texture) {
-        /* ExtrudeGeometry UVs follow shape coordinates; normalise them once so
-           the tied-party bands span exactly this assembly's cap. */
-        const pos = geom.attributes.position;
-        const uw = Math.max(1e-6, maxx - minx), uh = Math.max(1e-6, maxz - minz);
-        const uv = new Float32Array(pos.count * 2);
-        for (let i = 0; i < pos.count; i++) {
-          uv[i * 2] = (pos.getX(i) - minx) / uw;
-          uv[i * 2 + 1] = (pos.getZ(i) - minz) / uh;
-        }
-        geom.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
-        if (live.current.year === "2028") {
-          cap.map = texture;
-          cap.color.set("#ffffff");
-          cap.needsUpdate = true;
-        }
-      }
-
       entries.set(f.properties.acNo, {
-        no: f.properties.acNo, district: f.properties.group, group3, mesh, cap, side, line,
-        fills,
+        no: f.properties.acNo, district: f.properties.group, group3, mesh, cap, side,
+        fills, gradientYear: live.current.year,
         heat: 0, hover: 0, isolate: 0, dim: 0, elev: 0,
         bounds: { minx, maxx, minz, maxz }, cx: (minx + maxx) / 2, cz: (minz + maxz) / 2,
       });
@@ -307,30 +278,60 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
       groupCentroid.set(g, { x: x / nos.length, z: z / nos.length });
       groupArea.set(g, area);
     }
+    const groupLabelPoint = new Map<string, { x: number; z: number }>();
+    for (const [g, nos] of byGroup) {
+      const anchor = groupCentroid.get(g) ?? { x: 0, z: 0 };
+      let best = anchor; let bestD = Infinity;
+      for (const no of nos) {
+        const e = entries.get(no);
+        if (!e) continue;
+        const d = Math.hypot(e.cx - anchor.x, e.cz - anchor.z);
+        if (d < bestD) { bestD = d; best = { x: e.cx, z: e.cz }; }
+      }
+      groupLabelPoint.set(g, best);
+    }
     /* on narrow screens only the largest districts keep a label, so the map stays legible */
     const topMobileGroups = new Set(
       [...groupArea.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([g]) => g),
     );
 
-    /* district outlines: the analytical grouping boundaries shown at state */
-    const districtLines = new Map<string, THREE.LineBasicMaterial>();
+    /* State and district boundaries are deduplicated from the authoritative district rings. */
+    const districtEdgeMap = new Map<string, { ax: number; az: number; bx: number; bz: number; count: number }>();
+    const districtOuterByGroup = new Map<string, number[]>();
     for (const f of districtGeo.features) {
+      const outerPts = districtOuterByGroup.get(f.properties.group) ?? [];
+      districtOuterByGroup.set(f.properties.group, outerPts);
       const polys = (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates) as number[][][][];
-      const pts: number[] = [];
       for (const poly of polys) for (const ring of poly) {
         for (let i = 0; i < ring.length; i++) {
           const [px, pz] = project(ring[i][0], ring[i][1]);
           const [qx, qz] = project(ring[(i + 1) % ring.length][0], ring[(i + 1) % ring.length][1]);
-          pts.push(px, DEPTH + 1.15, pz, qx, DEPTH + 1.15, qz);
+          const ka = `${px.toFixed(3)},${pz.toFixed(3)}`, kb = `${qx.toFixed(3)},${qz.toFixed(3)}`;
+          const ek = ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+          const prior = districtEdgeMap.get(ek);
+          if (prior) prior.count += 1; else districtEdgeMap.set(ek, { ax: px, az: pz, bx: qx, bz: qz, count: 1 });
+          outerPts.push(px, DEPTH + 0.06, pz, qx, DEPTH + 0.06, qz);
         }
       }
-      if (!pts.length) continue;
-      const g = new THREE.BufferGeometry();
-      g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-      const mat = new THREE.LineBasicMaterial({ color: new THREE.Color(P.line), transparent: true, opacity: 0.75 });
-      scene.add(new THREE.LineSegments(g, mat));
-      districtLines.set(f.properties.group, mat);
     }
+    const statePts: number[] = [], districtPts: number[] = [];
+    for (const e of districtEdgeMap.values()) {
+      const target = e.count === 1 ? statePts : districtPts;
+      target.push(e.ax, DEPTH + 1.15, e.az, e.bx, DEPTH + 1.15, e.bz);
+    }
+    const stateOutline = createScreenLine(statePts, P.line, MAP_STYLE.border.state, resolution, 0.82);
+    const districtBoundary = createScreenLine(districtPts, P.line, MAP_STYLE.border.district, resolution, 0.55);
+    const acBoundary = createScreenLine([], P.line, MAP_STYLE.border.assembly, resolution, 0.55);
+    const accent = createScreenLine([], P.sel, MAP_STYLE.border.selected, resolution, 1);
+    const districtAccent = createScreenLine([], P.sel, MAP_STYLE.border.selected, resolution, 1);
+    stateOutline.line.renderOrder = 18; districtBoundary.line.renderOrder = 19; acBoundary.line.renderOrder = 22; accent.line.renderOrder = 24; districtAccent.line.renderOrder = 25;
+    acBoundary.line.visible = false; accent.line.visible = false; districtAccent.line.visible = false;
+    scene.add(stateOutline.line, districtBoundary.line, acBoundary.line, accent.line, districtAccent.line);
+    let boundaryGroup: string | null = null;
+    let districtAccentGroup: string | null = null;
+    let accentKey = "";
+    let stateLineOpacity = 0.82;
+    let districtLineOpacity = 0.58;
 
     /* ---------------- deterministic illustrative device anchors ---------------- */
     const acAnchors = new Map<number, { x: number; z: number }[]>();
@@ -375,6 +376,18 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
       const cx = (minx + maxx) / 2, cz = (minz + maxz) / 2;
       chosen.sort((a, b) => Math.hypot(a.x - cx, a.z - cz) - Math.hypot(b.x - cx, b.z - cz));
       if (chosen.length) acAnchors.set(f.properties.acNo, chosen);
+    }
+
+    for (const [g, nos] of byGroup) {
+      const center = groupCentroid.get(g) ?? { x: 0, z: 0 };
+      let best = center, bestD = Infinity;
+      for (const no of nos) {
+        const anchor = acAnchors.get(no)?.[0];
+        if (!anchor) continue;
+        const d = Math.hypot(anchor.x - center.x, anchor.z - center.z);
+        if (d < bestD) { bestD = d; best = anchor; }
+      }
+      groupLabelPoint.set(g, best);
     }
 
     const buildMarkers = () => {
@@ -481,31 +494,19 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
       const x = clamp(clientX - hostRect.left + 14, 8, hostRect.width - 236);
       const y = clamp(clientY - hostRect.top + 14, 8, hostRect.height - 104);
       const activeYear = live.current.year;
-      if (activeYear === "2028") {
-        const lead = leaderOf(rec.prediction);
-        const isTie = lead.tied.length > 1;
-        return {
-          x, y,
-          title: `${rec.no}. ${rec.name}`,
-          sub: `${rec.district} · ${isTie ? "Tie" : lead.leader ? `Leading ${PARTY_LABEL[lead.leader]}` : "No prediction"}`,
-          value: isTie
-            ? lead.tied.map((p) => `${PARTY_LABEL[p]} ${fmtPct(rec.prediction[p])}`).join(" · ")
-            : lead.leader ? `${fmtPct(rec.prediction[lead.leader])} predicted share` : "No data",
-          colours: isTie
-            ? lead.tied.map((p) => PARTY_COLOR[p])
-            : [lead.leader ? PARTY_COLOR[lead.leader] : NO_DATA_COLOR],
-        };
-      }
-      const h = historicalAc(activeYear, rec.no);
-      if (!h) {
+      const h = activeYear === "2028" ? null : historicalAc(activeYear, rec.no);
+      if (activeYear !== "2028" && !h) {
         return { x, y, title: `${rec.no}. ${rec.name}`, sub: `${rec.district} · No result`, value: "No data", colours: [NO_DATA_COLOR] };
       }
+      const blend = topTwo(activeYear === "2028" ? rec.prediction : h!.shares, PARTIES);
       return {
         x, y,
         title: `${rec.no}. ${rec.name}`,
-        sub: `${rec.district} · Winner ${winnerLabel(h.winnerParty)}`,
-        value: `${fmtPct(h.winnerShare)} of votes`,
-        colours: [winnerColour(h.winnerParty)],
+        sub: `${rec.district} · ${activeYear === "2028" ? "2028 estimate" : `${activeYear} result`}`,
+        value: blend.first
+          ? `${PARTY_LABEL[blend.first]} ${fmtPct(blend.firstShare)}${blend.second ? ` · ${PARTY_LABEL[blend.second]} ${fmtPct(blend.secondShare)}` : ""} · lead ${blend.marginPp == null ? "—" : blend.marginPp.toFixed(1)} pp`
+          : "No data",
+        colours: blend.first ? [PARTY_COLOR[blend.first], ...(blend.second ? [PARTY_COLOR[blend.second]] : [])] : [NO_DATA_COLOR],
       };
     };
     const pointers = new Map<number, { x: number; y: number }>();
@@ -594,6 +595,7 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
       renderer.setSize(Math.max(1, r.width), Math.max(1, r.height), false);
       camera.aspect = Math.max(1, r.width) / Math.max(1, r.height);
       camera.updateProjectionMatrix();
+      for (const line of [stateOutline, districtBoundary, acBoundary, accent, districtAccent]) updateLineResolution(line, r.width, r.height);
     };
     const ro = new ResizeObserver(resize);
     ro.observe(host);
@@ -654,26 +656,65 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
         const vis = 1 - e.isolate;
         const dimOp = 1 - e.dim * 0.62;
         const fy = e.fills[live.current.year];
-        if (e.cap.map !== fy.texture) {
-          e.cap.map = fy.texture;
-          if (fy.texture) e.cap.color.set("#ffffff");
-          e.cap.needsUpdate = true;
+        if (e.gradientYear !== live.current.year) {
+          applyBlend(e.mesh.geometry, fy);
+          e.gradientYear = live.current.year;
         }
-        const base = fy.texture ? new THREE.Color("#ffffff") : fy.color.clone();
-        if (!inScope) base.lerp(new THREE.Color(P.none), 0.88);
-        const targetCol = base.lerp(new THREE.Color(P.sel), e.heat * 0.12);
-        e.cap.color.lerp(targetCol, aMat);
+        const emissive = fy.first ? new THREE.Color(PARTY_COLOR[fy.first]) : new THREE.Color(NO_DATA_COLOR);
+        e.cap.emissive.copy(emissive);
+        e.cap.emissiveIntensity = Math.max(e.heat * MAP_STYLE.surface.selectedEmissive, e.hover * MAP_STYLE.surface.hoverEmissive);
+        e.cap.color.set("#ffffff");
         e.cap.opacity = vis * dimOp;
-        e.side.color.lerp(new THREE.Color(P.side), aMat);
+        e.side.color.setScalar(MAP_STYLE.surface.sideDarken);
         e.side.opacity = vis * 0.9 * dimOp;
-        e.line.color.lerp(new THREE.Color(isSel ? P.sel : P.line), aHover);
-        e.line.opacity = (grp ? (isSel ? 1 : 0.55) : 0) * vis * (0.5 + 0.5 * dimOp);
         e.group3.visible = vis > 0.01;
         e.group3.position.y = e.elev + e.hover * 1.5;
       }
 
-      for (const [g, mat] of districtLines) {
-        mat.opacity = grp ? (g === grp ? 0.85 : 0.03) : 0.7;
+      /* Boundary hierarchy: state > district > assembly > selected/hover. */
+      const focused = !!grp;
+      const targetStateOpacity = focused ? 0 : 0.82;
+      const targetDistrictOpacity = focused ? 0 : 0.58;
+      stateLineOpacity += (targetStateOpacity - stateLineOpacity) * aMat;
+      districtLineOpacity += (targetDistrictOpacity - districtLineOpacity) * aMat;
+      stateOutline.material.opacity = stateLineOpacity;
+      districtBoundary.material.opacity = districtLineOpacity;
+      stateOutline.line.visible = stateLineOpacity > 0.01;
+      districtBoundary.line.visible = districtLineOpacity > 0.01;
+      const acVisible = focused && selAc == null && acEdgeByGroup.has(grp);
+      if (acVisible && boundaryGroup !== grp) {
+        const pts: number[] = [];
+        for (const edge of acEdgeByGroup.get(grp)!.values()) pts.push(...edge);
+        setScreenLinePoints(acBoundary, pts);
+        boundaryGroup = grp;
+      }
+      acBoundary.line.visible = !!acVisible;
+      if (acVisible) { acBoundary.line.position.y = 6; acBoundary.material.opacity = 0.55; }
+      const districtSelected = focused && selAc == null;
+      if (districtSelected && districtAccentGroup !== grp && districtOuterByGroup.has(grp)) {
+        setScreenLinePoints(districtAccent, districtOuterByGroup.get(grp)!);
+        districtAccentGroup = grp;
+      }
+      districtAccent.line.visible = districtSelected && !!districtAccentGroup;
+      if (districtAccent.line.visible) { districtAccent.line.position.y = 6; districtAccent.material.opacity = 1; }
+
+      const activeNo = selAc ?? hovered;
+      const nextAccent = activeNo == null ? "" : `${activeNo}:${selAc === activeNo ? "s" : "h"}`;
+      if (nextAccent !== accentKey) {
+        accentKey = nextAccent;
+        if (activeNo == null || !acEdgeByNo.has(activeNo)) accent.line.visible = false;
+        else {
+          setScreenLinePoints(accent, acEdgeByNo.get(activeNo)!);
+          const selected = selAc === activeNo;
+          accent.material.color.set(selected ? P.sel : P.hover);
+          accent.material.linewidth = selected ? MAP_STYLE.border.selected : MAP_STYLE.border.assembly + 0.15;
+          accent.material.opacity = selected ? 1 : 0.9;
+          accent.line.visible = true;
+        }
+      }
+      if (activeNo != null) {
+        const entry = entries.get(activeNo);
+        accent.line.position.y = entry ? entry.elev + entry.hover * 1.5 : 0;
       }
 
       /* labels: districts at state, assemblies when focused */
@@ -685,27 +726,42 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
       const els = labelRef.current?.querySelectorAll<HTMLElement>("[data-label]");
       if (els) {
         const placed: { x: number; y: number; w: number; h: number }[] = [];
-        els.forEach((el) => {
+        const mobile = hostRect.width < 640;
+        const ordered = [...els].sort((a, b) => {
+          const aNo = a.dataset.no ? Number(a.dataset.no) : null;
+          const bNo = b.dataset.no ? Number(b.dataset.no) : null;
+          const pa = aNo != null && aNo === selAc ? 100 : aNo != null && aNo === hovered ? 90 : a.dataset.group ? 20 : 40;
+          const pb = bNo != null && bNo === selAc ? 100 : bNo != null && bNo === hovered ? 90 : b.dataset.group ? 20 : 40;
+          return pb - pa;
+        });
+        ordered.forEach((el) => {
           const noRaw = el.dataset.no ? Number(el.dataset.no) : null;
           const gname = el.dataset.group || null;
           let px = 0, pz = 0, behind = false;
           if (noRaw != null) {
             const e = entries.get(noRaw);
             if (!e || (grp && e.district !== grp)) { el.style.display = "none"; return; }
-            const p = toScreen(e.cx, DEPTH + 0.3 + e.group3.position.y, e.cz);
+            const anchor = acAnchors.get(noRaw)?.[0] ?? { x: e.cx, z: e.cz };
+            const p = toScreen(anchor.x, DEPTH + 0.3 + e.group3.position.y, anchor.z);
             px = p.x; pz = p.y; behind = p.behind;
           } else if (gname) {
             if (grp) { el.style.display = "none"; return; }
             if (hostRect.width < 480 && !topMobileGroups.has(gname)) { el.style.display = "none"; return; }
-            const c = groupCentroid.get(gname);
+            const c = groupLabelPoint.get(gname);
             if (!c) { el.style.display = "none"; return; }
             const p = toScreen(c.x, DEPTH + 0.4, c.z);
             px = p.x; pz = p.y; behind = p.behind;
           } else { el.style.display = "none"; return; }
           if (behind || px < 6 || px > hostRect.width - 6 || pz < 6 || pz > hostRect.height - 6) { el.style.display = "none"; return; }
+          const selected = noRaw != null && noRaw === selAc;
+          const hoveredLabel = noRaw != null && noRaw === hovered;
+          const size = labelSize(selected ? "selectedAssembly" : noRaw != null ? "assembly" : "district", mobile);
+          el.style.fontSize = `${size.px}px`;
+          el.style.fontWeight = String(selected || hoveredLabel ? Math.max(size.weight, 600) : size.weight);
+          const fs = size.px;
           const text = el.textContent ?? "";
-          const w = Math.max(36, text.length * 5.4 + 4), hh = 16;
-          if (placed.some((b) => Math.abs(b.x - px) < (b.w + w) / 2 && Math.abs(b.y - pz) < (b.h + hh) / 2)) { el.style.display = "none"; return; }
+          const w = Math.max(36, text.length * fs * 0.56 + 8), hh = fs + 5;
+          if (!selected && !hoveredLabel && placed.some((b) => Math.abs(b.x - px) < (b.w + w) / 2 && Math.abs(b.y - pz) < (b.h + hh) / 2)) { el.style.display = "none"; return; }
           placed.push({ x: px, y: pz, w, h: hh });
           el.style.display = "";
           el.style.transform = `translate(-50%,-50%) translate(${px.toFixed(1)}px, ${pz.toFixed(1)}px)`;
@@ -761,10 +817,8 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
       canvas.removeEventListener("pointerleave", onLeave);
       canvas.removeEventListener("wheel", onWheel);
       for (const e of entries.values()) {
-        e.mesh.geometry.dispose(); e.cap.dispose(); e.side.dispose(); e.line.dispose();
-        for (const f of Object.values(e.fills)) f.texture?.dispose();
+        e.mesh.geometry.dispose(); e.cap.dispose(); e.side.dispose();
       }
-      for (const mat of districtLines.values()) mat.dispose();
       renderer.dispose();
       setTip(null);
     };
@@ -787,13 +841,14 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
       {!geo && <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">Loading Telangana geometry…</div>}
 
       <div ref={labelRef} className="pointer-events-none absolute inset-0">
-        {labels.map((l) => (
-          <span key={l.key} data-label="" data-no={l.no ?? ""} data-group={l.group ?? ""}
-            className="absolute left-0 top-0 whitespace-nowrap rounded px-1 text-[9.5px] font-semibold leading-none"
-            style={{ color: PAL[theme].label, background: PAL[theme].halo, display: "none" }}>
+        {labels.map((l) => {
+          const size = labelSize(l.no != null ? "assembly" : "district", typeof window !== "undefined" && window.innerWidth < 640);
+          return <span key={l.key} data-label="" data-no={l.no ?? ""} data-group={l.group ?? ""}
+            className="absolute left-0 top-0 whitespace-nowrap rounded px-1 leading-none"
+            style={{ color: PAL[theme].label, background: MAP_STYLE.label.backing[theme], fontSize: `${size.px}px`, fontWeight: size.weight, textShadow: `0 0 2px ${PAL[theme].halo}`, display: "none" }}>
             {l.text}
-          </span>
-        ))}
+          </span>;
+        })}
       </div>
 
       <div ref={markerRef} className="pointer-events-none absolute inset-0 z-10" aria-label="Illustrative device-brand placement">

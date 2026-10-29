@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { geoIdentity } from "d3-geo";
+import { MAP_STYLE, addMapLights, createScreenLine, setScreenLinePoints, updateLineResolution, gradientColor, labelSize } from "@/lib/map-style";
 import AC_GEO from "@/lib/data/tamil-nadu/tn-acs.json";
 import DISTRICT_GEO from "@/lib/data/tamil-nadu/tn-districts.json";
 import {
@@ -124,13 +125,7 @@ function blendForDistrict(d: TnDistrict | undefined, year: TnYearOrCurrent): Ble
 function blendColor(blend: BlendInfo, t: number): THREE.Color {
   if (!blend.first) return new THREE.Color(TN_NO_DATA);
   if (!blend.second) return new THREE.Color(blend.color1);
-  // Keep broad recognizable zones and a soft transition around the lead split.
-  const center = Math.max(0.12, Math.min(0.88, blend.p1));
-  const edge = 0.13;
-  const lo = Math.max(0, center - edge), hi = Math.min(1, center + edge);
-  const u = Math.max(0, Math.min(1, (t - lo) / Math.max(0.0001, hi - lo)));
-  const f = u * u * (3 - 2 * u);
-  return new THREE.Color(blend.color1).lerp(new THREE.Color(blend.color2), f);
+  return gradientColor(blend.color1, blend.color2, blend.p1, t);
 }
 
 export default function TamilNaduMap({ acs, districts, district, acNo, year, theme, onSelectDistrict, onSelectAc, onReset }: Props) {
@@ -156,19 +151,15 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const P = PAL[theme];
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setClearColor(0x000000, 0);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(34, 1, 1, 9000);
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x808898, 1.05));
-    const key = new THREE.DirectionalLight(0xffffff, 1.15);
-    key.position.set(-260, 620, 420); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
-    scene.add(key);
-    const fill = new THREE.DirectionalLight(0xaebacc, 0.45);
-    fill.position.set(420, 240, -520); scene.add(fill);
+    addMapLights(scene);
     const mapGroup = new THREE.Group(); scene.add(mapGroup);
+    const resolution = new THREE.Vector2(1, 1);
     const projection = geoIdentity().reflectY(true).fitExtent([[70, 70], [BOX - 70, BOX - 70]], D_FC as never);
     const project = (p: [number, number]) => {
       const q = projection(p);
@@ -181,7 +172,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       line?: THREE.LineBasicMaterial; bounds: { minx: number; maxx: number; minz: number; maxz: number };
       label: HTMLSpanElement; name: string; kind: "district" | "ac"; key: string; no?: number;
       opacity: number; lineOpacity: number; y: number; targetOpacity: number; targetLine: number; targetY: number; targetVisible: boolean;
-      anim?: Anim;
+      emissiveHex?: string; anim?: Anim;
     };
     const districtsUnits = new Map<string, Unit>();
     const acUnits = new Map<number, Unit>();
@@ -196,8 +187,8 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       el.textContent = text;
       el.style.position = "absolute"; el.style.pointerEvents = "none"; el.style.transform = "translate(-50%,-50%)";
       el.style.whiteSpace = "nowrap"; el.style.fontFamily = "inherit"; el.style.fontWeight = kind === "district" ? "600" : "500";
-      el.style.fontSize = kind === "district" ? "10px" : "8px"; el.style.zIndex = kind === "district" ? "4" : "3";
-      el.style.color = P.label; el.style.textShadow = `0 0 3px ${P.halo}, 0 0 2px ${P.halo}`;
+      el.style.fontSize = `${labelSize(kind === "district" ? "district" : "assembly", false).px}px`; el.style.fontWeight = String(labelSize(kind === "district" ? "district" : "assembly", false).weight); el.style.zIndex = kind === "district" ? "4" : "3";
+      el.style.color = P.label; el.style.textShadow = `0 0 2px ${P.halo}`; el.style.userSelect = "none";
       el.style.transition = reduced ? "none" : "opacity .22s ease";
       labelRoot.appendChild(el);
       return el;
@@ -212,8 +203,9 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       const defaultColors = new Float32Array(vertexCount * 3);
       for (let i = 0; i < defaultColors.length; i += 3) { defaultColors[i] = 1; defaultColors[i + 1] = 1; defaultColors[i + 2] = 1; }
       geo.setAttribute("color", new THREE.BufferAttribute(defaultColors, 3));
-      const cap = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide, transparent: true, vertexColors: true });
-      const side = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 1, metalness: 0.02, side: THREE.DoubleSide, transparent: true, vertexColors: true });
+      const cap = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: MAP_STYLE.surface.roughness, metalness: MAP_STYLE.surface.metalness, side: THREE.DoubleSide, transparent: true, vertexColors: true });
+      const side = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 1, metalness: MAP_STYLE.surface.metalness, side: THREE.DoubleSide, transparent: true, vertexColors: true });
+      side.color.setScalar(MAP_STYLE.surface.sideDarken);
       const mesh = new THREE.Mesh(geo, [cap, side]);
       mesh.userData.kind = kind;
       if (kind === "district") mesh.userData.district = canonicalDistrict(f.properties.district);
@@ -243,9 +235,12 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       labelEls.push(unit);
       return unit;
     };
-    const districtOutlineSeen = new Set<string>();
-    const districtOutlinePoints: number[] = [];
+    const districtEdgeMap = new Map<string, { ax: number; az: number; bx: number; bz: number; count: number }>();
+    const districtOuterByKey = new Map<string, number[]>();
     for (const f of D_FC.features) {
+      const districtKey = canonicalDistrict(f.properties.district);
+      const outerPts = districtOuterByKey.get(districtKey) ?? [];
+      districtOuterByKey.set(districtKey, outerPts);
       const polys = (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates) as number[][][][];
       for (const poly of polys) for (const ring of poly) {
         for (let i = 0; i < ring.length; i++) {
@@ -253,9 +248,17 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
           const ax = p[0] - CX, az = p[1] - CZ, bx = q[0] - CX, bz = q[1] - CZ;
           const ka = `${ax.toFixed(3)},${az.toFixed(3)}`, kb = `${bx.toFixed(3)},${bz.toFixed(3)}`;
           const ek = ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
-          if (!districtOutlineSeen.has(ek)) { districtOutlineSeen.add(ek); districtOutlinePoints.push(ax, DEPTH + 0.12, az, bx, DEPTH + 0.12, bz); }
+          const e = districtEdgeMap.get(ek);
+          if (e) e.count += 1; else districtEdgeMap.set(ek, { ax, az, bx, bz, count: 1 });
+          outerPts.push(ax, BOUNDARY_Y, az, bx, BOUNDARY_Y, bz);
         }
       }
+    }
+    const stateOutlinePoints: number[] = [];
+    const districtBoundaryPoints: number[] = [];
+    for (const e of districtEdgeMap.values()) {
+      const target = e.count === 1 ? stateOutlinePoints : districtBoundaryPoints;
+      target.push(e.ax, DEPTH + 0.12, e.az, e.bx, DEPTH + 0.12, e.bz);
     }
     for (const f of D_FC.features) {
       const u = addFeature(f, "district");
@@ -291,27 +294,23 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       if (!districtEdges.has(districtKey)) districtEdges.set(districtKey, dPts);
     }
 
-    const boundaryGeo = new THREE.BufferGeometry();
-    const boundaryMat = new THREE.LineBasicMaterial({ color: P.line, transparent: true, opacity: 0, depthTest: false, depthWrite: false });
-    const boundaryLine = new THREE.LineSegments(boundaryGeo, boundaryMat); boundaryLine.renderOrder = 12; boundaryLine.frustumCulled = false; boundaryLine.visible = false; mapGroup.add(boundaryLine);
-    const accentGeo = new THREE.BufferGeometry();
-    const accentMat = new THREE.LineBasicMaterial({ color: P.sel, transparent: true, opacity: 1, depthTest: false, depthWrite: false });
-    const accentLine = new THREE.LineSegments(accentGeo, accentMat); accentLine.renderOrder = 14; accentLine.frustumCulled = false; accentLine.visible = false; mapGroup.add(accentLine);
-    const districtOutlineGeo = new THREE.BufferGeometry();
-    districtOutlineGeo.setAttribute("position", new THREE.Float32BufferAttribute(districtOutlinePoints, 3));
-    const districtOutlineMat = new THREE.LineBasicMaterial({ color: P.line, transparent: true, opacity: 0.82, depthTest: false, depthWrite: false });
-    const districtOutline = new THREE.LineSegments(districtOutlineGeo, districtOutlineMat); districtOutline.renderOrder = 7; districtOutline.frustumCulled = false; mapGroup.add(districtOutline);
-    const setPositions = (geo: THREE.BufferGeometry, pts: number[]) => {
-      geo.setAttribute("position", new THREE.Float32BufferAttribute(pts.length ? pts : [0, 0, 0, 0, 0, 0], 3));
-      geo.computeBoundingSphere();
-    };
+    const boundary = createScreenLine([], P.line, MAP_STYLE.border.assembly, resolution, 0);
+    const accent = createScreenLine([], P.sel, MAP_STYLE.border.selected, resolution, 1);
+    const stateOutline = createScreenLine(stateOutlinePoints, P.line, MAP_STYLE.border.state, resolution, 0.82);
+    const districtBoundary = createScreenLine(districtBoundaryPoints, P.line, MAP_STYLE.border.district, resolution, 0.58);
+    const districtAccent = createScreenLine([], P.sel, MAP_STYLE.border.selected, resolution, 1);
+    boundary.line.renderOrder = 22; accent.line.renderOrder = 24; stateOutline.line.renderOrder = 18; districtBoundary.line.renderOrder = 19; districtAccent.line.renderOrder = 25;
+    boundary.line.visible = false; accent.line.visible = false; districtAccent.line.visible = false;
+    mapGroup.add(boundary.line, accent.line, stateOutline.line, districtBoundary.line, districtAccent.line);
+    const setPositions = (line: typeof boundary, pts: number[]) => setScreenLinePoints(line, pts);
     const showAccent = (no: number | null, selected = false) => {
-      if (no == null || !acEdges.has(no)) { accentLine.visible = false; return; }
-      setPositions(accentGeo, acEdges.get(no)!);
-      accentMat.color.set(selected ? P.sel : P.hover);
-      accentMat.opacity = selected ? 1 : 0.9;
-      accentLine.position.y = (selected ? SELECTED_LIFT : AC_LIFT) - 2;
-      accentLine.visible = true;
+      if (no == null || !acEdges.has(no)) { accent.line.visible = false; return; }
+      setPositions(accent, acEdges.get(no)!);
+      accent.material.color.set(selected ? P.sel : P.hover);
+      accent.material.linewidth = selected ? MAP_STYLE.border.selected : MAP_STYLE.border.assembly + 0.15;
+      accent.material.opacity = selected ? 1 : 0.9;
+      accent.line.position.y = (selected ? SELECTED_LIFT : AC_LIFT) - 2;
+      accent.line.visible = true;
     };
 
     let cam = { tx: 0, tz: 0, ty: 0, dist: 2050, theta: 0, phi: 0.58 };
@@ -365,16 +364,18 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         boundaryOpacity = lerp(boundaryFrom, boundaryTarget, easeInOut(t));
         if (t >= 1) boundaryStart = 0;
       }
-      boundaryMat.opacity = boundaryOpacity;
-      boundaryLine.visible = boundaryOpacity > 0.01;
-      boundaryLine.position.y = boundaryOpacity > 0.01 ? AC_LIFT - 2 : 0;
+      boundary.material.opacity = boundaryOpacity;
+      boundary.line.visible = boundaryOpacity > 0.01;
+      boundary.line.position.y = boundaryOpacity > 0.01 ? AC_LIFT - 2 : 0;
       if (districtStart) {
         const t = reduced ? 1 : Math.max(0, Math.min(1, (now - districtStart) / ANIM_MS));
         districtOpacity = lerp(districtFrom, districtTarget, easeInOut(t));
         if (t >= 1) districtStart = 0;
       }
-      districtOutlineMat.opacity = districtOpacity;
-      districtOutline.visible = districtOpacity > 0.01;
+      stateOutline.material.opacity = districtOpacity;
+      districtBoundary.material.opacity = districtOpacity * 0.72;
+      stateOutline.line.visible = districtOpacity > 0.01;
+      districtBoundary.line.visible = districtOpacity > 0.01;
     };
 
     const gradientAxis = new THREE.Vector2(0.86, 0.5).normalize();
@@ -398,6 +399,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
       u.cap.color.set("#ffffff"); u.side.color.set("#ffffff");
       u.cap.vertexColors = true; u.side.vertexColors = true;
+      u.emissiveHex = blend.first ? blend.color1 : "#000000";
       u.cap.needsUpdate = true; u.side.needsUpdate = true;
     };
     const tipValue = (b: BlendInfo) => {
@@ -405,6 +407,14 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       const first = `${TN_LABEL[b.first]} ${tnPct(b.firstShare)}`;
       const second = b.second ? ` · ${TN_LABEL[b.second]} ${tnPct(b.secondShare)}` : "";
       return `${first}${second} · lead ${b.marginPp == null ? "—" : b.marginPp.toFixed(1)} pp`;
+    };
+    const setAcEmissive = (no: number | null, hover: boolean) => {
+      if (no == null) return;
+      const u = acUnits.get(no);
+      if (!u) return;
+      const selected = live.current.acNo === no;
+      u.cap.emissive.set(u.emissiveHex ?? "#000000");
+      u.cap.emissiveIntensity = selected ? MAP_STYLE.surface.selectedEmissive : hover ? MAP_STYLE.surface.hoverEmissive : 0;
     };
 
     apiRef.current = {
@@ -422,7 +432,8 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
           applyGradient(u, blend);
           startUnit(u, activeD ? 0 : 1, activeD ? 0 : 0.9, 0, activeD ? selected : true);
           u.label.style.opacity = activeD ? (selected && !activeAC ? "1" : "0") : (mobileState && !mobileLabels.has(name) ? "0" : "1");
-          u.label.style.fontSize = selected ? "12px" : "10px";
+          const size = labelSize(selected ? "district" : "district", mobileState);
+          u.label.style.fontSize = `${size.px}px`; u.label.style.fontWeight = String(size.weight);
         }
         for (const [no, u] of acUnits) {
           const blend = blendForAc(acRef.current.get(no), y);
@@ -431,15 +442,22 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
           const visible = !!activeD && (activeAC ? acSelected : inSelectedDistrict);
           applyGradient(u, blend);
           u.cap.emissive.set(acSelected && blend.first ? blend.color1 : "#000000");
-          u.cap.emissiveIntensity = acSelected ? 0.32 : 0;
+          u.cap.emissiveIntensity = acSelected ? MAP_STYLE.surface.selectedEmissive : 0;
           startUnit(u, visible ? 1 : 0, 0, activeD ? (acSelected ? SELECTED_LIFT : AC_LIFT) : 0, visible);
           u.label.style.opacity = visible ? "1" : "0";
-          u.label.style.fontSize = acSelected ? "10px" : "8px";
+          const acSize = labelSize(acSelected ? "selectedAssembly" : "assembly", mobileState);
+          u.label.style.fontSize = `${acSize.px}px`; u.label.style.fontWeight = String(acSize.weight);
         }
-        if (activeD && !activeAC && districtEdges.has(activeD.name)) setPositions(boundaryGeo, districtEdges.get(activeD.name)!);
-        boundaryLine.visible = !!activeD && !activeAC;
+        if (activeD && !activeAC && districtEdges.has(activeD.name)) setPositions(boundary, districtEdges.get(activeD.name)!);
+        boundary.line.visible = !!activeD && !activeAC;
         startBoundary(activeD && !activeAC ? 0.62 : 0);
         startDistrictOutline(activeD ? 0 : 0.82);
+        const districtOutlinePointsSelected = activeD && !activeAC ? districtOuterByKey.get(activeD.name) ?? [] : [];
+        if (districtOutlinePointsSelected.length) {
+          setScreenLinePoints(districtAccent, districtOutlinePointsSelected);
+          districtAccent.line.visible = true;
+          districtAccent.line.position.y = AC_LIFT - 2;
+        } else districtAccent.line.visible = false;
         // Camera framing: keep side panels clear; focus the selected scope.
         let bounds: { minx: number; maxx: number; minz: number; maxz: number } | null = null;
         if (activeAC) bounds = activeAC.bounds;
@@ -487,6 +505,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
     const resize = () => {
       const r = host.getBoundingClientRect(); renderer.setSize(Math.max(1, r.width), Math.max(1, r.height), false);
       camera.aspect = Math.max(0.2, r.width / Math.max(1, r.height)); camera.updateProjectionMatrix();
+      for (const line of [boundary, accent, stateOutline, districtBoundary, districtAccent]) updateLineResolution(line, r.width, r.height);
     };
     resize();
     const ro = new ResizeObserver(resize); ro.observe(host);
@@ -497,8 +516,8 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       const rect = host.getBoundingClientRect();
       const boxes: { l: number; r: number; t: number; b: number }[] = [];
       const ordered = [...labelEls].sort((a, b) => {
-        const pa = (a.kind === "ac" && a.no === live.current.acNo ? 100 : 0) + (a.kind === "ac" && a.no === hoveredNo ? 90 : 0) + (a.kind === "ac" ? 50 : a.name === live.current.district ? 40 : 10);
-        const pb = (b.kind === "ac" && b.no === live.current.acNo ? 100 : 0) + (b.kind === "ac" && b.no === hoveredNo ? 90 : 0) + (b.kind === "ac" ? 50 : b.name === live.current.district ? 40 : 10);
+        const pa = (a.kind === "ac" && a.no === live.current.acNo ? 100 : 0) + (a.kind === "ac" && a.no === hoveredNo ? 90 : 0) + (a.kind === "ac" ? 50 : a.name === live.current.district ? 95 : 10);
+        const pb = (b.kind === "ac" && b.no === live.current.acNo ? 100 : 0) + (b.kind === "ac" && b.no === hoveredNo ? 90 : 0) + (b.kind === "ac" ? 50 : b.name === live.current.district ? 95 : 10);
         return pb - pa;
       });
       for (const u of ordered) {
@@ -551,13 +570,15 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       }
       const hit = hitAt(e.clientX, e.clientY);
       if (!hit) {
-        if (hoveredKey) { hoveredKey = null; hoveredNo = null; restoreSelectedAccent(); }
+        if (hoveredKey) { if (hoveredNo != null) setAcEmissive(hoveredNo, false); hoveredKey = null; hoveredNo = null; restoreSelectedAccent(); }
         canvas.style.cursor = "grab"; setTip(null); return;
       }
       const data = hit.object.userData; const kind = data.kind as "district" | "ac";
       const key = kind === "district" ? "d:" + data.district : "a:" + data.no;
       if (key !== hoveredKey) {
+        if (hoveredNo != null) setAcEmissive(hoveredNo, false);
         hoveredKey = key; hoveredNo = kind === "ac" ? data.no as number : null;
+        if (hoveredNo != null) setAcEmissive(hoveredNo, true);
         canvas.style.cursor = "pointer";
         if (kind === "district") {
           showAccent(live.current.acNo, true);
@@ -591,7 +612,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       const next = Math.max(35, Math.min(3300, camTarget.dist * (1 + e.deltaY * 0.0012)));
       startCamera({ ...camTarget, dist: next });
     };
-    const onLeave = () => { hoveredKey = null; hoveredNo = null; setTip(null); restoreSelectedAccent(); drag = null; pointers.clear(); canvas.style.cursor = "grab"; };
+    const onLeave = () => { if (hoveredNo != null) setAcEmissive(hoveredNo, false); hoveredKey = null; hoveredNo = null; setTip(null); restoreSelectedAccent(); drag = null; pointers.clear(); canvas.style.cursor = "grab"; };
     canvas.addEventListener("pointermove", onPointerMove); canvas.addEventListener("pointerdown", onPointerDown);
     canvas.addEventListener("pointerup", onPointerUp); canvas.addEventListener("pointercancel", onPointerCancel);
     canvas.addEventListener("pointerleave", onLeave); canvas.addEventListener("wheel", onWheel, { passive: false });
