@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 const LINKS = [
   { label: "Home", href: "/#top" },
   { label: "Services", href: "/services" },
+  { label: "Research", href: "/services/research-content" },
   { label: "Case Studies", href: "/case-studies" },
   { label: "About Us", href: "/about" },
   { label: "Contact", href: "/#contact" },
@@ -19,7 +20,7 @@ const LINKS = [
 
 export function Logo({ className }: { className?: string }) {
   return (
-    <Link href="/#top" className={cn("flex items-center gap-2.5 font-display text-[17px] font-semibold tracking-tight text-foreground", className)}>
+    <Link href="/#top" className={cn("flex shrink-0 items-center gap-2.5 whitespace-nowrap font-display text-[17px] font-semibold tracking-tight text-foreground", className)}>
       <span className="grid gap-[3px]" aria-hidden>
         <b className="block h-[3px] w-5 -skew-x-[20deg] rounded-full bg-saffron" />
         <b className="block h-[3px] w-4 -skew-x-[20deg] rounded-full bg-foreground" />
@@ -56,12 +57,13 @@ export default function Navbar() {
         <span className="tricolor-line pointer-events-none absolute inset-x-10 -bottom-px h-px opacity-60" aria-hidden />
         <Logo />
 
-        <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-0.5 xl:flex" aria-label="Primary">
           {LINKS.map((l) => (
             <a
               key={l.label}
               href={l.href}
-              className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
+              aria-label={l.label === "Research" ? "Research & Content Services" : undefined}
+              className="rounded-full px-2.5 py-2 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground xl:px-4 xl:text-sm"
             >
               {l.label}
             </a>
@@ -73,15 +75,15 @@ export default function Navbar() {
             text="Book a Consultation"
             duration={2}
             onClick={() => router.push("/#contact")}
-            className="hidden border-border px-5 py-2 sm:block"
+            className="hidden border-border px-4 py-2 text-[13px] xl:block xl:px-5"
           />
           <AdminLink
             icon
-            className="hidden rounded-full border border-border px-3.5 py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 sm:inline-flex"
+            className="hidden rounded-full border border-border px-3 py-2 text-[12px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 xl:inline-flex xl:px-3.5 xl:text-[13px]"
           />
           <ThemeToggle className="size-10 shrink-0" />
           <button
-            className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-elevated hover:text-foreground md:hidden"
+            className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-elevated hover:text-foreground xl:hidden"
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Close menu" : "Open menu"}
           >
@@ -90,11 +92,12 @@ export default function Navbar() {
         </div>
 
         {open && (
-          <div className="glass absolute inset-x-0 top-[calc(100%+10px)] rounded-3xl p-3 md:hidden">
+          <div className="glass absolute inset-x-0 top-[calc(100%+10px)] rounded-3xl p-3 xl:hidden">
             {LINKS.map((l) => (
               <a
                 key={l.label}
                 href={l.href}
+                aria-label={l.label === "Research" ? "Research & Content Services" : undefined}
                 onClick={() => setOpen(false)}
                 className="block rounded-2xl px-4 py-3 text-[15px] font-medium text-foreground/85 hover:bg-elevated"
               >

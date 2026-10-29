@@ -54,6 +54,8 @@ export default function CaseStudiesIndex() {
           <footer className="mt-16 flex items-center justify-center gap-2 border-t border-border pt-6 text-[13px] text-muted-foreground">
             <Link href="/services" className="font-medium text-foreground/80 hover:text-saffron-2">Services</Link>
             <span className="text-border">·</span>
+            <Link href="/services/research-content" className="font-medium text-foreground/80 hover:text-saffron-2">Research &amp; Content</Link>
+            <span className="text-border">·</span>
             <span>© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</span>
           </footer>
         </div>

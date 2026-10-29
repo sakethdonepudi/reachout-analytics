@@ -174,7 +174,7 @@ export default function ContactSection() {
         </div>
 
         <footer className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-4 text-sm text-white/40 sm:flex-row">
-          <div className="flex items-center gap-5"><Logo /><Link href="/services" className="hover:text-white">Services</Link></div>
+          <div className="flex flex-wrap items-center gap-5"><Logo /><Link href="/services" className="hover:text-white">Services</Link><Link href="/services/research-content" className="hover:text-white">Research &amp; Content</Link></div>
           <span>© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</span>
         </footer>
       </div>

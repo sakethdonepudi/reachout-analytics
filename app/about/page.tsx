@@ -136,6 +136,8 @@ export default async function AboutPage() {
         <footer className="border-t border-border py-8 text-center text-[13px] text-muted-foreground">
           <Link href="/services" className="font-medium text-foreground/80 hover:text-saffron-2">Services</Link>
           <span className="mx-2 text-border">·</span>
+          <Link href="/services/research-content" className="font-medium text-foreground/80 hover:text-saffron-2">Research &amp; Content</Link>
+          <span className="mx-2 text-border">·</span>
           © {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.
         </footer>
       </main>
