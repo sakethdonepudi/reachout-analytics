@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Mail, Phone, MapPin, ArrowUpRight, CheckCircle2 } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
 import Globe from "@/components/site/globe";
@@ -173,7 +174,7 @@ export default function ContactSection() {
         </div>
 
         <footer className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-4 text-sm text-white/40 sm:flex-row">
-          <Logo />
+          <div className="flex items-center gap-5"><Logo /><Link href="/services" className="hover:text-white">Services</Link></div>
           <span>© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</span>
         </footer>
       </div>

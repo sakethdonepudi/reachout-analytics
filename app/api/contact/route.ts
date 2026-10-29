@@ -9,6 +9,7 @@ const LeadSchema = z.object({
   organisation: z.string().trim().max(160).optional().default(""),
   email: z.string().trim().email().max(200),
   phone: z.string().trim().max(40).optional().default(""),
+  service: z.string().trim().max(160).optional().default(""),
   message: z.string().trim().max(4000).optional().default(""),
   // honeypot: real users never see or fill this field
   website: z.string().optional().default(""),
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
     organisation: lead.organisation,
     email: lead.email,
     phone: lead.phone,
+    service: lead.service,
     message: lead.message,
     ip,
     userAgent: req.headers.get("user-agent")?.slice(0, 300) || "",

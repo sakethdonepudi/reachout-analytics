@@ -128,10 +128,9 @@ export const CAPABILITIES: Record<string, string> = {
 };
 
 export const CONTACT = {
-  // TODO: replace with the real contact details
-  email: "hello@your-domain.com",
-  phone: "+91 00000 00000",
-  address: "Unit 402, 4th Floor, Westend Mall, Road No. 36, Jubilee Hills, Hyderabad 500081",
+  email: "hr@reachoutanalytics.com",
+  phone: "+91 93901 07086",
+  address: "Pillar no. 1677, Unit No. 402, 4th Floor, Westend Mall, Rd Number 36, Jubilee Hills, Hyderabad, Telangana 500081",
   linkedin: "https://www.linkedin.com/company/reachout-analytics-private-limited/about/",
   instagram: "https://www.instagram.com/reachout_analytics_pvt_ltd/",
 };
