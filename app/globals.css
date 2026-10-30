@@ -199,6 +199,121 @@ html.theme-transition *::after {
 .reveal.reveal-hidden { opacity: 0; transform: translateY(26px); }
 .reveal.is-visible { opacity: 1; transform: none; }
 
+/* ---------- services page motion ---------- */
+.service-card { position: relative; isolation: isolate; }
+.service-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--saffron) 24%, var(--green-2) 76%, transparent);
+  opacity: 0;
+  transition: opacity .3s ease;
+  pointer-events: none;
+}
+.service-card:hover::before,
+.service-card:focus-within::before { opacity: .9; }
+.service-card-icon { transform-origin: center; }
+.service-card:hover .service-card-icon,
+.service-card:focus-within .service-card-icon { animation: service-icon-pop .55s cubic-bezier(.2,.7,.2,1); }
+
+@keyframes service-icon-pop {
+  0% { transform: none; }
+  36% { transform: translateY(-2px) rotate(-5deg) scale(1.08); }
+  72% { transform: translateY(0) rotate(2deg) scale(1.02); }
+  100% { transform: none; }
+}
+
+.hero-draw { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.hero-area { opacity: .9; }
+.hero-bar { transform-box: fill-box; transform-origin: 50% 100%; transform: scaleY(1); }
+.hero-ring { transform-box: fill-box; transform-origin: center; opacity: 0; }
+
+.service-hero-visual.is-live .hero-draw { animation: service-draw 2.3s cubic-bezier(.2,.7,.2,1) .2s both; }
+.service-hero-visual.is-live .hero-area { animation: service-fade .9s ease .9s both; }
+.service-hero-visual.is-live .hero-bar { animation: service-bar-in .8s cubic-bezier(.2,.7,.2,1) both; }
+.service-hero-visual.is-live .hero-ring { animation: service-ring 5.4s ease-out infinite; }
+
+@keyframes service-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes service-fade { from { opacity: 0; } to { opacity: .9; } }
+@keyframes service-bar-in { from { transform: scaleY(.15); opacity: .1; } to { transform: scaleY(1); opacity: .17; } }
+@keyframes service-ring {
+  0% { opacity: .45; transform: scale(.7); }
+  72%, 100% { opacity: 0; transform: scale(2.1); }
+}
+
+.area-motif { min-width: 58px; }
+.motif-draw { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.motif-bar { transform-box: fill-box; transform-origin: 50% 100%; transform: scaleY(1); }
+.motif-node { transform-box: fill-box; transform-origin: center; }
+.area-motif.is-live .motif-draw { animation: service-draw 1.3s cubic-bezier(.2,.7,.2,1) both; }
+.area-motif.is-live .motif-bar { animation: motif-bar-in .7s cubic-bezier(.2,.7,.2,1) both; }
+.area-motif.is-live .motif-node { animation: motif-node 4.5s ease-in-out infinite; }
+
+@keyframes motif-bar-in { from { transform: scaleY(.2); opacity: .1; } to { transform: scaleY(1); } }
+@keyframes motif-node { 0%, 100% { opacity: .65; transform: scale(1); } 50% { opacity: 1; transform: scale(1.22); } }
+
+.process-rail {
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(245,138,36,.2), rgba(245,138,36,.48) 42%, rgba(47,191,74,.25));
+}
+.process-progress {
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(245,138,36,.25), var(--saffron) 45%, var(--green-2) 82%, transparent);
+  transform-origin: left;
+  transform: scaleX(1);
+}
+.process-connector.is-live .process-progress { animation: process-line-in 1.55s cubic-bezier(.2,.7,.2,1) .15s both; }
+.process-node {
+  position: absolute;
+  top: -2px;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--saffron);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--saffron) 10%, transparent);
+}
+.process-connector.is-live .process-node { animation: process-node-in .45s ease both; }
+
+@keyframes process-line-in { from { transform: scaleX(0); opacity: .3; } to { transform: scaleX(1); opacity: 1; } }
+@keyframes process-node-in { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.section-bridge .bridge-line {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(245,138,36,.38), rgba(47,191,74,.34), transparent);
+  transform-origin: left;
+  transform: scaleX(1);
+}
+.section-bridge.is-live .bridge-line { animation: bridge-line-in 1.2s cubic-bezier(.2,.7,.2,1) both; }
+.bridge-dot {
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin-top: -2.5px;
+  border-radius: 999px;
+}
+.bridge-dot-start { left: 8%; background: var(--saffron); box-shadow: 0 0 0 4px color-mix(in srgb, var(--saffron) 12%, transparent); }
+.bridge-dot-end { right: 8%; background: var(--green-2); box-shadow: 0 0 0 4px color-mix(in srgb, var(--green-2) 12%, transparent); }
+
+@keyframes bridge-line-in { from { transform: scaleX(0); opacity: .2; } to { transform: scaleX(1); opacity: 1; } }
+
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee, .animate-float, .animate-pulse-dot, .animate-sweep, .animate-wheel, .animate-drift, .animate-rise, .animate-bob, .animate-spin-slow, .process-scan { animation: none; }
   .hero-enter, .hero-kb-a, .hero-kb-b { animation: none; will-change: auto; }
@@ -206,6 +321,13 @@ html.theme-transition *::after {
   .chart-in, .soft-pulse { animation: none; }
   .chart-bar, .chart-row { transition: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
+  .service-hero-visual *, .area-motif *, .process-connector *, .section-bridge * { animation: none !important; transition: none !important; }
+  .hero-ring { opacity: 0 !important; }
+  .process-node { opacity: 1 !important; transform: none !important; }
+  .service-card, .service-card *, .experience-card, .experience-card * { transition: none !important; }
+  .service-card:hover, .service-card:focus-within, .experience-card:hover, .experience-card:focus-visible { --tw-translate-x: 0px !important; --tw-translate-y: 0px !important; transform: none !important; }
+  .service-card:hover *, .service-card:focus-within *, .experience-card:hover *, .experience-card:focus-visible * { translate: none !important; }
+  .service-card:hover .service-card-icon, .service-card:focus-within .service-card-icon { animation: none !important; }
   html { scroll-behavior: auto; }
   html.theme-transition, html.theme-transition * { transition: none !important; }
 }

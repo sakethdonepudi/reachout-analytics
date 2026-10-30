@@ -114,6 +114,3 @@ export const DATA_SERVICES: ServiceArea[] = [
 export const SERVICE_CATEGORIES = [...POLITICAL_SERVICES, ...DATA_SERVICES].map((s) => s.title);
 
 export const serviceHref = (service: string) => `/services?service=${encodeURIComponent(service)}#enquiry`;
-
-export const CONSULTING_EXPERIENCE = ["SBI", "Benz", "Epsilon", "IBM", "Visa", "AON", "EY", "Dr. Reddy’s", "Capgemini"];
-export const TRAINING_EXPERIENCE = ["IBM", "SBI", "Benz", "Deloitte", "L&T", "Dell", "Cognizant", "Mestek", "MetLife", "ANZ", "Shriram", "Capgemini", "EY"];
