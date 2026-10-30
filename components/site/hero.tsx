@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
-import LeaderOrbit from "@/components/site/leader-orbit";
+import PartyOrbit from "@/components/site/party-orbit";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 
@@ -137,7 +137,7 @@ export default function Hero() {
       {/* consistent theme-aware scrims */}
       <div className="absolute inset-0" style={{ background: `linear-gradient(95deg, ${scrimLeft} 0%, ${scrimMid} 38%, rgba(7,20,56,.16) 66%, rgba(5,11,31,.42) 100%)` }} aria-hidden />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,11,31,.64)_0%,transparent_26%,transparent_60%,#050b1f_100%)]" aria-hidden />
-      {/* extra calm behind the leader column so the discs read on every frame */}
+      {/* extra calm behind the party column so the discs read on every frame */}
       <div className="absolute inset-0 hidden bg-[radial-gradient(42%_58%_at_76%_46%,rgba(4,9,24,.74),transparent_74%)] lg:block" aria-hidden />
       <div className="grain absolute inset-0 opacity-[0.05] mix-blend-overlay" aria-hidden />
 
@@ -171,15 +171,15 @@ export default function Hero() {
             </div>
           </div>
 
-          {/* right: leader composition, vertically centred beside the headline */}
-          <div className="hidden justify-center lg:flex" data-hero-leaders>
-            <LeaderOrbit />
+          {/* right: party identity composition, vertically centred beside the headline */}
+          <div className="hidden justify-center lg:flex" data-hero-parties>
+            <PartyOrbit />
           </div>
         </div>
 
-        {/* mobile: compact composition (one active + two supporting) under the CTAs */}
+        {/* mobile: compact party composition under the CTAs */}
         <div className="mt-12 flex justify-center lg:hidden">
-          <LeaderOrbit compact />
+          <PartyOrbit compact />
         </div>
       </div>
 

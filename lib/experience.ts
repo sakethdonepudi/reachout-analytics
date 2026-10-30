@@ -1,5 +1,3 @@
-export type ExperienceRelationship = "consulting" | "training";
-
 export type ExperienceOrganisation = {
   name: string;
   alt: string;
@@ -8,7 +6,6 @@ export type ExperienceOrganisation = {
   height: number;
   /** Optical height in px. Keeps wordmarks and compact marks balanced. */
   opticalHeight: number;
-  relationships: ExperienceRelationship[];
 };
 
 export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
@@ -19,7 +16,6 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 550,
     height: 286,
     opticalHeight: 40,
-    relationships: ["consulting", "training"],
   },
   {
     name: "IBM",
@@ -28,7 +24,6 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 1000,
     height: 401,
     opticalHeight: 34,
-    relationships: ["consulting", "training"],
   },
   {
     name: "Visa",
@@ -37,7 +32,6 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 1000,
     height: 325,
     opticalHeight: 24,
-    relationships: ["consulting"],
   },
   {
     name: "Aon",
@@ -46,7 +40,6 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 240,
     height: 91,
     opticalHeight: 28,
-    relationships: ["consulting"],
   },
   {
     name: "EY",
@@ -55,7 +48,6 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 69,
     height: 69,
     opticalHeight: 30,
-    relationships: ["consulting", "training"],
   },
   {
     name: "Dr. Reddy’s",
@@ -64,7 +56,6 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 171,
     height: 38,
     opticalHeight: 26,
-    relationships: ["consulting"],
   },
   {
     name: "Capgemini",
@@ -73,7 +64,6 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 1024,
     height: 239,
     opticalHeight: 27,
-    relationships: ["consulting", "training"],
   },
   {
     name: "Epsilon",
@@ -82,7 +72,6 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 1091,
     height: 290,
     opticalHeight: 27,
-    relationships: ["consulting"],
   },
   {
     name: "Deloitte",
@@ -91,7 +80,6 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 892,
     height: 171,
     opticalHeight: 28,
-    relationships: ["training"],
   },
   {
     name: "L&T",
@@ -100,7 +88,6 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 3000,
     height: 3000,
     opticalHeight: 36,
-    relationships: ["training"],
   },
   {
     name: "Dell",
@@ -109,7 +96,6 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 300,
     height: 300,
     opticalHeight: 34,
-    relationships: ["training"],
   },
   {
     name: "Cognizant",
@@ -118,7 +104,6 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 820,
     height: 190,
     opticalHeight: 26,
-    relationships: ["training"],
   },
   {
     name: "MetLife",
@@ -127,7 +112,6 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 750,
     height: 175,
     opticalHeight: 27,
-    relationships: ["training"],
   },
   {
     name: "ANZ",
@@ -136,11 +120,5 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     width: 704,
     height: 156,
     opticalHeight: 28,
-    relationships: ["training"],
   },
 ];
-
-export const RELATIONSHIP_LABEL: Record<ExperienceRelationship, string> = {
-  consulting: "Consulting",
-  training: "Training",
-};

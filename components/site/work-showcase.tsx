@@ -3,19 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { CASES, LEADERS, caseUrl, leaderById } from "@/lib/cases";
+import { CASES, caseUrl } from "@/lib/cases";
+import { POLITICAL_IDENTITIES } from "@/lib/parties";
+import { PartyMark } from "@/components/site/party-mark";
 import Reveal from "@/components/site/reveal";
 import { cn } from "@/lib/utils";
-
-/* Approximate party accent colours for the monogram tiles (not official logos). */
-const PARTY_COLORS: Record<string, string> = {
-  TDP: "#e0b21a",
-  AIADMK: "#2e8b2e",
-  BJP: "#F97316",
-  "JD(U)": "#1e8a3c",
-  INC: "#2563EB",
-  BRS: "#EC4899",
-};
 
 function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -43,28 +35,8 @@ function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
   return <span ref={ref} className="tabular-nums">{n}{suffix}</span>;
 }
 
-function PartyBadge({ party, size = "md" }: { party: string; size?: "sm" | "md" | "lg" }) {
-  const color = PARTY_COLORS[party] ?? "#64748b";
-  const dim = size === "lg" ? "size-16 text-base" : size === "sm" ? "size-9 text-[10px]" : "size-12 text-xs";
-  return (
-    <span
-      className={cn("grid shrink-0 place-items-center rounded-2xl font-display font-bold tracking-tight text-white shadow-[0_10px_30px_-12px_rgba(0,0,0,.5)]", dim)}
-      style={{ background: `linear-gradient(150deg, ${color}, ${color}cc)`, boxShadow: `0 0 0 1px ${color}55, inset 0 1px 0 rgba(255,255,255,.25)` }}
-      aria-label={party}
-    >
-      {party}
-    </span>
-  );
-}
-
 export default function WorkShowcase() {
-  const parties = useMemo(() => Array.from(new Set(LEADERS.map((l) => l.party))), []);
-  const works = useMemo(() => CASES.filter((c) => c.leaderId || c.party), []);
-  const partyCounts = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const c of CASES) if (c.party) m[c.party] = (m[c.party] ?? 0) + 1;
-    return parties.map((p) => ({ party: p, count: m[p] ?? 0 }));
-  }, [parties]);
+  const works = useMemo(() => CASES.filter((c) => c.party), []);
 
   return (
     <section id="work" className="pointer-events-auto relative scroll-mt-24 overflow-hidden bg-background py-20 sm:py-24">
@@ -88,7 +60,7 @@ export default function WorkShowcase() {
         {/* animated stats */}
         <Reveal className="mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-4">
           {[
-            { label: "States & parties", value: LEADERS.length },
+            { label: "Party-state pairs", value: POLITICAL_IDENTITIES.length },
             { label: "Case studies", value: CASES.length },
             { label: "Districts mapped", value: 38 },
             { label: "Coverage", value: 6, suffix: "+" },
@@ -100,14 +72,15 @@ export default function WorkShowcase() {
           ))}
         </Reveal>
 
-        {/* party symbols — animated band */}
+        {/* authentic party symbols paired with their public state association */}
         <Reveal className="mt-12">
           <p className="mb-4 text-center text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Party symbols</p>
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
-            {partyCounts.map((p, i) => (
-              <div key={p.party} className="animate-bob flex flex-col items-center gap-2" style={{ animationDelay: `${i * 0.45}s` }}>
-                <PartyBadge party={p.party} size="lg" />
-                <span className="text-[11px] text-muted-foreground">{p.party}</span>
+          <div className="flex flex-wrap items-start justify-center gap-4 sm:gap-6">
+            {POLITICAL_IDENTITIES.map((identity) => (
+              <div key={identity.id} className="flex min-w-[94px] flex-col items-center gap-2 text-center">
+                <PartyMark party={identity.party} size="lg" />
+                <span className="text-[11px] font-semibold leading-tight text-foreground">{identity.party}</span>
+                <span className="text-[10.5px] leading-tight text-muted-foreground">{identity.state}</span>
               </div>
             ))}
           </div>
@@ -116,7 +89,6 @@ export default function WorkShowcase() {
         {/* work cards */}
         <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {works.map((c, i) => {
-            const leader = leaderById(c.leaderId);
             return (
               <Reveal key={c.slug} delay={i * 70}>
                 <Link
@@ -127,26 +99,13 @@ export default function WorkShowcase() {
                     <span className="rounded-full border border-saffron/40 bg-saffron/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-saffron-2">
                       {c.badge}
                     </span>
-                    {c.symbol ? (
-                      <span className="grid size-9 place-items-center rounded-lg bg-white ring-1 ring-border" title={`${c.party} symbol (supplied)`}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={c.symbol} alt={`${c.party} party symbol`} className="h-5 w-7 object-contain" />
-                      </span>
-                    ) : c.party ? <PartyBadge party={c.party} size="sm" /> : null}
                   </div>
 
                   <div className="mt-4 flex items-center gap-3">
-                    <span className="relative size-14 shrink-0 overflow-hidden rounded-full bg-gradient-to-b from-[#2a5fc4] to-[#11306f] ring-2 ring-white/20">
-                      {leader?.photo ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={leader.photo} alt={leader.name} className="absolute inset-x-0 bottom-0 h-[120%] w-full object-cover object-top transition-transform duration-500 group-hover:scale-105" />
-                      ) : (
-                        <span className="grid size-full place-items-center font-display text-sm font-bold text-saffron-2">{c.party}</span>
-                      )}
-                    </span>
+                    <PartyMark party={c.party} size="md" />
                     <div className="min-w-0">
                       <h3 className="font-display text-lg font-semibold leading-tight text-foreground">{c.title}</h3>
-                      <p className="truncate text-[12.5px] text-muted-foreground">{c.subtitle}</p>
+                      <p className="truncate text-[12.5px] text-muted-foreground">{c.party} · {c.stateName}</p>
                     </div>
                   </div>
 

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import Navbar from "@/components/site/navbar";
-import { CASES, UPCOMING, caseUrl, leaderById } from "@/lib/cases";
+import { CASES, UPCOMING, caseUrl } from "@/lib/cases";
+import { PartyMark } from "@/components/site/party-mark";
+import CompanyExperience from "@/components/site/company-marquee";
 
 export const metadata: Metadata = {
   title: "Case Studies — ReachOut Analytics",
@@ -23,15 +25,14 @@ export default function CaseStudiesIndex() {
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {CASES.map((c) => {
-              const leader = leaderById(c.leaderId);
               return (
                 <Link key={c.slug} href={caseUrl(c.slug)} className="glass group flex flex-col rounded-3xl p-5 transition-transform duration-300 hover:-translate-y-1">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <span className="rounded-full border border-saffron/40 bg-saffron/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-saffron-2">{c.badge}</span>
-                    {c.party && <span className="text-[11px] font-bold text-muted-foreground">{c.party}</span>}
+                    <span className="flex items-center gap-2"><PartyMark party={c.party} size="sm" /><span className="text-[11px] font-bold text-muted-foreground">{c.party}</span></span>
                   </div>
                   <h2 className="mt-4 font-display text-xl font-semibold">{c.title}</h2>
-                  <p className="mt-1 text-[13px] text-muted-foreground">{leader ? `${leader.name} · ${c.region}` : c.region}</p>
+                  <p className="mt-1 text-[13px] text-muted-foreground">{c.stateName}</p>
                   <p className="mt-3 line-clamp-3 text-[13.5px] leading-relaxed text-muted-foreground">{c.summary}</p>
                   <span className="mt-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-foreground">
                     View case study
@@ -50,6 +51,8 @@ export default function CaseStudiesIndex() {
               </Link>
             ))}
           </div>
+
+          <CompanyExperience className="mt-16" />
 
           <footer className="mt-16 flex items-center justify-center gap-2 border-t border-border pt-6 text-[13px] text-muted-foreground">
             <Link href="/services" className="font-medium text-foreground/80 hover:text-saffron-2">Services</Link>

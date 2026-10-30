@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import Navbar, { Logo } from "@/components/site/navbar";
 import Reveal from "@/components/site/reveal";
+import CompanyExperience from "@/components/site/company-marquee";
 import ServicesEnquiry from "@/components/site/services-enquiry";
 import { CONTACT } from "@/lib/cases";
 import {
@@ -108,6 +109,8 @@ export default function ResearchContentPage() {
             </Reveal>
           </div>
         </section>
+
+        <CompanyExperience />
 
         <section id="enquiry" className="scroll-mt-24 border-t border-border bg-[linear-gradient(180deg,transparent,rgba(245,138,36,.045))]">
           <div className="mx-auto max-w-6xl px-6 py-16 sm:px-10 sm:py-20">

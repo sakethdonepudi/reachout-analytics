@@ -1,29 +1,8 @@
 /* =====================================================================
-   Site content — edit everything about parties, leaders and case studies here.
+   Site content — edit everything about parties and case studies here.
    ===================================================================== */
 
-export type Leader = {
-  id: string;
-  name: string;
-  /** shown under the name — kept to the state so it never goes out of date */
-  role: string;
-  party: string;
-  /** Transparent-background PNG in /public/leaders (head & shoulders, 3:4).
-   *  The head breaks out of the top of the 3D frame. Empty = show initials. */
-  photo: string;
-  initials: string;
-  caseSlug: string;
-};
-
-export const LEADERS: Leader[] = [
-  { id: "cbn", name: "N. Chandrababu Naidu", role: "Andhra Pradesh", party: "TDP", photo: "/leaders/chandrababu-naidu.webp", initials: "CBN", caseSlug: "andhra-pradesh-2024" },
-  { id: "eps", name: "Edappadi K. Palaniswami", role: "Tamil Nadu", party: "AIADMK", photo: "/leaders/edappadi-palaniswami.webp", initials: "EPS", caseSlug: "tamil-nadu" },
-  { id: "kcr", name: "K. Chandrashekar Rao", role: "Telangana", party: "BRS", photo: "/telangana/brs-leader.png", initials: "KCR", caseSlug: "telangana" },
-  { id: "himanta", name: "Himanta Biswa Sarma", role: "Assam", party: "BJP", photo: "/leaders/himanta-biswa-sarma.webp", initials: "HBS", caseSlug: "north-east-elections" },
-  { id: "bhupendra", name: "Bhupendra Patel", role: "Gujarat", party: "BJP", photo: "/leaders/bhupendra-patel.webp", initials: "BP", caseSlug: "gujarat" },
-  { id: "nitish", name: "Nitish Kumar", role: "Bihar", party: "JD(U)", photo: "/leaders/nitish-kumar.webp", initials: "NK", caseSlug: "bihar" },
-  { id: "dks", name: "D. K. Shivakumar", role: "Karnataka", party: "INC", photo: "/leaders/dk-shivakumar.webp", initials: "DKS", caseSlug: "karnataka-2023" },
-];
+import type { PartyId } from "@/lib/parties";
 
 export type CaseStudy = {
   slug: string;
@@ -42,49 +21,46 @@ export type CaseStudy = {
   badge: string;
   title: string;
   region: string;
-  party?: string;
-  leaderId?: string;
-  subtitle: string;
+  party: PartyId;
+  /** The state/union-territory identity shown with the party. */
+  stateName: string;
   summary: string;
   tags: string[];
-  /** optional supplied party symbol for the case-study card */
-  symbol?: string;
 };
 
 export const CASES: CaseStudy[] = [
   {
     slug: "north-east-elections", tour: true, state: "as", x: 495, y: 262, theta: -0.45,
     label: "North East", badge: "North East", title: "North East Elections", region: "Assam & the North-Eastern states",
-    party: "BJP", leaderId: "himanta", subtitle: "Himanta Biswa Sarma",
+    party: "BJP", stateName: "Assam",
     summary: "Constituency-level voter surveys and sentiment tracking across the North-East.",
     tags: ["Voter Surveys", "Sentiment Tracking", "Predictions"],
   },
   {
     slug: "tamil-nadu", tour: true, state: "tn", x: 250, y: 563, theta: 0.4, pinDx: 34,
     label: "Tamil Nadu", badge: "Tamil Nadu", title: "Tamil Nadu", region: "Chennai, Tamil Nadu",
-    party: "AIADMK", leaderId: "eps", subtitle: "Edappadi K. Palaniswami",
+    party: "AIADMK", stateName: "Tamil Nadu",
     summary: "Real-time voter insights and campaign strategy for AIADMK in Tamil Nadu.",
     tags: ["Voter Insights", "Campaign Strategy", "Digital Boosting"],
   },
   {
     slug: "telangana", tour: true, state: "tg", x: 219, y: 467, theta: -0.12, pinDx: -40,
     label: "Telangana", badge: "Telangana", title: "Telangana", region: "Telangana",
-    party: "BRS", leaderId: "kcr", subtitle: "K. Chandrashekar Rao",
+    party: "BRS", stateName: "Telangana",
     summary: "2014–2028 assembly history: actual winners for 2014, 2018 and 2023, the 2028 prediction, swing statistics and district drilldown across 119 constituencies.",
     tags: ["Voter Insights", "Analytics", "Surveys"],
-    symbol: "/telangana/brs-car.png",
   },
   {
     slug: "andhra-pradesh-2024", tour: true, state: "ap", x: 260, y: 495, theta: -0.25, pinDx: 44,
     label: "Andhra Pradesh", badge: "Andhra Pradesh · 2024", title: "Andhra Pradesh 2024", region: "Andhra Pradesh",
-    party: "TDP", leaderId: "cbn", subtitle: "N. Chandrababu Naidu",
+    party: "TDP", stateName: "Andhra Pradesh",
     summary: "High-accuracy election predictions and seat-level strategy for TDP.",
     tags: ["Election Predictions", "Booth Analytics", "Digital Boosting"],
   },
   {
     slug: "gujarat", tour: true, state: "gj", x: 92, y: 341, theta: 0.45,
     label: "Gujarat", badge: "Gujarat", title: "Gujarat", region: "Gujarat",
-    party: "BJP", leaderId: "bhupendra", subtitle: "Bhupendra Patel",
+    party: "BJP", stateName: "Gujarat",
     summary: "Data-driven voter research and campaign analytics across Gujarat.",
     tags: ["Voter Research", "Analytics", "Strategy"],
   },
@@ -92,14 +68,14 @@ export const CASES: CaseStudy[] = [
   {
     slug: "bihar", state: "br", x: 355, y: 282,
     label: "Bihar", badge: "Bihar", title: "Bihar", region: "Bihar",
-    party: "JD(U)", leaderId: "nitish", subtitle: "Nitish Kumar",
+    party: "JD(U)", stateName: "Bihar",
     summary: "Political analytics and campaign intelligence for JD(U) in Bihar.",
     tags: ["Campaign Intelligence", "Surveys"],
   },
   {
     slug: "karnataka-2023", state: "ka", x: 197, y: 560, pinDx: -38,
     label: "Karnataka", badge: "Karnataka · 2023", title: "Karnataka 2023", region: "Karnataka",
-    party: "INC", leaderId: "dks", subtitle: "D. K. Shivakumar",
+    party: "INC", stateName: "Karnataka",
     summary: "Election analytics and voter research for the 2023 Karnataka elections.",
     tags: ["Predictions", "Voter Research"],
   },
@@ -135,6 +111,5 @@ export const CONTACT = {
   instagram: "https://www.instagram.com/reachout_analytics_pvt_ltd/",
 };
 
-export const leaderById = (id?: string) => LEADERS.find((l) => l.id === id);
 export const caseBySlug = (slug: string) => CASES.find((c) => c.slug === slug);
 export const caseUrl = (slug: string) => `/case-studies/${slug}`;

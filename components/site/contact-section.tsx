@@ -6,6 +6,7 @@ import { Mail, Phone, MapPin, ArrowUpRight, CheckCircle2 } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
 import Globe from "@/components/site/globe";
 import { Logo } from "@/components/site/navbar";
+import CompanyExperience from "@/components/site/company-marquee";
 import { CONTACT } from "@/lib/cases";
 import { rafLoop } from "@/lib/raf-loop";
 
@@ -172,6 +173,8 @@ export default function ContactSection() {
             )}
           </div>
         </div>
+
+        <CompanyExperience tone="dark" className="mt-12 border-white/10" />
 
         <footer className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-4 text-sm text-white/40 sm:flex-row">
           <div className="flex flex-wrap items-center gap-5"><Logo variant="dark" /><Link href="/services" className="hover:text-white">Services</Link><Link href="/services/research-content" className="hover:text-white">Research &amp; Content</Link></div>

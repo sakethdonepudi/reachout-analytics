@@ -1,8 +1,8 @@
 # Experience logo sources
 
 Retrieved 31 October 2026. Files are stored locally and are used only to
-identify organisations where members of the ReachOut Analytics leadership team
-have consulting or training experience. They do not imply partnership,
+identify organisations associated with the professional experience of members
+of the ReachOut Analytics leadership team. They do not imply partnership,
 sponsorship, endorsement or a current client relationship.
 
 | File | Organisation | Source |

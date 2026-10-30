@@ -8,7 +8,7 @@ import {
   TrendingUp, UsersRound,
 } from "lucide-react";
 import Navbar, { Logo } from "@/components/site/navbar";
-import ExperienceLogoGrid from "@/components/site/experience-grid";
+import CompanyExperience from "@/components/site/company-marquee";
 import Reveal from "@/components/site/reveal";
 import ServicesEnquiry from "@/components/site/services-enquiry";
 import { AreaMotif, ProcessConnector, SectionBridge, ServicesHeroVisual } from "@/components/site/services-visuals";
@@ -41,7 +41,7 @@ const ANCHORS = [
   ["Political Intelligence", "#political-intelligence"],
   ["Data & Business Analytics", "#data-analytics"],
   ["Research & Content", "#research-content"],
-  ["Experience", "#experience"],
+  ["Company experience", "#experience"],
   ["Process", "#process"],
   ["Enquiry", "#enquiry"],
 ] as const;
@@ -151,13 +151,7 @@ export default function ServicesPage() {
           </div>
         </section>
 
-        <section id="experience" className="relative isolate scroll-mt-24 border-t border-border bg-card/35">
-          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(55%_60%_at_50%_0%,rgba(245,138,36,.035),transparent_70%)]" aria-hidden />
-          <div className="mx-auto max-w-6xl px-6 py-16 sm:px-10 sm:py-20">
-            <Reveal className="max-w-3xl"><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-saffron-2">Leadership experience</p><h2 className="mt-3 font-display text-[clamp(30px,4vw,48px)] font-semibold tracking-[-0.03em]">Experience across industries</h2><p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">Consulting and corporate training experience from our leadership team.</p></Reveal>
-            <div className="mt-10"><ExperienceLogoGrid /></div>
-          </div>
-        </section>
+        <CompanyExperience id="experience" />
 
         <section id="process" className="scroll-mt-24 border-t border-border">
           <div className="mx-auto max-w-6xl px-6 py-16 sm:px-10 sm:py-20">

@@ -14,7 +14,7 @@ Node 18.18+ (Node 20 recommended).
 
 ## Page flow
 
-1. **Home** (`components/site/hero.tsx`). The Parliament photo is split into depth layers (a blurred ambient layer, the sharp photo, and a blurred top and bottom), and each layer moves with the pointer and the scroll. The leader portraits turn in a 3D ring (`leader-carousel.tsx`), with a trust marquee below.
+1. **Home** (`components/site/hero.tsx`). The Parliament photo is split into depth layers (a blurred ambient layer, the sharp photo, and a blurred top and bottom), and each layer moves with the pointer and the scroll. Authentic party symbols turn in a circular party/state ring (`party-orbit.tsx`). No politician portraits are used.
 2. **3D map tour** (`components/site/india-map.tsx`). The camera zooms to North East, then Tamil Nadu, then Andhra Pradesh 2024, then Gujarat. Each stop shows a small glass card that links to its case-study page.
 3. **All-India view.** You can drag to rotate it, hover over any state, and click a campaign.
 4. **Contact** (`components/site/contact-section.tsx`). The map pulls away and a globe with India facing you shrinks into place and turns **clockwise**. That means clockwise seen from above the North Pole, so the surface moves right to left. To reverse it, pass `direction="counterclockwise"` to `<Globe>`.
@@ -22,9 +22,9 @@ Node 18.18+ (Node 20 recommended).
 
 ## Edit the content
 
-Everything lives in **`lib/cases.ts`**: leaders (name, party, photo), case studies (text, tags, map position, camera stops), upcoming elections and contact details.
+Everything lives in **`lib/cases.ts`**: party/state associations, case studies (text, tags, map position, camera stops), upcoming elections and contact details. Party symbols and source notes live in **`lib/parties.ts`** and `public/parties/`.
 
-- Leader photos are transparent PNGs in `public/leaders/` (3:4, head and shoulders). Each head breaks out of the top of its 3D frame.
+- Company experience uses the reusable `components/site/company-marquee.tsx` with the local marks in `public/logos/experience/`.
 - `CONTACT.email` and `CONTACT.phone` are placeholders. Replace them.
 - The **Results** box on each case-study page is a placeholder. Add verified outcomes there.
 - The contact form only shows a thank-you message. Connect it to your email service or an API route (see the `TODO` in `contact-section.tsx`).

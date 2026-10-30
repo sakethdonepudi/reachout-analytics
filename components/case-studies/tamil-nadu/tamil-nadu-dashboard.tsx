@@ -5,6 +5,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Check, ChevronDown, RotateCcw, Search } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
+import { PartyIdentity } from "@/components/site/party-mark";
 import { cn } from "@/lib/utils";
 import {
   TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_SEAT_GROUPS, TN_NO_DATA, tnLeader, tnPct, type TnAggregates, type TnGroup, type TnSeatGroup, type TnShares, type TnYear, type TnYearOrCurrent,
@@ -185,6 +186,7 @@ export default function TamilNaduDashboard() {
           </Link>
           <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Tamil Nadu</p>
           <h1 className="mt-1 font-display text-[clamp(27px,3.2vw,40px)] font-semibold leading-[1.02] tracking-[-0.03em]">ReachOut&apos;s Election Intelligence</h1>
+          <PartyIdentity party="AIADMK" state="Tamil Nadu" size="sm" className="mt-3" />
           <div className="mt-5 space-y-3">
             <div>
               <span className={LABEL}>Election year</span>
@@ -195,7 +197,7 @@ export default function TamilNaduDashboard() {
             <SearchSelect label="District" value={district ?? ""} options={districtOptions} placeholder="Select a district" onChange={(v) => selectDistrict(v || null)} />
             <SearchSelect label="Assembly" value={acNo != null ? String(acNo) : ""} options={assemblyOptions} placeholder={district ? "Select an assembly" : "Select a district first"} disabled={!district} onChange={(v) => selectAc(v ? Number(v) : null)} />
             <div>
-              <span className={LABEL}>{year === "2026" ? "Estimated vote-share leaders" : `${year} group leaders`}</span>
+              <span className={LABEL}>{year === "2026" ? "Estimated vote-share" : `${year} leading groups`}</span>
               <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] font-medium text-muted-foreground">
                 {legend.map((item) => <span key={item.key} className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15" style={{ background: item.colour }} /><span className="truncate">{item.label}</span></span>)}
                 <span className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px]" style={{ background: TN_NO_DATA }} /><span className="truncate">No data</span></span>

@@ -25,7 +25,7 @@ export default function AboutTelangana({ data }: { data: Oct26 }) {
           <b className="text-foreground/85">Parties.</b> The compact comparison displays BRS/TRS, <b>Congress+</b> (INC + CPI,
           not INC alone), BJP, <b>AIMIM</b> and Others. The final workbook prediction is four-group and folds AIMIM into Others.
           AIMIM is extracted through the documented extension below and subtracted from that assembly&apos;s Others residual, so
-          it is not double-counted. The final leaders are BRS {s.leads.BRS ?? 0}, Congress {s.leads.Congress ?? 0}, BJP{" "}
+          it is not double-counted. The final leading seat counts are BRS {s.leads.BRS ?? 0}, Congress {s.leads.Congress ?? 0}, BJP{" "}
           {s.leads.BJP ?? 0}, AIMIM {s.leads.AIMIM ?? 0}, Others {s.leads.Others ?? 0}, total 119. Weighted shares are BRS{" "}
           {(s.prediction.BRS * 100).toFixed(2)}%, Congress+ {(s.prediction.Congress * 100).toFixed(2)}%, BJP{" "}
           {(s.prediction.BJP * 100).toFixed(2)}%, AIMIM {(s.prediction.AIMIM * 100).toFixed(2)}%, Others{" "}
@@ -55,7 +55,7 @@ export default function AboutTelangana({ data }: { data: Oct26 }) {
           {fmtInt(c.answeredRecall2023)} answered the 2023 recall and {fmtInt(c.blankRecall2023)} are blank. The projection sheet
           headers are on row 1, with the English assembly-name column <b>A/c</b>; 119 AC IDs and 33 district groups are validated,
           and trailing formatted/blank rows are ignored. All eight sheets were read and audited. The stale <b>Sheet3</b> pivot
-          (66/32) is ignored; the AC rows give 68/30/13/8 four-group leaders before the AIMIM extraction. Summary/pivot totals are
+          (66/32) is ignored; the AC rows give 68/30/13/8 four-group leading counts before the AIMIM extraction. Summary/pivot totals are
           not treated as authoritative.
         </p>
         <p>

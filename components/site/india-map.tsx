@@ -7,7 +7,8 @@ import * as THREE from "three";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 import { rafLoop } from "@/lib/raf-loop";
 import ShimmerButton from "@/components/ui/shimmer-button";
-import { CASES, UPCOMING, caseUrl, leaderById, type CaseStudy } from "@/lib/cases";
+import { CASES, UPCOMING, caseUrl, type CaseStudy } from "@/lib/cases";
+import { PartyMark } from "@/components/site/party-mark";
 import { startRouteTransition } from "@/lib/route-transition";
 import STATES from "@/lib/data/india-states.json";
 import { cn } from "@/lib/utils";
@@ -415,7 +416,7 @@ export default function IndiaMap() {
       if (tipKey !== lastTip) {
         lastTip = tipKey;
         const c = CASES.find((c) => c.state === tipKey);
-        setTip(tipKey ? { name: states[tipKey].name, sub: c ? `${c.party ?? "Case study"} · click to open` : undefined } : null);
+        setTip(tipKey ? { name: states[tipKey].name, sub: c ? `${c.party} · click to open` : undefined } : null);
       }
       if (tipRef.current) tipRef.current.style.transform = `translate(${mouse.px + 16}px, ${mouse.py + 16}px)`;
       if (s !== lastStop) { lastStop = s; setActiveStop(s); }
@@ -445,7 +446,6 @@ export default function IndiaMap() {
     };
   }, []);
 
-  const leader = leaderById(cardCase?.leaderId);
   const tourIndex = cardCase ? TOUR.indexOf(cardCase) : -1;
   const labels = ["Home", ...TOUR.map((c) => c.label), "All India"];
 
@@ -480,12 +480,6 @@ export default function IndiaMap() {
             <div className="mb-3 flex items-center justify-between">
               <span className="rounded-full border border-saffron/40 bg-saffron/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-saffron-2">{cardCase.badge}</span>
               <div className="flex items-center gap-2">
-                {cardCase.symbol && (
-                  <span className="grid size-7 place-items-center rounded-md bg-white/90 shadow-sm" title={`${cardCase.party} symbol (supplied)`}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={cardCase.symbol} alt={`${cardCase.party} party symbol`} className="h-4 w-5 object-contain" />
-                  </span>
-                )}
                 {cardIsFinal ? (
                   <button data-close onClick={() => setSelected(null)} className="grid size-6 place-items-center rounded-full bg-white/10 text-white/70 hover:text-white" aria-label="Close"><X className="size-3.5" /></button>
                 ) : (
@@ -494,19 +488,12 @@ export default function IndiaMap() {
               </div>
             </div>
             <div className="mb-2.5 flex items-center gap-3">
-              <div className="relative size-12 shrink-0 overflow-hidden rounded-full bg-gradient-to-b from-[#2a5fc4] to-[#0b1f4d] shadow-[0_0_0_2px_rgba(255,255,255,.2),0_0_0_4px_rgba(255,153,51,.6)]">
-                {leader?.photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={leader.photo} alt={leader.name} className="absolute inset-x-0 bottom-0 h-[115%] w-full object-cover object-top" />
-                ) : (
-                  <span className="grid size-full place-items-center font-display text-sm font-bold text-saffron-2">{cardCase.party ?? cardCase.label.slice(0, 2)}</span>
-                )}
-              </div>
+              <PartyMark party={cardCase.party} size="md" />
               <div className="min-w-0">
                 <h3 className="font-display text-xl font-semibold leading-tight text-white">{cardCase.title}</h3>
                 <p className="flex items-center gap-2 truncate text-xs">
-                  {cardCase.party && <b className="shrink-0 font-bold text-saffron-2">{cardCase.party}</b>}
-                  {cardCase.subtitle && <span className="truncate text-white/50">{cardCase.subtitle}</span>}
+                  <b className="shrink-0 font-bold text-saffron-2">{cardCase.party}</b>
+                  <span className="truncate text-white/55">{cardCase.stateName}</span>
                 </p>
               </div>
             </div>
@@ -553,7 +540,7 @@ export default function IndiaMap() {
               )}
             >
               <i className={cn("size-1.5 rounded-full", c.tour ? "bg-saffron shadow-[0_0_8px_#ff9933]" : "bg-[#2fbf4a] shadow-[0_0_8px_#2fbf4a]")} />
-              {c.label}
+              {c.party} · {c.label}
             </button>
           ))}
         </div>
@@ -580,7 +567,7 @@ export default function IndiaMap() {
           className="glass fixed left-0 top-0 z-[3] whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold opacity-0 transition-opacity"
           style={{ pointerEvents: "none" }}
         >
-          {c.label}
+          {c.party} · {c.label}
         </button>
       ))}
 

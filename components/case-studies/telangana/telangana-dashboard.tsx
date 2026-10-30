@@ -5,6 +5,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Check, ChevronDown, RotateCcw, Search } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
+import { PartyIdentity } from "@/components/site/party-mark";
 import { cn } from "@/lib/utils";
 import {
   NO_DATA_COLOR, PARTIES, PARTY_COLOR, PARTY_LABEL, leaderOf, shadeHex, weightedShares,
@@ -276,6 +277,7 @@ export default function TelanganaDashboard() {
 
           <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Telangana</p>
           <h1 className="mt-1 font-display text-[clamp(27px,3.2vw,40px)] font-semibold leading-[1.02] tracking-[-0.03em]">ReachOut&apos;s Election Intelligence</h1>
+          <PartyIdentity party="BRS" state="Telangana" size="sm" className="mt-3" />
 
           <div className="mt-5 space-y-3">
             <div>

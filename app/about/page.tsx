@@ -4,6 +4,7 @@ import Image from "next/image";
 import { ArrowLeft, ArrowRight, GraduationCap, LineChart, Cpu, Presentation } from "lucide-react";
 import Navbar from "@/components/site/navbar";
 import Reveal from "@/components/site/reveal";
+import CompanyExperience from "@/components/site/company-marquee";
 import { getAbout } from "@/lib/about-content";
 
 export const metadata: Metadata = {
@@ -98,27 +99,19 @@ export default async function AboutPage() {
           </div>
         </section>
 
-        {/* experience, training, skills */}
+        {/* technical skills */}
         <section className="mx-auto max-w-6xl px-6 py-16 sm:px-10">
-          <div className="grid gap-12 lg:grid-cols-3">
-            <Reveal>
-              <h2 className="font-display text-xl font-semibold">Professional experience</h2>
-              <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{c.professionalOrgs.join(" · ")}</p>
-            </Reveal>
-            <Reveal delay={80}>
-              <h2 className="font-display text-xl font-semibold">Training delivered for</h2>
-              <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{c.trainingOrgs.join(" · ")}</p>
-            </Reveal>
-            <Reveal delay={160}>
-              <h2 className="font-display text-xl font-semibold">Technical skills</h2>
-              <ul className="mt-3 flex flex-wrap gap-2">
-                {c.skills.map((s) => (
-                  <li key={s} className="rounded-full border border-border bg-card px-3 py-1 text-[12.5px] font-medium text-foreground/80">{s}</li>
-                ))}
-              </ul>
-            </Reveal>
-          </div>
+          <Reveal className="grid gap-6 lg:grid-cols-[.7fr_1.3fr]">
+            <h2 className="font-display text-xl font-semibold">Technical skills</h2>
+            <ul className="flex flex-wrap gap-2">
+              {c.skills.map((s) => (
+                <li key={s} className="rounded-full border border-border bg-card px-3 py-1 text-[12.5px] font-medium text-foreground/80">{s}</li>
+              ))}
+            </ul>
+          </Reveal>
         </section>
+
+        <CompanyExperience />
 
         {/* closing CTA */}
         <section className="mx-auto max-w-6xl px-6 pb-24 sm:px-10">

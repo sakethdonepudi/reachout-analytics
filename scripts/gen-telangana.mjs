@@ -372,8 +372,6 @@ fs.writeFileSync(
 );
 
 /* ---------------- assets ---------------- */
-fs.copyFileSync(path.join(PACK, "assets/brs_leader_user_supplied.png"), path.join(OUT_PUBLIC, "brs-leader.png"));
-fs.copyFileSync(path.join(PACK, "assets/brs_car_symbol_user_supplied.png"), path.join(OUT_PUBLIC, "brs-car.png"));
 fs.copyFileSync(path.join(PACK, "assets/device_coverage.svg"), path.join(OUT_PUBLIC, "device-coverage.svg"));
 
 const brandSrc = path.join(PACK, "assets/mobile-brands");

@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import Navbar from "@/components/site/navbar";
-import LeaderPortrait from "@/components/site/leader-portrait";
 import CaseCta from "@/components/site/case-cta";
-import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl, leaderById } from "@/lib/cases";
+import CompanyExperience from "@/components/site/company-marquee";
+import { PartyIdentity, PartyMark } from "@/components/site/party-mark";
+import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl } from "@/lib/cases";
 
 export function generateStaticParams() {
   // Tamil Nadu and Telangana have their own dedicated dashboard routes.
@@ -18,7 +19,31 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const c = caseBySlug(slug);
   const u = UPCOMING.find((x) => x.slug === slug);
-  return { title: `${c?.title ?? u?.title ?? "Case study"} — ReachOut Analytics` };
+  const title = `${c?.title ?? u?.title ?? "Case study"} — ReachOut Analytics`;
+  const description = c?.summary ?? "We're preparing for this election cycle. Get in touch to discuss how data can shape your campaign.";
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      ...(c
+        ? {
+            images: [
+              {
+                url: `https://reachout-analytics.vercel.app/og/${c.slug}.png`,
+                width: 1200,
+                height: 630,
+                alt: `${c.party} · ${c.stateName} case study`,
+              },
+            ],
+          }
+        : {}),
+    },
+    twitter: c
+      ? { card: "summary_large_image", title, description, images: [`https://reachout-analytics.vercel.app/og/${c.slug}.png`] }
+      : { card: "summary", title, description },
+  };
 }
 
 export default async function CaseStudyPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -27,7 +52,6 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
   const upcoming = UPCOMING.find((u) => u.slug === slug);
   if (!c && !upcoming) notFound();
 
-  const leader = leaderById(c?.leaderId);
   const idx = c ? CASES.indexOf(c) : -1;
   const next = CASES[(idx + 1) % CASES.length];
 
@@ -51,18 +75,25 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
                 {c?.title ?? upcoming!.title}
               </h1>
               {c && (
-                <p className="mt-4 flex items-center gap-2 text-muted-foreground">
-                  <MapPin className="size-4 text-saffron-2" /> {c.region}
-                  {c.party && <> · <b className="text-foreground/85">{c.party}</b></>}
-                </p>
+                <div className="mt-5 flex flex-wrap items-center gap-4">
+                  <p className="flex items-center gap-2 text-muted-foreground">
+                    <MapPin className="size-4 text-saffron-2" /> {c.region}
+                  </p>
+                  <PartyIdentity party={c.party} state={c.stateName} size="sm" />
+                </div>
               )}
               <p className="mt-8 max-w-xl text-xl leading-relaxed text-foreground/80">
                 {c?.summary ?? "We're preparing for this election cycle. Get in touch to discuss how data can shape your campaign."}
               </p>
             </div>
-            {leader && (
+            {c && (
               <div className="flex justify-center lg:justify-end">
-                <LeaderPortrait leader={leader} size="lg" static />
+                <div className="w-full max-w-[320px] rounded-3xl border border-border bg-card/80 p-7 text-center shadow-[0_24px_60px_-36px_rgba(15,20,30,.45)]">
+                  <PartyMark party={c.party} size="xl" className="mx-auto" priority />
+                  <p className="mt-5 font-display text-2xl font-semibold tracking-[-0.02em]">{c.party}</p>
+                  <p className="mt-1 text-[14px] text-muted-foreground">{c.stateName}</p>
+                  <p className="mt-4 border-t border-border pt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-saffron-2">Case study</p>
+                </div>
               </div>
             )}
           </div>
@@ -87,7 +118,9 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
             </>
           )}
 
-          <div className="mt-20 flex flex-col items-start justify-between gap-6 border-t border-border pt-10 sm:flex-row sm:items-center">
+          <CompanyExperience className="mt-20 border-t border-border" />
+
+          <div className="mt-16 flex flex-col items-start justify-between gap-6 border-t border-border pt-10 sm:flex-row sm:items-center">
             <CaseCta />
             {c && (
               <Link href={caseUrl(next.slug)} className="group flex items-center gap-3 text-muted-foreground transition-colors hover:text-foreground">

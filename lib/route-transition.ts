@@ -12,7 +12,7 @@ export type TransitionMeta = {
   title: string;
   /** small saffron eyebrow, e.g. "Tamil Nadu" */
   eyebrow?: string;
-  /** muted line under the title, e.g. the party · leader */
+  /** muted line under the title, e.g. the party · state */
   subtitle?: string;
 };
 

@@ -178,8 +178,8 @@ html.theme-transition *::after {
 .animate-spin-slow { animation: spin-slow 40s linear infinite; }
 .process-scan { animation: process-scan 7s ease-in-out infinite; }
 
-/* leader orbit — the caption box never moves; only its content crossfades */
-.leader-caption { transition: opacity 600ms cubic-bezier(.4,0,.2,1); }
+/* party orbit — the caption box never moves; only its content crossfades */
+.party-caption { transition: opacity 600ms cubic-bezier(.4,0,.2,1); }
 
 /* chart view transition + genuine loading pulse (never on static values) */
 @keyframes chart-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -314,10 +314,46 @@ html.theme-transition *::after {
 
 @keyframes bridge-line-in { from { transform: scaleX(0); opacity: .2; } to { transform: scaleX(1); opacity: 1; } }
 
+/* ---------- company experience marquee ---------- */
+.company-marquee__viewport {
+  width: 100%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 5%, #000 95%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 5%, #000 95%, transparent 100%);
+}
+.company-marquee__track {
+  display: flex;
+  width: max-content;
+  animation-play-state: paused;
+  will-change: transform;
+}
+.company-marquee__track--left { animation: company-marquee-left 52s linear infinite; animation-play-state: paused; }
+.company-marquee__track--right { animation: company-marquee-right 58s linear infinite; animation-play-state: paused; }
+.company-marquee.is-live .company-marquee__track { animation-play-state: running; }
+.company-marquee:hover .company-marquee__track,
+.company-marquee:focus-within .company-marquee__track { animation-play-state: paused; }
+.company-marquee__group {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  padding-right: 10px;
+}
+.company-marquee__item { flex: 0 0 auto; }
+
+@keyframes company-marquee-left {
+  from { transform: translate3d(-50%, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+@keyframes company-marquee-right {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee, .animate-float, .animate-pulse-dot, .animate-sweep, .animate-wheel, .animate-drift, .animate-rise, .animate-bob, .animate-spin-slow, .process-scan { animation: none; }
   .hero-enter, .hero-kb-a, .hero-kb-b { animation: none; will-change: auto; }
-  .leader-caption { transition: none; }
+  .party-caption { transition: none; }
   .chart-in, .soft-pulse { animation: none; }
   .chart-bar, .chart-row { transition: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
@@ -328,6 +364,15 @@ html.theme-transition *::after {
   .service-card:hover, .service-card:focus-within, .experience-card:hover, .experience-card:focus-visible { --tw-translate-x: 0px !important; --tw-translate-y: 0px !important; transform: none !important; }
   .service-card:hover *, .service-card:focus-within *, .experience-card:hover *, .experience-card:focus-visible * { translate: none !important; }
   .service-card:hover .service-card-icon, .service-card:focus-within .service-card-icon { animation: none !important; }
+  .company-marquee__viewport { overflow: visible; -webkit-mask-image: none; mask-image: none; }
+  .company-marquee__track { display: block; width: auto; animation: none !important; transform: none !important; }
+  .company-marquee__group { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; padding: 0; }
+  .company-marquee__group[aria-hidden] { display: none; }
+  .company-marquee__item { width: auto; }
+  .company-tile { width: 100%; }
+  .company-row + .company-row { margin-top: 10px; }
+  .company-marquee .company-tile, .company-marquee .company-tile * { transition: none !important; }
+  .company-marquee .company-tile:hover { transform: none !important; translate: none !important; }
   html { scroll-behavior: auto; }
   html.theme-transition, html.theme-transition * { transition: none !important; }
 }
