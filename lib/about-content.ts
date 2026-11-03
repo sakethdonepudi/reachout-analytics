@@ -7,6 +7,8 @@ import { getMongo } from "@/lib/mongodb";
 
 export type Expertise = { title: string; desc: string };
 export type AboutContent = {
+  /** Bumped when the About page structure changes; older saved docs are ignored. */
+  version: number;
   eyebrow: string;
   headline: string;
   intro: string;
@@ -20,10 +22,11 @@ export type AboutContent = {
 };
 
 export const ABOUT_DEFAULT: AboutContent = {
-  eyebrow: "ABOUT REACHOUT ANALYTICS",
-  headline: "Expertise that turns data into decisions.",
+  version: 2,
+  eyebrow: "About ReachOut Analytics",
+  headline: "See what the numbers are saying.",
   intro:
-    "ReachOut Analytics brings together data science, practical research and professional education to help organisations make informed decisions and develop analytical capability.",
+    "We use surveys, statistics and interactive maps to help teams understand elections, business performance and research questions.",
   overview: [
     "Our work combines the expertise of technologists, academics and industry professionals. We connect analytical theory with hands-on field experience, bringing practical understanding to the projects and training programmes we deliver.",
     "From analytics and prediction to artificial intelligence and machine learning, our approach focuses on understanding the problem, applying appropriate methods and communicating useful insights.",
@@ -49,9 +52,9 @@ export const ABOUT_DEFAULT: AboutContent = {
   trainingOrgs: ["IBM", "SBI", "Benz", "Deloitte", "L&T", "Dell", "Cognizant", "Mestek", "MetLife", "ANZ", "Shriram", "Capgemini", "EY"],
   skills: ["R", "SAS", "Python", "Rattle", "SPSS", "Artificial Intelligence & Machine Learning"],
   cta: {
-    title: "Let’s turn your data into decisions.",
-    body: "Talk to our team about analytics, training or a campaign.",
-    button: "Book a consultation",
+    title: "What would you like to understand better?",
+    body: "Bring us the question, the data you already have, or the decision you are trying to make. We will help you find the clearest next step.",
+    button: "Discuss your project",
   },
 };
 
@@ -67,6 +70,9 @@ export async function getAbout(): Promise<AboutContent> {
     if (!doc) return ABOUT_DEFAULT;
     const { _id, ...rest } = doc;
     void _id;
+    // The redesigned page has a different structure; ignore pre-redesign content
+    // so the approved copy is shown until an editor saves the new fields.
+    if ((rest as { version?: number }).version !== ABOUT_DEFAULT.version) return ABOUT_DEFAULT;
     return { ...ABOUT_DEFAULT, ...rest, team: { ...ABOUT_DEFAULT.team, ...((rest.team as AboutContent["team"]) ?? {}) }, cta: { ...ABOUT_DEFAULT.cta, ...((rest.cta as AboutContent["cta"]) ?? {}) } } as AboutContent;
   } catch {
     return ABOUT_DEFAULT;
@@ -79,7 +85,7 @@ export async function saveAbout(patch: Partial<AboutContent>): Promise<AboutCont
   const client = await p;
   await client.db(DB).collection<{ _id: string } & Record<string, unknown>>("site_content").updateOne(
     { _id: "about" },
-    { $set: patch as unknown as Record<string, unknown> },
+    { $set: { ...patch, version: ABOUT_DEFAULT.version } as unknown as Record<string, unknown> },
     { upsert: true },
   );
   return getAbout();
