@@ -17,6 +17,21 @@ export const AMI_EXIT_POLL = {
   } as TnShares,
 };
 
+export const TN_OPINION_POLL = {
+  label: "Opinion Poll · ReachOut Analytics",
+  sourceFile: "SAKET_TN_District_Estimate_calibrated_v2.xlsx",
+  denominator: 31672,
+  weighting: "unweighted",
+  note: "Others was not a survey category; the calibrated ECI residual is not a survey share.",
+  shares: {
+    TVK: 0.34307906036878,
+    "AIADMK+BJP+PMK+AMMK": 0.27993180095983833,
+    "DMK+INC+VCK": 0.30051780752715335,
+    NTK: 0.0686094973478151,
+    NOTA: 0.007861833796413236,
+  } as TnShares,
+};
+
 export const ECI_ACTUAL = {
   label: "Actual 2026 · ECI",
   shortLabel: "Actual result",
@@ -35,8 +50,6 @@ export type SocialRow = {
 };
 
 export const TN_SOCIAL = {
-  heading: "Social Media",
-  window: "Meta reach · 23 Mar–22 Apr 2026",
   rows: [
     { platform: "Facebook", organic: 147369734, paid: 209749007, total: 357118741, followers: 246173 },
     { platform: "Instagram", organic: 41971328, paid: 106878129, total: 148849457, followers: 90188 },
@@ -44,5 +57,4 @@ export const TN_SOCIAL = {
   ] as SocialRow[],
   organicPct: 37.4,
   paidPct: 62.6,
-  note: "Source: ReachOut Analytics’ Meta page-insights export. Reach is reported across managed pages and may count the same person more than once. It does not measure voter support.",
 };

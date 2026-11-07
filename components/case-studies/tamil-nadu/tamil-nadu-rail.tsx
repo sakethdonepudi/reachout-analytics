@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ExternalLink, Maximize2 } from "lucide-react";
 import { TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_FULL, TN_SEAT_GROUPS, tnPct, type TnGroup, type TnSeatGroup, type TnShares, type TnYear } from "@/lib/tamil-nadu/model";
-import { AMI_EXIT_POLL, ECI_ACTUAL, TN_SOCIAL } from "@/lib/tamil-nadu/comparison";
+import { AMI_EXIT_POLL, ECI_ACTUAL, TN_OPINION_POLL, TN_SOCIAL } from "@/lib/tamil-nadu/comparison";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
 import { cn } from "@/lib/utils";
@@ -47,7 +47,7 @@ const tip = (p: Pal) => ({
 });
 const signed = (v: number, digits = 2) => `${v > 0 ? "+" : ""}${v.toFixed(digits)}`;
 
-export type OpinionPollView = { shares: TnShares; valid: number; asOf: string | null; available: boolean };
+export type OpinionPollView = { shares: TnShares; valid: number; asOf: string | null; available: boolean; source: "published" | "workbook" };
 
 const fmtNumber = (n: number) => n.toLocaleString("en-US");
 const fmtDate = (iso: string | null) => {
@@ -56,19 +56,12 @@ const fmtDate = (iso: string | null) => {
   return Number.isNaN(d.getTime()) ? "date unavailable" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 };
 
-function SocialMediaPanel({ isStatewide, scopeLabel }: { isStatewide: boolean; scopeLabel: string }) {
+function SocialMediaPanel() {
   return (
     <div className="mt-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[9px] font-bold uppercase tracking-[0.13em] text-muted-foreground">{TN_SOCIAL.window}</p>
-        <span className="rounded-full border border-border bg-muted/30 px-2 py-0.5 text-[8.5px] font-semibold text-muted-foreground">
-          {isStatewide ? "Tamil Nadu statewide" : `${scopeLabel} selected`}
-        </span>
-      </div>
-
-      <div className="mt-2 overflow-x-auto rounded-lg border border-border">
+      <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[300px] table-fixed border-collapse text-[8.5px]">
-          <caption className="sr-only">Tamil Nadu statewide Meta reach, 23 March to 22 April 2026</caption>
+          <caption className="sr-only">Tamil Nadu statewide Meta reach</caption>
           <colgroup><col className="w-[20%]" /><col className="w-[20%]" /><col className="w-[20%]" /><col className="w-[22%]" /><col className="w-[18%]" /></colgroup>
           <thead>
             <tr className="bg-muted/30 text-right text-[7px] uppercase tracking-wide text-muted-foreground">
@@ -107,12 +100,6 @@ function SocialMediaPanel({ isStatewide, scopeLabel }: { isStatewide: boolean; s
         </div>
       </div>
 
-      {!isStatewide && (
-        <p className="mt-2 text-[8.5px] leading-relaxed text-muted-foreground">
-          Statewide campaign figures — shown for context when a district or assembly is selected; not a local estimate.
-        </p>
-      )}
-      <p className="mt-2 text-[8.5px] leading-relaxed text-muted-foreground">{TN_SOCIAL.note}</p>
     </div>
   );
 }
@@ -256,7 +243,7 @@ export default function TamilNaduRail({
       </div>
 
       {view === "social" ? (
-        <SocialMediaPanel isStatewide={isStatewide} scopeLabel={scope.label} />
+        <SocialMediaPanel />
       ) : (
         <>
           {isStatewide ? (
@@ -317,7 +304,14 @@ export default function TamilNaduRail({
                 <p>
                   <a href={AMI_EXIT_POLL.source} target="_blank" rel="noreferrer" className="underline decoration-dotted underline-offset-2 hover:text-foreground">Exit Poll · {AMI_EXIT_POLL.sourceName}<ExternalLink className="ml-0.5 inline size-2.5" /></a> · Statewide projection.
                 </p>
-                <p>{opinionPoll.available ? `Opinion Poll · ReachOut Analytics — dataset updated ${fmtDate(opinionPoll.asOf)} · ${fmtNumber(opinionPoll.valid)} valid responses (unweighted).` : "Opinion poll data unavailable."}</p>
+                <p>
+                  {opinionPoll.available
+                    ? opinionPoll.source === "published"
+                      ? `Opinion Poll · ReachOut Analytics — dataset updated ${fmtDate(opinionPoll.asOf)} · ${fmtNumber(opinionPoll.valid)} valid responses (unweighted).`
+                      : `Opinion Poll · ReachOut Analytics — raw survey share from SAKET_TN_District_Estimate_calibrated_v2.xlsx · ${fmtNumber(opinionPoll.valid)} party-choice responses (unweighted).`
+                    : "Opinion poll data unavailable."}
+                </p>
+                {opinionPoll.available && <p>{TN_OPINION_POLL.note}</p>}
                 <p>
                   <a href={ECI_ACTUAL.source} target="_blank" rel="noreferrer" className="underline decoration-dotted underline-offset-2 hover:text-foreground">Actual result source: {ECI_ACTUAL.sourceName}<ExternalLink className="ml-0.5 inline size-2.5" /></a> · {ECI_ACTUAL.declaration}.
                 </p>

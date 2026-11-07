@@ -11,6 +11,7 @@ import {
   TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_SEAT_GROUPS, tnLeader, tnPct, type TnAggregates, type TnGroup, type TnSeatGroup, type TnShares, type TnYear, type TnYearOrCurrent,
 } from "@/lib/tamil-nadu/model";
 import TamilNaduRail, { type TnScopeResult, type TnTab } from "./tamil-nadu-rail";
+import { TN_OPINION_POLL } from "@/lib/tamil-nadu/comparison";
 import AboutTamilNadu from "./about-tamil-nadu";
 import type { MapTheme } from "./tamil-nadu-map";
 
@@ -24,8 +25,16 @@ const TamilNaduAnalysis = dynamic(() => import("./tamil-nadu-analysis"), {
 });
 
 type Option = { value: string; label: string; hint?: string };
-type OpinionPollState = { shares: TnShares; valid: number; asOf: string | null; available: boolean };
-const EMPTY_OPINION: OpinionPollState = { shares: {}, valid: 0, asOf: null, available: false };
+type OpinionPollState = { shares: TnShares; valid: number; asOf: string | null; available: boolean; source: "published" | "workbook" };
+// The supplied v2 workbook is the explicit ReachOut opinion-poll source. It is
+// used immediately and replaced only if a newer published dataset is returned.
+const WORKBOOK_OPINION: OpinionPollState = {
+  shares: TN_OPINION_POLL.shares,
+  valid: TN_OPINION_POLL.denominator,
+  asOf: null,
+  available: true,
+  source: "workbook",
+};
 const LABEL = "text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
 const YEARS: { id: TnYearOrCurrent; label: string }[] = [
   { id: "2011", label: "2011" }, { id: "2016", label: "2016" }, { id: "2021", label: "2021" }, { id: "2026", label: "2026" },
@@ -94,7 +103,7 @@ function SearchSelect({ label, value, options, placeholder, onChange, disabled =
 export default function TamilNaduDashboard() {
   const { theme } = useTheme();
   const [data, setData] = useState<TnAggregates | null>(null);
-  const [opinionPoll, setOpinionPoll] = useState<OpinionPollState>(EMPTY_OPINION);
+  const [opinionPoll, setOpinionPoll] = useState<OpinionPollState>(WORKBOOK_OPINION);
   const [error, setError] = useState<string | null>(null);
   const [district, setDistrict] = useState<string | null>(null);
   const [acNo, setAcNo] = useState<number | null>(null);
@@ -110,9 +119,9 @@ export default function TamilNaduDashboard() {
       .then((d: TnAggregates) => setData(d))
       .catch((e) => { if ((e as Error)?.name !== "AbortError") setError(e instanceof Error ? e.message : "Could not load Tamil Nadu data"); });
 
-    // The published opinion-poll dataset is separate from the exit-poll
-    // analysis bundle. An empty response means "Opinion poll data unavailable";
-    // no report or exit-poll figures are substituted.
+    // Prefer the latest published opinion-poll dataset. If none is available,
+    // the supplied v2 workbook shares remain in place; no report or exit-poll
+    // figures are substituted.
     fetch("/api/public/case-studies/tamil-nadu/summary", { cache: "no-store", signal: controller.signal })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
@@ -125,7 +134,7 @@ export default function TamilNaduDashboard() {
         }
         if (!Object.keys(shares).length) return;
         const valid = Number(d.opinion.counts?.valid ?? rows.reduce((sum, row) => sum + (row.count ?? 0), 0));
-        setOpinionPoll({ shares, valid, asOf: d.opinion.asOf ?? null, available: true });
+        setOpinionPoll({ shares, valid, asOf: d.opinion.asOf ?? null, available: true, source: "published" });
       })
       .catch(() => { /* unavailable; the table shows the explicit unavailable state */ });
 
