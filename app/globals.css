@@ -577,6 +577,3 @@ html.theme-transition *::after {
   background: var(--h-surface-inset);
   box-shadow: inset 0 2px 4px rgba(28, 26, 22, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
-@media (prefers-reduced-motion: reduce) {
-  .hero-preview-card { transition: none !important; transform: none !important; }
-}
