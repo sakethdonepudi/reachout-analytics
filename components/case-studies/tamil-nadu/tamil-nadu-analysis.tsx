@@ -6,6 +6,9 @@ import {
   TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_SEAT_GROUPS,
   type TnAggregates, type TnGroup, type TnSeatGroup, type TnShares, type TnYear,
 } from "@/lib/tamil-nadu/model";
+import { AMI_EXIT_POLL } from "@/lib/tamil-nadu/comparison";
+import { TVK_ACTUAL_SEATS, TVK_FORECASTERS } from "@/lib/tamil-nadu/forecasters";
+import type { OpinionPollView } from "@/components/case-studies/tamil-nadu/tamil-nadu-rail";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
 import { cn } from "@/lib/utils";
@@ -60,8 +63,13 @@ const changePp = (v: number | null | undefined) => (v == null || !Number.isFinit
 const rawValue = (d: unknown): unknown => (d && typeof d === "object" && "value" in d ? (d as { value: unknown }).value : d);
 const numericValue = (d: unknown): number | null => { const v = rawValue(d); if (typeof v === "number") return v; if (Array.isArray(v) && typeof v[1] === "number") return v[1]; return null; };
 const emptySeats = () => Object.fromEntries(TN_SEAT_GROUPS.map((g) => [g, 0])) as Record<TnSeatGroup, number>;
+const sumShares = (shares: TnShares | null | undefined, groups: TnGroup[]) => {
+  const values = groups.map((group) => shares?.[group]).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  return values.length ? values.reduce((total, value) => total + value, 0) : null;
+};
+type AnalysisGroup = { key: string; label: string; color: string; groups: TnGroup[] };
 
-export default function TamilNaduAnalysis({ open, onClose, data, theme, initialScope, defaultBaseline, onSelectDistrict, onSelectAc }: {
+export default function TamilNaduAnalysis({ open, onClose, data, theme, initialScope, defaultBaseline, onSelectDistrict, onSelectAc, opinionPoll }: {
   open: boolean;
   onClose: () => void;
   data: TnAggregates;
@@ -70,6 +78,7 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
   defaultBaseline: TnYear;
   onSelectDistrict: (name: string) => void;
   onSelectAc: (no: number) => void;
+  opinionPoll: OpinionPollView;
 }) {
   const reduced = usePrefersReducedMotion();
   const p = palette(theme);
@@ -117,6 +126,14 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
     ? data.acs.find((a) => a.no === Number(scope.slice(2)))?.name ?? "Assembly"
     : scope.startsWith("d:") ? scope.slice(2) : "Tamil Nadu";
   const scopeIsState = !scope.startsWith("a:") && !scope.startsWith("d:");
+  const analysisGroups = useMemo<AnalysisGroup[]>(() => {
+    const source = scopeIsState ? TN_GROUPS : TN_SURVEY_GROUPS;
+    const base = source.filter((group) => group !== "NOTA" && group !== "Others");
+    return [
+      ...base.map((group) => ({ key: group, label: TN_LABEL[group], color: TN_COLOR[group], groups: [group] })),
+      { key: "others-nota", label: "Others & NOTA", color: "#64748B", groups: ["NOTA", "Others"] },
+    ];
+  }, [scopeIsState]);
   const currentShares = scopeIsState ? data.statewide.calibrated.shares : scopeRecord.survey.shares ?? {};
   const baseline = scopeRecord.historical[baselineYear] ?? null;
   const baselineShares = baseline?.shares ?? null;
@@ -256,8 +273,8 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="tn-analysis-title" className="flex h-[94svh] w-full max-w-[1380px] flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-2xl sm:h-[92svh] sm:rounded-2xl">
         <div className="sticky top-0 z-30 flex items-start justify-between gap-3 border-b border-border bg-card/95 px-4 py-3 backdrop-blur-xl">
           <div className="min-w-0">
-            <h2 id="tn-analysis-title" className="font-display text-lg font-semibold leading-tight">Tamil Nadu analysis</h2>
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{scopeName} · 2026 estimate · {currentLabel}</p>
+            <h2 id="tn-analysis-title" className="font-display text-lg font-semibold leading-tight">Tamil Nadu 2026 · Vote Share</h2>
+            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{scopeName} · Vote share · Exit, Opinion and Actual</p>
           </div>
           <button ref={closeRef} type="button" onClick={onClose} aria-label="Close analysis" className="grid size-8 shrink-0 place-items-center rounded-full border border-border text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60"><X className="size-4" /></button>
         </div>
@@ -280,29 +297,103 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
         </div>
 
         <div className="space-y-5 overflow-y-auto px-4 pb-10 pt-4">
+          {!scopeIsState && (
+            <section>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  <h3 className="font-display text-[15px] font-semibold">Vote share</h3>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">Survey estimate, {baselineYear} result and local actual availability</p>
+                </div>
+              </div>
+              <div className="mt-2 overflow-x-auto rounded-xl border border-border">
+                <table className="w-full min-w-[540px] border-collapse text-[10.5px]">
+                  <caption className="sr-only">{scopeName} vote-share comparison</caption>
+                  <thead><tr className="bg-muted/30 text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">Party</th><th className="px-2 py-1.5 text-right">Survey Estimate</th><th className="px-2 py-1.5 text-right">{baselineYear} Result</th><th className="px-2 py-1.5 text-right">Actual Result</th></tr></thead>
+                  <tbody>
+                    {analysisGroups.map((group) => (
+                      <tr key={group.key} className="border-t border-border/60">
+                        <td className="px-2 py-1.5 font-medium"><span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-sm" style={{ background: group.color }} />{group.label}</span></td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{pct(sumShares(currentShares, group.groups))}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{pct(sumShares(baselineShares, group.groups))}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">—</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
           {scopeIsState && (
-          <section>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div><h3 className="font-display text-[15px] font-semibold">Estimated vote share</h3></div>
-            </div>
-            <div className="mt-2 overflow-x-auto rounded-xl border border-border">
-              <table className="w-full min-w-[460px] border-collapse text-[10.5px]"><caption className="sr-only">Statewide estimated and actual vote shares</caption>
-                <thead><tr className="bg-muted/30 text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">Party</th><th className="px-2 py-1.5 text-right">Estimated vote share</th><th className="px-2 py-1.5 text-right">Actual 2026</th></tr></thead>
-                <tbody>{TN_GROUPS.map((g) => <tr key={g} className="border-t border-border/60"><td className="px-2 py-1.5" style={{ color: TN_COLOR[g] }}>{TN_LABEL[g]}</td><td className="px-2 py-1.5 text-right tabular-nums">{pct(data.statewide.calibrated.shares[g])}</td><td className="px-2 py-1.5 text-right tabular-nums">{pct(data.statewide.actualVoteShares.shares[g])}</td></tr>)}</tbody>
-              </table>
-            </div>
-          </section>
+            <>
+              <section>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div>
+                    <h3 className="font-display text-[15px] font-semibold">Vote share</h3>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">Exit poll, opinion poll and actual result</p>
+                  </div>
+                </div>
+                <div className="mt-2 overflow-x-auto rounded-xl border border-border">
+                  <table className="w-full min-w-[560px] border-collapse text-[10.5px]">
+                    <caption className="sr-only">Tamil Nadu vote-share comparison</caption>
+                    <thead><tr className="bg-muted/30 text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">Party</th><th className="px-2 py-1.5 text-right">Exit Poll</th><th className="px-2 py-1.5 text-right">Opinion Poll</th><th className="px-2 py-1.5 text-right">Actual Result</th></tr></thead>
+                    <tbody>
+                      {analysisGroups.map((group) => (
+                        <tr key={group.key} className="border-t border-border/60">
+                          <td className="px-2 py-1.5 font-medium"><span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-sm" style={{ background: group.color }} />{group.label}</span></td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">{pct(sumShares(AMI_EXIT_POLL.shares, group.groups))}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">{pct(opinionPoll.available ? sumShares(opinionPoll.shares, group.groups) : null)}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">{pct(sumShares(data.statewide.actualVoteShares.shares, group.groups))}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div>
+                    <h3 className="font-display text-[15px] font-semibold">Forecaster Comparison · TVK Seat Projections</h3>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">Rank, projected seats, difference from the actual result and winner call</p>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">Actual {TVK_ACTUAL_SEATS}</span>
+                </div>
+                {TVK_FORECASTERS.length ? (
+                  <div className="mt-2 overflow-x-auto rounded-xl border border-border">
+                    <table className="w-full min-w-[620px] border-collapse text-[10.5px]">
+                      <caption className="sr-only">Forecaster comparison for TVK seat projections</caption>
+                      <thead><tr className="bg-muted/30 text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">Rank</th><th className="px-2 py-1.5">Forecaster</th><th className="px-2 py-1.5 text-right">Projected seats</th><th className="px-2 py-1.5 text-right">Difference from actual</th><th className="px-2 py-1.5">Winner call</th></tr></thead>
+                      <tbody>
+                        {TVK_FORECASTERS.map((row) => (
+                          <tr key={`${row.rank}-${row.forecaster}`} className="border-t border-border/60">
+                            <td className="px-2 py-1.5 tabular-nums text-muted-foreground">{row.rank}</td>
+                            <td className="px-2 py-1.5 font-medium">{row.forecaster}</td>
+                            <td className="px-2 py-1.5 text-right tabular-nums">{row.projectedSeats ?? "—"}</td>
+                            <td className="px-2 py-1.5 text-right tabular-nums">{row.differenceFromActual == null ? "—" : `${row.differenceFromActual > 0 ? "+" : ""}${row.differenceFromActual}`}</td>
+                            <td className="px-2 py-1.5">{row.winnerCall || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="mt-2 rounded-xl border border-dashed border-border px-3 py-3 text-[11px] text-muted-foreground">
+                    Forecaster comparison data unavailable — the supplied multi-state report is not present in this workspace.
+                  </p>
+                )}
+              </section>
+
+            </>
           )}
 
           <section>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
                 <h3 className="font-display text-[15px] font-semibold">Estimated vote share vs {baselineYear}</h3>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">Numeric historical shares only · no time series</p>
               </div>
             </div>
             <EChart option={historicalOption} height={290} reduced={reduced} replaceSeries ariaLabel={`2026 estimated vote shares compared with ${baselineYear} for ${scopeName}`} />
-            <p className="mt-0.5 text-[9px] text-muted-foreground">Historical shares are retained with a separate Others group; unrelated historical parties are not folded into DMK+. TVK did not contest 2011–2021, so it has no historical bar.</p>
           </section>
 
           <section>
@@ -335,7 +426,6 @@ export default function TamilNaduAnalysis({ open, onClose, data, theme, initialS
                 </table>
               </div>
             </div>
-            <p className="mt-1 text-[9px] text-muted-foreground">Seat estimates are separate from vote shares and are never used for map colours.</p>
           </section>
 
           <section>

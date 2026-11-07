@@ -2,14 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import Navbar from "@/components/site/navbar";
-import { CASES, UPCOMING, caseUrl } from "@/lib/cases";
+import { CASES, caseUrl } from "@/lib/cases";
 import { PartyMark } from "@/components/site/party-mark";
-import CompanyExperience from "@/components/site/company-marquee";
 import { requirePageSession } from "@/lib/require-session";
 
 export const metadata: Metadata = {
   title: "Case Studies — ReachOut Analytics",
-  description: "Election programmes and campaign analytics across India.",
+  description: "Protected state selector for ReachOut election case studies.",
 };
 
 export const dynamic = "force-dynamic";
@@ -22,10 +21,10 @@ export default async function CaseStudiesIndex() {
       <Navbar />
       <main className="min-h-screen bg-background pt-32 text-foreground">
         <div className="mx-auto max-w-6xl px-6 pb-24 sm:px-10">
-          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-saffron-2">Case studies</p>
-          <h1 className="mt-3 font-display text-[clamp(34px,5vw,64px)] font-semibold tracking-[-0.03em]">Campaigns across India</h1>
+          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-saffron-2">Protected workspace</p>
+          <h1 className="mt-3 font-display text-[clamp(34px,5vw,64px)] font-semibold tracking-[-0.03em]">Case Studies</h1>
           <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
-            Selected election programmes with their state and party associations. Shown for illustration only — no endorsement or ongoing client relationship is implied.
+            Select a state to open its protected election intelligence dashboard.
           </p>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -38,32 +37,15 @@ export default async function CaseStudiesIndex() {
                   </div>
                   <h2 className="mt-4 font-display text-xl font-semibold">{c.title}</h2>
                   <p className="mt-1 text-[13px] text-muted-foreground">{c.stateName}</p>
-                  <p className="mt-3 line-clamp-3 text-[13.5px] leading-relaxed text-muted-foreground">{c.summary}</p>
-                  <span className="mt-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-foreground">
-                    View case study
-                    <span className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-saffron to-[#e07617] text-[#241203] transition-transform group-hover:translate-x-0.5"><ArrowUpRight className="size-4" /></span>
+                  <p className="mt-3 line-clamp-2 text-[13.5px] leading-relaxed text-muted-foreground">{c.summary}</p>
+                  <span className="mt-5 inline-flex items-center gap-2 self-start rounded-full bg-foreground px-3.5 py-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-background transition-transform group-hover:translate-x-0.5">
+                    View Case Study <ArrowUpRight className="size-3.5" />
                   </span>
                 </Link>
               );
             })}
           </div>
 
-          <h2 className="mt-16 font-display text-2xl font-semibold">Upcoming</h2>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {UPCOMING.map((u) => (
-              <Link key={u.slug} href={caseUrl(u.slug)} className="rounded-xl border border-dashed border-saffron/50 px-4 py-2 text-sm font-semibold text-foreground hover:bg-saffron/10">
-                {u.title}
-              </Link>
-            ))}
-          </div>
-
-          <CompanyExperience className="mt-16" />
-
-          <footer className="mt-16 flex items-center justify-center gap-2 border-t border-border pt-6 text-[13px] text-muted-foreground">
-            <Link href="/services" className="font-medium text-foreground/80 hover:text-saffron-2">Services</Link>
-            <span className="text-border">·</span>
-            <span>© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</span>
-          </footer>
         </div>
       </main>
     </>

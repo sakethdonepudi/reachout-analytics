@@ -50,6 +50,7 @@ export type SocialRow = {
 };
 
 export const TN_SOCIAL = {
+  window: "Meta reach · 23 Mar–22 Apr 2026",
   rows: [
     { platform: "Facebook", organic: 147369734, paid: 209749007, total: 357118741, followers: 246173 },
     { platform: "Instagram", organic: 41971328, paid: 106878129, total: 148849457, followers: 90188 },

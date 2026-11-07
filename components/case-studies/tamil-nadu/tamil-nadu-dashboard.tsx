@@ -12,7 +12,6 @@ import {
 } from "@/lib/tamil-nadu/model";
 import TamilNaduRail, { type TnScopeResult, type TnTab } from "./tamil-nadu-rail";
 import { TN_OPINION_POLL } from "@/lib/tamil-nadu/comparison";
-import AboutTamilNadu from "./about-tamil-nadu";
 import type { MapTheme } from "./tamil-nadu-map";
 
 const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
@@ -232,7 +231,7 @@ export default function TamilNaduDashboard() {
         </aside>
 
         <div className="relative z-0 mt-4 flex flex-col overflow-hidden rounded-2xl border border-border bg-card lg:absolute lg:inset-x-0 lg:top-14 lg:bottom-0 lg:mt-0 lg:rounded-none lg:border-0 lg:bg-transparent">
-          <div className="relative h-[52svh] min-h-[360px] overflow-hidden lg:ml-[280px] lg:mr-[460px] lg:h-auto lg:min-h-0 lg:flex-1">
+          <div className="relative h-[52svh] min-h-[360px] overflow-hidden lg:ml-[264px] lg:mr-[532px] lg:h-auto lg:min-h-0 lg:flex-1">
             <TamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} theme={(theme === "light" ? "light" : "dark") as MapTheme} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={resetToState} />
             {(district || currentAc) && (
               <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 lg:left-3 lg:top-16">
@@ -241,23 +240,22 @@ export default function TamilNaduDashboard() {
               </div>
             )}
           </div>
-          <div className="shrink-0 border-t border-border/60 px-3 py-1.5 lg:ml-[280px] lg:mr-[460px] lg:px-0">
+          <div className="shrink-0 border-t border-border/60 px-3 py-1.5 lg:ml-[264px] lg:mr-[532px] lg:px-0">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9.5px] font-medium text-muted-foreground">
               {legend.map((item) => <span key={item.key} className="inline-flex items-center gap-1.5"><span className="size-2 rounded-[2px] ring-1 ring-inset ring-black/15" style={{ background: item.colour }} />{item.label}</span>)}
             </div>
           </div>
         </div>
 
-        <section className="relative z-20 mx-auto mt-4 max-w-xl lg:absolute lg:right-6 lg:top-24 lg:mt-0 lg:w-[430px] lg:max-w-none lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
+        <section className="relative z-20 mx-auto mt-4 max-w-xl lg:absolute lg:right-6 lg:top-24 lg:mt-0 lg:w-[500px] lg:max-w-none lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
           <TamilNaduRail scope={scope} tab={tab} onTab={setTab} onExpand={openAnalysis} theme={theme === "light" ? "light" : "dark"} selectedYear={year} isStatewide={isStatewide} opinionPoll={opinionPoll} actualShares={data.statewide.actualVoteShares.shares} />
         </section>
       </section>
 
-      <AboutTamilNadu data={data} />
 
       {chartOpen && (
         <TamilNaduAnalysis open={chartOpen} onClose={closeAnalysis} data={data} theme={theme === "light" ? "light" : "dark"}
-          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} onSelectAc={selectAc} />
+          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} onSelectAc={selectAc} opinionPoll={opinionPoll} />
       )}
     </div>
   );

@@ -16,7 +16,6 @@ import {
   historicalTotal, winnerColour, winnerLabel, winnerSeats, type ElectionYear,
 } from "@/lib/telangana/history";
 import TelanganaRail, { type ScopeResult } from "./telangana-rail";
-import AboutTelangana from "./about-telangana";
 import type { MapTheme } from "./telangana-map";
 
 const TelanganaMap = dynamic(() => import("./telangana-map"), {
@@ -338,7 +337,6 @@ export default function TelanganaDashboard() {
         </section>
       </section>
 
-      <AboutTelangana data={data} />
 
       {chartOpen && (
         <TelanganaAnalysis open={chartOpen} onClose={closeAnalysis} acs={data.acs} districts={data.districts}

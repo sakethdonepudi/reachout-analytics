@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import PartyDisc from "@/components/site/party-disc";
 import { POLITICAL_IDENTITIES } from "@/lib/parties";
+import { caseUrl } from "@/lib/cases";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ *
@@ -60,6 +62,7 @@ export default function PartyOrbit({ compact = false, className }: { compact?: b
   const [geo, setGeo] = useState<Geo>(() => computeGeo(520, compact));
   const [ready, setReady] = useState(false);
   const [active, setActive] = useState(0);
+  const [front, setFront] = useState(0);
   const [reduced, setReduced] = useState(false);
   const [visible, setVisible] = useState(true);
   const [hidden, setHidden] = useState(false);
@@ -70,10 +73,16 @@ export default function PartyOrbit({ compact = false, className }: { compact?: b
   const animRef = useRef<{ from: number; to: number; elapsed: number; last: number } | null>(null);
   const rafRef = useRef(0);
   const reducedRef = useRef(false);
+  const frontRef = useRef(0);
 
   const paint = useCallback(() => {
     const g = geoRef.current;
     const v = virtualRef.current;
+    const nearest = ((Math.round(v) % N) + N) % N;
+    if (nearest !== frontRef.current) {
+      frontRef.current = nearest;
+      setFront(nearest);
+    }
     const sizes = [g.front, g.s1, g.s2, g.s3];
     for (let i = 0; i < N; i++) {
       const el = discRefs.current[i];
@@ -218,23 +227,25 @@ export default function PartyOrbit({ compact = false, className }: { compact?: b
             className="absolute left-0 top-0 will-change-transform"
             style={{ width: BASE, height: BASE }}
           >
-            <PartyDisc identity={identity} active={i === active} onActivate={() => setActive(i)} />
+            <PartyDisc identity={identity} active={i === front} onActivate={() => setActive(i)} />
           </div>
         ))}
 
         <div className="absolute inset-x-0" style={{ top: geo.captionTop, height: geo.captionH }}>
           {POLITICAL_IDENTITIES.map((identity, i) => (
-            <div
+            <Link
               key={identity.id}
-              aria-hidden={i !== active}
-              className="party-caption absolute inset-0 flex flex-col items-center text-center"
-              style={{ opacity: i === active ? 1 : 0 }}
+              href={caseUrl(identity.caseSlug)}
+              aria-hidden={i !== front}
+              tabIndex={i === front ? 0 : -1}
+              className="party-caption absolute inset-0 flex flex-col items-center text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron/80"
+              style={{ opacity: i === front ? 1 : 0, pointerEvents: i === front ? "auto" : "none" }}
             >
               <p className="font-display text-[14px] font-semibold leading-tight text-white [text-shadow:0_2px_14px_rgba(0,0,0,.75)]">
                 {identity.party} <span className="text-white/45">·</span> {identity.state}
               </p>
               <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">View case study</p>
-            </div>
+            </Link>
           ))}
         </div>
       </div>
