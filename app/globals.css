@@ -569,6 +569,8 @@ html.theme-transition *::after {
   --m-panel-border: rgba(154, 119, 63, 0.3);
   --m-button-ink: #1c1408;
   --m-menu-bg: #f7f3ea;
+  --m-glass: rgba(247, 243, 234, 0.70);
+  --m-glass-strong: rgba(247, 243, 234, 0.88);
 }
 .dark .masthead {
   --m-bg: #070b14;
@@ -582,6 +584,17 @@ html.theme-transition *::after {
   --m-panel-border: rgba(201, 162, 94, 0.28);
   --m-button-ink: #171006;
   --m-menu-bg: #070b14;
+  --m-glass: rgba(7, 11, 20, 0.62);
+  --m-glass-strong: rgba(7, 11, 20, 0.86);
+}
+.masthead-shell {
+  background: var(--m-glass);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  backdrop-filter: blur(18px) saturate(145%);
+  box-shadow: 0 18px 44px -34px rgba(0, 0, 0, 0.55);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .masthead-shell { background: var(--m-bg); }
 }
 .masthead-rule {
   transform-origin: left;

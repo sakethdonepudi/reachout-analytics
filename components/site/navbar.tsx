@@ -162,7 +162,7 @@ export default function Navbar() {
 
   return (
     <header className="masthead pointer-events-none fixed inset-x-0 top-0 z-50">
-      <div className={cn("masthead-shell pointer-events-auto relative bg-[var(--m-bg)] text-[var(--m-ink)] transition-[height] duration-300", scrolled ? "h-[56px]" : "h-[68px]")}>
+      <div className={cn("masthead-shell pointer-events-auto relative text-[var(--m-ink)] transition-[height] duration-300", scrolled ? "h-[56px]" : "h-[68px]")}>
         <MastheadContours />
 
         <div ref={contentRef} className="relative mx-auto flex h-full max-w-[1280px] items-center px-6 sm:px-10">
@@ -209,7 +209,7 @@ export default function Navbar() {
                   <ChevronDown className={cn("size-3.5 transition-transform", accountOpen && "rotate-180")} aria-hidden />
                 </button>
                 {accountOpen && (
-                  <div role="menu" className="absolute right-0 top-[calc(100%+10px)] w-48 border border-t-2 border-[var(--m-panel-border)] border-t-[var(--m-brass)]/60 bg-[var(--m-menu-bg)] p-1.5 text-[var(--m-ink)] shadow-[0_24px_50px_-24px_rgba(0,0,0,.55)]">
+                  <div role="menu" className="absolute right-0 top-[calc(100%+10px)] w-48 border border-t-2 border-[var(--m-panel-border)] border-t-[var(--m-brass)]/60 bg-[var(--m-glass-strong)] p-1.5 text-[var(--m-ink)] backdrop-blur-2xl shadow-[0_24px_50px_-24px_rgba(0,0,0,.55)]">
                     <button type="button" role="menuitem" onClick={signOut} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] font-medium text-[var(--m-muted)] transition-colors hover:text-[var(--m-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--m-brass)]/50">
                       <LogOut className="size-3.5" aria-hidden /> Sign Out
                     </button>
@@ -248,7 +248,7 @@ export default function Navbar() {
       </div>
 
       {open && (
-        <div className="masthead-shell pointer-events-auto relative border-t border-[var(--m-line)] bg-[var(--m-menu-bg)] px-6 pb-5 pt-3 text-[var(--m-ink)] shadow-[0_24px_50px_-30px_rgba(0,0,0,.65)] md:hidden">
+        <div className="masthead-shell pointer-events-auto relative border-t border-[var(--m-line)] px-6 pb-5 pt-3 text-[var(--m-ink)] shadow-[0_24px_50px_-30px_rgba(0,0,0,.65)] md:hidden" style={{ background: "var(--m-glass-strong)" }}>
           <MastheadContours />
           <div className="relative">
             <MobileLink href="/#top" active={isHome} onClick={() => setOpen(false)}>Home</MobileLink>
