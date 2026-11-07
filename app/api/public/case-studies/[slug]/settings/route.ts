@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { getCase } from "@/lib/case-registry";
 import { getDisplayBasis, isConfigured } from "@/lib/poll-store";
 import type { DisplayBasis } from "@/lib/poll-store";
+import { requireAdmin } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -10,7 +11,9 @@ export const runtime = "nodejs";
  * (recorded / estimated), configured by an admin. Not sensitive; carries no
  * survey figures. The dashboard uses it instead of a public basis control.
  */
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const auth = await requireAdmin(req);
+  if ("deny" in auth) return auth.deny;
   const { slug } = await params;
   const rec = await getCase(slug);
   if (!rec) return Response.json({ ok: false, error: "Unknown case study" }, { status: 404 });

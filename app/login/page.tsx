@@ -9,6 +9,18 @@ import ThemeToggle from "@/components/site/theme-toggle";
 import Turnstile from "@/components/site/turnstile";
 import { useTheme } from "@/components/theme-provider";
 
+/** Only allow internal return paths; never redirect to another origin. */
+function safeNext(value: string | null) {
+  if (!value) return "/admin";
+  try {
+    const url = new URL(value, window.location.origin);
+    if (url.origin !== window.location.origin) return "/admin";
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return "/admin";
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { theme } = useTheme();
@@ -27,7 +39,9 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password, turnstileToken: token }) });
       const d = await res.json();
       if (!res.ok || !d.ok) throw new Error(d.error || "Sign-in failed");
-      router.push("/admin");
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(safeNext(next));
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed");
       setResetNonce((n) => n + 1); // always reset the challenge after a failure

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Navbar from "@/components/site/navbar";
 import CompanyExperience from "@/components/site/company-marquee";
 import TelanganaDashboard from "@/components/case-studies/telangana/telangana-dashboard";
+import { requirePageSession } from "@/lib/require-session";
 
 export const metadata: Metadata = {
   title: "Telangana — ReachOut's Election Intelligence",
@@ -15,7 +16,11 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", images: ["https://reachout-analytics.vercel.app/og/telangana.png"] },
 };
 
-export default function TelanganaCaseStudyPage() {
+export const dynamic = "force-dynamic";
+
+export default async function TelanganaCaseStudyPage() {
+  await requirePageSession("/case-studies/telangana");
+
   return (
     <>
       <Navbar />

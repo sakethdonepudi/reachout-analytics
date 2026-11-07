@@ -8,7 +8,7 @@ import { useTheme } from "@/components/theme-provider";
 import { PartyIdentity } from "@/components/site/party-mark";
 import { cn } from "@/lib/utils";
 import {
-  TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_SEAT_GROUPS, TN_NO_DATA, tnLeader, tnPct, type TnAggregates, type TnGroup, type TnSeatGroup, type TnShares, type TnYear, type TnYearOrCurrent,
+  TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_SEAT_GROUPS, tnLeader, tnPct, type TnAggregates, type TnGroup, type TnSeatGroup, type TnShares, type TnYear, type TnYearOrCurrent,
 } from "@/lib/tamil-nadu/model";
 import TamilNaduRail, { type TnScopeResult, type TnTab } from "./tamil-nadu-rail";
 import AboutTamilNadu from "./about-tamil-nadu";
@@ -24,6 +24,8 @@ const TamilNaduAnalysis = dynamic(() => import("./tamil-nadu-analysis"), {
 });
 
 type Option = { value: string; label: string; hint?: string };
+type OpinionPollState = { shares: TnShares; valid: number; asOf: string | null; available: boolean };
+const EMPTY_OPINION: OpinionPollState = { shares: {}, valid: 0, asOf: null, available: false };
 const LABEL = "text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
 const YEARS: { id: TnYearOrCurrent; label: string }[] = [
   { id: "2011", label: "2011" }, { id: "2016", label: "2016" }, { id: "2021", label: "2021" }, { id: "2026", label: "2026" },
@@ -92,6 +94,7 @@ function SearchSelect({ label, value, options, placeholder, onChange, disabled =
 export default function TamilNaduDashboard() {
   const { theme } = useTheme();
   const [data, setData] = useState<TnAggregates | null>(null);
+  const [opinionPoll, setOpinionPoll] = useState<OpinionPollState>(EMPTY_OPINION);
   const [error, setError] = useState<string | null>(null);
   const [district, setDistrict] = useState<string | null>(null);
   const [acNo, setAcNo] = useState<number | null>(null);
@@ -106,6 +109,26 @@ export default function TamilNaduDashboard() {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((d: TnAggregates) => setData(d))
       .catch((e) => { if ((e as Error)?.name !== "AbortError") setError(e instanceof Error ? e.message : "Could not load Tamil Nadu data"); });
+
+    // The published opinion-poll dataset is separate from the exit-poll
+    // analysis bundle. An empty response means "Opinion poll data unavailable";
+    // no report or exit-poll figures are substituted.
+    fetch("/api/public/case-studies/tamil-nadu/summary", { cache: "no-store", signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const rows = Array.isArray(d?.opinion?.shares) ? d.opinion.shares as Array<{ party?: string; count?: number; pct?: number }> : [];
+        if (!d?.published || !rows.length) return;
+        const shares: TnShares = {};
+        for (const row of rows) {
+          if (!row.party || !(TN_GROUPS as readonly string[]).includes(row.party) || typeof row.pct !== "number") continue;
+          shares[row.party as TnGroup] = row.pct / 100;
+        }
+        if (!Object.keys(shares).length) return;
+        const valid = Number(d.opinion.counts?.valid ?? rows.reduce((sum, row) => sum + (row.count ?? 0), 0));
+        setOpinionPoll({ shares, valid, asOf: d.opinion.asOf ?? null, available: true });
+      })
+      .catch(() => { /* unavailable; the table shows the explicit unavailable state */ });
+
     return () => controller.abort();
   }, []);
 
@@ -180,45 +203,44 @@ export default function TamilNaduDashboard() {
     <div className="relative min-h-screen bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_18%_8%,rgba(245,138,36,0.055),transparent_60%)]" aria-hidden />
       <section className="relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-24 sm:pt-28 lg:h-[100svh] lg:min-h-[760px] lg:overflow-hidden lg:px-6 lg:pt-20">
-        <aside aria-label="Map controls" className="relative z-30 lg:absolute lg:left-8 lg:top-24 lg:w-[264px] lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
+        <h1 className="sr-only">Tamil Nadu election intelligence</h1>
+        <aside aria-label="Map controls" className="relative z-30 lg:absolute lg:left-8 lg:top-24 lg:w-[240px] lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
           <Link href="/case-studies" className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-[12.5px] text-muted-foreground backdrop-blur-xl transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
             <ArrowLeft className="size-3.5" /> Back to Case Studies
           </Link>
-          <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Tamil Nadu</p>
-          <h1 className="mt-1 font-display text-[clamp(27px,3.2vw,40px)] font-semibold leading-[1.02] tracking-[-0.03em]">ReachOut&apos;s Election Intelligence</h1>
-          <PartyIdentity party="AIADMK" state="Tamil Nadu" size="sm" className="mt-3" />
+          <PartyIdentity party="AIADMK" state="Tamil Nadu" size="sm" className="mt-4" />
           <div className="mt-5 space-y-3">
             <div>
               <span className={LABEL}>Election year</span>
-              <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-border p-0.5" role="group" aria-label="Election year">
-                {YEARS.map((y) => <button key={y.id} type="button" aria-pressed={year === y.id} onClick={() => setYear(y.id)} className={cn("rounded-md px-2 py-1.5 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60", year === y.id ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>{y.label}</button>)}
+              <div className="mt-1 flex flex-col gap-0.5 rounded-lg border border-border p-0.5" role="group" aria-label="Election year">
+                {YEARS.map((y) => <button key={y.id} type="button" aria-pressed={year === y.id} onClick={() => setYear(y.id)} className={cn("w-full rounded-md px-2 py-1.5 text-left text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60", year === y.id ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>{y.label}</button>)}
               </div>
             </div>
             <SearchSelect label="District" value={district ?? ""} options={districtOptions} placeholder="Select a district" onChange={(v) => selectDistrict(v || null)} />
             <SearchSelect label="Assembly" value={acNo != null ? String(acNo) : ""} options={assemblyOptions} placeholder={district ? "Select an assembly" : "Select a district first"} disabled={!district} onChange={(v) => selectAc(v ? Number(v) : null)} />
-            <div>
-              <span className={LABEL}>{year === "2026" ? "Estimated vote-share" : `${year} leading groups`}</span>
-              <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] font-medium text-muted-foreground">
-                {legend.map((item) => <span key={item.key} className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15" style={{ background: item.colour }} /><span className="truncate">{item.label}</span></span>)}
-                <span className="flex min-w-0 items-center gap-1.5"><span className="h-2.5 w-5 shrink-0 rounded-[2px]" style={{ background: TN_NO_DATA }} /><span className="truncate">No data</span></span>
-              </div>
-            </div>
             {(district || currentAc) && <button type="button" onClick={resetToState} className="flex w-full items-center gap-2 rounded-lg border border-border px-2.5 py-2 text-left text-[11.5px] font-semibold hover:border-saffron/40"><RotateCcw className="size-3.5" /> Reset to Tamil Nadu</button>}
           </div>
         </aside>
 
-        <div className="relative z-0 mt-4 h-[52svh] min-h-[360px] overflow-hidden rounded-2xl border border-border bg-card lg:absolute lg:inset-x-0 lg:top-16 lg:bottom-0 lg:mt-0 lg:h-auto lg:rounded-none lg:border-0 lg:bg-transparent">
-          <TamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} theme={(theme === "light" ? "light" : "dark") as MapTheme} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={resetToState} />
-          {(district || currentAc) && (
-            <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 lg:left-[312px]">
-              <button type="button" onClick={resetToState} className="inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:border-saffron/50"><ArrowLeft className="size-3" /> Tamil Nadu</button>
-              <button type="button" onClick={resetToState} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:border-saffron/50"><RotateCcw className="size-3" /> Reset</button>
+        <div className="relative z-0 mt-4 flex flex-col overflow-hidden rounded-2xl border border-border bg-card lg:absolute lg:inset-x-0 lg:top-14 lg:bottom-0 lg:mt-0 lg:rounded-none lg:border-0 lg:bg-transparent">
+          <div className="relative h-[52svh] min-h-[360px] overflow-hidden lg:ml-[280px] lg:mr-[460px] lg:h-auto lg:min-h-0 lg:flex-1">
+            <TamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} theme={(theme === "light" ? "light" : "dark") as MapTheme} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={resetToState} />
+            {(district || currentAc) && (
+              <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 lg:left-3 lg:top-16">
+                <button type="button" onClick={resetToState} className="inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:border-saffron/50"><ArrowLeft className="size-3" /> Tamil Nadu</button>
+                <button type="button" onClick={resetToState} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:border-saffron/50"><RotateCcw className="size-3" /> Reset</button>
+              </div>
+            )}
+          </div>
+          <div className="shrink-0 border-t border-border/60 px-3 py-1.5 lg:ml-[280px] lg:mr-[460px] lg:px-0">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9.5px] font-medium text-muted-foreground">
+              {legend.map((item) => <span key={item.key} className="inline-flex items-center gap-1.5"><span className="size-2 rounded-[2px] ring-1 ring-inset ring-black/15" style={{ background: item.colour }} />{item.label}</span>)}
             </div>
-          )}
+          </div>
         </div>
 
-        <section className="relative z-20 mx-auto mt-4 max-w-xl lg:absolute lg:right-6 lg:top-24 lg:mt-0 lg:w-[340px] lg:max-w-none lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
-          <TamilNaduRail scope={scope} tab={tab} onTab={setTab} onExpand={openAnalysis} theme={theme === "light" ? "light" : "dark"} selectedYear={year} isStatewide={isStatewide} />
+        <section className="relative z-20 mx-auto mt-4 max-w-xl lg:absolute lg:right-6 lg:top-24 lg:mt-0 lg:w-[430px] lg:max-w-none lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
+          <TamilNaduRail scope={scope} tab={tab} onTab={setTab} onExpand={openAnalysis} theme={theme === "light" ? "light" : "dark"} selectedYear={year} isStatewide={isStatewide} opinionPoll={opinionPoll} actualShares={data.statewide.actualVoteShares.shares} />
         </section>
       </section>
 

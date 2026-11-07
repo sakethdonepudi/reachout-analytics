@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Navbar from "@/components/site/navbar";
 import CompanyExperience from "@/components/site/company-marquee";
 import TamilNaduDashboard from "@/components/case-studies/tamil-nadu/tamil-nadu-dashboard";
+import { requirePageSession } from "@/lib/require-session";
 
 export const metadata: Metadata = {
   title: "Tamil Nadu — ReachOut's Election Intelligence",
@@ -15,7 +16,11 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", images: ["https://reachout-analytics.vercel.app/og/tamil-nadu.png"] },
 };
 
-export default function TamilNaduCaseStudyPage() {
+export const dynamic = "force-dynamic";
+
+export default async function TamilNaduCaseStudyPage() {
+  await requirePageSession("/case-studies/tamil-nadu");
+
   return (
     <>
       <Navbar />

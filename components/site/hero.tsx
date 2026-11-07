@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import ShimmerButton from "@/components/ui/shimmer-button";
 import PartyOrbit from "@/components/site/party-orbit";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
@@ -61,7 +59,6 @@ function Slide({
 }
 
 export default function Hero() {
-  const router = useRouter();
   const { theme } = useTheme();
   const root = useRef<HTMLElement>(null);
 
@@ -162,8 +159,6 @@ export default function Hero() {
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <ShimmerButton text="Book a Consultation" duration={1.8} onClick={() => router.push("/#contact")}
-                className="border-saffron/40 px-7 py-3.5 shadow-[0_0_0_4px_rgba(245,138,36,.08),0_20px_50px_-10px_rgba(245,138,36,.4)] dark:bg-[#0a1a44]/80 backdrop-blur-xl" />
               <a href="/case-studies" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 py-3.5 text-[15px] font-medium text-white/90 backdrop-blur-xl transition-colors hover:bg-white/10">
                 Explore Case Studies
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />

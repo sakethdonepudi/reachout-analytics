@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { DATA } from "@/lib/telangana/oct26";
 import { oct26ActiveImport } from "@/lib/telangana/oct26-import";
 import { activePack } from "@/lib/telangana/pack-import";
+import { requireAdmin } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -36,7 +37,9 @@ async function activePackSafe() {
  * packaged validated snapshot for this workbook hash; the workbook itself
  * stays in private admin storage.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if ("deny" in auth) return auth.deny;
   const [active, pack] = await Promise.all([activeImportSafe(), activePackSafe()]);
   return NextResponse.json(
     {

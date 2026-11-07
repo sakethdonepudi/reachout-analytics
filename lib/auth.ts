@@ -84,15 +84,24 @@ export async function createSession(sub: string, role: "admin"): Promise<string>
   return signSession({ sub, role, exp, sid });
 }
 
+/** Verifies a token's signature, expiry and server-side session. */
+export async function getSessionByToken(token: string | undefined): Promise<Session | null> {
+  const s = verifySessionToken(token);
+  if (!s) return null;
+  try {
+    const col = await sessions();
+    if (!col) return null;
+    const doc = await col.findOne({ _id: s.sid ?? "" });
+    if (!doc) return null;
+    return s;
+  } catch {
+    return null;
+  }
+}
+
 /** Verifies the cookie signature AND that the server-side session still exists. */
 export async function getSession(req: NextRequest): Promise<Session | null> {
-  const s = verifySessionToken(getSessionToken(req));
-  if (!s) return null;
-  const col = await sessions();
-  if (!col) return null;
-  const doc = await col.findOne({ _id: s.sid ?? "" });
-  if (!doc) return null;
-  return s;
+  return getSessionByToken(getSessionToken(req));
 }
 
 /** Revoke a session server-side (so logout invalidates the cookie immediately). */

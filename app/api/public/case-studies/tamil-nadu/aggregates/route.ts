@@ -1,12 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import aggregates from "@/lib/data/tamil-nadu/aggregates.json";
 import type { TnAggregates } from "@/lib/tamil-nadu/model";
 import { getPublishedSnapshot } from "@/lib/tamil-nadu/snapshot-store";
+import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if ("deny" in auth) return auth.deny;
   // Prefer the last approved snapshot; fall back to the build-verified bundle.
   const published = await getPublishedSnapshot();
   const current = aggregates as TnAggregates;

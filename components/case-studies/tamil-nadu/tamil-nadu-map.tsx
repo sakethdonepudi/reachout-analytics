@@ -469,18 +469,22 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         if (bounds) {
           centerX = (bounds.minx + bounds.maxx) / 2; centerZ = (bounds.minz + bounds.maxz) / 2;
           const W = Math.max(1, bounds.maxx - bounds.minx), H = Math.max(1, bounds.maxz - bounds.minz);
-          const availW = Math.max(220, vw - (wide ? 680 : 0));
+          const availW = Math.max(220, vw - (wide ? 20 : 0));
           const availH = Math.max(220, vh - 90);
           const fov = camera.fov * Math.PI / 180;
           const fit = Math.max((H / 2) / Math.tan(fov / 2), (W / 2) / Math.tan(Math.atan(Math.tan(fov / 2) * (availW / availH)))) * (activeAC ? 2.25 : 1.45);
           dist = Math.max(45, Math.min(3300, fit));
-          const shift = wide ? -70 : 0;
+          const shift = 0;
           const worldPerPx = (2 * dist * Math.tan(fov / 2)) / availH;
           centerX += shift * worldPerPx;
         }
         startCamera({ tx: centerX, tz: centerZ, ty: activeAC ? 2.2 : activeD ? 0.8 : 0, dist, theta: 0, phi: 0.58 });
       },
-      resetCamera: () => startCamera({ tx: 0, tz: 0, ty: 0, dist: 2050, theta: 0, phi: 0.58 }),
+      resetCamera: () => {
+        const width = Math.max(280, host.getBoundingClientRect().width);
+        const dist = Math.max(1900, Math.min(4300, 2050 * (700 / width)));
+        startCamera({ tx: 0, tz: 0, ty: 0, dist, theta: 0, phi: 0.58 });
+      },
     };
     apiRef.current?.setSelection(live.current.district, live.current.acNo, live.current.year);
     setReady(true);

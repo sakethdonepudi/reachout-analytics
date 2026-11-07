@@ -2,18 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import Navbar from "@/components/site/navbar";
-import CaseCta from "@/components/site/case-cta";
 import CompanyExperience from "@/components/site/company-marquee";
 import { PartyIdentity, PartyMark } from "@/components/site/party-mark";
 import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl } from "@/lib/cases";
+import { requirePageSession } from "@/lib/require-session";
 
-export function generateStaticParams() {
-  // Tamil Nadu and Telangana have their own dedicated dashboard routes.
-  return [
-    ...CASES.filter((c) => c.slug !== "tamil-nadu" && c.slug !== "telangana").map((c) => ({ slug: c.slug })),
-    ...UPCOMING.map((u) => ({ slug: u.slug })),
-  ];
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -48,6 +42,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function CaseStudyPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  await requirePageSession(`/case-studies/${slug}`);
   const c = caseBySlug(slug);
   const upcoming = UPCOMING.find((u) => u.slug === slug);
   if (!c && !upcoming) notFound();
@@ -120,15 +115,14 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
 
           <CompanyExperience className="mt-20 border-t border-border" />
 
-          <div className="mt-16 flex flex-col items-start justify-between gap-6 border-t border-border pt-10 sm:flex-row sm:items-center">
-            <CaseCta />
-            {c && (
+          {c && (
+            <div className="mt-16 flex items-center justify-end border-t border-border pt-10">
               <Link href={caseUrl(next.slug)} className="group flex items-center gap-3 text-muted-foreground transition-colors hover:text-foreground">
                 Next: <b className="font-display text-lg text-foreground">{next.title}</b>
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
               </Link>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </main>
     </>

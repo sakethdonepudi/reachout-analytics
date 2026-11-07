@@ -6,7 +6,6 @@ import { ArrowUpRight, X } from "lucide-react";
 import * as THREE from "three";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 import { rafLoop } from "@/lib/raf-loop";
-import ShimmerButton from "@/components/ui/shimmer-button";
 import { CASES, UPCOMING, caseUrl, type CaseStudy } from "@/lib/cases";
 import { PartyMark } from "@/components/site/party-mark";
 import { startRouteTransition } from "@/lib/route-transition";
@@ -549,10 +548,6 @@ export default function IndiaMap() {
           {UPCOMING.map((u) => (
             <a key={u.slug} href={caseUrl(u.slug)} className="rounded-md border border-dashed border-saffron/50 px-2.5 py-1 font-semibold text-white hover:bg-saffron/10">{u.title}</a>
           ))}
-        </div>
-        <div className="glass flex items-center justify-between gap-4 rounded-2xl py-2.5 pl-5 pr-2.5">
-          <p className="font-display text-[15px] font-semibold leading-tight">Partner with us <span className="font-normal text-white/60">for your next election victory</span></p>
-          <ShimmerButton text="Book a Consultation" duration={2} onClick={() => router.push("/#contact")} className="shrink-0 border-white/15 px-5 py-2.5 dark:bg-[#0a1a44]/80 backdrop-blur-xl" />
         </div>
         <p className="mt-3 hidden text-[10.5px] uppercase tracking-[0.16em] text-white/35 sm:block">Drag to rotate · Hover a state · Click a campaign</p>
       </div>

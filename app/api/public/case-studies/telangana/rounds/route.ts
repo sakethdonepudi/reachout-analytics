@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import rounds from "@/lib/data/telangana/rounds.json";
+import { requireAdmin } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,8 @@ const SCOPES = rounds.scopes as unknown as Record<string, Scope>;
  * computed from the source records; no Entry IDs or raw rows are exposed.
  */
 export async function GET(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if ("deny" in auth) return auth.deny;
   const scope = req.nextUrl.searchParams.get("scope") ?? "state";
   if (!/^(state|d:[^/]+|a:\d+)$/.test(scope)) {
     return NextResponse.json({ error: "Unknown scope" }, { status: 400 });
