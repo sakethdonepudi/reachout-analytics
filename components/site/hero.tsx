@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight } from "lucide-react";
 import PartyOrbit from "@/components/site/party-orbit";
+import HeroStatePreviews from "@/components/site/hero-state-previews";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 
@@ -176,10 +177,12 @@ export default function Hero() {
         <div className="mt-12 flex justify-center lg:hidden">
           <PartyOrbit compact />
         </div>
-      </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center">
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.3em] text-white/35">Scroll to explore</span>
+        <HeroStatePreviews className="mt-12 lg:mt-16" />
+
+        <div className="mt-8 flex justify-center">
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.3em] text-white/35">Scroll to explore</span>
+        </div>
       </div>
     </section>
   );

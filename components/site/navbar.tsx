@@ -8,71 +8,49 @@ import ThemeToggle from "@/components/site/theme-toggle";
 import { useSession } from "@/components/site/use-session";
 import { cn } from "@/lib/utils";
 
-export function Logo({ className, variant = "auto" }: { className?: string; variant?: "auto" | "dark" }) {
-  const light = <img src="/brand/reachout-logo-light.svg" alt="Reachout Analytics" width={1290} height={285} className="h-full w-full object-contain object-left dark:hidden" decoding="async" draggable={false} />;
-  const dark = <img src="/brand/reachout-logo-dark.svg" alt="Reachout Analytics" width={1290} height={285} className="h-full w-full object-contain object-left" decoding="async" draggable={false} />;
-  return (
-    <Link href="/#top" aria-label="Reachout Analytics" className={cn("relative block h-[28px] w-[124px] shrink-0 transition-opacity hover:opacity-85 sm:h-[32px] sm:w-[142px]", className)}>
-      {variant === "dark" ? dark : <>{light}<span className="hidden dark:block">{dark}</span></>}
-    </Link>
+export function Logo({ className, variant = "auto", linked = true }: { className?: string; variant?: "auto" | "light" | "dark"; linked?: boolean }) {
+  const imageClass = "h-full w-full object-contain object-left";
+  const light = <img src="/brand/reachout-logo-light.svg" alt="Reachout Analytics" width={1290} height={285} className={imageClass} decoding="async" draggable={false} />;
+  const lightForDarkThemes = <img src="/brand/reachout-logo-light.svg" alt="Reachout Analytics" width={1290} height={285} className={cn(imageClass, "dark:hidden")} decoding="async" draggable={false} />;
+  const dark = <img src="/brand/reachout-logo-dark.svg" alt="Reachout Analytics" width={1290} height={285} className={imageClass} decoding="async" draggable={false} />;
+  const artwork = variant === "dark" ? dark : variant === "light" ? light : <>{lightForDarkThemes}<span className="hidden dark:block">{dark}</span></>;
+  const classes = cn("relative block h-[28px] w-[124px] shrink-0 transition-opacity sm:h-[32px] sm:w-[142px]", linked && "hover:opacity-85", className);
+  return linked ? (
+    <Link href="/#top" aria-label="Reachout Analytics" className={classes}>{artwork}</Link>
+  ) : (
+    <span className={classes} aria-hidden>{artwork}</span>
   );
 }
 
-function MastheadContours() {
-  return (
-    <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1440 68" preserveAspectRatio="none" fill="none" aria-hidden>
-      <g stroke="var(--m-contour)" strokeWidth="1">
-        <path d="M-40 46C140 18 260 54 420 30S680 6 860 30 1180 52 1480 22" />
-        <path d="M-40 28C120 52 250 20 410 38S680 56 860 34 1180 12 1480 40" />
-        <path d="M-40 56C150 30 270 62 430 40S690 18 870 42 1190 62 1480 34" />
-        <path d="M-40 14C130 38 260 6 420 24S690 44 870 20 1200 2 1480 26" />
-      </g>
-      <g fill="var(--m-brass)" opacity=".3">
-        <circle cx="220" cy="34" r="1.6" />
-        <circle cx="470" cy="26" r="1.4" />
-        <circle cx="720" cy="38" r="1.6" />
-        <circle cx="980" cy="22" r="1.4" />
-        <circle cx="1220" cy="40" r="1.6" />
-      </g>
-    </svg>
-  );
-}
-
-function MastheadLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+function HeaderLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      data-masthead-active={active ? "true" : undefined}
       className={cn(
-        "relative inline-flex h-9 items-center px-3.5 text-[13px] font-semibold tracking-[0.01em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--m-brass)]/50",
-        active ? "text-[var(--m-ink)]" : "text-[var(--m-muted)] hover:text-[var(--m-ink)]",
+        "relative inline-flex h-10 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45",
+        active ? "site-group-inset text-[var(--h-ink)]" : "text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)]",
       )}
     >
-      {active && (
-        <span
-          className="absolute inset-y-1 left-0 right-0 bg-[var(--m-panel)]"
-          style={{ clipPath: "polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%)" }}
-          aria-hidden
-        />
-      )}
-      <span className="relative z-10">{children}</span>
+      {active && <span className="size-1.5 rounded-full bg-[var(--h-brass)]" aria-hidden />}
+      {children}
     </Link>
   );
 }
 
-function MobileLink({ href, active, onClick, children }: { href: string; active: boolean; onClick: () => void; children: React.ReactNode }) {
+function MenuLink({ href, active, onClick, children }: { href: string; active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <Link
       href={href}
       onClick={onClick}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "relative flex items-center justify-between border-l-2 px-3 py-3 text-[15px] font-semibold transition-colors",
-        active ? "border-[var(--m-brass)] bg-[var(--m-panel)] text-[var(--m-ink)]" : "border-transparent text-[var(--m-muted)] hover:text-[var(--m-ink)]",
+        "relative flex h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold transition-colors",
+        active ? "site-group-inset text-[var(--h-ink)]" : "text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)]",
       )}
     >
+      {active && <span className="size-1.5 rounded-full bg-[var(--h-brass)]" aria-hidden />}
       {children}
-      {active && <span className="text-[8.5px] font-bold uppercase tracking-[0.16em] text-[var(--m-brass)]">Active</span>}
     </Link>
   );
 }
@@ -81,20 +59,9 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { state, authed } = useSession();
-  const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [marker, setMarker] = useState({ left: 0, width: 0, show: false });
-  const contentRef = useRef<HTMLDivElement>(null);
-  const navRef = useRef<HTMLElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   useEffect(() => {
     setOpen(false);
@@ -117,35 +84,6 @@ export default function Navbar() {
     };
   }, [accountOpen]);
 
-  useEffect(() => {
-    const measure = () => {
-      const content = contentRef.current;
-      const active = navRef.current?.querySelector<HTMLElement>('[data-masthead-active="true"]');
-      if (!content || !active) {
-        setMarker((previous) => (previous.show ? { ...previous, show: false } : previous));
-        return;
-      }
-      const contentRect = content.getBoundingClientRect();
-      const activeRect = active.getBoundingClientRect();
-      const next = { left: activeRect.left - contentRect.left, width: activeRect.width, show: activeRect.width > 0 };
-      setMarker((previous) =>
-        Math.abs(previous.left - next.left) < 0.5 && Math.abs(previous.width - next.width) < 0.5 && previous.show === next.show
-          ? previous
-          : next,
-      );
-    };
-    const frame = requestAnimationFrame(measure);
-    const observer = new ResizeObserver(measure);
-    if (contentRef.current) observer.observe(contentRef.current);
-    if (navRef.current) observer.observe(navRef.current);
-    window.addEventListener("resize", measure);
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [pathname, state]);
-
   const isHome = pathname === "/";
   const isCaseStudy = pathname?.startsWith("/case-studies") ?? false;
   const showAdmin = state !== "auth";
@@ -161,37 +99,39 @@ export default function Navbar() {
   }
 
   return (
-    <header className="masthead pointer-events-none fixed inset-x-0 top-0 z-50">
-      <div className={cn("masthead-shell pointer-events-auto relative text-[var(--m-ink)] transition-[height] duration-300", scrolled ? "h-[56px]" : "h-[68px]")}>
-        <MastheadContours />
+    <header className="site-header pointer-events-none fixed inset-x-0 top-0 z-50 px-0 pt-4 sm:pt-5">
+      <div className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-3 px-6 sm:px-10 md:grid md:grid-cols-[1fr_auto_1fr]">
+        <div className="min-w-0 md:justify-self-start">
+          <Link
+            href="/#top"
+            aria-label="Reachout Analytics — Home"
+            className="site-group pointer-events-auto inline-flex h-12 items-center rounded-[15px] px-3.5 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45"
+          >
+            <Logo linked={false} variant="light" className="h-[26px] w-[118px] sm:h-[28px] sm:w-[130px]" />
+          </Link>
+        </div>
 
-        <div ref={contentRef} className="relative mx-auto flex h-full max-w-[1280px] items-center px-6 sm:px-10">
-          <div className="relative flex h-full items-center pr-10 sm:pr-14">
-            <span
-              className="pointer-events-none absolute inset-y-0 -left-6 right-0 bg-[var(--m-panel)]"
-              style={{ clipPath: "polygon(0 0,100% 0,calc(100% - 18px) 100%,0 100%)" }}
-              aria-hidden
-            />
-            <span className="pointer-events-none absolute right-px top-0 h-full w-px origin-top rotate-[17deg] bg-[var(--m-brass)]/40" aria-hidden />
-            <Logo className="relative z-10 h-[28px] w-[124px] sm:h-[32px] sm:w-[142px]" />
+        <nav className="hidden md:block md:justify-self-center" aria-label="Primary">
+          <div className="site-group pointer-events-auto inline-flex h-12 items-center rounded-full p-1">
+            <HeaderLink href="/#top" active={isHome}>Home</HeaderLink>
+            {authed && <HeaderLink href="/case-studies" active={isCaseStudy}>Case Studies</HeaderLink>}
           </div>
+        </nav>
 
-          <nav ref={navRef} className="hidden items-center gap-1 md:flex" aria-label="Primary">
-            <MastheadLink href="/#top" active={isHome}>Home</MastheadLink>
-            {authed && <MastheadLink href="/case-studies" active={isCaseStudy}>Case Studies</MastheadLink>}
-          </nav>
-
-          <div className="ml-auto flex items-center gap-2 sm:gap-2.5">
+        <div className="pointer-events-auto min-w-0 md:justify-self-end">
+          <div className="site-group inline-flex h-12 items-center gap-1 rounded-full p-1.5">
             <ThemeToggle bare />
+            <span className="mx-0.5 h-5 w-px bg-[var(--h-border)] opacity-25" aria-hidden />
+
             {showAdmin && (
               <Link
                 href="/login"
-                className="hidden h-9 items-center gap-1.5 bg-[var(--m-brass-strong)] px-3.5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--m-button-ink)] transition-colors hover:bg-[var(--m-brass)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--m-brass)]/60 md:inline-flex"
-                style={{ clipPath: "polygon(0 0,100% 0,calc(100% - 9px) 100%,0 100%)" }}
+                className="hidden h-9 items-center gap-1 rounded-full px-3 text-[12px] font-semibold text-[var(--h-ink)] transition-colors hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45 md:inline-flex"
               >
-                Admin Login <ArrowUpRight className="size-3.5" aria-hidden />
+                Admin Login <ArrowUpRight className="size-3.5 text-[var(--h-brass)]" aria-hidden />
               </Link>
             )}
+
             {authed && (
               <div ref={accountRef} className="relative hidden md:block">
                 <button
@@ -201,74 +141,58 @@ export default function Navbar() {
                   aria-expanded={accountOpen}
                   aria-label="Account menu"
                   className={cn(
-                    "inline-flex h-9 items-center gap-1.5 px-2 text-[12.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--m-brass)]/50",
-                    accountOpen ? "text-[var(--m-ink)]" : "text-[var(--m-muted)] hover:text-[var(--m-ink)]",
+                    "inline-flex h-9 items-center gap-1 rounded-full px-3 text-[12px] font-semibold text-[var(--h-ink)] transition-colors hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45",
+                    accountOpen && "site-group-inset",
                   )}
                 >
                   <UserRound className="size-3.5" aria-hidden /> Account
-                  <ChevronDown className={cn("size-3.5 transition-transform", accountOpen && "rotate-180")} aria-hidden />
+                  <ChevronDown className={cn("size-3.5 text-[var(--h-muted)] transition-transform", accountOpen && "rotate-180")} aria-hidden />
                 </button>
                 {accountOpen && (
-                  <div role="menu" className="absolute right-0 top-[calc(100%+10px)] w-48 border border-t-2 border-[var(--m-panel-border)] border-t-[var(--m-brass)]/60 bg-[var(--m-glass-strong)] p-1.5 text-[var(--m-ink)] backdrop-blur-2xl shadow-[0_24px_50px_-24px_rgba(0,0,0,.55)]">
-                    <button type="button" role="menuitem" onClick={signOut} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] font-medium text-[var(--m-muted)] transition-colors hover:text-[var(--m-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--m-brass)]/50">
+                  <div role="menu" className="site-group absolute right-0 top-[calc(100%+8px)] w-44 rounded-2xl p-1.5 text-[var(--h-ink)]">
+                    <button type="button" role="menuitem" onClick={signOut} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[12.5px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">
                       <LogOut className="size-3.5" aria-hidden /> Sign Out
                     </button>
-                    <Link href="/admin" role="menuitem" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 px-3 py-2 text-[12.5px] font-medium text-[var(--m-muted)] transition-colors hover:text-[var(--m-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--m-brass)]/50">
+                    <Link href="/admin" role="menuitem" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">
                       <LayoutDashboard className="size-3.5" aria-hidden /> Dashboard
                     </Link>
                   </div>
                 )}
               </div>
             )}
+
             <button
               type="button"
-              className="grid size-9 place-items-center text-[var(--m-muted)] transition-colors hover:text-[var(--m-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--m-brass)]/50 md:hidden"
+              className="grid size-9 place-items-center rounded-full text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45 md:hidden"
               onClick={() => setOpen((value) => !value)}
               aria-label={open ? "Close menu" : "Open menu"}
             >
               {open ? <X className="size-5" /> : <Menu className="size-5" />}
             </button>
           </div>
-
-          <span
-            className="masthead-marker pointer-events-none absolute bottom-0 h-[2px] bg-[var(--m-brass-strong)]"
-            style={{
-              left: marker.left,
-              width: marker.width,
-              opacity: marker.show ? 1 : 0,
-              clipPath: "polygon(3px 0,100% 0,calc(100% - 3px) 100%,0 100%)",
-            }}
-            aria-hidden
-          />
         </div>
-
-        <span className="pointer-events-none absolute inset-x-0 bottom-0 h-px overflow-hidden">
-          <span className="masthead-rule block h-full w-full bg-[var(--m-line)]" />
-        </span>
       </div>
 
       {open && (
-        <div className="masthead-shell pointer-events-auto relative border-t border-[var(--m-line)] px-6 pb-5 pt-3 text-[var(--m-ink)] shadow-[0_24px_50px_-30px_rgba(0,0,0,.65)] md:hidden" style={{ background: "var(--m-glass-strong)" }}>
-          <MastheadContours />
-          <div className="relative">
-            <MobileLink href="/#top" active={isHome} onClick={() => setOpen(false)}>Home</MobileLink>
-            {authed && <MobileLink href="/case-studies" active={isCaseStudy} onClick={() => setOpen(false)}>Case Studies</MobileLink>}
+        <div className="pointer-events-auto mx-auto mt-2 w-full max-w-[1280px] px-6 sm:px-10 md:hidden">
+          <div className="site-group rounded-2xl p-2 text-[var(--h-ink)]">
+            <MenuLink href="/#top" active={isHome} onClick={() => setOpen(false)}>Home</MenuLink>
+            {authed && <MenuLink href="/case-studies" active={isCaseStudy} onClick={() => setOpen(false)}>Case Studies</MenuLink>}
             {showAdmin && (
               <Link
                 href="/login"
                 onClick={() => setOpen(false)}
-                className="mt-2 flex h-11 items-center justify-center gap-1.5 bg-[var(--m-brass-strong)] text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--m-button-ink)]"
-                style={{ clipPath: "polygon(0 0,100% 0,calc(100% - 10px) 100%,0 100%)" }}
+                className="mt-1 flex h-11 items-center justify-between rounded-xl px-3 text-[14px] font-semibold text-[var(--h-ink)] transition-colors hover:bg-[var(--h-surface-inset)]"
               >
-                Admin Login <ArrowUpRight className="size-3.5" aria-hidden />
+                Admin Login <ArrowUpRight className="size-4 text-[var(--h-brass)]" aria-hidden />
               </Link>
             )}
             {authed && (
-              <div className="mt-2 border-t border-[var(--m-line)] pt-2">
-                <button type="button" onClick={signOut} className="flex w-full items-center gap-2 px-3 py-3 text-left text-[14px] font-medium text-[var(--m-muted)] transition-colors hover:text-[var(--m-ink)]">
+              <div className="mt-1 border-t border-[var(--h-border)]/20 pt-1">
+                <button type="button" onClick={signOut} className="flex h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-[14px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)]">
                   <LogOut className="size-4" aria-hidden /> Sign Out
                 </button>
-                <Link href="/admin" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-3 text-[14px] font-medium text-[var(--m-muted)] transition-colors hover:text-[var(--m-ink)]">
+                <Link href="/admin" onClick={() => setOpen(false)} className="flex h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)]">
                   <LayoutDashboard className="size-4" aria-hidden /> Dashboard
                 </Link>
               </div>

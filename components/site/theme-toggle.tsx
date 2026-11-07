@@ -17,7 +17,7 @@ export default function ThemeToggle({ className, bare = false }: { className?: s
       className={cn(
         "grid place-items-center transition-colors focus-visible:outline-none focus-visible:ring-2",
         bare
-          ? "size-9 rounded-md border-0 bg-transparent text-[var(--m-muted)] hover:bg-[var(--m-panel)] hover:text-[var(--m-ink)] focus-visible:ring-[var(--m-brass)]/50"
+          ? "size-9 rounded-full border-0 bg-transparent text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:ring-[var(--h-brass)]/50"
           : "size-10 rounded-full border border-border bg-card/70 text-foreground/80 backdrop-blur-xl hover:text-foreground focus-visible:ring-saffron/60",
         className,
       )}
