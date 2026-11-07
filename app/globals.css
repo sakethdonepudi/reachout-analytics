@@ -553,3 +553,49 @@ html.theme-transition *::after {
   .about-page .group:hover *,
   .about-page .group:focus-within * { transform: none !important; }
 }
+
+/* =====================================================================
+   Cinematic election-broadcast masthead
+   ===================================================================== */
+.masthead {
+  --m-bg: #f7f3ea;
+  --m-ink: #1c1a16;
+  --m-muted: rgba(28, 26, 22, 0.62);
+  --m-brass: #9a773f;
+  --m-brass-strong: #b0894a;
+  --m-line: rgba(154, 119, 63, 0.34);
+  --m-contour: rgba(28, 26, 22, 0.075);
+  --m-panel: rgba(154, 119, 63, 0.08);
+  --m-panel-border: rgba(154, 119, 63, 0.3);
+  --m-button-ink: #1c1408;
+  --m-menu-bg: #f7f3ea;
+}
+.dark .masthead {
+  --m-bg: #070b14;
+  --m-ink: #f5efe2;
+  --m-muted: rgba(245, 239, 226, 0.62);
+  --m-brass: #c9a25e;
+  --m-brass-strong: #d9b26a;
+  --m-line: rgba(201, 162, 94, 0.34);
+  --m-contour: rgba(201, 162, 94, 0.11);
+  --m-panel: rgba(201, 162, 94, 0.10);
+  --m-panel-border: rgba(201, 162, 94, 0.28);
+  --m-button-ink: #171006;
+  --m-menu-bg: #070b14;
+}
+.masthead-rule {
+  transform-origin: left;
+  animation: masthead-draw 1.1s cubic-bezier(.2, .7, .2, 1) both;
+}
+@keyframes masthead-draw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.masthead-marker {
+  transition: left .45s cubic-bezier(.2, .7, .2, 1), width .45s cubic-bezier(.2, .7, .2, 1), opacity .2s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .masthead-rule { animation: none; transform: none; }
+  .masthead-marker { transition: none; }
+  .masthead-shell { transition: none !important; }
+}
