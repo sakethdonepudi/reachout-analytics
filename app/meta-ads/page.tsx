@@ -3,19 +3,42 @@ import { ArrowRight, PlugZap, ShieldCheck } from "lucide-react";
 import Navbar from "@/components/site/navbar";
 import { requirePageSession } from "@/lib/require-session";
 import { getMetaStatus } from "@/lib/meta/store";
+import { MetaSyncControls } from "@/components/meta/meta-sync-controls";
+import { expiresWithinHour } from "@/lib/meta/insights";
 
 export const dynamic = "force-dynamic";
+
+function connectionPill(status: Awaited<ReturnType<typeof getMetaStatus>>): { label: string; tone: string } {
+  if (status.expired) return { label: "Reconnect", tone: "border-[var(--danger)]/40 bg-[var(--danger-bg)] text-[var(--danger)]" };
+  if (!status.connected) return { label: "Connect Meta Ads", tone: "border-[var(--accent-brass)]/40 bg-[var(--accent-brass-soft)] text-[var(--accent-brass-strong)]" };
+  const minutes = status.expiresAt ? Math.max(0, Math.round((new Date(status.expiresAt).getTime() - Date.now()) / 60_000)) : null;
+  const soon = minutes != null && minutes <= 60;
+  const hours = minutes == null ? null : Math.floor(minutes / 60);
+  return {
+    label: minutes == null ? "Connected" : `Connected · expires in ${hours}h ${minutes % 60}m`,
+    tone: soon
+      ? "border-[var(--warning)]/40 bg-[var(--warning-bg)] text-[var(--warning)]"
+      : "border-[var(--success)]/40 bg-[var(--success-bg)] text-[var(--success)]",
+  };
+}
 
 export default async function MetaAdsPage() {
   await requirePageSession("/meta-ads", ["owner"]);
   const status = await getMetaStatus();
+  const pill = connectionPill(status);
+  const soon = status.connected && status.expiresAt ? expiresWithinHour(status.expiresAt) : false;
+  const minutesLeft = status.expiresAt ? Math.max(0, Math.round((new Date(status.expiresAt).getTime() - Date.now()) / 60_000)) : null;
   return (
     <>
       <Navbar />
       <main className="min-h-screen bg-background pt-32 text-foreground">
         <div className="mx-auto max-w-6xl px-6 pb-24 sm:px-10">
           <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-saffron-2">Owner workspace</p>
-          <h1 className="mt-3 font-display text-[clamp(34px,5vw,64px)] font-semibold tracking-[-0.03em]">Meta Ads</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <h1 className="font-display text-[clamp(34px,5vw,64px)] font-semibold tracking-[-0.03em]">Meta Ads</h1>
+            <Link href="/meta-ads/settings" className={`inline-flex min-h-9 items-center rounded-full border px-3 text-[11px] font-bold uppercase tracking-[0.08em] ${pill.tone}`}>{pill.label}</Link>
+            <div className="ml-auto"><MetaSyncControls connected={status.connected} expired={status.expired} lastSyncAt={status.lastSyncAt} /></div>
+          </div>
           <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
             Connect the ReachOut Meta account once, choose the ad accounts to sync, and keep campaign reporting fed by the connection.
           </p>

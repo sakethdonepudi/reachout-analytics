@@ -1,7 +1,10 @@
 import { tryDecryptToken } from "@/lib/meta/crypto";
-import { getConnectionDoc } from "@/lib/meta/store";
+import { connectionExpiresAt, isConnectionExpired, isRateLimited, retryDelayMs, META_GRAPH_VERSION } from "@/lib/meta/insights";
+import { expireConnection, getConnectionDoc } from "@/lib/meta/store";
+import { revokeMetaToken } from "@/lib/meta/oauth";
 
-const GRAPH = "https://graph.facebook.com/v21.0";
+const GRAPH = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
+const MAX_RETRIES = 4;
 
 /** The stored token cannot be decrypted; the owner must reconnect Meta. */
 export class MetaReconnectError extends Error {
@@ -11,10 +14,23 @@ export class MetaReconnectError extends Error {
   }
 }
 
+/** The 12-hour connection lifetime has elapsed; the token must not be used. */
+export class MetaConnectionExpiredError extends Error {
+  constructor() {
+    super("Meta connection has expired");
+    this.name = "MetaConnectionExpiredError";
+  }
+}
+
 /** Decrypt only inside this module, at call time. Never return the token. */
 async function accessToken(): Promise<string> {
   const doc = await getConnectionDoc();
   if (doc?.token) {
+    const expiresAt = doc.expiresAt ?? (doc.connectedAt ? connectionExpiresAt(doc.connectedAt) : null);
+    if (isConnectionExpired(expiresAt)) {
+      await expireConnection(doc);
+      throw new MetaConnectionExpiredError();
+    }
     const result = tryDecryptToken(doc.token);
     if (result.ok) return result.token;
     throw new MetaReconnectError();
@@ -23,19 +39,58 @@ async function accessToken(): Promise<string> {
   throw new Error("Meta is not connected");
 }
 
-export async function graphGet<T = unknown>(path: string, params: Record<string, string> = {}): Promise<T> {
+function usageIsHigh(header: string | null): boolean {
+  if (!header) return false;
+  try {
+    const parsed = JSON.parse(header) as Record<string, Array<{ call_count?: number; total_cputime?: number; total_time?: number }>>;
+    return Object.values(parsed).flat().some((value) => Math.max(value.call_count ?? 0, value.total_cputime ?? 0, value.total_time ?? 0) >= 90);
+  } catch {
+    return false;
+  }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export async function graphGet<T = unknown>(path: string, params: Record<string, string> = {}, attempt = 0): Promise<T> {
   const token = await accessToken();
   const url = new URL(`${GRAPH}${path.startsWith("/") ? path : `/${path}`}`);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`Meta request failed (${res.status})`);
-  return data as T;
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+  const data = await response.json().catch(() => ({}));
+  const error = (data as { error?: { code?: number; message?: string } }).error;
+  if (response.ok && !error) return data as T;
+
+  const code = Number(error?.code ?? 0);
+  const retryable = response.status === 429 || isRateLimited(code) || usageIsHigh(response.headers.get("x-business-use-case-usage"));
+  if (retryable && attempt < MAX_RETRIES) {
+    const delay = retryDelayMs({
+      retryAfter: response.headers.get("retry-after"),
+      usage: response.headers.get("x-business-use-case-usage"),
+    }, attempt);
+    await sleep(delay);
+    return graphGet<T>(path, params, attempt + 1);
+  }
+  // Never include the token, URL or raw Graph body in the error.
+  throw new Error(`Meta request failed (${response.status}${code ? ` code ${code}` : ""})`);
+}
+
+export async function graphPaged<T = unknown>(path: string, params: Record<string, string> = {}, limit = 200): Promise<T[]> {
+  const rows: T[] = [];
+  let after: string | undefined;
+  for (let page = 0; page < 200; page += 1) {
+    const data = await graphGet<{ data?: T[]; paging?: { next?: string; cursors?: { after?: string } } }>(path, {
+      ...params,
+      limit: String(limit),
+      ...(after ? { after } : {}),
+    });
+    rows.push(...(data.data ?? []));
+    const next = data.paging?.cursors?.after;
+    if (!next || next === after || !data.paging?.next) break;
+    after = next;
+  }
+  return rows;
 }
 
 export async function revokeMetaPermissions(): Promise<void> {
-  const token = await accessToken();
-  const res = await fetch(`${GRAPH}/me/permissions`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || data?.success === false) throw new Error("Meta permission revoke failed");
+  await revokeMetaToken(await accessToken());
 }

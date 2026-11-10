@@ -7,7 +7,7 @@ const DB = process.env.MONGODB_DB || "reachout";
 
 export type AuditAction =
   | "login_success" | "login_failed" | "login_denied" | "reauth" | "logout" | "logout_all"
-  | "role_denied" | "meta_connect" | "meta_disconnect" | "meta_settings"
+  | "role_denied" | "meta_connect" | "meta_disconnect" | "meta_connection_expired" | "meta_settings"
   | "export" | "csrf_rejected";
 
 export async function audit(input: {

@@ -121,7 +121,7 @@ const summary = publicClientSummary({
   connected: true, accountName: "ReachOut", permissions: [], tokenExpiresAt: null, lastSyncAt: null,
   connectedAt: null, adAccounts: [{ id: "act_1", accountId: "1", name: "Account", status: 1, currency: "INR" }],
   pages: [{ id: "p1", name: "Page" }], enabledAdAccounts: ["act_1"], expiresSoon: false,
-  reconnectRequired: false, keyVersion: "v1",
+  expiresAt: null, expired: false, reconnectRequired: false, keyVersion: "v1",
 });
 const summaryText = JSON.stringify(summary).toLowerCase();
 ok("no cost field", !/(cost|spend|budget|amount)/.test(summaryText));
@@ -229,7 +229,7 @@ try {
   const doc: MetaConnectionDoc = {
     _id: "owner", ownerEmail: "owner", token: record, tokenExpiresAt: null,
     scopes: [], account: { id: "1", name: "Test Account" }, adAccounts: [], pages: [],
-    enabledAdAccounts: [], connectedAt: "2026-01-01T00:00:00.000Z", lastSyncAt: null,
+    enabledAdAccounts: [], connectedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), lastSyncAt: null,
   };
   const healthy = publicStatus(doc);
   eq("valid token is connected", healthy.connected, true);

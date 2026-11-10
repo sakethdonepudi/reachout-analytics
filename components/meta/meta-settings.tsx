@@ -20,6 +20,8 @@ type Status = {
   pages: Page[];
   enabledAdAccounts: string[];
   expiresSoon: boolean;
+  expiresAt: string | null;
+  expired: boolean;
   reconnectRequired: boolean;
   keyVersion: string | null;
 };
@@ -28,13 +30,19 @@ type AuditRow = { at: string; action: string; email: string | null; role: string
 const EMPTY: Status = {
   connected: false, accountName: null, permissions: [], tokenExpiresAt: null, lastSyncAt: null,
   connectedAt: null, adAccounts: [], pages: [], enabledAdAccounts: [], expiresSoon: false,
-  reconnectRequired: false, keyVersion: null,
+  expiresAt: null, expired: false, reconnectRequired: false, keyVersion: null,
 };
 
 function fmt(value: string | null) {
   if (!value) return "—";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function expiryLabel(value: string): string {
+  const minutes = Math.max(0, Math.round((new Date(value).getTime() - Date.now()) / 60_000));
+  const hours = Math.floor(minutes / 60);
+  return `expires in ${hours}h ${minutes % 60}m`;
 }
 
 export default function MetaSettings({ metaConfigured = true, approvedScopes = [] }: { metaConfigured?: boolean; approvedScopes?: string[] }) {
@@ -96,7 +104,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
       const ok = await requestReauth();
       if (!ok) return;
     }
-    window.location.assign("/api/meta/owner/connect/start");
+    window.location.assign("/api/meta/owner/connect/start?next=/meta-ads/settings");
   }
 
   async function saveSelection(retry = false) {
@@ -185,13 +193,15 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Connection</p>
-                <h2 className="mt-2 font-display text-2xl font-semibold">{loading ? "Loading…" : status.reconnectRequired ? "Reconnect Meta" : status.connected ? status.accountName ?? "Meta connected" : "Not connected"}</h2>
+                <h2 className="mt-2 font-display text-2xl font-semibold">{loading ? "Loading…" : status.expired || status.reconnectRequired ? "Reconnect Meta" : status.connected ? status.accountName ?? "Meta connected" : "Not connected"}</h2>
                 <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-                  {status.reconnectRequired
-                    ? "The stored Meta token can no longer be decrypted. Reconnect Meta to restore sync."
-                    : status.connected
-                      ? `${status.enabledAdAccounts.length} ad account(s) enabled · key ${status.keyVersion ?? "—"}`
-                      : "Authorise the ReachOut Meta app to start syncing."}
+                  {status.expired
+                    ? "The 12-hour Meta connection has expired. Reconnect Meta to restore sync."
+                    : status.reconnectRequired
+                      ? "The stored Meta token can no longer be decrypted. Reconnect Meta to restore sync."
+                      : status.connected
+                        ? `${status.enabledAdAccounts.length} ad account(s) enabled · key ${status.keyVersion ?? "—"}${status.expiresAt ? ` · ${expiryLabel(status.expiresAt)}` : ""}`
+                        : "Authorise the ReachOut Meta app to start syncing."}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -201,7 +211,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
                   </button>
                 ) : (
                   <button type="button" onClick={() => window.location.assign("/api/meta/owner/connect/start")} disabled={!metaConfigured} className="inline-flex items-center gap-2 rounded-xl bg-saffron px-4 py-2.5 text-sm font-semibold text-[#241203] disabled:cursor-not-allowed disabled:opacity-50">
-                    <PlugZap className="size-4" /> {status.connected ? "Reconnect Meta" : "Connect Meta Ads"}
+                    <PlugZap className="size-4" /> {status.connected || status.expired || status.reconnectRequired ? "Reconnect Meta" : "Connect Meta Ads"}
                   </button>
                 )}
                 {status.connected && (

@@ -13,6 +13,17 @@ export function metaConfigured(): boolean {
   return !!process.env.META_APP_ID && !!process.env.META_APP_SECRET && !!process.env.ADMIN_SESSION_SECRET;
 }
 
+/** Revoke a token without ever returning or logging it. */
+export async function revokeMetaToken(token: string): Promise<void> {
+  if (!token) return;
+  const response = await fetch(`${GRAPH}/me/permissions`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || (data as { success?: boolean }).success === false) throw new Error("Meta permission revoke failed");
+}
+
 export function metaRedirectUri(req: NextRequest): string {
   if (process.env.META_REDIRECT_URI) return process.env.META_REDIRECT_URI;
   return `${new URL(req.url).origin}/api/meta/owner/connect/callback`;

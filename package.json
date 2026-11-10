@@ -9,7 +9,8 @@
     "vercel-build": "npm run build && node scripts/publish-tamil-nadu-snapshot.mjs",
     "test": "tsx scripts/security.test.ts",
     "test:security": "tsx scripts/security.test.ts",
-    "check:security": "node scripts/security-check.mjs"
+    "check:security": "node scripts/security-check.mjs",
+    "test:meta": "tsx scripts/meta-sync.test.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",
