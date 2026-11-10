@@ -1,4 +1,4 @@
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { signPayload, verifyPayload } from "@/lib/signed-cookie";
 import { createPkce, createOAuthState } from "@/lib/oauth-pkce";
 
@@ -16,6 +16,18 @@ export function metaConfigured(): boolean {
 export function metaRedirectUri(req: NextRequest): string {
   if (process.env.META_REDIRECT_URI) return process.env.META_REDIRECT_URI;
   return `${new URL(req.url).origin}/api/meta/owner/connect/callback`;
+}
+
+/**
+ * Redirect responses from the Web `Response.redirect()` helper have immutable
+ * headers. Meta needs to append the state cookie and cache headers, so always
+ * use NextResponse here.
+ */
+export function metaRedirect(url: string | URL): NextResponse {
+  const response = NextResponse.redirect(url, 302);
+  response.headers.set("Cache-Control", "private, no-store");
+  response.headers.set("Vary", "Cookie");
+  return response;
 }
 
 export function createMetaFlow() {

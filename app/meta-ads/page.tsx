@@ -20,9 +20,11 @@ export default async function MetaAdsPage() {
             Connect the ReachOut Meta account once, choose the ad accounts to sync, and keep campaign reporting fed by the connection.
           </p>
 
-          {status.expiresSoon && (
+          {(status.expiresSoon || status.reconnectRequired) && (
             <div className="mt-6 rounded-2xl border border-saffron/40 bg-saffron/10 px-4 py-3 text-[13px] text-saffron-2">
-              The Meta token expires within 7 days. Reconnect to avoid losing the sync.
+              {status.reconnectRequired
+                ? "The stored Meta token can no longer be decrypted. Reconnect Meta to restore sync."
+                : "The Meta token expires within 7 days. Reconnect to avoid losing the sync."}
             </div>
           )}
 

@@ -1,5 +1,5 @@
 import { getMongo } from "@/lib/mongodb";
-import type { EncryptedToken } from "@/lib/meta/crypto";
+import { tryDecryptToken, type EncryptedToken } from "@/lib/meta/crypto";
 
 const DB = process.env.MONGODB_DB || "reachout";
 const ID = "owner";
@@ -32,6 +32,7 @@ export type PublicMetaStatus = {
   pages: MetaPage[];
   enabledAdAccounts: string[];
   expiresSoon: boolean;
+  reconnectRequired: boolean;
   keyVersion: string | null;
 };
 
@@ -43,9 +44,15 @@ async function coll() {
 }
 
 export async function getConnectionDoc(): Promise<MetaConnectionDoc | null> {
-  const col = await coll();
-  if (!col) return null;
-  return col.findOne({ _id: ID });
+  try {
+    const col = await coll();
+    if (!col) return null;
+    return await col.findOne({ _id: ID });
+  } catch {
+    // A missing collection, unavailable database or malformed connection is
+    // treated as "not connected" by the status UI, never as a 500.
+    return null;
+  }
 }
 
 export async function saveConnection(doc: Omit<MetaConnectionDoc, "_id">): Promise<MetaConnectionDoc> {
@@ -73,31 +80,41 @@ export async function markSynced(at = new Date().toISOString()): Promise<void> {
   if (col) await col.updateOne({ _id: ID }, { $set: { lastSyncAt: at } });
 }
 
+function disconnectedStatus(): PublicMetaStatus {
+  return {
+    connected: false, accountName: null, permissions: [], tokenExpiresAt: null,
+    lastSyncAt: null, connectedAt: null, adAccounts: [], pages: [], enabledAdAccounts: [],
+    expiresSoon: false, reconnectRequired: false, keyVersion: null,
+  };
+}
+
 export function publicStatus(doc: MetaConnectionDoc | null): PublicMetaStatus {
-  if (!doc) {
-    return {
-      connected: false, accountName: null, permissions: [], tokenExpiresAt: null,
-      lastSyncAt: null, connectedAt: null, adAccounts: [], pages: [], enabledAdAccounts: [],
-      expiresSoon: false, keyVersion: null,
-    };
-  }
+  if (!doc || !doc.account || !doc.token) return disconnectedStatus();
+
+  const decrypted = tryDecryptToken(doc.token);
+  const reconnectRequired = !decrypted.ok;
   const expires = doc.tokenExpiresAt ? new Date(doc.tokenExpiresAt).getTime() : null;
   const expiresSoon = expires != null && expires - Date.now() < 7 * 24 * 60 * 60 * 1000;
   return {
     connected: true,
-    accountName: doc.account.name,
-    permissions: doc.scopes,
-    tokenExpiresAt: doc.tokenExpiresAt,
-    lastSyncAt: doc.lastSyncAt,
-    connectedAt: doc.connectedAt,
-    adAccounts: doc.adAccounts,
-    pages: doc.pages,
-    enabledAdAccounts: doc.enabledAdAccounts,
+    accountName: doc.account?.name ?? null,
+    permissions: Array.isArray(doc.scopes) ? doc.scopes : [],
+    tokenExpiresAt: doc.tokenExpiresAt ?? null,
+    lastSyncAt: doc.lastSyncAt ?? null,
+    connectedAt: doc.connectedAt ?? null,
+    adAccounts: Array.isArray(doc.adAccounts) ? doc.adAccounts : [],
+    pages: Array.isArray(doc.pages) ? doc.pages : [],
+    enabledAdAccounts: Array.isArray(doc.enabledAdAccounts) ? doc.enabledAdAccounts : [],
     expiresSoon,
-    keyVersion: doc.token.keyVersion,
+    reconnectRequired,
+    keyVersion: doc.token?.keyVersion ?? null,
   };
 }
 
 export async function getMetaStatus(): Promise<PublicMetaStatus> {
-  return publicStatus(await getConnectionDoc());
+  try {
+    return publicStatus(await getConnectionDoc());
+  } catch {
+    return disconnectedStatus();
+  }
 }

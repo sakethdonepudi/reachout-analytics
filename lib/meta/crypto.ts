@@ -32,3 +32,13 @@ export function decryptToken(record: EncryptedToken): string {
   decipher.setAuthTag(Buffer.from(record.tag, "base64"));
   return Buffer.concat([decipher.update(Buffer.from(record.ciphertext, "base64")), decipher.final()]).toString("utf8");
 }
+
+/** Decryption must never escape as an unhandled 500. Callers show "Reconnect Meta". */
+export function tryDecryptToken(record: EncryptedToken | null | undefined): { ok: true; token: string } | { ok: false; reason: "reconnect" } {
+  if (!record?.ciphertext || !record.iv || !record.tag) return { ok: false, reason: "reconnect" };
+  try {
+    return { ok: true, token: decryptToken(record) };
+  } catch {
+    return { ok: false, reason: "reconnect" };
+  }
+}

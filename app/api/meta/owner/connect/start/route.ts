@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { requireRecentAuth } from "@/lib/auth";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
-import { createMetaFlow, metaAuthUrl, metaConfigured, setMetaStateCookie } from "@/lib/meta/oauth";
+import { createMetaFlow, metaAuthUrl, metaConfigured, metaRedirect, setMetaStateCookie } from "@/lib/meta/oauth";
 
 export const runtime = "nodejs";
 
@@ -14,9 +14,7 @@ export async function GET(req: NextRequest) {
   if (!metaConfigured()) return Response.json({ ok: false, error: "Meta is not configured" }, { status: 503 });
 
   const flow = createMetaFlow();
-  const response = Response.redirect(metaAuthUrl(req, flow), 302);
+  const response = metaRedirect(metaAuthUrl(req, flow));
   setMetaStateCookie(response, { state: flow.state, verifier: flow.verifier, next: "/meta-ads/settings" });
-  response.headers.set("Cache-Control", "private, no-store");
-  response.headers.set("Vary", "Cookie");
   return response;
 }

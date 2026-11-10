@@ -2,17 +2,14 @@ import type { NextRequest } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
-import { clearMetaStateCookie, exchangeMetaCode, fetchMetaIdentity, metaConfigured, readMetaStateCookie } from "@/lib/meta/oauth";
+import { clearMetaStateCookie, exchangeMetaCode, fetchMetaIdentity, metaConfigured, metaRedirect, readMetaStateCookie } from "@/lib/meta/oauth";
 import { encryptToken } from "@/lib/meta/crypto";
 import { saveConnection } from "@/lib/meta/store";
 
 export const runtime = "nodejs";
 
-function redirect(path: string) {
-  const res = Response.redirect(path, 302);
-  res.headers.set("Cache-Control", "private, no-store");
-  res.headers.set("Vary", "Cookie");
-  return res;
+function redirect(req: NextRequest, path: string) {
+  return metaRedirect(new URL(path, req.nextUrl.origin));
 }
 
 export async function GET(req: NextRequest) {
@@ -32,7 +29,7 @@ export async function GET(req: NextRequest) {
   const state = req.nextUrl.searchParams.get("state") ?? "";
   const stored = readMetaStateCookie(req);
   if (!code || !state || !stored || stored.state !== state) {
-    const res = redirect("/meta-ads/settings?error=state");
+    const res = redirect(req, "/meta-ads/settings?error=state");
     clearMetaStateCookie(res);
     return res;
   }
@@ -53,12 +50,12 @@ export async function GET(req: NextRequest) {
       lastSyncAt: null,
     });
     await audit({ action: "meta_connect", email: auth.session.sub, role: "owner", ip, meta: { accountId: identity.account.id, adAccounts: identity.adAccounts.length } });
-    const res = redirect("/meta-ads/settings?connected=1");
+    const res = redirect(req, "/meta-ads/settings?connected=1");
     clearMetaStateCookie(res);
     return res;
   } catch {
     await audit({ action: "meta_connect", email: auth.session.sub, role: "owner", ip, meta: { ok: false } });
-    const res = redirect("/meta-ads/settings?error=connect");
+    const res = redirect(req, "/meta-ads/settings?error=connect");
     clearMetaStateCookie(res);
     return res;
   }

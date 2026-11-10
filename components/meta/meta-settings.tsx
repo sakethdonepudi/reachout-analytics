@@ -19,13 +19,15 @@ type Status = {
   pages: Page[];
   enabledAdAccounts: string[];
   expiresSoon: boolean;
+  reconnectRequired: boolean;
   keyVersion: string | null;
 };
 type AuditRow = { at: string; action: string; email: string | null; role: string | null; ipHash?: string };
 
 const EMPTY: Status = {
   connected: false, accountName: null, permissions: [], tokenExpiresAt: null, lastSyncAt: null,
-  connectedAt: null, adAccounts: [], pages: [], enabledAdAccounts: [], expiresSoon: false, keyVersion: null,
+  connectedAt: null, adAccounts: [], pages: [], enabledAdAccounts: [], expiresSoon: false,
+  reconnectRequired: false, keyVersion: null,
 };
 
 function fmt(value: string | null) {
@@ -87,6 +89,11 @@ export default function MetaSettings({ metaConfigured = true }: { metaConfigured
     setReauthError("");
     setReauthPassword("");
     setReauthOpen(true);
+  }
+
+  function startConnect() {
+    if (!recent) { reauth(); return; }
+    window.location.assign("/api/meta/owner/connect/start");
   }
 
   async function submitReauth(event: FormEvent<HTMLFormElement>) {
@@ -173,8 +180,16 @@ export default function MetaSettings({ metaConfigured = true }: { metaConfigured
           {status.expiresSoon && (
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-saffron/40 bg-saffron/10 px-4 py-3 text-[13px] text-saffron-2">
               <span>The Meta token expires within 7 days.</span>
-              <button type="button" onClick={reauth} className="inline-flex items-center gap-1.5 rounded-lg bg-saffron px-3 py-1.5 text-[12px] font-semibold text-[#241203]">
-                <RefreshCw className="size-3.5" /> Reconnect
+              <button type="button" onClick={startConnect} className="inline-flex items-center gap-1.5 rounded-lg bg-saffron px-3 py-1.5 text-[12px] font-semibold text-[#241203]">
+                <RefreshCw className="size-3.5" /> Reconnect Meta
+              </button>
+            </div>
+          )}
+          {status.reconnectRequired && (
+            <div role="alert" className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-[13px] text-rose-600 dark:text-rose-400">
+              <span>The stored Meta token can no longer be decrypted.</span>
+              <button type="button" onClick={startConnect} className="inline-flex items-center gap-1.5 rounded-lg bg-saffron px-3 py-1.5 text-[12px] font-semibold text-[#241203]">
+                <RefreshCw className="size-3.5" /> Reconnect Meta
               </button>
             </div>
           )}
@@ -183,9 +198,13 @@ export default function MetaSettings({ metaConfigured = true }: { metaConfigured
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Connection</p>
-                <h2 className="mt-2 font-display text-2xl font-semibold">{loading ? "Loading…" : status.connected ? status.accountName ?? "Meta connected" : "Not connected"}</h2>
+                <h2 className="mt-2 font-display text-2xl font-semibold">{loading ? "Loading…" : status.reconnectRequired ? "Reconnect Meta" : status.connected ? status.accountName ?? "Meta connected" : "Not connected"}</h2>
                 <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-                  {status.connected ? `${status.enabledAdAccounts.length} ad account(s) enabled · key ${status.keyVersion ?? "—"}` : "Authorise the ReachOut Meta app to start syncing."}
+                  {status.reconnectRequired
+                    ? "The stored Meta token can no longer be decrypted. Reconnect Meta to restore sync."
+                    : status.connected
+                      ? `${status.enabledAdAccounts.length} ad account(s) enabled · key ${status.keyVersion ?? "—"}`
+                      : "Authorise the ReachOut Meta app to start syncing."}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -216,7 +235,7 @@ export default function MetaSettings({ metaConfigured = true }: { metaConfigured
             )}
           </section>
 
-          {status.connected && (
+          {status.connected && !status.reconnectRequired && (
             <section className="mt-6 rounded-3xl border border-border bg-card p-6">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div>

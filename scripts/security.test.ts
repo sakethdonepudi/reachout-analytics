@@ -8,7 +8,9 @@ import { verifyPkce, createPkce } from "@/lib/oauth-pkce";
 import { signPayload, verifyPayload } from "@/lib/signed-cookie";
 import { redact, maskEmail } from "@/lib/redact";
 import { publicClientSummary } from "@/lib/meta/public";
-import { metaConfigured } from "@/lib/meta/oauth";
+import { metaConfigured, metaRedirect, setMetaStateCookie } from "@/lib/meta/oauth";
+import { encryptToken, tryDecryptToken } from "@/lib/meta/crypto";
+import { publicStatus, type MetaConnectionDoc } from "@/lib/meta/store";
 import { buildCsp, PROTECTED_HEADERS } from "@/lib/security";
 import { metaConfigWarning, secretProblems, turnstileConfigProblems } from "@/lib/security-config";
 import { turnstileEnabled } from "@/lib/turnstile";
@@ -108,7 +110,8 @@ console.log("\n8. Client-safe Meta summary");
 const summary = publicClientSummary({
   connected: true, accountName: "ReachOut", permissions: [], tokenExpiresAt: null, lastSyncAt: null,
   connectedAt: null, adAccounts: [{ id: "act_1", accountId: "1", name: "Account", status: 1, currency: "INR" }],
-  pages: [{ id: "p1", name: "Page" }], enabledAdAccounts: ["act_1"], expiresSoon: false, keyVersion: "v1",
+  pages: [{ id: "p1", name: "Page" }], enabledAdAccounts: ["act_1"], expiresSoon: false,
+  reconnectRequired: false, keyVersion: "v1",
 });
 const summaryText = JSON.stringify(summary).toLowerCase();
 ok("no cost field", !/(cost|spend|budget|amount)/.test(summaryText));
@@ -202,6 +205,46 @@ try {
   eq("disabled Turnstile needs no keys", turnstileConfigProblems(), []);
 } finally {
   for (const [key, value] of Object.entries(startupEnv)) setEnv(key, value);
+}
+
+console.log("\n12. Meta status failure safety");
+eq("missing connection is not connected", publicStatus(null).connected, false);
+eq("missing connection needs no reconnect", publicStatus(null).reconnectRequired, false);
+eq("malformed connection is not connected", publicStatus({ _id: "owner" } as MetaConnectionDoc).connected, false);
+
+const tokenKey = process.env.TOKEN_ENCRYPTION_KEY;
+try {
+  setEnv("TOKEN_ENCRYPTION_KEY", Buffer.alloc(32, 1).toString("base64"));
+  const record = encryptToken("test-meta-token");
+  const doc: MetaConnectionDoc = {
+    _id: "owner", ownerEmail: "owner", token: record, tokenExpiresAt: null,
+    scopes: [], account: { id: "1", name: "Test Account" }, adAccounts: [], pages: [],
+    enabledAdAccounts: [], connectedAt: "2026-01-01T00:00:00.000Z", lastSyncAt: null,
+  };
+  const healthy = publicStatus(doc);
+  eq("valid token is connected", healthy.connected, true);
+  eq("valid token needs no reconnect", healthy.reconnectRequired, false);
+
+  setEnv("TOKEN_ENCRYPTION_KEY", Buffer.alloc(32, 2).toString("base64"));
+  const broken = publicStatus(doc);
+  eq("changed key keeps connection visible", broken.connected, true);
+  eq("changed key asks for reconnect", broken.reconnectRequired, true);
+  eq("tampered token does not throw", tryDecryptToken({ ...record, tag: "AAAA" }).ok, false);
+} finally {
+  setEnv("TOKEN_ENCRYPTION_KEY", tokenKey);
+}
+
+console.log("\n13. Meta redirect headers");
+const redirectSecret = process.env.ADMIN_SESSION_SECRET;
+try {
+  setEnv("ADMIN_SESSION_SECRET", "x".repeat(32));
+  const redirectRes = metaRedirect("https://www.facebook.com/v21.0/dialog/oauth?client_id=test");
+  setMetaStateCookie(redirectRes, { state: "state-test", verifier: "verifier-test", next: "/meta-ads/settings" });
+  eq("meta redirect location", redirectRes.headers.get("location"), "https://www.facebook.com/v21.0/dialog/oauth?client_id=test");
+  eq("meta redirect cache", redirectRes.headers.get("cache-control"), "private, no-store");
+  ok("meta redirect accepts the state cookie", (redirectRes.headers.get("set-cookie") ?? "").includes("ro_meta_state"));
+} finally {
+  setEnv("ADMIN_SESSION_SECRET", redirectSecret);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

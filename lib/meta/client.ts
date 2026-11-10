@@ -1,12 +1,24 @@
-import { decryptToken } from "@/lib/meta/crypto";
+import { tryDecryptToken } from "@/lib/meta/crypto";
 import { getConnectionDoc } from "@/lib/meta/store";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
+/** The stored token cannot be decrypted; the owner must reconnect Meta. */
+export class MetaReconnectError extends Error {
+  constructor() {
+    super("Reconnect Meta");
+    this.name = "MetaReconnectError";
+  }
+}
+
 /** Decrypt only inside this module, at call time. Never return the token. */
 async function accessToken(): Promise<string> {
   const doc = await getConnectionDoc();
-  if (doc?.token) return decryptToken(doc.token);
+  if (doc?.token) {
+    const result = tryDecryptToken(doc.token);
+    if (result.ok) return result.token;
+    throw new MetaReconnectError();
+  }
   if (process.env.META_SYSTEM_USER_TOKEN) return process.env.META_SYSTEM_USER_TOKEN;
   throw new Error("Meta is not connected");
 }
