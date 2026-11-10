@@ -3,6 +3,7 @@ import { graphGet, graphPaged, MetaConnectionExpiredError, MetaReconnectError } 
 import { connectionExpiresAt, isConnectionExpired, minorToPaise, toPaise } from "@/lib/meta/insights";
 import { expireConnection, getConnectionDoc, getMetaDb, markSynced } from "@/lib/meta/store";
 import { applyTagRules } from "@/lib/meta/tags";
+import { syncNotifications } from "@/lib/meta/notifications";
 
 type MetaRow = Record<string, unknown>;
 type UpsertDoc = { _id: string } & Record<string, unknown>;
@@ -265,6 +266,15 @@ async function syncRanges(db: Db, accountId: string): Promise<number> {
       });
       total += await upsertDocs(db, "meta_insights_range", rows.map((row) => rangeDoc(accountId, level, range.key, row)));
     }
+    // A single account-level all_days row without a platform breakdown gives
+    // the unique reach for the account. Reach is never summed from daily rows.
+    const totals = await graphPaged<MetaRow>(`/${accountId}/insights`, {
+      level: "account",
+      fields: INSIGHT_FIELDS,
+      date_preset: range.preset,
+      time_increment: "all_days",
+    });
+    total += await upsertDocs(db, "meta_insights_range", totals.map((row) => rangeDoc(accountId, "account", range.key, row)));
   }
   return total;
 }
@@ -313,6 +323,7 @@ export async function syncMeta(options: { backfill?: boolean } = {}): Promise<Sy
     }
 
     counts.meta_campaign_tags = await applyTagRules(db).catch(() => 0);
+    counts.meta_notifications = await syncNotifications(db).catch(() => 0);
     await db.collection<{ _id: string } & Record<string, unknown>>("meta_sync_runs").updateOne(
       { _id: runId },
       { $set: { finishedAt: new Date(), status: "success", counts } },
