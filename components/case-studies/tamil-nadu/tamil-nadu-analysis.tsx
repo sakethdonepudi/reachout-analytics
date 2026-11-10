@@ -440,18 +440,116 @@ export default function TamilNaduAnalysis({
     return rows;
   }, [data.districts, sortBy]);
 
-  const districtChartOption = useMemo(() => ({
-    animationDuration: reduced ? 0 : 480,
-    grid: { left: 38, right: 14, top: 30, bottom: 28 },
-    legend: { top: 0, left: 0, itemWidth: 9, itemHeight: 9, textStyle: { color: p.muted, fontSize: 9 } },
-    tooltip: { ...tooltipStyle(p), trigger: "axis" },
-    xAxis: { type: "category", data: data.districts.map((district) => district.name), axisLabel: { show: false }, axisLine: { lineStyle: { color: p.axis } }, axisTick: { show: false } },
-    yAxis: { type: "value", axisLabel: { color: p.muted, fontSize: 8, formatter: "{value}%" }, splitLine: { lineStyle: { color: p.grid } } },
-    series: parties.map((key) => {
+  const districtStats = useMemo(() => (
+    parties.map((key) => {
       const group = groupByKey(key);
-      return { id: `d-${key}`, name: group.label, type: "line", symbol: "none", lineStyle: { color: group.color, width: 1.3 }, data: data.districts.map((district) => +((groupSum(district.survey.shares, group) ?? 0) * 100).toFixed(2)) };
-    }),
-  }), [data.districts, parties, p, reduced]);
+      const values = data.districts
+        .map((district) => groupSum(district.survey.shares, group))
+        .filter((value): value is number => value != null && Number.isFinite(value))
+        .map((value) => value * 100);
+      return { key, group, values, stats: boxStats(values) };
+    })
+  ), [data.districts, parties]);
+
+  const districtChartOption = useMemo(() => {
+    const districts = data.districts;
+    const lines = districtStats.map(({ key, group, stats }) => ({
+      id: `d-${key}`,
+      name: group.label,
+      type: "line",
+      symbol: "circle",
+      symbolSize: 4.5,
+      showSymbol: true,
+      connectNulls: false,
+      lineStyle: { color: group.color, width: 1.8 },
+      itemStyle: { color: group.color },
+      emphasis: { focus: "series" },
+      data: districts.map((district) => {
+        const value = groupSum(district.survey.shares, group);
+        return value == null ? null : +(value * 100).toFixed(2);
+      }),
+      ...(showMedian && stats?.median != null ? {
+        markLine: {
+          silent: true,
+          symbol: "none",
+          lineStyle: { color: group.color, type: "dashed", width: 1.05, opacity: 0.75 },
+          label: { show: false },
+          data: [{ yAxis: +stats.median.toFixed(2) }],
+        },
+      } : {}),
+    }));
+
+    const outlierSeries = highlightOutliers
+      ? districtStats.flatMap(({ key, group, stats }) => {
+          if (!stats) return [];
+          const points = districts.flatMap((district, index) => {
+            const value = groupSum(district.survey.shares, group);
+            if (value == null) return [];
+            const pctValue = value * 100;
+            if (!(pctValue < stats.lower || pctValue > stats.upper)) return [];
+            return [{
+              value: [index, +pctValue.toFixed(2)],
+              name: district.name,
+              party: group.label,
+              colour: group.color,
+              deviation: pctValue - stats.median,
+            }];
+          });
+          if (!points.length) return [];
+          return [{
+            id: `d-outlier-${key}`,
+            name: `${group.label} outliers`,
+            type: reduced ? "scatter" : "effectScatter",
+            data: points,
+            symbolSize: 12,
+            itemStyle: { color: "transparent", borderColor: group.color, borderWidth: 1.8 },
+            rippleEffect: reduced ? undefined : { scale: 2, brushType: "stroke" },
+            label: {
+              show: true,
+              position: "top",
+              color: group.color,
+              fontSize: 8,
+              fontWeight: 600,
+              formatter: (params: unknown) => {
+                const data = (params as { data?: { value?: [number, number] } }).data;
+                return data?.value ? `${data.value[1].toFixed(1)}` : "";
+              },
+            },
+            labelLayout: { hideOverlap: true },
+            tooltip: {
+              formatter: (params: unknown) => {
+                const data = (params as { data?: { name?: string; party?: string; value?: [number, number]; deviation?: number } }).data;
+                if (!data?.value) return "";
+                return `<b>${data.name}</b><br/>${data.party} <b>${data.value[1].toFixed(1)}%</b><br/>Deviation from median <b>${data.deviation != null ? `${data.deviation > 0 ? "+" : ""}${data.deviation.toFixed(1)}` : "—"} pp</b>`;
+              },
+            },
+            z: 12,
+          }];
+        })
+      : [];
+
+    return {
+      animationDuration: reduced ? 0 : 480,
+      grid: { left: 42, right: 18, top: 34, bottom: 58 },
+      dataZoom: [{ type: "inside", xAxisIndex: 0, start: 0, end: 100, filterMode: "none" }],
+      legend: { top: 0, left: 0, itemWidth: 9, itemHeight: 9, textStyle: { color: p.muted, fontSize: 9 }, data: districtStats.map((row) => row.group.label) },
+      tooltip: {
+        ...tooltipStyle(p),
+        trigger: "axis",
+        axisPointer: { type: "line", lineStyle: { color: p.axis, type: "dashed" } },
+        valueFormatter: (value: unknown) => (typeof value === "number" ? `${value.toFixed(1)}%` : "—"),
+      },
+      xAxis: {
+        type: "category",
+        data: districts.map((district) => district.name),
+        axisLabel: { show: true, color: p.muted, fontSize: 8, interval: "auto", hideOverlap: true, rotate: 38 },
+        axisLine: { lineStyle: { color: p.axis } },
+        axisTick: { show: false },
+      },
+      yAxis: { type: "value", axisLabel: { color: p.muted, fontSize: 8, formatter: "{value}%" }, splitLine: { lineStyle: { color: p.grid } } },
+      series: [...lines, ...outlierSeries],
+    };
+  }, [data.districts, districtStats, highlightOutliers, p, reduced, showMedian]);
 
   const totalEstimated = TN_SEAT_GROUPS.reduce((sum, group) => sum + (estimatedSeats[group] ?? 0), 0);
   const totalActual = TN_SEAT_GROUPS.reduce((sum, group) => sum + (actualSeats[group] ?? 0), 0);
@@ -917,11 +1015,30 @@ export default function TamilNaduAnalysis({
           </section>
 
           <section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="District comparison chart">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div><h3 className="font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">District comparison chart</h3><p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">Estimated vote share by district · no seats</p></div>
-              <span className="text-[10px] text-[var(--a-muted)]">38 districts</span>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-brass)]">District lines</p>
+                <h3 className="mt-0.5 font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">District comparison chart</h3>
+                <p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">Estimated vote share by district · dashed median · rings mark outliers</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] text-[var(--a-muted)]">38 districts</span>
+                <button type="button" aria-pressed={showMedian} onClick={() => setShowMedian((value) => !value)} className={cn("rounded-full border px-2.5 py-1 text-[10px] font-semibold", showMedian ? "border-[var(--a-brass)]/50 bg-[var(--a-brass-soft)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)]")}>Median</button>
+                <button type="button" aria-pressed={highlightOutliers} onClick={() => setHighlightOutliers((value) => !value)} className={cn("rounded-full border px-2.5 py-1 text-[10px] font-semibold", highlightOutliers ? "border-[var(--a-brass)]/50 bg-[var(--a-brass-soft)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)]")}>Outliers</button>
+              </div>
             </div>
-            <div className="analysis-chart-enter"><EChart option={districtChartOption} height={260} reduced={reduced} replaceSeries ariaLabel="Estimated vote share by district" /></div>
+            {showMedian && (
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-[var(--a-muted)]">
+                {districtStats.filter((row) => row.stats).map((row) => (
+                  <span key={row.key} className="inline-flex items-center gap-1">
+                    <span className="size-1.5 rounded-sm" style={{ background: row.group.color }} />
+                    {row.group.label} median <b className="tabular-nums text-[var(--a-ink)]/80">{row.stats!.median.toFixed(1)}%</b>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="analysis-chart-enter"><EChart option={districtChartOption} height={330} reduced={reduced} replaceSeries ariaLabel="Estimated vote share by district with median lines and outliers" /></div>
+            <p className="mt-0.5 text-[9px] text-[var(--a-muted)]">Box fences 1.5×IQR · rings show outlying districts · drag inside the chart to zoom</p>
           </section>
 
           {/* ----------------------------- assemblies ----------------------------- */}
