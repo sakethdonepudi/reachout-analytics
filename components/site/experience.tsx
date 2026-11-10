@@ -17,12 +17,9 @@ export default function Experience() {
     const onScroll = () => {
       if (window.scrollY > window.innerHeight * 0.15) setMount(true);
     };
+    onScroll();
     addEventListener("scroll", onScroll, { passive: true });
-    const idle = window.setTimeout(() => setMount(true), 3000);
-    return () => {
-      removeEventListener("scroll", onScroll);
-      clearTimeout(idle);
-    };
+    return () => removeEventListener("scroll", onScroll);
   }, []);
 
   return mount ? <IndiaMap /> : null;

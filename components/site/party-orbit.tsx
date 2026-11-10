@@ -197,6 +197,10 @@ export default function PartyOrbit({ compact = false, className }: { compact?: b
       data-party-orbit
       onPointerEnter={(e) => { if (e.pointerType === "mouse") setHover(true); }}
       onPointerLeave={() => setHover(false)}
+      onFocusCapture={() => setHover(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHover(false);
+      }}
     >
       <div
         className="relative mx-auto"

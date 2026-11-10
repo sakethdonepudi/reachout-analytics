@@ -25,8 +25,8 @@ export default function ServicesPreview() {
       <div className="mx-auto max-w-6xl px-6 sm:px-10">
         <Reveal className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div className="max-w-2xl">
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-saffron-2">Services</p>
-            <h2 className="mt-3 font-display text-[clamp(28px,3.8vw,46px)] font-semibold tracking-[-0.03em]">Two practices. One decision-focused team.</h2>
+            <p className="type-micro text-saffron-2">Services</p>
+            <h2 className="type-h2 mt-3">Two practices. One decision-focused team.</h2>
             <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">Research and analytics for political programmes, alongside data and business capability for organisations of every kind.</p>
           </div>
           <Link href="/services" className="inline-flex shrink-0 items-center gap-2 text-[12px] font-bold uppercase tracking-[0.1em] text-foreground transition-colors hover:text-saffron-2">Explore all services<ArrowUpRight className="size-4" /></Link>

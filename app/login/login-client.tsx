@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useState, type FormEvent } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/navbar";
@@ -68,11 +69,13 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
   return (
     <main className="relative grid min-h-[100svh] place-items-center overflow-hidden bg-[var(--surface-canvas)] px-5 py-14 text-[var(--text-primary)]">
       <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <img
+        <Image
           src="/images/hero/slide-1-1672.webp"
           alt=""
-          className="h-full w-full object-cover object-[72%_50%] opacity-30 dark:opacity-20"
-          decoding="async"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-[72%_50%] opacity-30 dark:opacity-20"
         />
         <div className="absolute inset-0 bg-[var(--surface-canvas)]/78 dark:bg-[#070b12]/72" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--surface-canvas)]/20 to-[var(--surface-canvas)]" />

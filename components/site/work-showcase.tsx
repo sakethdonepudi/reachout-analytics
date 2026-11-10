@@ -48,8 +48,8 @@ export default function WorkShowcase() {
 
       <div className="relative mx-auto max-w-6xl px-6 sm:px-10">
         <Reveal className="mx-auto max-w-2xl text-center">
-          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-saffron-2">Our work</p>
-          <h2 className="mt-3 font-display text-[clamp(28px,3.6vw,46px)] font-semibold tracking-[-0.03em] text-foreground">
+          <p className="type-micro text-saffron-2">Our work</p>
+          <h2 className="type-h2 mt-3 text-foreground">
             Campaigns across India
           </h2>
           <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
