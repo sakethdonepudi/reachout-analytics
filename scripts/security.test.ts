@@ -10,7 +10,9 @@ import { signPayload, verifyPayload } from "@/lib/signed-cookie";
 import { roleFromLists } from "@/lib/auth";
 import { redact, maskEmail } from "@/lib/redact";
 import { publicClientSummary } from "@/lib/meta/public";
+import { metaConfigured } from "@/lib/meta/oauth";
 import { buildCsp, PROTECTED_HEADERS } from "@/lib/security";
+import { metaConfigWarning, secretProblems } from "@/lib/security-config";
 
 let pass = 0, fail = 0;
 function ok(name: string, condition: boolean, detail = "") {
@@ -120,6 +122,35 @@ const sources = filesUnder(process.cwd());
 const needle = "process.env." + "CASE_STUDY_" + "DEV_BYPASS";
 const bypassHits = sources.filter((file) => readFileSync(file, "utf8").includes(needle));
 eq("no CASE_STUDY_DEV_BYPASS", bypassHits, []);
+
+console.log("\n10. Meta is optional at startup");
+const metaEnv = {
+  META_APP_ID: process.env.META_APP_ID,
+  META_APP_SECRET: process.env.META_APP_SECRET,
+  ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET,
+};
+const setEnv = (key: string, value: string | undefined) => {
+  if (value === undefined) delete process.env[key];
+  else process.env[key] = value;
+};
+try {
+  setEnv("META_APP_ID", undefined);
+  setEnv("META_APP_SECRET", undefined);
+  setEnv("ADMIN_SESSION_SECRET", metaEnv.ADMIN_SESSION_SECRET ?? "x".repeat(32));
+  const metaProblems = secretProblems().filter((p) => p.startsWith("META_APP_ID") || p.startsWith("META_APP_SECRET"));
+  eq("missing Meta does not block startup", metaProblems, []);
+  ok("missing Meta disables Meta OAuth", metaConfigured() === false);
+  const warning = metaConfigWarning();
+  ok("missing Meta warning names both vars", !!warning && warning.includes("META_APP_ID") && warning.includes("META_APP_SECRET"));
+  setEnv("META_APP_ID", "test-app-id");
+  setEnv("META_APP_SECRET", "test-app-secret");
+  ok("configured Meta enables Meta OAuth", metaConfigured() === true);
+  eq("configured Meta has no warning", metaConfigWarning(), null);
+} finally {
+  setEnv("META_APP_ID", metaEnv.META_APP_ID);
+  setEnv("META_APP_SECRET", metaEnv.META_APP_SECRET);
+  setEnv("ADMIN_SESSION_SECRET", metaEnv.ADMIN_SESSION_SECRET);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exitCode = 1;

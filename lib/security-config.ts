@@ -2,14 +2,21 @@ const REQUIRED = [
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
   "OWNER_EMAILS",
-  "META_APP_ID",
-  "META_APP_SECRET",
   "TOKEN_ENCRYPTION_KEY",
   "ADMIN_SESSION_SECRET",
   "CRON_SECRET",
   "TURNSTILE_SECRET_KEY",
   "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
 ] as const;
+
+/** Meta is optional: without it the site still starts and Meta Ads is disabled. */
+export function metaConfigWarning(): string | null {
+  const missing: string[] = [];
+  if (!process.env.META_APP_ID) missing.push("META_APP_ID");
+  if (!process.env.META_APP_SECRET) missing.push("META_APP_SECRET");
+  if (!missing.length) return null;
+  return `Meta Ads is disabled: ${missing.join(" and ")} not configured.`;
+}
 
 export function secretProblems(): string[] {
   const problems: string[] = [];

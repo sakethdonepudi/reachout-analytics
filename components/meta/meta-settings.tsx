@@ -34,7 +34,7 @@ function fmt(value: string | null) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
-export default function MetaSettings() {
+export default function MetaSettings({ metaConfigured = true }: { metaConfigured?: boolean }) {
   const [status, setStatus] = useState<Status>(EMPTY);
   const [recent, setRecent] = useState(true);
   const [selected, setSelected] = useState<string[]>([]);
@@ -170,6 +170,12 @@ export default function MetaSettings() {
             Connect once with Facebook Login for Business. Tokens are encrypted at rest and never sent back to the browser.
           </p>
 
+          {!metaConfigured && (
+            <div role="status" className="mt-5 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-[13px] text-amber-700 dark:text-amber-300">
+              <p className="font-semibold">Meta app not configured</p>
+              <p className="mt-1 text-[12.5px]">Set META_APP_ID and META_APP_SECRET to enable Meta Ads. The rest of the site is unaffected.</p>
+            </div>
+          )}
           {error && <p role="alert" className="mt-5 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-[13px] text-rose-600 dark:text-rose-400">{error}</p>}
           {message && <p role="status" className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-[13px] text-emerald-700 dark:text-emerald-300">{message}</p>}
           {status.expiresSoon && (
@@ -192,11 +198,11 @@ export default function MetaSettings() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {!recent ? (
-                  <button type="button" onClick={reauth} className="inline-flex items-center gap-2 rounded-xl bg-saffron px-4 py-2.5 text-sm font-semibold text-[#241203]">
+                  <button type="button" onClick={reauth} disabled={!metaConfigured} className="inline-flex items-center gap-2 rounded-xl bg-saffron px-4 py-2.5 text-sm font-semibold text-[#241203] disabled:cursor-not-allowed disabled:opacity-50">
                     <ShieldCheck className="size-4" /> Re-authenticate
                   </button>
                 ) : (
-                  <button type="button" onClick={() => window.location.assign("/api/meta/owner/connect/start")} className="inline-flex items-center gap-2 rounded-xl bg-saffron px-4 py-2.5 text-sm font-semibold text-[#241203]">
+                  <button type="button" onClick={() => window.location.assign("/api/meta/owner/connect/start")} disabled={!metaConfigured} className="inline-flex items-center gap-2 rounded-xl bg-saffron px-4 py-2.5 text-sm font-semibold text-[#241203] disabled:cursor-not-allowed disabled:opacity-50">
                     <PlugZap className="size-4" /> {status.connected ? "Reconnect Meta" : "Connect Meta Ads"}
                   </button>
                 )}

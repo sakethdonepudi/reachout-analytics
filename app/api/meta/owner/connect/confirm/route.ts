@@ -4,6 +4,7 @@ import { requireRecentAuth } from "@/lib/auth";
 import { requireCsrf } from "@/lib/csrf";
 import { audit } from "@/lib/audit";
 import { getConnectionDoc, setEnabledAdAccounts } from "@/lib/meta/store";
+import { metaConfigured } from "@/lib/meta/oauth";
 
 export const runtime = "nodejs";
 const Body = z.object({ adAccountIds: z.array(z.string().max(120)).max(200) });
@@ -13,6 +14,12 @@ export async function POST(req: NextRequest) {
   if (csrf) return csrf;
   const auth = await requireRecentAuth(req);
   if ("deny" in auth) return auth.deny;
+  if (!metaConfigured()) {
+    return Response.json(
+      { ok: false, error: "Meta app not configured" },
+      { status: 503, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } },
+    );
+  }
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ ok: false, error: "Invalid request" }, { status: 400 });
   const doc = await getConnectionDoc();

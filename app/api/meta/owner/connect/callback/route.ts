@@ -21,7 +21,12 @@ export async function GET(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
   const limit = rateLimit(`meta-callback:${ip}`, 20, 10 * 60 * 1000);
   if (!limit.ok) return rateLimitResponse(limit.retryAfter);
-  if (!metaConfigured()) return redirect("/meta-ads/settings?error=config");
+  if (!metaConfigured()) {
+    return Response.json(
+      { ok: false, error: "Meta app not configured" },
+      { status: 503, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } },
+    );
+  }
 
   const code = req.nextUrl.searchParams.get("code") ?? "";
   const state = req.nextUrl.searchParams.get("state") ?? "";
