@@ -159,7 +159,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
           <Link href="/meta-ads" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-muted-foreground hover:text-foreground">
             <ArrowLeft className="size-3.5" /> Meta Ads
           </Link>
-          <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.24em] text-saffron-2">Owner settings</p>
+          <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--accent-brass-strong)]">Owner settings</p>
           <h1 className="mt-2 font-display text-[clamp(30px,4vw,48px)] font-semibold tracking-[-0.03em]">Meta connection</h1>
           <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
             Connect once with Facebook Login for Business. Tokens are encrypted at rest and never sent back to the browser.
@@ -174,7 +174,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
           {error && <p role="alert" className="mt-5 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-[13px] text-rose-600 dark:text-rose-400">{error}</p>}
           {message && <p role="status" className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-[13px] text-emerald-700 dark:text-emerald-300">{message}</p>}
           {status.expiresSoon && (
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-saffron/40 bg-saffron/10 px-4 py-3 text-[13px] text-saffron-2">
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-saffron/40 bg-saffron/10 px-4 py-3 text-[13px] text-[var(--accent-brass-strong)]">
               <span>The Meta token expires within 7 days.</span>
               <button type="button" onClick={() => void startConnect()} className="inline-flex items-center gap-1.5 rounded-lg bg-saffron px-3 py-1.5 text-[12px] font-semibold text-[#241203]">
                 <RefreshCw className="size-3.5" /> Reconnect Meta
@@ -193,7 +193,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
           <section className="mt-8 rounded-3xl border border-border bg-card p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Connection</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent-brass-strong)]">Connection</p>
                 <h2 className="mt-2 font-display text-2xl font-semibold">{loading ? "Loading…" : status.expired || status.reconnectRequired ? "Reconnect Meta" : status.connected ? status.accountName ?? "Meta connected" : "Not connected"}</h2>
                 <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
                   {status.expired
@@ -237,7 +237,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
             <section className="mt-6 rounded-3xl border border-border bg-card p-6">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Ad accounts</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent-brass-strong)]">Ad accounts</p>
                   <h2 className="mt-2 font-display text-xl font-semibold">Choose what to sync</h2>
                 </div>
                 <button type="button" onClick={() => void saveSelection()} disabled={busy === "save"} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-[12px] font-semibold hover:bg-elevated disabled:opacity-60">
@@ -263,21 +263,21 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
           )}
 
           <section className="mt-6 rounded-3xl border border-border bg-card p-6">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Tagging</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent-brass-strong)]">Tagging</p>
             <h2 className="mt-2 font-display text-xl font-semibold">Campaign tags</h2>
             <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Naming rules suggest a state and party. Confirm the suggestions or edit them inline. Clients only see confirmed tags.</p>
             <div className="mt-4"><MetaTagging /></div>
           </section>
 
           <section className="mt-6 rounded-3xl border border-border bg-card p-6">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Notifications</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent-brass-strong)]">Notifications</p>
             <h2 className="mt-2 font-display text-xl font-semibold">Alerts</h2>
             <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Status changes, payment issues, spend-cap alerts and zero-delivery campaigns are stored in MongoDB for the dashboard.</p>
             <span className="mt-4 inline-flex min-h-8 items-center rounded-full border border-border px-3 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">WhatsApp delivery disabled</span>
           </section>
 
           <section className="mt-6 rounded-3xl border border-border bg-card p-6">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Sensitive actions</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent-brass-strong)]">Sensitive actions</p>
             <h2 className="mt-2 font-display text-xl font-semibold">Owner re-authentication</h2>
             <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Meta connect or disconnect, the party map and exports require the owner password again if your last sign-in was more than 15 minutes ago.</p>
             <button type="button" onClick={() => void reauthNow()} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold hover:bg-elevated">
@@ -288,7 +288,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
           <section className="mt-6 rounded-3xl border border-border bg-card p-6">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Audit</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent-brass-strong)]">Audit</p>
                 <h2 className="mt-2 font-display text-xl font-semibold">Recent security events</h2>
               </div>
               <button type="button" onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-[12px] font-semibold hover:bg-elevated"><RefreshCw className="size-3.5" /> Refresh</button>

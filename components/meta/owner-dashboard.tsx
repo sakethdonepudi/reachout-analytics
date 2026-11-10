@@ -463,7 +463,7 @@ export default function OwnerDashboard() {
         <Filters value={filter} onChange={(next) => { setFilter(next); setFiltersOpen(false); }} stateOptions={CASES.map((item) => ({ slug: item.slug, stateName: item.stateName }))} />
       </Sheet>
 
-      <Dialog open={notificationsOpen} onClose={() => setNotificationsOpen(false)} title="Notifications" description="Status, payment and delivery alerts" footer={<button type="button" onClick={() => void markAllRead()} className="min-h-10 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[12px] font-semibold text-white">Mark all read</button>}>
+      <Dialog open={notificationsOpen} onClose={() => setNotificationsOpen(false)} title="Notifications" description="Status, payment and delivery alerts" footer={<button type="button" onClick={() => void markAllRead()} className="min-h-10 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[12px] font-semibold text-[var(--text-on-brass)]">Mark all read</button>}>
         {overview.notifications.rows.length ? (
           <ul className="space-y-2">{overview.notifications.rows.map((row) => <li key={row.id} className="rounded-[var(--radius-control)] border border-[var(--border-hairline)] p-3"><div className="flex items-center justify-between gap-2"><p className="text-[12.5px] font-semibold">{row.title}</p><Badge tone={row.severity === "danger" ? "danger" : row.severity === "warning" ? "warning" : "neutral"}>{row.kind.replaceAll("_", " ")}</Badge></div><p className="mt-1 text-[11.5px] text-[var(--text-muted)]">{row.body}</p><p className="mt-1 text-[10px] text-[var(--text-muted)]">{new Date(row.createdAt).toLocaleString()}</p></li>)}</ul>
         ) : <EmptyState title="No unread notifications." />}

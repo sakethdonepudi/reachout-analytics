@@ -113,7 +113,7 @@ export default function WorkShowcase() {
 
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {c.tags.slice(0, 2).map((t, k) => (
-                      <span key={t} className={cn("rounded-md px-2 py-1 text-[10.5px] font-semibold", k === 1 ? "bg-[#2fbf4a]/15 text-[#2fbf4a]" : "bg-elevated text-foreground/75")}>{t}</span>
+                      <span key={t} className={cn("rounded-md px-2 py-1 text-[10.5px] font-semibold", k === 1 ? "bg-[#2fbf4a]/15 text-[var(--success)]" : "bg-elevated text-foreground/75")}>{t}</span>
                     ))}
                   </div>
 

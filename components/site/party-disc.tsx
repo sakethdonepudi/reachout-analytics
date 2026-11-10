@@ -25,7 +25,7 @@ export default function PartyDisc({
   const router = useRouter();
   const [failed, setFailed] = useState(false);
   const party = PARTIES[identity.party];
-  const label = `${party.fullName}, ${identity.state}`;
+  const label = `${party.name}, ${party.fullName}, ${identity.state}`;
 
   return (
     <button

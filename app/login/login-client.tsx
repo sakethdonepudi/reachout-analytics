@@ -136,7 +136,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
             <button
               type="submit"
               disabled={loading || (turnstileEnabled && !token)}
-              className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[14px] font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]"
+              className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[14px] font-semibold text-[var(--text-on-brass)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]"
             >
               {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
               Sign in

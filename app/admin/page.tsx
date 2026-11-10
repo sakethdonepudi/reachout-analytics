@@ -422,7 +422,7 @@ export default function AdminPortal() {
                       <p className="text-[12px] text-muted-foreground">{cs.state} · {cs.electionYear} · {cs.slug}</p>
                     </button>
                     <input defaultValue={cs.title} onBlur={(e) => { if (e.target.value !== cs.title) saveTitle(cs, e.target.value); }} className="w-48 rounded-lg border border-border bg-elevated/60 px-2.5 py-1.5 text-[12.5px]" aria-label={`Title for ${cs.title}`} />
-                    <button onClick={() => togglePublish(cs)} className={cn("rounded-full border px-3 py-1.5 text-[12px] font-semibold", cs.published ? "border-[#2fbf4a]/60 bg-[#2fbf4a]/15 text-[#2fbf4a]" : "border-border text-muted-foreground")}>
+                    <button onClick={() => togglePublish(cs)} className={cn("rounded-full border px-3 py-1.5 text-[12px] font-semibold", cs.published ? "border-[#2fbf4a]/60 bg-[#2fbf4a]/15 text-[var(--success)]" : "border-border text-muted-foreground")}>
                       {cs.published ? "Published" : "Publish"}
                     </button>
                   </li>

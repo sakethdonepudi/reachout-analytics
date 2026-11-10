@@ -214,7 +214,7 @@ export function MetaTagging() {
               {ruleParties.map((party) => <option key={party} value={party}>{party}</option>)}
             </select>
           </label>
-          <button type="button" onClick={() => void addRule()} disabled={busy === "rule" || !rulePattern || !ruleState || !ruleParty} className="mt-5 inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-3 text-[12px] font-semibold text-white disabled:opacity-60">
+          <button type="button" onClick={() => void addRule()} disabled={busy === "rule" || !rulePattern || !ruleState || !ruleParty} className="mt-5 inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-3 text-[12px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
             {busy === "rule" ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />} Add rule
           </button>
         </div>
@@ -241,7 +241,7 @@ export function MetaTagging() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => void load()} className="inline-flex min-h-10 items-center gap-1.5 rounded-[var(--radius-control)] border border-[var(--border-hairline)] px-3 text-[12px] font-semibold hover:bg-[var(--surface-raised)]"><RefreshCw className="size-3.5" /> Refresh</button>
-            <button type="button" onClick={() => void confirmAll()} disabled={busy === "confirm-all"} className="inline-flex min-h-10 items-center gap-1.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-3 text-[12px] font-semibold text-white disabled:opacity-60">
+            <button type="button" onClick={() => void confirmAll()} disabled={busy === "confirm-all"} className="inline-flex min-h-10 items-center gap-1.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-3 text-[12px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
               {busy === "confirm-all" ? <Loader2 className="size-3.5 animate-spin" /> : null} Confirm all
             </button>
           </div>
@@ -276,6 +276,7 @@ export function MetaTagging() {
                       <td className="px-4 py-2">
                         <select
                           value={draft.state}
+                          aria-label={`${campaign.name} state`}
                           onChange={(event) => setDrafts((current) => ({ ...current, [campaign.id]: { state: event.target.value, party: "" } }))}
                           className="min-h-10 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-panel)] px-2 text-[12px]"
                         >
@@ -288,6 +289,7 @@ export function MetaTagging() {
                           {draft.party && <span className="size-2.5 rounded-full" style={{ background: partyColour(draft.state, draft.party) }} aria-hidden />}
                           <select
                             value={draft.party}
+                            aria-label={`${campaign.name} party`}
                             onChange={(event) => setDrafts((current) => ({ ...current, [campaign.id]: { ...draft, party: event.target.value } }))}
                             disabled={!draft.state}
                             className="min-h-10 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-panel)] px-2 text-[12px] disabled:opacity-60"
@@ -303,7 +305,7 @@ export function MetaTagging() {
                       <td className="px-4 py-2">
                         <div className="flex justify-end gap-1.5">
                           {tag && <button type="button" onClick={() => void untag(campaign.id)} disabled={busy === `untag:${campaign.id}`} className="min-h-10 rounded-[var(--radius-control)] border border-[var(--border-hairline)] px-2 text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--danger)]">Clear</button>}
-                          <button type="button" onClick={() => void saveTag(campaign.id)} disabled={busy === `tag:${campaign.id}` || !draft.state || !draft.party} className="inline-flex min-h-10 items-center gap-1 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-3 text-[11px] font-semibold text-white disabled:opacity-60">
+                          <button type="button" onClick={() => void saveTag(campaign.id)} disabled={busy === `tag:${campaign.id}` || !draft.state || !draft.party} className="inline-flex min-h-10 items-center gap-1 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-3 text-[11px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
                             {busy === `tag:${campaign.id}` ? <Loader2 className="size-3.5 animate-spin" /> : null} Save
                           </button>
                         </div>

@@ -10,7 +10,7 @@ export default function ErrorPage({ reset }: { error: Error & { digest?: string 
         <h1 className="type-h2 mt-3">Something went wrong</h1>
         <p className="type-small mt-2 text-[var(--text-muted)]">The page could not be loaded.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button type="button" onClick={reset} className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[13px] font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]">
+          <button type="button" onClick={reset} className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[13px] font-semibold text-[var(--text-on-brass)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]">
             Try again
           </button>
           <Link href="/" className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-control)] border border-[var(--border-hairline)] px-4 text-[13px] font-semibold text-[var(--text-muted)] hover:bg-[var(--surface-raised)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]">

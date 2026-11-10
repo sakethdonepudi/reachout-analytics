@@ -80,7 +80,7 @@ export function ReauthProvider({ children }: { children: ReactNode }) {
             <button type="button" onClick={() => finish(false)} className="min-h-10 rounded-[var(--radius-control)] border border-[var(--border-hairline)] px-4 text-[12.5px] font-semibold text-[var(--text-muted)] hover:bg-[var(--surface-raised)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]">
               Cancel
             </button>
-            <button type="submit" form="reauth-form" disabled={busy || !password} className="inline-flex min-h-10 items-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[12.5px] font-semibold text-white disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]">
+            <button type="submit" form="reauth-form" disabled={busy || !password} className="inline-flex min-h-10 items-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[12.5px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]">
               {busy && <Loader2 className="size-3.5 animate-spin" aria-hidden />} Continue
             </button>
           </>

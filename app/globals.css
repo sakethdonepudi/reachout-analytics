@@ -10,7 +10,7 @@
 :root {
   /* brand (constant across themes) */
   --saffron: #f58a24;
-  --saffron-2: #b96a12;
+  --saffron-2: #8f4d05;
   --india-green: #138808;
   --green-2: #2fbf4a;
   --navy: #0b1f4d;
@@ -91,16 +91,17 @@
   --text-muted: #626b78;
   --accent-brass: #8f4d05;
   --accent-brass-strong: #6f3a00;
+  --text-on-brass: #ffffff;
   --accent-brass-soft: rgba(245, 138, 36, 0.12);
   --border-hairline: #dde1e6;
   --shadow-soft: 0 10px 30px -24px rgba(20, 24, 31, 0.45);
 
   /* semantic */
-  --success: #15803d;
+  --success: #166534;
   --success-bg: rgba(21, 128, 61, 0.1);
-  --warning: #a16207;
+  --warning: #854d0e;
   --warning-bg: rgba(161, 98, 7, 0.12);
-  --danger: #b91c1c;
+  --danger: #991b1b;
   --danger-bg: rgba(185, 28, 28, 0.1);
 
   /* party palettes — exact case-study colours */
@@ -159,6 +160,7 @@
   --text-muted: #adb7c4;
   --accent-brass: #ffb866;
   --accent-brass-strong: #ffd09a;
+  --text-on-brass: #1b1206;
   --accent-brass-soft: rgba(245, 138, 36, 0.18);
   --border-hairline: #394656;
   --shadow-soft: 0 18px 46px -30px rgba(0, 0, 0, 0.8);
