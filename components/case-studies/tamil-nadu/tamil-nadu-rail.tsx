@@ -23,7 +23,8 @@ export type TnScopeResult = {
   baselineAvailable: boolean;
   currentValid: number;
   presence: Record<TnYear, Record<TnGroup, boolean>>;
-  estimatedSeats: Record<TnSeatGroup, number>;
+  opinionSeats: Record<TnSeatGroup, number>;
+  opinionCall: TnGroup | null;
   actualSeats: Record<TnSeatGroup, number>;
   currentLabel: string;
   surveyLeader: TnGroup | null;
@@ -263,8 +264,12 @@ export default function TamilNaduRail({
   }, [scope, baselineLabel, p, reduced, displayGroups, compact, roomy]);
 
   const chartHeight = roomy ? 210 : compact ? 160 : 180;
-  const seatRows = [...TN_SEAT_GROUPS];
-  const estimatedTotal = seatTotal(scope.estimatedSeats);
+  const seatRows: { key: TnSeatGroup | "NTK" | "Others"; label: string; color: string }[] = [
+    ...TN_SEAT_GROUPS.map((group) => ({ key: group, label: TN_LABEL[group], color: TN_COLOR[group] })),
+    { key: "NTK", label: TN_LABEL.NTK, color: TN_COLOR.NTK },
+    { key: "Others", label: "Others & NOTA", color: TN_COLOR.NOTA },
+  ];
+  const opinionTotal = seatTotal(scope.opinionSeats);
   const actualTotal = seatTotal(scope.actualSeats);
 
   return (
@@ -374,40 +379,43 @@ export default function TamilNaduRail({
             )}
             {tab === "seats" && (
               <div className="space-y-2">
-                <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Estimated seats · actual shown separately</p>
+                <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Opinion poll seats · actual shown separately</p>
+                {scope.opinionCall && <p className="text-[9px] text-muted-foreground">Opinion poll call: {TN_LABEL[scope.opinionCall] ?? scope.opinionCall}</p>}
                 <div className="overflow-hidden rounded-md border border-border/70">
                   <table className={cn("w-full border-collapse", compact ? "text-[9px]" : "text-[10px]")}>
                     <thead>
                       <tr className="border-b border-border/70 text-[8px] tracking-wide text-muted-foreground">
                         <th className={cn("px-1 text-left", rowPad)}>Party</th>
-                        <th className={cn("px-1 text-right", rowPad)} title="Opinion Poll has no seat figures">Opinion Poll</th>
-                        <th className={cn("px-1 text-right", rowPad)}>Estimated</th>
+                        <th className={cn("px-1 text-right", rowPad)} title="SAKET survey seat estimate; NTK and Others & NOTA have no seat estimate">Opinion poll seats</th>
                         <th className={cn("px-1 text-right", rowPad)}>Actual 2026</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {seatRows.map((g) => (
-                        <tr key={g} className="border-t border-border/50">
-                          <td className={cn("px-1", rowPad)}>
-                            <span className="inline-flex items-start gap-1" style={{ color: TN_COLOR[g] }}>
-                              <span className="mt-[4px] size-1.5 shrink-0 rounded-sm" style={{ background: TN_COLOR[g] }} />
-                              <span className="min-w-0">
-                                <span className="block leading-tight">{TN_LABEL[g]}</span>
-                                {partners(g) && !compact && <span className="mt-0.5 block text-[7px] font-normal leading-tight text-muted-foreground">{partners(g)}</span>}
+                      {seatRows.map((row) => {
+                        const opinionValue = scope.opinionCall ? "—" : (scope.opinionSeats as Partial<Record<string, number>>)[row.key] ?? "—";
+                        const actualValue = (scope.actualSeats as Partial<Record<string, number>>)[row.key] ?? "—";
+                        const partnerText = (TN_SEAT_GROUPS as readonly string[]).includes(row.key) ? partners(row.key as TnSeatGroup) : null;
+                        return (
+                          <tr key={row.key} className="border-t border-border/50">
+                            <td className={cn("px-1", rowPad)}>
+                              <span className="inline-flex items-start gap-1" style={{ color: row.color }}>
+                                <span className="mt-[4px] size-1.5 shrink-0 rounded-sm" style={{ background: row.color }} />
+                                <span className="min-w-0">
+                                  <span className="block leading-tight">{row.label}</span>
+                                  {partnerText && !compact && <span className="mt-0.5 block text-[7px] font-normal leading-tight text-muted-foreground">{partnerText}</span>}
+                                </span>
                               </span>
-                            </span>
-                          </td>
-                          <td className={cn("px-1 text-right tabular-nums text-muted-foreground", rowPad)} title="Opinion Poll has no seat figures">—</td>
-                          <td className={cn("px-1 text-right font-semibold tabular-nums", rowPad)}>{(scope.estimatedSeats as Partial<Record<TnSeatGroup, number>>)[g] ?? "—"}</td>
-                          <td className={cn("px-1 text-right tabular-nums", rowPad)}>{(scope.actualSeats as Partial<Record<TnSeatGroup, number>>)[g] ?? "—"}</td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className={cn("px-1 text-right font-semibold tabular-nums", rowPad)}>{opinionValue}</td>
+                            <td className={cn("px-1 text-right tabular-nums", rowPad)}>{actualValue}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                     <tfoot>
                       <tr className="border-t border-border bg-muted/20 text-[9px]">
                         <td className={cn("px-1", rowPad)}>Total</td>
-                        <td className={cn("px-1 text-right tabular-nums text-muted-foreground", rowPad)}>—</td>
-                        <td className={cn("px-1 text-right tabular-nums", rowPad)}>{estimatedTotal ?? "—"}</td>
+                        <td className={cn("px-1 text-right tabular-nums", rowPad)}>{opinionTotal || "—"}</td>
                         <td className={cn("px-1 text-right tabular-nums", rowPad)}>{actualTotal ?? "—"}</td>
                       </tr>
                     </tfoot>

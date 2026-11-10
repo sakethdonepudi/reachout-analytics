@@ -25,6 +25,8 @@ export type TnOpinionPollView = {
   available: boolean;
   counts: TnShares;
   shares: TnShares;
+  seats: Record<TnSeatGroup, number> | null;
+  seatSource?: string | null;
 };
 
 export type TnEciActualView = {

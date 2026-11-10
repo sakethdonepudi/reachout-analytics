@@ -151,7 +151,7 @@ export default function TamilNaduAnalysis({
     : scope.startsWith("d:") ? scope.slice(2) : "Tamil Nadu";
   const scopeIsState = !scope.startsWith("a:") && !scope.startsWith("d:");
 
-  const currentShares = scopeIsState ? data.statewide.calibrated.shares : scopeRecord.survey.shares ?? {};
+  const currentShares = scopeIsState ? opinionPoll.shares ?? {} : scopeRecord.survey.shares ?? {};
   const baseline = scopeRecord.historical[baselineYear] ?? null;
   const baselineShares = baseline?.shares ?? null;
   const baselineAvailable = !!baseline?.available;
@@ -170,10 +170,15 @@ export default function TamilNaduAnalysis({
     }
   };
 
-  const estimatedSeats = useMemo(() => {
-    if (scope.startsWith("a:")) { const ac = data.acs.find((a) => a.no === Number(scope.slice(2))); return { ...emptySeats(), ...(ac?.final.leader ? { [ac.final.leader]: 1 } : {}) }; }
-    if (scope.startsWith("d:")) return data.districts.find((d) => d.name === scope.slice(2))?.finalSeats ?? emptySeats();
-    return data.statewide.finalSeats;
+  const opinionSeats = useMemo(() => {
+    if (scope.startsWith("a:")) return emptySeats();
+    if (scope.startsWith("d:")) return data.districts.find((d) => d.name === scope.slice(2))?.originalSeats ?? emptySeats();
+    return opinionPoll.seats ?? data.statewide.originalSeats ?? emptySeats();
+  }, [data, scope, opinionPoll.seats]);
+  const opinionCall = useMemo(() => {
+    if (!scope.startsWith("a:")) return null;
+    const ac = data.acs.find((a) => a.no === Number(scope.slice(2)));
+    return ac?.original?.leader ?? ac?.surveyLeader ?? null;
   }, [data, scope]);
   const actualSeats = useMemo(() => {
     if (scope.startsWith("a:")) { const ac = data.acs.find((a) => a.no === Number(scope.slice(2))); return { ...emptySeats(), ...(ac?.actual2026.winner ? { [ac.actual2026.winner]: 1 } : {}) }; }
@@ -321,8 +326,8 @@ export default function TamilNaduAnalysis({
       xAxis: { type: "value", minInterval: 1, name: "seats", nameTextStyle: { color: p.muted, fontSize: 8.5 }, axisLabel: { color: p.muted, fontSize: 9, formatter: (value: number) => `${value}` }, splitLine: { lineStyle: { color: p.grid } }, axisLine: { show: false }, axisTick: { show: false } },
       yAxis: { type: "category", data: TN_SEAT_GROUPS.map((group) => TN_LABEL[group]), inverse: true, axisTick: { show: false }, axisLine: { lineStyle: { color: p.axis } }, axisLabel: { color: p.text, fontSize: 10 } },
       series: [
-        { name: "Estimated", type: "bar", barMaxWidth: 12, barGap: "12%", barCategoryGap: "32%", data: TN_SEAT_GROUPS.map((group) => {
-          const value = (estimatedSeats as Partial<Record<TnSeatGroup, number>>)[group];
+        { name: "Opinion poll", type: "bar", barMaxWidth: 12, barGap: "12%", barCategoryGap: "32%", data: TN_SEAT_GROUPS.map((group) => {
+          const value = (opinionSeats as Partial<Record<TnSeatGroup, number>>)[group];
           return { value: value ?? null, itemStyle: { color: TN_COLOR[group], opacity: value == null ? 0 : 0.55, borderRadius: 2 }, label: { show: value != null, position: "right", color: p.text, fontSize: 8.5, formatter: value == null ? "—" : `${value}` } };
         }) },
         { name: "Actual 2026", type: "bar", barMaxWidth: 12, data: TN_SEAT_GROUPS.map((group) => {
@@ -331,7 +336,7 @@ export default function TamilNaduAnalysis({
         }) },
       ],
     };
-  }, [actualSeats, estimatedSeats, p, reduced, eciActual]);
+  }, [actualSeats, opinionSeats, p, reduced, eciActual]);
 
   /* ---------------------------- forecaster ----------------------------- */
   const forecasterChartOption = useMemo(() => {
@@ -567,7 +572,7 @@ export default function TamilNaduAnalysis({
     };
   }, [data.districts, districtStats, highlightOutliers, p, reduced, showMedian]);
 
-  const totalEstimated = seatTotal(estimatedSeats);
+  const totalOpinion = seatTotal(opinionSeats);
   const totalActual = seatTotal(actualSeats);
 
   const resetControls = () => {
@@ -717,8 +722,8 @@ export default function TamilNaduAnalysis({
                   )}
                   {chartMode === "seats" && (
                     <>
-                      <SeriesLegend items={[{ label: "Estimated", opacity: 0.55 }, { label: "Actual 2026", opacity: 1 }]} />
-                      <EChart option={seatChartOption} height={340} reduced={reduced} ariaLabel={`Estimated and actual seats for ${scopeName}`} />
+                      <SeriesLegend items={[{ label: "Opinion poll", opacity: 0.55 }, { label: "Actual 2026", opacity: 1 }]} />
+                      <EChart option={seatChartOption} height={340} reduced={reduced} ariaLabel={`Opinion poll and actual seats for ${scopeName}`} />
                     </>
                   )}
                 </div>
@@ -908,44 +913,46 @@ export default function TamilNaduAnalysis({
           </section>
 
           {/* ------------------------------ seats ------------------------------ */}
-          <section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="Estimated and actual seats">
+          <section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="Opinion poll and actual seats">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
-                <h3 className="font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">Estimated and actual seats</h3>
-                <p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">Estimated from the workbook seat model · Actual 2026 shown separately · {scopeName}</p>
+                <h3 className="font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">Opinion poll seats and actual seats</h3>
+                <p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">Opinion poll seats from the SAKET survey · Actual 2026 shown separately · {scopeName}</p>
               </div>
-              <span className="text-[10px] text-[var(--a-muted)]">Estimated {totalEstimated ?? "—"} · Actual {totalActual ?? "—"}</span>
+              <span className="text-[10px] text-[var(--a-muted)]">Opinion poll {totalOpinion || "—"} · Actual {totalActual ?? "—"}</span>
             </div>
+            {opinionCall && <p className="mt-2 text-[10.5px] text-[var(--a-muted)]">Opinion poll call: {TN_LABEL[opinionCall] ?? opinionCall}</p>}
             <div className="mt-3 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="rounded-xl border border-[var(--a-border)] bg-[var(--a-panel-2)] p-2">
-                <EChart option={seatChartOption} height={250} reduced={reduced} replaceSeries ariaLabel={`Estimated and Actual 2026 seats for ${scopeName}`} />
+                <EChart option={seatChartOption} height={250} reduced={reduced} replaceSeries ariaLabel={`Opinion poll and Actual 2026 seats for ${scopeName}`} />
               </div>
               <div className="self-start overflow-hidden rounded-xl border border-[var(--a-border)]">
                 <table className="w-full border-collapse text-[10px]">
-                  <caption className="sr-only">Estimated and Actual 2026 seats</caption>
+                  <caption className="sr-only">Opinion poll and Actual 2026 seats</caption>
                   <thead>
                     <tr className="border-b border-[var(--a-border)] text-left text-[8px] uppercase tracking-wide text-[var(--a-muted)]">
                       <th className="px-2 py-1.5">Group</th>
-                      <th className="px-2 py-1.5 text-right" title="Opinion Poll has no seat figures">Opinion Poll</th>
-                      <th className="px-2 py-1.5 text-right">Estimated</th>
+                      <th className="px-2 py-1.5 text-right" title="SAKET survey seat estimate; NTK and Others & NOTA have no seat estimate">Opinion poll seats</th>
                       <th className="px-2 py-1.5 text-right">Actual 2026</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {TN_SEAT_GROUPS.map((group) => (
-                      <tr key={group} className="border-t border-[var(--a-border)]/70">
-                        <td className="px-2 py-1.5"><span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: TN_COLOR[group] }} />{TN_LABEL[group]}</span></td>
-                        <td className="px-2 py-1.5 text-right tabular-nums text-[var(--a-muted)]" title="Opinion Poll has no seat figures">—</td>
-                        <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{(estimatedSeats as Partial<Record<TnSeatGroup, number>>)[group] ?? "—"}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums">{(actualSeats as Partial<Record<TnSeatGroup, number>>)[group] ?? "—"}</td>
-                      </tr>
-                    ))}
+                    {[...TN_SEAT_GROUPS.map((group) => ({ key: group as string, label: TN_LABEL[group], color: TN_COLOR[group] })), { key: "NTK", label: TN_LABEL.NTK, color: TN_COLOR.NTK }, { key: "Others", label: "Others & NOTA", color: TN_COLOR.NOTA }].map((row) => {
+                      const opinion = opinionCall ? "—" : (opinionSeats as Partial<Record<string, number>>)[row.key] ?? "—";
+                      const actual = (actualSeats as Partial<Record<string, number>>)[row.key] ?? "—";
+                      return (
+                        <tr key={row.key} className="border-t border-[var(--a-border)]/70">
+                          <td className="px-2 py-1.5"><span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: row.color }} />{row.label}</span></td>
+                          <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{opinion}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">{actual}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                   <tfoot>
                     <tr className="border-t border-[var(--a-border)] bg-[var(--a-panel-2)] text-[10px]">
                       <td className="px-2 py-1.5">Total</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums text-[var(--a-muted)]">—</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{totalEstimated ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{totalOpinion || "—"}</td>
                       <td className="px-2 py-1.5 text-right tabular-nums">{totalActual ?? "—"}</td>
                     </tr>
                   </tfoot>
@@ -969,14 +976,14 @@ export default function TamilNaduAnalysis({
             </div>
             <div className="mt-3 max-h-80 overflow-auto rounded-xl border border-[var(--a-border)]">
               <table className="w-full min-w-[680px] border-collapse text-[10px]">
-                <caption className="sr-only">District estimated shares and seat estimates</caption>
+                <caption className="sr-only">District estimated shares and opinion poll seats</caption>
                 <thead className="sticky top-0 z-10 bg-[var(--a-panel)]">
                   <tr className="border-b border-[var(--a-border)] text-left text-[8px] uppercase tracking-wide text-[var(--a-muted)]">
                     <th className="px-2 py-1.5">District</th>
                     <th className="px-2 py-1.5 text-right">Estimated votes</th>
                     <th className="px-2 py-1.5">Leading party</th>
                     {parties.map((key) => { const group = groupByKey(key); return <th key={key} className="whitespace-nowrap px-2 py-1.5 text-right" style={{ color: group.color }}>{group.label}</th>; })}
-                    <th className="px-2 py-1.5 text-right">Estimated</th>
+                    <th className="px-2 py-1.5 text-right" title="SAKET survey seat estimate">Opinion poll</th>
                     <th className="px-2 py-1.5 text-right">Actual</th>
                   </tr>
                 </thead>
@@ -989,7 +996,7 @@ export default function TamilNaduAnalysis({
                         <td className="px-2 py-1 text-right tabular-nums text-[var(--a-muted)]">{district.survey.valid.toLocaleString("en-IN")}</td>
                         <td className="px-2 py-1">{lead ? <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: TN_COLOR[lead] }} />{TN_LABEL[lead]}</span> : "—"}</td>
                         {parties.map((key) => { const group = groupByKey(key); const value = groupSum(district.survey.shares, group); return <td key={key} className="px-2 py-1 text-right tabular-nums">{value == null ? "—" : (value * 100).toFixed(1)}</td>; })}
-                        <td className="px-2 py-1 text-right tabular-nums">{seatTotal(district.finalSeats) ?? "—"}</td>
+                        <td className="px-2 py-1 text-right tabular-nums">{seatTotal(district.originalSeats) ?? "—"}</td>
                         <td className="px-2 py-1 text-right tabular-nums">{seatTotal(district.actualSeats) ?? "—"}</td>
                       </tr>
                     );

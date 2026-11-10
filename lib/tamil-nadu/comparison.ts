@@ -62,6 +62,12 @@ export const TN_OPINION_POLL = {
     NTK: TN_OPINION_COUNTS.NTK / TN_OPINION_VALID,
     NOTA: TN_OPINION_COUNTS.NOTA / TN_OPINION_VALID,
   } as TnShares,
+  seats: {
+    TVK: 106,
+    "AIADMK+BJP+PMK+AMMK": 51,
+    "DMK+INC+VCK": 77,
+  } as Record<TnSeatGroup, number>,
+  seatSource: "Summary sheet · Estimated seats",
 };
 
 /**

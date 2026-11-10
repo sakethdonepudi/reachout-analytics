@@ -18,7 +18,8 @@ export const TVK_ACTUAL_SEATS = 108;
 
 export const TVK_FORECASTERS: TvkForecaster[] = [
   { rank: 1, forecaster: "Axis My India", projectedSeats: 109, differenceFromActual: 1, winnerCall: "TVK ✓" },
-  { rank: 2, forecaster: "Reachout Analytics (age-weighted)", projectedSeats: 115, differenceFromActual: 7, winnerCall: "TVK ✓" },
+  // Report figure replaced: ReachOut age-weighted 115 (104,391 responses, Multi-State Election Forecast Report). Owner chose SAKET survey seats on 2026-11-11.
+  { rank: 2, forecaster: "ReachOut Analytics (opinion poll)", projectedSeats: 106, differenceFromActual: 2, winnerCall: "TVK ✓" },
   { rank: 3, forecaster: "Kamakhya Analytics", projectedSeats: 74, differenceFromActual: 34, winnerCall: "Hung" },
   { rank: 4, forecaster: "Today's Chanakya", projectedSeats: 63, differenceFromActual: 45, winnerCall: "DMK+ ✗" },
   { rank: 5, forecaster: "People's Insight", projectedSeats: 35, differenceFromActual: 73, winnerCall: "DMK+ ✗" },

@@ -122,13 +122,14 @@ export default function TamilNaduDashboard({ caseData }: { caseData: TnCaseData 
   const baseline = currentAc?.historical[baselineYear] ?? currentDistrict?.historical[baselineYear] ?? data?.statewide.historical[baselineYear] ?? null;
   const currentSurvey = currentAc?.survey ?? currentDistrict?.survey ?? null;
   const isStatewide = !district && !currentAc;
-  const estimatedShares = isStatewide ? data?.statewide.calibrated.shares ?? {} : currentSurvey?.shares ?? {};
-  const estimatedValid = isStatewide ? data?.statewide.calibrated.valid ?? 0 : currentSurvey?.valid ?? 0;
+  const estimatedShares = isStatewide ? caseData.opinionPoll.shares ?? {} : currentSurvey?.shares ?? {};
+  const estimatedValid = isStatewide ? caseData.opinionPoll.denominator ?? 0 : currentSurvey?.valid ?? 0;
   const currentLeader = tnLeader(estimatedShares);
   const emptySeats = TN_SEAT_GROUPS.reduce((o, g) => (o[g] = 0, o), {} as Record<TnSeatGroup, number>);
-  const estimatedSeats = currentAc
-    ? { ...emptySeats, ...(currentAc.final.leader ? { [currentAc.final.leader]: 1 } : {}) }
-    : currentDistrict?.finalSeats ?? data?.statewide.finalSeats ?? emptySeats;
+  const opinionSeats = currentAc
+    ? emptySeats
+    : currentDistrict?.originalSeats ?? caseData.opinionPoll.seats ?? data?.statewide.originalSeats ?? emptySeats;
+  const opinionCall = currentAc ? currentAc.original?.leader ?? currentAc.surveyLeader ?? null : null;
   const actualSeats = currentAc
     ? { ...emptySeats, ...(currentAc.actual2026.winner ? { [currentAc.actual2026.winner]: 1 } : {}) }
     : currentDistrict?.actualSeats ?? caseData.actual.seats ?? emptySeats;
@@ -149,10 +150,10 @@ export default function TamilNaduDashboard({ caseData }: { caseData: TnCaseData 
       baselineAvailable: !!baseline?.available,
       currentValid: estimatedValid,
       presence: data?.presence ?? { "2011": {}, "2016": {}, "2021": {} } as Record<TnYear, Record<TnGroup, boolean>>,
-      estimatedSeats, actualSeats, currentLabel: "Estimated vote share",
+      opinionSeats, opinionCall, actualSeats, currentLabel: "Estimated vote share",
       surveyLeader: currentLeader,
     };
-  }, [baseline, baselineYear, currentLeader, estimatedShares, estimatedValid, data?.presence, estimatedSeats, actualSeats, scopeLabel]);
+  }, [baseline, baselineYear, currentLeader, estimatedShares, estimatedValid, data?.presence, opinionSeats, opinionCall, actualSeats, scopeLabel]);
 
   const districtOptions: Option[] = useMemo(() => [{ value: "", label: "All Tamil Nadu" }, ...districts.map((d) => ({ value: d.name, label: d.name, hint: `${d.acs.length} ACs` }))], [districts]);
   const assemblyOptions: Option[] = useMemo(() => {
