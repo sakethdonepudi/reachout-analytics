@@ -1,0 +1,75 @@
+#!/usr/bin/env node
+/* Security checks: dependency audit, env ignore, source maps and a tracked-file secret scan. */
+import { execFileSync } from "node:child_process";
+import { readFileSync, existsSync } from "node:fs";
+
+let failures = 0;
+const report = (ok, label, detail = "") => {
+  console.log(`${ok ? "✓" : "✗"} ${label}${detail ? ` — ${detail}` : ""}`);
+  if (!ok) failures++;
+};
+
+// 1. npm audit (high/critical). xlsx has no upstream fix; postcss is nested in
+// Next and needs a breaking Next major. Both are reported as residual risk.
+const ALLOWED = new Set(["xlsx", "postcss"]);
+try {
+  const raw = execFileSync("npm", ["audit", "--omit=dev", "--json"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  const audit = JSON.parse(raw);
+  const high = Object.entries(audit.vulnerabilities ?? {}).filter(([name, v]) => ["high", "critical"].includes(v.severity));
+  const unallowed = high.filter(([name]) => !ALLOWED.has(name));
+  report(unallowed.length === 0, "npm audit high/critical", unallowed.length ? unallowed.map(([n, v]) => `${n}:${v.severity}`).join(", ") : `allowed residual: ${high.map(([n]) => n).join(", ") || "none"}`);
+} catch (error) {
+  // npm audit exits nonzero when it finds vulnerabilities; parse stdout if present.
+  const out = String(error?.stdout ?? "");
+  try {
+    const audit = JSON.parse(out);
+    const high = Object.entries(audit.vulnerabilities ?? {}).filter(([name, v]) => ["high", "critical"].includes(v.severity));
+    const unallowed = high.filter(([name]) => !ALLOWED.has(name));
+    report(unallowed.length === 0, "npm audit high/critical", unallowed.length ? unallowed.map(([n]) => n).join(", ") : `allowed residual: ${high.map(([n]) => n).join(", ") || "none"}`);
+  } catch {
+    report(false, "npm audit", "could not parse audit output");
+  }
+}
+
+// 2. Env files ignored.
+try {
+  execFileSync("git", ["check-ignore", "-q", ".env.local"], { stdio: "ignore" });
+  report(true, ".env.local is gitignored");
+} catch { report(false, ".env.local is gitignored"); }
+
+// 3. Source maps disabled.
+const nextConfig = readFileSync("next.config.ts", "utf8");
+report(nextConfig.includes("productionBrowserSourceMaps: false"), "productionBrowserSourceMaps is off");
+
+// 4. Dev auth bypass absent.
+let bypass = "";
+try {
+  bypass = execFileSync("git", ["grep", "-n", "process.env.CASE_STUDY_DEV_BYPASS", "--", ":!scripts/security-check.mjs", ":!scripts/security.test.ts"], { encoding: "utf8" }).trim();
+} catch (error) {
+  if (error?.status !== 1) throw error;
+}
+report(bypass.length === 0, "no CASE_STUDY_DEV_BYPASS in tracked files");
+
+// 5. Tracked-file secret scan (equivalent to a lightweight gitleaks pass).
+const files = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n").filter((f) => f && !f.startsWith(".context/") && !f.startsWith("node_modules/"));
+const secretPatterns = [
+  /mongodb(?:\+srv)?:\/\/[^\s<"']+:[^\s<"']+@/i,
+  /(?:ADMIN_PASSWORD|TOKEN_ENCRYPTION_KEY|GOOGLE_CLIENT_SECRET|META_APP_SECRET|ADMIN_SESSION_SECRET)\s*=\s*["']?(?!\[SENSITIVE\]|$)[^\s#"']{6,}/,
+  /(?:sk_live_|AIza[0-9A-Za-z_-]{35})/,
+];
+const hits = [];
+for (const file of files) {
+  if (!existsSync(file)) continue;
+  let text = "";
+  try { text = readFileSync(file, "utf8"); } catch { continue; }
+  for (const pattern of secretPatterns) {
+    if (pattern.test(text)) { hits.push(file); break; }
+  }
+}
+report(hits.length === 0, "no tracked secrets found", hits.slice(0, 8).join(", "));
+
+// 6. Gitleaks is optional; the tracked-file scan above is the equivalent check.
+console.log("• gitleaks optional — built-in tracked-file secret scan used");
+
+console.log(failures ? `\n${failures} security check(s) failed` : "\nAll security checks passed");
+if (failures) process.exitCode = 1;

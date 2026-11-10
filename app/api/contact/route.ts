@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getLeadsCollection } from "@/lib/mongodb";
+import { requireCsrf } from "@/lib/csrf";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,8 @@ function rateLimited(ip: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const csrf = requireCsrf(req);
+  if (csrf) return csrf;
   let body: unknown;
   try {
     body = await req.json();

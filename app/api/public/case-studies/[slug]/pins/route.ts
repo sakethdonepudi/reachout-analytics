@@ -3,7 +3,7 @@ import { getCase } from "@/lib/case-registry";
 import { pinAggregates, assumedPinDetails, isConfigured } from "@/lib/poll-store";
 import { coordinatesForPin, candidatePinsForDistrict, referenceDistrictNames, pointInDistrict } from "@/lib/pin";
 import { PIN_COORDINATE_COVERAGE } from "@/lib/data/tamil-nadu-pin-coordinates";
-import { requireAdmin } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -15,7 +15,7 @@ export const runtime = "nodejs";
  * reported per PIN and is false when there are no reliable coordinates.
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  const auth = await requireAdmin(req);
+  const auth = await requireRole(req, ["owner", "client"]);
   if ("deny" in auth) return auth.deny;
   const { slug } = await params;
   const rec = await getCase(slug);

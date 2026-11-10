@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { getCase } from "@/lib/case-registry";
 import { summary, partyShares, isConfigured } from "@/lib/poll-store";
-import { requireAdmin } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -10,7 +10,7 @@ export const runtime = "nodejs";
  * Returns counts + party shares only — never raw records or downloads.
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  const auth = await requireAdmin(req);
+  const auth = await requireRole(req, ["owner", "client"]);
   if ("deny" in auth) return auth.deny;
   const { slug } = await params;
   try {

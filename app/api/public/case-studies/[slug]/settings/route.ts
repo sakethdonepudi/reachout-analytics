@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { getCase } from "@/lib/case-registry";
 import { getDisplayBasis, isConfigured } from "@/lib/poll-store";
 import type { DisplayBasis } from "@/lib/poll-store";
-import { requireAdmin } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -12,7 +12,7 @@ export const runtime = "nodejs";
  * survey figures. The dashboard uses it instead of a public basis control.
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  const auth = await requireAdmin(req);
+  const auth = await requireRole(req, ["owner", "client"]);
   if ("deny" in auth) return auth.deny;
   const { slug } = await params;
   const rec = await getCase(slug);

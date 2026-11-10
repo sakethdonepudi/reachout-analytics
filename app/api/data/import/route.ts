@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { requireCsrf } from "@/lib/csrf";
 import { parseWorkbook, validateSheet, SHEET_OF, type RowIssue } from "@/lib/poll-data";
 import { importDataset, isConfigured } from "@/lib/poll-store";
 
@@ -8,6 +9,8 @@ export const maxDuration = 60;
 
 /** Multipart import (small files). Scoped to a case study. */
 export async function POST(req: NextRequest) {
+  const csrf = requireCsrf(req);
+  if (csrf) return csrf;
   const auth = await requireAdmin(req);
   if ("deny" in auth) return auth.deny;
 

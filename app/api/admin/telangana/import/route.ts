@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { requireCsrf } from "@/lib/csrf";
 import { DATA } from "@/lib/telangana/oct26";
 import {
   isOct26StoreReady, oct26ActiveImport, oct26ImportHistory,
@@ -44,6 +45,8 @@ export async function GET(req: NextRequest) {
  * this route never evaluates workbook formulas.
  */
 export async function POST(req: NextRequest) {
+  const csrf = requireCsrf(req);
+  if (csrf) return csrf;
   const auth = await requireAdmin(req);
   if ("deny" in auth) return auth.deny;
 
@@ -68,6 +71,8 @@ export async function POST(req: NextRequest) {
 
 /** Revert to the bundled validated snapshot (admin only). */
 export async function DELETE(req: NextRequest) {
+  const csrf = requireCsrf(req);
+  if (csrf) return csrf;
   const auth = await requireAdmin(req);
   if ("deny" in auth) return auth.deny;
   const result = await revertOct26(auth.session.sub);

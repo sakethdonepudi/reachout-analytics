@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { requireCsrf } from "@/lib/csrf";
 import {
   PACK_FILES, activePack, isPackStoreReady, packHistory, previewPack, publishPack, revertPack,
 } from "@/lib/telangana/pack-import";
@@ -27,6 +28,8 @@ export async function GET(req: NextRequest) {
  *   confirm=1         → rehash, insert one record, then atomically activate it
  */
 export async function POST(req: NextRequest) {
+  const csrf = requireCsrf(req);
+  if (csrf) return csrf;
   const auth = await requireAdmin(req);
   if ("deny" in auth) return auth.deny;
 
@@ -52,6 +55,8 @@ export async function POST(req: NextRequest) {
 
 /** Deactivate the pack activation and return to the bundled validated snapshot (admin only). */
 export async function DELETE(req: NextRequest) {
+  const csrf = requireCsrf(req);
+  if (csrf) return csrf;
   const auth = await requireAdmin(req);
   if ("deny" in auth) return auth.deny;
   const result = await revertPack(auth.session.sub);

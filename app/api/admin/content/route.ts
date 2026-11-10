@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { requireCsrf } from "@/lib/csrf";
 import { getAbout, saveAbout, type AboutContent } from "@/lib/about-content";
 
 export const runtime = "nodejs";
@@ -15,6 +16,8 @@ const arr = (v: unknown) => (Array.isArray(v) ? v.filter((x) => typeof x === "st
 
 /** Update editable About page content. Only known fields are accepted. */
 export async function PATCH(req: NextRequest) {
+  const csrf = requireCsrf(req);
+  if (csrf) return csrf;
   const auth = await requireAdmin(req);
   if ("deny" in auth) return auth.deny;
   let body: Record<string, unknown> = {};
