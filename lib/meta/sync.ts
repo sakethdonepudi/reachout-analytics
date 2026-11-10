@@ -2,6 +2,7 @@ import type { Db } from "mongodb";
 import { graphGet, graphPaged, MetaConnectionExpiredError, MetaReconnectError } from "@/lib/meta/client";
 import { connectionExpiresAt, isConnectionExpired, minorToPaise, toPaise } from "@/lib/meta/insights";
 import { expireConnection, getConnectionDoc, getMetaDb, markSynced } from "@/lib/meta/store";
+import { applyTagRules } from "@/lib/meta/tags";
 
 type MetaRow = Record<string, unknown>;
 type UpsertDoc = { _id: string } & Record<string, unknown>;
@@ -311,6 +312,7 @@ export async function syncMeta(options: { backfill?: boolean } = {}): Promise<Sy
       counts.meta_insights_range = (counts.meta_insights_range ?? 0) + await syncRanges(db, account.id);
     }
 
+    counts.meta_campaign_tags = await applyTagRules(db).catch(() => 0);
     await db.collection<{ _id: string } & Record<string, unknown>>("meta_sync_runs").updateOne(
       { _id: runId },
       { $set: { finishedAt: new Date(), status: "success", counts } },

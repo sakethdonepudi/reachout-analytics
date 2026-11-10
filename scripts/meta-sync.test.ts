@@ -11,6 +11,7 @@ import {
   retryDelayMs,
   toPaise,
 } from "@/lib/meta/insights";
+import { partiesForState, ruleMatches, validateRule } from "@/lib/meta/tags";
 
 let pass = 0, fail = 0;
 function ok(name: string, condition: boolean, detail = "") {
@@ -46,6 +47,15 @@ eq("retry-after wins", retryDelayMs({ retryAfter: "2" }, 0), 2000);
 ok("rate-limit codes are recognised", isRateLimited(4) && isRateLimited(17) && isRateLimited(32) && isRateLimited(613));
 ok("normal error code is not rate limited", !isRateLimited(1));
 ok("high usage produces a positive delay", retryDelayMs({ usage: JSON.stringify({ x: [{ call_count: 95 }] }) }, 0) > 0);
+
+console.log("\n5. Campaign tag rules");
+ok("prefix rule matches", ruleMatches("TN_TVK_Reels_Week3", { field: "prefix", pattern: "TN_TVK_" }));
+ok("contains rule matches", ruleMatches("TN_TVK_Reels_Week3", { field: "contains", pattern: "Reels" }));
+ok("regex rule matches", ruleMatches("TG_BRS_Video", { field: "regex", pattern: "^TG_BRS_" }));
+ok("invalid regex does not throw", !ruleMatches("TG_BRS_Video", { field: "regex", pattern: "[" }));
+ok("valid rule accepted", validateRule({ field: "prefix", pattern: "TN_TVK_", state: "tamil-nadu", party: "TVK" }).ok);
+ok("invalid regex rejected", !validateRule({ field: "regex", pattern: "[", state: "tamil-nadu", party: "TVK" }).ok);
+ok("Tamil Nadu party options", partiesForState("tamil-nadu").includes("TVK"));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exitCode = 1;

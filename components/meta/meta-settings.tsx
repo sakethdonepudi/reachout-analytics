@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Check, Loader2, PlugZap, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
 import Navbar from "@/components/site/navbar";
 import { useReauth } from "@/components/auth/reauth-provider";
+import { MetaTagging } from "@/components/meta/meta-tagging";
 import { cn } from "@/lib/utils";
 
 type AdAccount = { id: string; accountId: string; name: string; status: number | null; currency: string | null };
@@ -260,6 +261,20 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
               )}
             </section>
           )}
+
+          <section className="mt-6 rounded-3xl border border-border bg-card p-6">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Tagging</p>
+            <h2 className="mt-2 font-display text-xl font-semibold">Campaign tags</h2>
+            <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Naming rules suggest a state and party. Confirm the suggestions or edit them inline. Clients only see confirmed tags.</p>
+            <div className="mt-4"><MetaTagging /></div>
+          </section>
+
+          <section className="mt-6 rounded-3xl border border-border bg-card p-6">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Notifications</p>
+            <h2 className="mt-2 font-display text-xl font-semibold">Alerts</h2>
+            <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Status changes, payment issues, spend-cap alerts and zero-delivery campaigns are stored in MongoDB for the dashboard.</p>
+            <span className="mt-4 inline-flex min-h-8 items-center rounded-full border border-border px-3 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">WhatsApp delivery disabled</span>
+          </section>
 
           <section className="mt-6 rounded-3xl border border-border bg-card p-6">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Sensitive actions</p>
