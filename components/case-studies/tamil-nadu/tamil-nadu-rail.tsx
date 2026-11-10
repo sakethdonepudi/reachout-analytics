@@ -6,6 +6,7 @@ import { TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_FULL, TN_SEAT_GROUP
 import type { TnExitPollView, TnOpinionPollView, TnSocial } from "@/lib/tamil-nadu/view-data";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
+import { LiveCampaigns } from "@/components/meta/live-campaigns";
 import { cn } from "@/lib/utils";
 
 export type TnTab = "change" | "share" | "seats";
@@ -146,12 +147,12 @@ function DisplayPartyCell({ group, compact }: { group: DisplayGroup; compact: bo
 
 export default function TamilNaduRail({
   scope, tab, onTab, onExpand, theme, selectedYear, isStatewide, opinionPoll, exitPoll, social, actualShares,
-  view, onView, panelWidth = 500,
+  view, onView, panelWidth = 500, owner = false,
 }: {
   scope: TnScopeResult; tab: TnTab; onTab: (t: TnTab) => void; onExpand: () => void;
   theme: "light" | "dark"; selectedYear: TnYear | "2026"; isStatewide: boolean;
   opinionPoll: OpinionPollView; exitPoll: TnExitPollView; social: TnSocial; actualShares: TnShares | null;
-  view: TnView; onView: (view: TnView) => void; panelWidth?: number;
+  view: TnView; onView: (view: TnView) => void; panelWidth?: number; owner?: boolean;
 }) {
   const reduced = usePrefersReducedMotion();
   const p = palette(theme);
@@ -299,7 +300,10 @@ export default function TamilNaduRail({
       </div>
 
       {view === "social" ? (
-        <SocialMediaPanel compact={compact} social={social} />
+        <>
+          <SocialMediaPanel compact={compact} social={social} />
+          <LiveCampaigns slug="tamil-nadu" owner={owner} compact />
+        </>
       ) : (
         <>
           {isStatewide ? (

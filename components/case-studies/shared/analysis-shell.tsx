@@ -44,6 +44,9 @@ export default function AnalysisShell({
     document.body.style.overflow = "hidden";
     const focusTimer = window.setTimeout(() => closeRef.current?.focus(), 30);
     const onKey = (event: KeyboardEvent) => {
+      // A nested dialog (for example the Meta creative viewer) owns Escape and
+      // Tab while it is open. Only the topmost dialog handles them.
+      if (document.querySelectorAll('[role="dialog"][aria-modal="true"]').length > 1) return;
       if (event.key === "Escape") {
         event.preventDefault();
         onClose();

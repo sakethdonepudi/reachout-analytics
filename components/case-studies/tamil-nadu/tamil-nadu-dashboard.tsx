@@ -90,7 +90,7 @@ function SearchSelect({ label, value, options, placeholder, onChange, disabled =
   );
 }
 
-export default function TamilNaduDashboard({ caseData }: { caseData: TnCaseData }) {
+export default function TamilNaduDashboard({ caseData, owner = false }: { caseData: TnCaseData; owner?: boolean }) {
   const { theme } = useTheme();
   const opinionPoll = caseData.opinionPoll;
   const [data, setData] = useState<TnAggregates | null>(null);
@@ -237,7 +237,7 @@ export default function TamilNaduDashboard({ caseData }: { caseData: TnCaseData 
             </div>
           )}
           panel={(panelWidth) => (
-            <TamilNaduRail scope={scope} tab={tab} onTab={setTab} onExpand={openAnalysis} theme={theme === "light" ? "light" : "dark"} selectedYear={year} isStatewide={isStatewide} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} social={caseData.social} actualShares={caseData.actual.shares} view={view} onView={setView} panelWidth={panelWidth} />
+            <TamilNaduRail scope={scope} tab={tab} onTab={setTab} onExpand={openAnalysis} theme={theme === "light" ? "light" : "dark"} selectedYear={year} isStatewide={isStatewide} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} social={caseData.social} actualShares={caseData.actual.shares} view={view} onView={setView} panelWidth={panelWidth} owner={owner} />
           )}
         />
       </section>
@@ -245,7 +245,7 @@ export default function TamilNaduDashboard({ caseData }: { caseData: TnCaseData 
 
       {chartOpen && (
         <TamilNaduAnalysis open={chartOpen} onClose={closeAnalysis} data={data} theme={theme === "light" ? "light" : "dark"}
-          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} onSelectAc={selectAc} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} eciActual={caseData.actual} social={caseData.social} forecasters={caseData.forecasters} forecastActualSeats={caseData.forecastActualSeats} initialView={view} initialTab={tab} />
+          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} onSelectAc={selectAc} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} eciActual={caseData.actual} social={caseData.social} forecasters={caseData.forecasters} forecastActualSeats={caseData.forecastActualSeats} initialView={view} initialTab={tab} owner={owner} />
       )}
     </div>
   );

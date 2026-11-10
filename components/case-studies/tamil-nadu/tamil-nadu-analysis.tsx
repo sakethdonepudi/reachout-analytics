@@ -10,6 +10,7 @@ import type { TnEciActualView, TnExitPollView, TnForecaster, TnSocial } from "@/
 import type { OpinionPollView, TnTab, TnView } from "@/components/case-studies/tamil-nadu/tamil-nadu-rail";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
+import { LiveCampaigns } from "@/components/meta/live-campaigns";
 import AnalysisShell from "@/components/case-studies/shared/analysis-shell";
 import { cn } from "@/lib/utils";
 
@@ -92,7 +93,7 @@ const groupSum = (shares: TnShares | null | undefined, group: AnalysisGroup) => 
 const SERIES_OPACITY = { exit: 0.42, opinion: 0.72, actual: 1, survey: 0.58, baseline: 0.34 };
 
 export default function TamilNaduAnalysis({
-  open, onClose, data, theme, initialScope, defaultBaseline, opinionPoll, exitPoll, eciActual, social, forecasters, forecastActualSeats, initialView, initialTab,
+  open, onClose, data, theme, initialScope, defaultBaseline, opinionPoll, exitPoll, eciActual, social, forecasters, forecastActualSeats, initialView, initialTab, owner = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -110,6 +111,7 @@ export default function TamilNaduAnalysis({
   forecastActualSeats: number;
   initialView: TnView;
   initialTab: TnTab;
+  owner?: boolean;
 }) {
   const reduced = usePrefersReducedMotion();
   const p = palette(theme);
@@ -623,7 +625,7 @@ export default function TamilNaduAnalysis({
       contentClassName="space-y-5"
     >
       {view === "social" ? (
-        <SocialOverview social={social} />
+<div className="space-y-3"><SocialOverview social={social} /><section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="Live campaigns"><LiveCampaigns slug="tamil-nadu" owner={owner} /></section></div>
       ) : (
         <>
           {/* ------------------------- polls overview ------------------------- */}

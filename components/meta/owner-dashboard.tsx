@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Bell, ChevronDown, ChevronRight, Download, Loader2, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { useReauth } from "@/components/auth/reauth-provider";
+import { CreativeViewer } from "@/components/meta/creative-viewer";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { DateRangePicker, type DateRangeValue } from "@/components/ui/date-range-picker";
@@ -18,7 +19,7 @@ import EChart from "@/components/case-studies/telangana/echart";
 import { CASES } from "@/lib/cases";
 import { formatInr } from "@/lib/meta/insights";
 import { partiesForState } from "@/lib/meta/tags";
-import type { ExplorerAd, ExplorerCampaign, Metrics, OwnerOverview, RangeKey } from "@/lib/meta/overview";
+import type { ExplorerCampaign, Metrics, OwnerOverview, RangeKey } from "@/lib/meta/overview";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 
@@ -137,33 +138,6 @@ function ExplorerRow({ level, label, status, metrics, expandable, expanded, onTo
   );
 }
 
-function CreativeDialog({ ad, onClose }: { ad: ExplorerAd | null; onClose: () => void }) {
-  return (
-    <Dialog open={Boolean(ad)} onClose={onClose} title={ad?.name ?? "Creative"} description={ad ? `${ad.metrics.impressions.toLocaleString("en-IN")} impressions · ${formatPct(ad.metrics.ctr)} CTR` : undefined}>
-      {ad && (
-        <div className="space-y-3">
-          {ad.creative?.videoId ? (
-            <video controls playsInline poster={ad.creative.thumbnailUrl ?? undefined} className="w-full rounded-[var(--radius-control)] bg-black">
-              <source src={`/api/meta/owner/creative/${encodeURIComponent(ad.id)}`} />
-            </video>
-          ) : ad.creative?.imageUrl || ad.creative?.thumbnailUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={ad.creative.imageUrl ?? ad.creative.thumbnailUrl ?? ""} alt={ad.creative.title ?? ad.name} className="w-full rounded-[var(--radius-control)]" />
-          ) : <EmptyState title="No creative media is available for this ad." />}
-          {ad.creative?.body && <p className="type-small text-[var(--text-muted)]">{ad.creative.body}</p>}
-          <dl className="grid grid-cols-2 gap-2 text-[12px]">
-            <div><dt className="text-[var(--text-muted)]">Impressions</dt><dd className="num font-semibold">{formatCount(ad.metrics.impressions)}</dd></div>
-            <div><dt className="text-[var(--text-muted)]">Video plays</dt><dd className="num font-semibold">{formatCount(ad.metrics.videoPlays)}</dd></div>
-            <div><dt className="text-[var(--text-muted)]">ThruPlays</dt><dd className="num font-semibold">{formatCount(ad.metrics.thruPlays)}</dd></div>
-            <div><dt className="text-[var(--text-muted)]">Spend</dt><dd className="num font-semibold">{formatInr(ad.metrics.spend)}</dd></div>
-          </dl>
-          {ad.creative?.instagramPermalinkUrl && <a href={ad.creative.instagramPermalinkUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center text-[12px] font-semibold text-[var(--accent-brass-strong)]">Open on Instagram</a>}
-        </div>
-      )}
-    </Dialog>
-  );
-}
-
 export default function OwnerDashboard() {
   const { theme } = useTheme();
   const reduced = usePrefersReducedMotion();
@@ -175,7 +149,7 @@ export default function OwnerDashboard() {
   const [filter, setFilter] = useState({ range: "7d" as RangeKey, from: "", to: "", state: "", party: "", platform: "all" });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [selectedAd, setSelectedAd] = useState<ExplorerAd | null>(null);
+  const [selectedAd, setSelectedAd] = useState<{ adId: string; state: string } | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
 
@@ -472,7 +446,7 @@ export default function OwnerDashboard() {
                         stateRows.push(<ExplorerRow key={`${campaignKey}:${adset.id}`} level={3} label={adset.name} status={adset.status} metrics={adset.metrics} expandable expanded={expanded.has(adsetKey)} onToggle={() => toggle(adsetKey)} />);
                         if (!expanded.has(adsetKey)) continue;
                         for (const ad of adset.ads) {
-                          stateRows.push(<ExplorerRow key={`${adsetKey}:${ad.id}`} level={4} label={ad.name} status={ad.status} metrics={ad.metrics} expandable={false} expanded={false} onToggle={() => {}} onClick={() => setSelectedAd(ad)} />);
+                          stateRows.push(<ExplorerRow key={`${adsetKey}:${ad.id}`} level={4} label={ad.name} status={ad.status} metrics={ad.metrics} expandable={false} expanded={false} onToggle={() => {}} onClick={() => setSelectedAd({ adId: ad.id, state: campaign.state })} />);
                         }
                       }
                     }
@@ -495,7 +469,7 @@ export default function OwnerDashboard() {
         ) : <EmptyState title="No unread notifications." />}
       </Dialog>
 
-      <CreativeDialog ad={selectedAd} onClose={() => setSelectedAd(null)} />
+      <CreativeViewer adId={selectedAd?.adId ?? null} slug={selectedAd?.state ?? ""} owner onClose={() => setSelectedAd(null)} />
     </div>
   );
 }

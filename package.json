@@ -11,7 +11,8 @@
     "test:security": "tsx scripts/security.test.ts",
     "check:security": "node scripts/security-check.mjs",
     "test:meta": "tsx scripts/meta-sync.test.ts",
-    "test:tamil-nadu-consistency": "tsx --conditions react-server scripts/tamil-nadu-consistency.test.ts"
+    "test:tamil-nadu-consistency": "tsx --conditions react-server scripts/tamil-nadu-consistency.test.ts",
+    "test:meta-client": "tsx --conditions react-server scripts/meta-client-dto.test.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

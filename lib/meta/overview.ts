@@ -80,7 +80,7 @@ export type OwnerOverview = {
   totals: Metrics & { activeCampaigns: number; previous: Metrics | null; reachIsUnique: boolean };
   groups: GroupRow[];
   accounts: AccountRow[];
-  daily: { date: string; spend: number; impressions: number }[];
+  daily: { date: string; spend: number; impressions: number; videoPlays: number; thruPlays: number }[];
   platforms: { platform: string; spend: number; impressions: number }[];
   campaigns: ExplorerCampaign[];
   notifications: { unread: number; rows: NotificationRow[] };
@@ -350,15 +350,17 @@ export async function getOwnerOverview(db: Db, query: OverviewQuery): Promise<Ow
     fundingSource: account.fundingSource ?? null,
   }));
 
-  const dailyMap = new Map<string, { date: string; spend: number; impressions: number }>();
+  const dailyMap = new Map<string, { date: string; spend: number; impressions: number; videoPlays: number; thruPlays: number }>();
   for (const row of dailyRows) {
     if (row.level !== "campaign" || !allowed.has(row.campaignId ?? "")) continue;
     if (platform && row.platform !== platform) continue;
     if (window.since && row.date < window.since) continue;
     if (row.date > window.until) continue;
-    const entry = dailyMap.get(row.date) ?? { date: row.date, spend: 0, impressions: 0 };
+    const entry = dailyMap.get(row.date) ?? { date: row.date, spend: 0, impressions: 0, videoPlays: 0, thruPlays: 0 };
     entry.spend += row.spend ?? 0;
     entry.impressions += row.impressions ?? 0;
+    entry.videoPlays += row.videoPlays ?? 0;
+    entry.thruPlays += row.thruPlays ?? 0;
     dailyMap.set(row.date, entry);
   }
 

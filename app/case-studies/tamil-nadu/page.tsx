@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function TamilNaduCaseStudyPage() {
-  await requirePageSession("/case-studies/tamil-nadu");
+  const session = await requirePageSession("/case-studies/tamil-nadu");
   const caseData: TnCaseData = {
     exitPoll: AMI_EXIT_POLL,
     opinionPoll: TN_OPINION_POLL,
@@ -35,7 +35,7 @@ export default async function TamilNaduCaseStudyPage() {
   return (
     <>
       <Navbar />
-      <TamilNaduDashboard caseData={caseData} />
+      <TamilNaduDashboard caseData={caseData} owner={session.role === "owner"} />
       <CompanyExperience />
     </>
   );
