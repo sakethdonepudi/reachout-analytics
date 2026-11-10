@@ -105,7 +105,7 @@ export default function AnalysisShell({
             type="button"
             onClick={onClose}
             aria-label="Close analysis"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--a-border)] bg-[var(--a-panel)] px-3 py-1.5 text-[11px] font-semibold text-[var(--a-ink)] transition-colors hover:border-[var(--a-brass)]/60 hover:text-[var(--a-brass)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--a-brass)]/45"
+            className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[var(--a-border)] bg-[var(--a-panel)] px-3 py-1.5 text-[11px] sm:min-h-8 font-semibold text-[var(--a-ink)] transition-colors hover:border-[var(--a-brass)]/60 hover:text-[var(--a-brass)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--a-brass)]/45"
           >
             <X className="size-3.5" aria-hidden /> Close
           </button>

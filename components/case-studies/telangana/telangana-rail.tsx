@@ -177,7 +177,7 @@ export default function TelanganaRail({
           </p>
         </div>
         <button type="button" onClick={onExpand} aria-label="Open the large history chart"
-          className="grid size-7 shrink-0 place-items-center rounded-full border border-border text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+          className="grid size-10 shrink-0 place-items-center rounded-full border border-border text-muted-foreground sm:size-7 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
           <Maximize2 className="size-3" />
         </button>
       </div>
@@ -215,7 +215,7 @@ export default function TelanganaRail({
       <div className="mt-2 grid w-full grid-cols-3 gap-0.5 rounded-lg border border-border/70 bg-muted/20 p-0.5" role="tablist" aria-label="Comparison views">
         {TABS.map((t) => (
           <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => onTab(t.id)}
-            className={cn("rounded-md px-2 py-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
+            className={cn("min-h-10 rounded-md px-2 py-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 sm:min-h-7",
               tab === t.id ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground")}>
             {t.label}
           </button>

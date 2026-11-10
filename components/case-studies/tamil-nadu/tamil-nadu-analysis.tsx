@@ -595,7 +595,7 @@ export default function TamilNaduAnalysis({
           aria-selected={view === id}
           onClick={() => setView(id)}
           className={cn(
-            "rounded-full px-3 py-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--a-brass)]/40",
+            "min-h-10 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--a-brass)]/40 sm:min-h-7",
             view === id ? "bg-[var(--a-ink)] text-[var(--a-canvas)] shadow-sm" : "text-[var(--a-muted)] hover:text-[var(--a-ink)]",
           )}
         >

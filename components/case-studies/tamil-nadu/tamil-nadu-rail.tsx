@@ -69,7 +69,7 @@ const seatTotal = (record: Record<TnSeatGroup, number> | null | undefined) => {
 /* One active-tab treatment across the whole compact panel. */
 const segWrap = "inline-flex items-center gap-0.5 rounded-lg border border-border/70 bg-muted/20 p-0.5";
 const segButton = (active: boolean) => cn(
-  "rounded-md px-2 py-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
+  "min-h-10 rounded-md px-2 py-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 sm:min-h-7",
   active ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
 );
 
@@ -277,7 +277,7 @@ export default function TamilNaduRail({
           </p>
         </div>
         <button type="button" onClick={onExpand} aria-label="Expand the vote-share analysis"
-          className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-muted-foreground transition-colors hover:border-saffron/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-muted-foreground transition-colors hover:border-saffron/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 sm:min-h-8">
           <Maximize2 className="size-3" /> Expand
         </button>
       </div>
@@ -303,7 +303,7 @@ export default function TamilNaduRail({
                 <caption className="sr-only">Tamil Nadu vote-share comparison</caption>
                 <colgroup><col className="w-[34%]" /><col className="w-[22%]" /><col className="w-[22%]" /><col className="w-[22%]" /></colgroup>
                 <thead>
-                  <tr className="border-b border-border/70 text-left text-[8px] uppercase tracking-wide text-muted-foreground">
+                  <tr className="border-b border-border/70 text-left text-[8px] tracking-wide text-muted-foreground">
                     <th scope="col" className={cn("px-1.5 text-left font-semibold", compact ? "py-1" : "py-1.5")}>Party</th>
                     <th scope="col" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Exit Poll</th>
                     <th scope="col" title={opinionPoll.available ? undefined : "No opinion-poll dataset is available"} className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Opinion Poll</th>
@@ -328,7 +328,7 @@ export default function TamilNaduRail({
                 <caption className="sr-only">{scope.label} local survey estimate, {baselineLabel} historical result, statewide opinion availability and local actual availability.</caption>
                 <colgroup><col className="w-[30%]" /><col className="w-[19%]" /><col className="w-[17%]" /><col className="w-[17%]" /><col className="w-[17%]" /></colgroup>
                 <thead>
-                  <tr className="border-b border-border/70 text-left text-[8px] uppercase tracking-wide text-muted-foreground">
+                  <tr className="border-b border-border/70 text-left text-[8px] tracking-wide text-muted-foreground">
                     <th scope="col" className={cn("px-1.5 text-left font-semibold", compact ? "py-1" : "py-1.5")}>Party</th>
                     <th scope="col" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Survey Estimate</th>
                     <th scope="col" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>{baselineLabel} Result</th>
@@ -378,7 +378,7 @@ export default function TamilNaduRail({
                 <div className="overflow-hidden rounded-md border border-border/70">
                   <table className={cn("w-full border-collapse", compact ? "text-[9px]" : "text-[10px]")}>
                     <thead>
-                      <tr className="border-b border-border/70 text-[8px] uppercase tracking-wide text-muted-foreground">
+                      <tr className="border-b border-border/70 text-[8px] tracking-wide text-muted-foreground">
                         <th className={cn("px-1 text-left", rowPad)}>Party</th>
                         <th className={cn("px-1 text-right", rowPad)} title="Opinion Poll has no seat figures">Opinion Poll</th>
                         <th className={cn("px-1 text-right", rowPad)}>Estimated</th>
