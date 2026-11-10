@@ -53,6 +53,8 @@ export default function CaseStudySplit({
 }: CaseStudySplitProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
+  const panelContentRef = useRef<HTMLDivElement>(null);
+  const [panelMetrics, setPanelMetrics] = useState({ viewport: 0, content: 0 });
   const [width, setWidth] = useState(defaultPanelWidth);
   const [measured, setMeasured] = useState(defaultPanelWidth);
   const [dragging, setDragging] = useState(false);
@@ -108,6 +110,20 @@ export default function CaseStudySplit({
       window.clearTimeout(timer);
     };
   }, [clamp]);
+
+  /* Track the panel card's height so the grip sits on the box itself,
+     even when the Social view is much shorter than the split. */
+  useEffect(() => {
+    const viewport = panelRef.current;
+    const content = panelContentRef.current;
+    if (!viewport || !content || typeof ResizeObserver === "undefined") return;
+    const update = () => setPanelMetrics({ viewport: viewport.clientHeight, content: content.offsetHeight });
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(viewport);
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, []);
 
   /* Measure the real panel width so its contents can adapt. Bucket the
      value so dragging does not recreate every chart option per frame. */
@@ -192,6 +208,12 @@ export default function CaseStudySplit({
     gridTemplateColumns: `${controlsWidth}px minmax(0, 1fr) ${GRIP_WIDTH}px ${width}px`,
   } as CSSProperties;
 
+  const visiblePanelHeight = panelMetrics.viewport > 0
+    ? Math.min(panelMetrics.viewport, panelMetrics.content || panelMetrics.viewport)
+    : 0;
+  const gripTop = visiblePanelHeight > 0 ? `${Math.round(visiblePanelHeight / 2)}px` : "50%";
+  const gripMaxHeight = visiblePanelHeight > 0 ? `${Math.max(24, Math.round(visiblePanelHeight - 16))}px` : undefined;
+
   return (
     <div
       ref={rootRef}
@@ -231,9 +253,10 @@ export default function CaseStudySplit({
       >
         <span
           aria-hidden
-          className="split-grip-rail absolute right-0 top-1/2 h-20 w-[2px] -translate-y-1/2 rounded-full"
+          className="split-grip-rail absolute right-0 h-20 w-[2px] -translate-y-1/2 rounded-full"
+          style={{ top: gripTop, maxHeight: gripMaxHeight }}
         />
-        <span className="split-grip-knob absolute right-[-10px] top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-full group-hover:right-[-12px] group-hover:size-6 group-focus-visible:right-[-12px] group-focus-visible:size-6">
+        <span className="split-grip-knob absolute right-[-10px] grid size-5 -translate-y-1/2 place-items-center rounded-full group-hover:right-[-12px] group-hover:size-6 group-focus-visible:right-[-12px] group-focus-visible:size-6" style={{ top: gripTop }}>
           <GripVertical className="size-3" aria-hidden />
         </span>
       </div>
@@ -243,7 +266,7 @@ export default function CaseStudySplit({
         aria-label={panelLabel}
         className="relative z-20 mt-4 min-w-0 lg:mt-0 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:py-0.5 lg:pr-1 lg:[scrollbar-width:thin]"
       >
-        {panel(measured)}
+        <div ref={panelContentRef}>{panel(measured)}</div>
       </section>
     </div>
   );
