@@ -96,6 +96,9 @@ try {
     { name: "10866/8866", test: (t) => /10866[\s\S]{0,200}8866|8866[\s\S]{0,200}10866/.test(t) },
     { name: "357118741", test: (t) => t.includes("357118741") },
     { name: "Axis My India", test: (t) => t.includes("Axis My India") },
+    { name: "amount_spent", test: (t) => t.includes("amount_spent") },
+    { name: "spend_cap", test: (t) => t.includes("spend_cap") },
+    { name: "funding_source", test: (t) => t.includes("funding_source") },
   ];
   const hits = [];
   let scanned = 0;
