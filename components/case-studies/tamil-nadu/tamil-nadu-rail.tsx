@@ -48,7 +48,7 @@ const tip = (p: Pal) => ({
 });
 const signed = (v: number, digits = 2) => `${v > 0 ? "+" : ""}${v.toFixed(digits)}`;
 
-export type OpinionPollView = { shares: TnShares; valid: number; asOf: string | null; available: boolean; source: "published" | "workbook" };
+export type OpinionPollView = { shares: TnShares | null; valid: number; asOf: string | null; available: boolean; source: "published" | "workbook" };
 
 type DisplayGroup = { key: string; label: string; color: string; groups: TnGroup[] };
 
@@ -56,6 +56,12 @@ const fmtNumber = (n: number) => n.toLocaleString("en-US");
 const sumShares = (shares: TnShares | null | undefined, groups: TnGroup[]) => {
   const values = groups
     .map((group) => shares?.[group])
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  return values.length ? values.reduce((total, value) => total + value, 0) : null;
+};
+const seatTotal = (record: Record<TnSeatGroup, number> | null | undefined) => {
+  const values = TN_SEAT_GROUPS
+    .map((group) => (record as Partial<Record<TnSeatGroup, number>> | null | undefined)?.[group])
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
   return values.length ? values.reduce((total, value) => total + value, 0) : null;
 };
@@ -244,19 +250,22 @@ export default function TamilNaduRail({
       yAxis: { type: "category", data: displayGroups.map((group) => group.label), inverse: true, axisTick: { show: false }, axisLine: { lineStyle: { color: p.axis } }, axisLabel: { color: p.text, fontSize: 9 } },
       series: [{
         type: "bar", barMaxWidth: 12,
-        data: displayGroups.map((group) => ({
-          value: +((currentValue(group) ?? 0) * 100).toFixed(2),
-          itemStyle: { color: group.color, borderRadius: 2 },
-          label: compact ? { show: false } : { show: true, position: "right", color: p.text, fontSize: 8.5, formatter: currentValue(group) == null ? "—" : `${((currentValue(group) ?? 0) * 100).toFixed(2)}%` },
-        })),
+        data: displayGroups.map((group) => {
+          const value = currentValue(group);
+          return {
+            value: value == null ? null : +(value * 100).toFixed(2),
+            itemStyle: { color: group.color, borderRadius: 2, opacity: value == null ? 0 : 1 },
+            label: compact || value == null ? { show: false } : { show: true, position: "right", color: p.text, fontSize: 8.5, formatter: `${(value * 100).toFixed(2)}%` },
+          };
+        }),
       }],
     };
   }, [scope, baselineLabel, p, reduced, displayGroups, compact, roomy]);
 
   const chartHeight = roomy ? 210 : compact ? 160 : 180;
   const seatRows = [...TN_SEAT_GROUPS];
-  const estimatedTotal = seatRows.reduce((s2, g) => s2 + (scope.estimatedSeats[g] ?? 0), 0);
-  const actualTotal = seatRows.reduce((s2, g) => s2 + (scope.actualSeats[g] ?? 0), 0);
+  const estimatedTotal = seatTotal(scope.estimatedSeats);
+  const actualTotal = seatTotal(scope.actualSeats);
 
   return (
     <section aria-label="Tamil Nadu vote share" className="rounded-2xl border border-border bg-card/95 p-3 shadow-[0_18px_50px_-30px_rgba(15,20,30,0.55)] backdrop-blur-xl">
@@ -297,7 +306,7 @@ export default function TamilNaduRail({
                   <tr className="border-b border-border/70 text-left text-[8px] uppercase tracking-wide text-muted-foreground">
                     <th scope="col" className={cn("px-1.5 text-left font-semibold", compact ? "py-1" : "py-1.5")}>Party</th>
                     <th scope="col" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Exit Poll</th>
-                    <th scope="col" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Opinion Poll</th>
+                    <th scope="col" title={opinionPoll.available ? undefined : "No opinion-poll dataset is available"} className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Opinion Poll</th>
                     <th scope="col" className={cn("border-l border-border/60 px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Actual Result</th>
                   </tr>
                 </thead>
@@ -385,16 +394,16 @@ export default function TamilNaduRail({
                               </span>
                             </span>
                           </td>
-                          <td className={cn("px-1 text-right font-semibold tabular-nums", rowPad)}>{scope.estimatedSeats[g] ?? 0}</td>
-                          <td className={cn("px-1 text-right tabular-nums", rowPad)}>{scope.actualSeats[g] ?? 0}</td>
+                          <td className={cn("px-1 text-right font-semibold tabular-nums", rowPad)}>{(scope.estimatedSeats as Partial<Record<TnSeatGroup, number>>)[g] ?? "—"}</td>
+                          <td className={cn("px-1 text-right tabular-nums", rowPad)}>{(scope.actualSeats as Partial<Record<TnSeatGroup, number>>)[g] ?? "—"}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr className="border-t border-border bg-muted/20 text-[9px]">
                         <td className={cn("px-1", rowPad)}>Total</td>
-                        <td className={cn("px-1 text-right tabular-nums", rowPad)}>{estimatedTotal}</td>
-                        <td className={cn("px-1 text-right tabular-nums", rowPad)}>{actualTotal}</td>
+                        <td className={cn("px-1 text-right tabular-nums", rowPad)}>{estimatedTotal ?? "—"}</td>
+                        <td className={cn("px-1 text-right tabular-nums", rowPad)}>{actualTotal ?? "—"}</td>
                       </tr>
                     </tfoot>
                   </table>

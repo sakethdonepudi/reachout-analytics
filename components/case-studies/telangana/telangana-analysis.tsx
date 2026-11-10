@@ -418,7 +418,7 @@ export default function TelanganaAnalysis({
             if (!st) return "";
             return `<b>${P7_LABEL[d.party]}</b><br/>Q1 ${st.q1.toFixed(2)}${unit} · median ${st.median.toFixed(2)}${unit} · Q3 ${st.q3.toFixed(2)}${unit}<br/>Fences ${st.lower.toFixed(1)} / ${st.upper.toFixed(1)}`;
           }
-          if (d.label) return `<b>${P7_LABEL[d.party]} · ${d.label}</b><br/>${d.date ?? ""}<br/>Value <b>${(d.value?.[1] ?? 0).toFixed(2)}${unit}</b> · ${d.entries} entries${d.deviation != null ? `<br/>Deviation ${signed(d.deviation)} ${unit}` : ""}`;
+          if (d.label) return `<b>${P7_LABEL[d.party]} · ${d.label}</b><br/>${d.date ?? ""}<br/>Value <b>${d.value?.[1] == null ? "—" : `${d.value[1].toFixed(2)}${unit}`}</b> · ${d.entries} entries${d.deviation != null ? `<br/>Deviation ${signed(d.deviation)} ${unit}` : ""}`;
           return "";
         },
       },
@@ -497,31 +497,6 @@ export default function TelanganaAnalysis({
       subtitle="2028 projection by survey round · round model"
       contentClassName="space-y-5"
     >
-      {latestProjection && (
-        <section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="Latest party summary">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <div>
-              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-brass)]">Latest round</p>
-              <h3 className="mt-0.5 font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">Party summary</h3>
-            </div>
-            <span className="text-[10px] text-[var(--a-muted)]">{latestPeriod ? `${latestPeriod.label} · ${dates(latestPeriod.start, latestPeriod.end)}` : ""}</span>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
-            {parties.map((party) => {
-              const value = latestProjection[party];
-              const swing = latestProjection[party] - baselineDetail[party] * 100;
-              return (
-                <div key={party} className="rounded-lg border border-[var(--a-border)] bg-[var(--a-panel-2)] px-2.5 py-2">
-                  <div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: P7_COLOR[party] }}><span className="size-1.5 rounded-sm" style={{ background: P7_COLOR[party] }} />{P7_LABEL[party]}</div>
-                  <div className="mt-1 font-display text-[17px] tabular-nums text-[var(--a-ink)]">{value.toFixed(2)}%</div>
-                  <div className="text-[9px] tabular-nums text-[var(--a-muted)]">{swing == null ? "—" : `${signed(swing)} pp`} vs {baseline}</div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
       {error && <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-600 dark:text-rose-400">{error}</div>}
       {loading && !data && <div className="grid h-48 place-items-center text-[12px] text-[var(--a-muted)]">Loading survey periods…</div>}
 

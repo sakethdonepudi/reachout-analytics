@@ -6,7 +6,7 @@ import {
   TN_COLOR, TN_GROUPS, TN_LABEL, TN_SEAT_GROUPS,
   type TnAggregates, type TnGroup, type TnSeatGroup, type TnShares, type TnYear,
 } from "@/lib/tamil-nadu/model";
-import { AMI_EXIT_POLL, TN_SOCIAL } from "@/lib/tamil-nadu/comparison";
+import { AMI_EXIT_POLL, ECI_ACTUAL, TN_SOCIAL } from "@/lib/tamil-nadu/comparison";
 import { TVK_ACTUAL_SEATS, TVK_FORECASTERS } from "@/lib/tamil-nadu/forecasters";
 import type { OpinionPollView, TnTab, TnView } from "@/components/case-studies/tamil-nadu/tamil-nadu-rail";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
@@ -68,6 +68,12 @@ const sumShares = (shares: TnShares | null | undefined, groups: TnGroup[]) => {
   const values = groups.map((group) => shares?.[group]).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
   return values.length ? values.reduce((total, value) => total + value, 0) : null;
 };
+const seatTotal = (record: Record<TnSeatGroup, number> | null | undefined) => {
+  const values = TN_SEAT_GROUPS
+    .map((group) => (record as Partial<Record<TnSeatGroup, number>> | null | undefined)?.[group])
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  return values.length ? values.reduce((total, value) => total + value, 0) : null;
+};
 
 type AnalysisGroup = { key: string; label: string; color: string; groups: TnGroup[] };
 
@@ -107,7 +113,7 @@ export default function TamilNaduAnalysis({
   const [scope, setScope] = useState(initialScope);
   const [view, setView] = useState<TnView>(initialView);
   const [chartMode, setChartMode] = useState<TnTab>(initialTab);
-  const [visibleSeries, setVisibleSeries] = useState<string[]>(initialScope.startsWith("a:") || initialScope.startsWith("d:") ? ["survey", "baseline"] : ["exit", "opinion", "actual"]);
+  const [visibleSeries, setVisibleSeries] = useState<string[]>(initialScope.startsWith("a:") || initialScope.startsWith("d:") ? ["survey", "baseline"] : opinionPoll.available ? ["exit", "opinion", "actual"] : ["exit", "actual"]);
   const [baselineYear, setBaselineYear] = useState<TnYear>(defaultBaseline);
   const [parties, setParties] = useState<string[]>([...ALL_GROUP_KEYS]);
   const [showMedian, setShowMedian] = useState(true);
@@ -147,15 +153,15 @@ export default function TamilNaduAnalysis({
   const baselineAvailable = !!baseline?.available;
 
   useEffect(() => {
-    setVisibleSeries(scopeIsState ? ["exit", "opinion", "actual"] : ["survey", "baseline"]);
-  }, [scopeIsState]);
+    setVisibleSeries(scopeIsState ? (opinionPoll.available ? ["exit", "opinion", "actual"] : ["exit", "actual"]) : ["survey", "baseline"]);
+  }, [scopeIsState, opinionPoll.available]);
 
-  const scopeSeriesKeys = scopeIsState ? ["exit", "opinion", "actual"] : ["survey", "baseline"];
+  const scopeSeriesKeys = scopeIsState ? (opinionPoll.available ? ["exit", "opinion", "actual"] : ["exit", "actual"]) : ["survey", "baseline"];
   const toggleSeries = (key: string) => setVisibleSeries((previous) => previous.includes(key) ? (previous.length > 1 ? previous.filter((item) => item !== key) : previous) : [...previous, key]);
   const selectChartMode = (mode: TnTab) => {
     setChartMode(mode);
     if (mode === "change") {
-      const changeKeys = scopeIsState ? ["exit", "opinion"] : ["survey"];
+      const changeKeys = scopeIsState ? (opinionPoll.available ? ["exit", "opinion"] : ["exit"]) : ["survey"];
       if (!changeKeys.some((key) => visibleSeries.includes(key))) setVisibleSeries((previous) => [...previous, changeKeys[0]]);
     }
   };
@@ -173,11 +179,11 @@ export default function TamilNaduAnalysis({
 
   /* ------------------------------ overview ------------------------------ */
   const allOverviewSeries = useMemo(() => {
-    const actualShares = data.statewide.actualVoteShares.shares;
+    const actualShares = ECI_ACTUAL.shares;
     if (scopeIsState) {
       return [
         { key: "exit", label: "Exit Poll", shares: AMI_EXIT_POLL.shares as TnShares, opacity: SERIES_OPACITY.exit },
-        { key: "opinion", label: "Opinion Poll", shares: opinionPoll.available ? opinionPoll.shares : null, opacity: SERIES_OPACITY.opinion },
+        ...(opinionPoll.available ? [{ key: "opinion", label: "Opinion Poll", shares: opinionPoll.shares, opacity: SERIES_OPACITY.opinion }] : []),
         { key: "actual", label: "Actual Result", shares: actualShares, opacity: SERIES_OPACITY.actual },
       ];
     }
@@ -185,7 +191,7 @@ export default function TamilNaduAnalysis({
       { key: "survey", label: "Survey Estimate", shares: currentShares, opacity: SERIES_OPACITY.survey },
       { key: "baseline", label: `${baselineYear} Result`, shares: baselineAvailable ? baselineShares : null, opacity: SERIES_OPACITY.baseline },
     ];
-  }, [scopeIsState, data.statewide.actualVoteShares.shares, opinionPoll.available, opinionPoll.shares, currentShares, baselineYear, baselineAvailable, baselineShares]);
+  }, [scopeIsState, opinionPoll.available, opinionPoll.shares, currentShares, baselineYear, baselineAvailable, baselineShares]);
 
   const overviewSeries = useMemo(
     () => allOverviewSeries.filter((series) => visibleSeries.includes(series.key)),
@@ -221,7 +227,7 @@ export default function TamilNaduAnalysis({
           return {
             value: value == null ? null : +(value * 100).toFixed(2),
             itemStyle: { color: group.color, opacity: value == null ? 0 : series.opacity },
-            label: { show: !narrow && value != null, position: "right", color: p.text, fontSize: 8, formatter: `${((value ?? 0) * 100).toFixed(1)}` },
+            label: { show: !narrow && value != null, position: "right", color: p.text, fontSize: 8, formatter: value == null ? "—" : `${(value * 100).toFixed(1)}` },
           };
         }),
         labelLayout: { hideOverlap: true },
@@ -234,15 +240,14 @@ export default function TamilNaduAnalysis({
       ? [
           { key: "exit", label: "Exit Poll − Actual", opacity: SERIES_OPACITY.exit, value: (group: AnalysisGroup) => {
               const exit = groupSum(AMI_EXIT_POLL.shares as TnShares, group);
-              const actual = groupSum(data.statewide.actualVoteShares.shares, group);
+              const actual = groupSum(ECI_ACTUAL.shares, group);
               return exit == null || actual == null ? null : (exit - actual) * 100;
             } },
-          { key: "opinion", label: "Opinion Poll − Actual", opacity: SERIES_OPACITY.opinion, value: (group: AnalysisGroup) => {
-              if (!opinionPoll.available) return null;
+          ...(opinionPoll.available ? [{ key: "opinion", label: "Opinion Poll − Actual", opacity: SERIES_OPACITY.opinion, value: (group: AnalysisGroup) => {
               const opinion = groupSum(opinionPoll.shares, group);
-              const actual = groupSum(data.statewide.actualVoteShares.shares, group);
+              const actual = groupSum(ECI_ACTUAL.shares, group);
               return opinion == null || actual == null ? null : (opinion - actual) * 100;
-            } },
+            } }] : []),
         ]
       : [
           { key: "survey", label: `Survey − ${baselineYear}`, opacity: SERIES_OPACITY.survey, value: (group: AnalysisGroup) => {
@@ -294,16 +299,17 @@ export default function TamilNaduAnalysis({
         markLine: { silent: true, symbol: "none", label: { show: false }, lineStyle: { color: p.axis, width: 1 }, data: [{ xAxis: 0 }] },
       })),
     };
-  }, [scopeIsState, opinionPoll.available, opinionPoll.shares, data.statewide.actualVoteShares.shares, data.presence, baselineYear, baselineAvailable, currentShares, baselineShares, p, reduced, narrow, visibleSeries]);
+  }, [scopeIsState, opinionPoll.available, opinionPoll.shares, data.presence, baselineYear, baselineAvailable, currentShares, baselineShares, p, reduced, narrow, visibleSeries]);
 
   const allChangeLegend = scopeIsState
-    ? [{ key: "exit", label: "Exit Poll − Actual", opacity: SERIES_OPACITY.exit }, { key: "opinion", label: "Opinion Poll − Actual", opacity: SERIES_OPACITY.opinion }]
+    ? [
+        { key: "exit", label: "Exit Poll − Actual", opacity: SERIES_OPACITY.exit },
+        ...(opinionPoll.available ? [{ key: "opinion", label: "Opinion Poll − Actual", opacity: SERIES_OPACITY.opinion }] : []),
+      ]
     : [{ key: "survey", label: `Survey − ${baselineYear}`, opacity: SERIES_OPACITY.survey }];
   const changeLegend = allChangeLegend.filter((item) => visibleSeries.includes(item.key));
 
   const seatChartOption = useMemo(() => {
-    const totalEstimated = TN_SEAT_GROUPS.reduce((sum, group) => sum + (estimatedSeats[group] ?? 0), 0);
-    const totalActual = TN_SEAT_GROUPS.reduce((sum, group) => sum + (actualSeats[group] ?? 0), 0);
     return {
       animation: !reduced, animationDuration: 520, animationEasing: "cubicOut",
       grid: { left: 92, right: 34, top: 12, bottom: 24 },
@@ -311,8 +317,14 @@ export default function TamilNaduAnalysis({
       xAxis: { type: "value", minInterval: 1, name: "seats", nameTextStyle: { color: p.muted, fontSize: 8.5 }, axisLabel: { color: p.muted, fontSize: 9, formatter: (value: number) => `${value}` }, splitLine: { lineStyle: { color: p.grid } }, axisLine: { show: false }, axisTick: { show: false } },
       yAxis: { type: "category", data: TN_SEAT_GROUPS.map((group) => TN_LABEL[group]), inverse: true, axisTick: { show: false }, axisLine: { lineStyle: { color: p.axis } }, axisLabel: { color: p.text, fontSize: 10 } },
       series: [
-        { name: "Estimated", type: "bar", barMaxWidth: 12, barGap: "12%", barCategoryGap: "32%", data: TN_SEAT_GROUPS.map((group) => ({ value: estimatedSeats[group] ?? 0, itemStyle: { color: TN_COLOR[group], opacity: 0.55, borderRadius: 2 }, label: { show: true, position: "right", color: p.text, fontSize: 8.5, formatter: `${estimatedSeats[group] ?? 0}` } })) },
-        { name: "Actual 2026", type: "bar", barMaxWidth: 12, data: TN_SEAT_GROUPS.map((group) => ({ value: actualSeats[group] ?? 0, itemStyle: { color: TN_COLOR[group], opacity: 1, borderRadius: 2 }, label: { show: true, position: "right", color: p.text, fontSize: 8.5, fontWeight: 600, formatter: `${actualSeats[group] ?? 0}` } })) },
+        { name: "Estimated", type: "bar", barMaxWidth: 12, barGap: "12%", barCategoryGap: "32%", data: TN_SEAT_GROUPS.map((group) => {
+          const value = (estimatedSeats as Partial<Record<TnSeatGroup, number>>)[group];
+          return { value: value ?? null, itemStyle: { color: TN_COLOR[group], opacity: value == null ? 0 : 0.55, borderRadius: 2 }, label: { show: value != null, position: "right", color: p.text, fontSize: 8.5, formatter: value == null ? "—" : `${value}` } };
+        }) },
+        { name: "Actual 2026", type: "bar", barMaxWidth: 12, data: TN_SEAT_GROUPS.map((group) => {
+          const value = (actualSeats as Partial<Record<TnSeatGroup, number>>)[group];
+          return { value: value ?? null, itemStyle: { color: TN_COLOR[group], opacity: value == null ? 0 : 1, borderRadius: 2 }, label: { show: value != null, position: "right", color: p.text, fontSize: 8.5, fontWeight: 600, formatter: value == null ? "—" : `${value}` } };
+        }) },
       ],
     };
   }, [actualSeats, estimatedSeats, p, reduced]);
@@ -551,8 +563,8 @@ export default function TamilNaduAnalysis({
     };
   }, [data.districts, districtStats, highlightOutliers, p, reduced, showMedian]);
 
-  const totalEstimated = TN_SEAT_GROUPS.reduce((sum, group) => sum + (estimatedSeats[group] ?? 0), 0);
-  const totalActual = TN_SEAT_GROUPS.reduce((sum, group) => sum + (actualSeats[group] ?? 0), 0);
+  const totalEstimated = seatTotal(estimatedSeats);
+  const totalActual = seatTotal(actualSeats);
 
   const resetControls = () => {
     setParties([...ALL_GROUP_KEYS]);
@@ -596,7 +608,7 @@ export default function TamilNaduAnalysis({
       eyebrow="2026 analysis"
       title={`${scopeName} · Vote share`}
       subtitle={scopeIsState
-        ? "Statewide · Exit poll, opinion poll and actual result"
+        ? `Statewide · Exit poll${opinionPoll.available ? ", opinion poll" : ""} and actual result`
         : `${scope.startsWith("a:") ? "Assembly" : "District"} · Survey estimate, ${baselineYear} result and actual availability`}
       headerTabs={headerTabs}
       contentClassName="space-y-5"
@@ -606,48 +618,15 @@ export default function TamilNaduAnalysis({
       ) : (
         <>
           {/* ------------------------- polls overview ------------------------- */}
-          <section className="analysis-panel rounded-2xl p-3 sm:p-4" aria-label="Party summary">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-brass)]">{scopeIsState ? "Polls snapshot" : "Scope snapshot"}</p>
-                <h3 className="mt-0.5 font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">Party summary</h3>
-              </div>
-              <span className="text-[10px] text-[var(--a-muted)]">{scopeIsState ? "Opinion poll vs actual result" : `Survey estimate vs ${baselineYear}`}</span>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
-              {ANALYSIS_GROUPS.map((group) => {
-                const current = scopeIsState
-                  ? (opinionPoll.available ? groupSum(opinionPoll.shares, group) : null)
-                  : groupSum(currentShares, group);
-                const comparison = scopeIsState
-                  ? groupSum(data.statewide.actualVoteShares.shares, group)
-                  : (baselineAvailable ? groupSum(baselineShares, group) : null);
-                const delta = current != null && comparison != null ? (current - comparison) * 100 : null;
-                return (
-                  <div key={group.key} className="rounded-lg border border-[var(--a-border)] bg-[var(--a-panel-2)] px-2.5 py-2">
-                    <div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: group.color }}>
-                      <span className="size-1.5 rounded-sm" style={{ background: group.color }} />{group.label}
-                    </div>
-                    <div className="mt-1 font-display text-[17px] tabular-nums text-[var(--a-ink)]">{current == null ? "—" : `${(current * 100).toFixed(2)}%`}</div>
-                    <div className="text-[9px] tabular-nums text-[var(--a-muted)]">
-                      {scopeIsState ? "Actual" : baselineYear} {comparison == null ? "—" : `${(comparison * 100).toFixed(1)}%`} · {delta == null ? "—" : `${delta > 0 ? "+" : ""}${delta.toFixed(1)} pp`}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
           <section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="Polls overview">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
                 <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-brass)]">Polls overview</p>
                 <h3 className="mt-0.5 font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">
-                  {scopeIsState ? "Exit, opinion and actual vote share" : `Survey, ${baselineYear} result and actual availability`}
+                  {scopeIsState ? (opinionPoll.available ? "Exit, opinion and actual vote share" : "Exit poll and actual vote share") : `Survey, ${baselineYear} result and actual availability`}
                 </h3>
                 <p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">{scopeName} · {scopeIsState ? "Statewide" : scope.startsWith("a:") ? "Assembly" : "District"}</p>
               </div>
-              <span className="text-[10px] text-[var(--a-muted)]">Party colours · series opacity</span>
             </div>
 
             <div className="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_300px]">
@@ -713,7 +692,6 @@ export default function TamilNaduAnalysis({
                     <RotateCcw className="size-3" /> Show all series
                   </button>
                 )}
-                <p className="mt-3 text-[9px] leading-relaxed text-[var(--a-muted)]">Party colours carry the bars; the series differ by opacity.</p>
               </aside>
 
               <div className="min-w-0 rounded-xl border border-[var(--a-border)] bg-[var(--a-panel-2)] p-2">
@@ -751,7 +729,7 @@ export default function TamilNaduAnalysis({
                       {scopeIsState ? (
                         <>
                           <th scope="col" className="px-1.5 py-2 text-right font-semibold">Exit Poll</th>
-                          <th scope="col" className="px-1.5 py-2 text-right font-semibold">Opinion Poll</th>
+                          <th scope="col" title={opinionPoll.available ? undefined : "No opinion-poll dataset is available"} className="px-1.5 py-2 text-right font-semibold">Opinion Poll</th>
                           <th scope="col" className="border-l border-[var(--a-border)] px-1.5 py-2 text-right font-semibold">Actual Result</th>
                         </>
                       ) : (
@@ -773,7 +751,7 @@ export default function TamilNaduAnalysis({
                           <>
                             <td className="px-1.5 py-1.5 text-right tabular-nums">{pct(groupSum(AMI_EXIT_POLL.shares as TnShares, group))}</td>
                             <td className="px-1.5 py-1.5 text-right tabular-nums">{pct(opinionPoll.available ? groupSum(opinionPoll.shares, group) : null)}</td>
-                            <td className="border-l border-[var(--a-border)] px-1.5 py-1.5 text-right tabular-nums">{pct(groupSum(data.statewide.actualVoteShares.shares, group))}</td>
+                            <td className="border-l border-[var(--a-border)] px-1.5 py-1.5 text-right tabular-nums">{pct(groupSum(ECI_ACTUAL.shares, group))}</td>
                           </>
                         ) : (
                           <>
@@ -786,9 +764,7 @@ export default function TamilNaduAnalysis({
                     ))}
                   </tbody>
                 </table>
-                <p className="px-2 py-1.5 text-[9px] text-[var(--a-muted)]">
-                  {scopeIsState ? "Opinion poll: ReachOut workbook. Actual: ECI." : "Local actual results are not available at this scope."}
-                </p>
+                {!scopeIsState && <p className="px-2 py-1.5 text-[9px] text-[var(--a-muted)]">Local actual results are not available at this scope.</p>}
               </div>
             </div>
           </section>
@@ -932,7 +908,7 @@ export default function TamilNaduAnalysis({
                 <h3 className="font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">Estimated and actual seats</h3>
                 <p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">Estimated from the workbook seat model · Actual 2026 shown separately · {scopeName}</p>
               </div>
-              <span className="text-[10px] text-[var(--a-muted)]">Estimated {totalEstimated} · Actual {totalActual}</span>
+              <span className="text-[10px] text-[var(--a-muted)]">Estimated {totalEstimated ?? "—"} · Actual {totalActual ?? "—"}</span>
             </div>
             <div className="mt-3 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="rounded-xl border border-[var(--a-border)] bg-[var(--a-panel-2)] p-2">
@@ -952,16 +928,16 @@ export default function TamilNaduAnalysis({
                     {TN_SEAT_GROUPS.map((group) => (
                       <tr key={group} className="border-t border-[var(--a-border)]/70">
                         <td className="px-2 py-1.5"><span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: TN_COLOR[group] }} />{TN_LABEL[group]}</span></td>
-                        <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{estimatedSeats[group] ?? 0}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums">{actualSeats[group] ?? 0}</td>
+                        <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{(estimatedSeats as Partial<Record<TnSeatGroup, number>>)[group] ?? "—"}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{(actualSeats as Partial<Record<TnSeatGroup, number>>)[group] ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr className="border-t border-[var(--a-border)] bg-[var(--a-panel-2)] text-[10px]">
                       <td className="px-2 py-1.5">Total</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{totalEstimated}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{totalActual}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{totalEstimated ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{totalActual ?? "—"}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -1004,8 +980,8 @@ export default function TamilNaduAnalysis({
                         <td className="px-2 py-1 text-right tabular-nums text-[var(--a-muted)]">{district.survey.valid.toLocaleString("en-IN")}</td>
                         <td className="px-2 py-1">{lead ? <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: TN_COLOR[lead] }} />{TN_LABEL[lead]}</span> : "—"}</td>
                         {parties.map((key) => { const group = groupByKey(key); const value = groupSum(district.survey.shares, group); return <td key={key} className="px-2 py-1 text-right tabular-nums">{value == null ? "—" : (value * 100).toFixed(1)}</td>; })}
-                        <td className="px-2 py-1 text-right tabular-nums">{TN_SEAT_GROUPS.reduce((sum, group) => sum + (district.finalSeats[group] ?? 0), 0)}</td>
-                        <td className="px-2 py-1 text-right tabular-nums">{TN_SEAT_GROUPS.reduce((sum, group) => sum + (district.actualSeats[group] ?? 0), 0)}</td>
+                        <td className="px-2 py-1 text-right tabular-nums">{seatTotal(district.finalSeats) ?? "—"}</td>
+                        <td className="px-2 py-1 text-right tabular-nums">{seatTotal(district.actualSeats) ?? "—"}</td>
                       </tr>
                     );
                   })}
