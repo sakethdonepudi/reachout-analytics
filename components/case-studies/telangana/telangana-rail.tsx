@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Expand, Maximize2 } from "lucide-react";
 import {
   PARTIES, PARTY_COLOR, PARTY_LABEL, fmtPct, fmtPp, type Party, type ShareSet,
-} from "@/lib/telangana/oct26";
+} from "@/lib/telangana/constants";
 import { winnerColour, winnerLabel, type ElectionYear, type HistoricYear } from "@/lib/telangana/history";
 import { fmtInt } from "@/lib/telangana/model";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";

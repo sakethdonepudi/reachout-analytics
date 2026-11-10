@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import {
   NO_DATA_COLOR, PARTIES, PARTY_COLOR, PARTY_LABEL, leaderOf, shadeHex, weightedShares,
   type Oct26, type ShareSet,
-} from "@/lib/telangana/oct26";
+} from "@/lib/telangana/constants";
 import {
   ELECTION_YEARS, YEAR_LABEL, baselineYear, deviceSummary, historicalAc, historicalShares,
   historicalTotal, winnerColour, winnerLabel, winnerSeats, type ElectionYear,

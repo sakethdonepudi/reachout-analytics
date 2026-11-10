@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { geoIdentity } from "d3-geo";
 import { rafLoop } from "@/lib/raf-loop";
-import { PARTIES, PARTY_COLOR, PARTY_LABEL, NO_DATA_COLOR, fmtPct, type AcRow, type Party, type ShareSet } from "@/lib/telangana/oct26";
+import { PARTIES, PARTY_COLOR, PARTY_LABEL, NO_DATA_COLOR, fmtPct, type AcRow, type Party, type ShareSet } from "@/lib/telangana/constants";
 import { DEVICE_AC, historicalAc, type ElectionYear } from "@/lib/telangana/history";
 import { MAP_STYLE, addMapLights, createScreenLine, setScreenLinePoints, updateLineResolution, gradientColor, topTwo, labelSize, type TopTwo } from "@/lib/map-style";
 import { brandMarker } from "@/lib/telangana/brands";

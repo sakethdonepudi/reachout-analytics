@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
-import { PARTY_COLOR, fmtPct, type AcRow, type DistrictRow } from "@/lib/telangana/oct26";
+import { PARTY_COLOR, fmtPct, type AcRow, type DistrictRow } from "@/lib/telangana/constants";
 import { historicalDetail, type HistoricYear } from "@/lib/telangana/history";
 import {
   P7S, P7_COLOR, P7_LABEL, projectVector, type Counts7, type P7, type Projected,

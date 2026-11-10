@@ -1,5 +1,5 @@
 import { fmtInt } from "@/lib/telangana/model";
-import type { Oct26 } from "@/lib/telangana/oct26";
+import type { Oct26 } from "@/lib/telangana/constants";
 import { HISTORY } from "@/lib/telangana/history";
 
 export default function AboutTelangana({ data }: { data: Oct26 }) {
