@@ -78,6 +78,143 @@
   --band-4: #79b4f0;
 }
 
+/* =====================================================================
+   Phase 1 design tokens. These are additive aliases over the existing
+   palette so pages can migrate without changing their current rendering.
+   ===================================================================== */
+:root {
+  /* surfaces and text */
+  --surface-canvas: #f8f7f3;
+  --surface-panel: #ffffff;
+  --surface-raised: #ffffff;
+  --text-primary: #20242b;
+  --text-muted: #626b78;
+  --accent-brass: #8f4d05;
+  --accent-brass-strong: #6f3a00;
+  --accent-brass-soft: rgba(245, 138, 36, 0.12);
+  --border-hairline: #dde1e6;
+  --shadow-soft: 0 10px 30px -24px rgba(20, 24, 31, 0.45);
+
+  /* semantic */
+  --success: #15803d;
+  --success-bg: rgba(21, 128, 61, 0.1);
+  --warning: #a16207;
+  --warning-bg: rgba(161, 98, 7, 0.12);
+  --danger: #b91c1c;
+  --danger-bg: rgba(185, 28, 28, 0.1);
+
+  /* party palettes — exact case-study colours */
+  --party-tvk: #eab308;
+  --party-aiadmk: #16a34a;
+  --party-dmk: #dc2626;
+  --party-ntk: #7c3aed;
+  --party-tn-others: #64748b;
+  --party-brs: #ec4899;
+  --party-congress: #2563eb;
+  --party-aimim: #16a34a;
+  --party-tg-others: #64748b;
+
+  /* typography */
+  --text-display: clamp(2.75rem, 5vw, 4.5rem);
+  --text-h1: clamp(2rem, 3.6vw, 3.25rem);
+  --text-h2: clamp(1.5rem, 2.4vw, 2.25rem);
+  --text-h3: 1.25rem;
+  --text-body: 0.9375rem;
+  --text-small: 0.8125rem;
+  --text-micro: 0.6875rem;
+  --leading-tight: 1.02;
+  --leading-body: 1.6;
+  --tracking-tight: -0.03em;
+  --tracking-label: 0.16em;
+
+  /* spacing, radii, width */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-panel: 16px;
+  --content-max: 1440px;
+
+  /* motion */
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+  --ease-standard: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-emphasis: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark {
+  --surface-canvas: #11151b;
+  --surface-panel: #1b222c;
+  --surface-raised: #252f3c;
+  --text-primary: #f3f5f7;
+  --text-muted: #adb7c4;
+  --accent-brass: #ffb866;
+  --accent-brass-strong: #ffd09a;
+  --accent-brass-soft: rgba(245, 138, 36, 0.18);
+  --border-hairline: #394656;
+  --shadow-soft: 0 18px 46px -30px rgba(0, 0, 0, 0.8);
+
+  --success: #4ade80;
+  --success-bg: rgba(74, 222, 128, 0.12);
+  --warning: #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.12);
+  --danger: #fb7185;
+  --danger-bg: rgba(251, 113, 133, 0.12);
+}
+
+.type-display,
+.type-h1,
+.type-h2,
+.type-h3 {
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+.type-display { font-size: var(--text-display); font-weight: 600; }
+.type-h1 { font-size: var(--text-h1); font-weight: 600; }
+.type-h2 { font-size: var(--text-h2); font-weight: 600; }
+.type-h3 { font-size: var(--text-h3); font-weight: 600; }
+.type-body { font-size: var(--text-body); line-height: var(--leading-body); }
+.type-small { font-size: var(--text-small); line-height: 1.45; }
+.type-micro {
+  font-size: var(--text-micro);
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+.num { font-variant-numeric: tabular-nums; }
+.num-right { font-variant-numeric: tabular-nums; text-align: right; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal,
+  .reveal.reveal-hidden {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 @theme inline {
   --color-background: var(--bg);
   --color-foreground: var(--fg);
