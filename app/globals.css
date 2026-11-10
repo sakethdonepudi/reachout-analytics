@@ -632,3 +632,58 @@ html.theme-transition *::after {
   .analysis-enter,
   .analysis-chart-enter { animation: none !important; transform: none !important; }
 }
+
+/* =====================================================================
+   Case-study split grip
+   A short brass rail with a crisp knob that sits on the panel edge.
+   ===================================================================== */
+.split-grip-rail {
+  --split-brass: #a67c3e;
+  background: linear-gradient(180deg, transparent 0%, var(--split-brass) 20%, var(--split-brass) 80%, transparent 100%);
+  opacity: 0.55;
+  transition: height 220ms cubic-bezier(0.22, 0.8, 0.3, 1), opacity 220ms ease;
+}
+.dark .split-grip-rail { --split-brass: #c9a25e; }
+.split-grip:hover .split-grip-rail,
+.split-grip:focus-visible .split-grip-rail,
+.split-grip[data-dragging="true"] .split-grip-rail {
+  height: 7rem;
+  opacity: 1;
+}
+.split-grip-knob {
+  background: var(--card);
+  border: 1px solid rgba(166, 124, 62, 0.45);
+  color: rgba(166, 124, 62, 0.88);
+  box-shadow: 0 1px 2px rgba(20, 18, 16, 0.08), 0 6px 16px -12px rgba(20, 18, 16, 0.35);
+  transition: right 220ms cubic-bezier(0.22, 0.8, 0.3, 1), width 220ms cubic-bezier(0.22, 0.8, 0.3, 1),
+    height 220ms cubic-bezier(0.22, 0.8, 0.3, 1), border-color 200ms ease, color 200ms ease, box-shadow 200ms ease;
+}
+.dark .split-grip-knob {
+  border-color: rgba(201, 162, 94, 0.45);
+  color: rgba(201, 162, 94, 0.9);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 8px 18px -12px rgba(0, 0, 0, 0.7);
+}
+.split-grip:hover .split-grip-knob,
+.split-grip:focus-visible .split-grip-knob,
+.split-grip[data-dragging="true"] .split-grip-knob {
+  border-color: #a67c3e;
+  color: #a67c3e;
+  box-shadow: 0 2px 4px rgba(20, 18, 16, 0.10), 0 10px 24px -12px rgba(166, 124, 62, 0.55);
+}
+.split-grip:focus-visible .split-grip-knob {
+  box-shadow: 0 0 0 3px rgba(166, 124, 62, 0.20), 0 2px 4px rgba(20, 18, 16, 0.10), 0 10px 24px -12px rgba(166, 124, 62, 0.55);
+}
+.dark .split-grip:hover .split-grip-knob,
+.dark .split-grip:focus-visible .split-grip-knob,
+.dark .split-grip[data-dragging="true"] .split-grip-knob {
+  border-color: #c9a25e;
+  color: #c9a25e;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.32), 0 10px 24px -12px rgba(201, 162, 94, 0.55);
+}
+.dark .split-grip:focus-visible .split-grip-knob {
+  box-shadow: 0 0 0 3px rgba(201, 162, 94, 0.22), 0 2px 4px rgba(0, 0, 0, 0.32), 0 10px 24px -12px rgba(201, 162, 94, 0.55);
+}
+@media (prefers-reduced-motion: reduce) {
+  .split-grip-rail,
+  .split-grip-knob { transition: none !important; }
+}
