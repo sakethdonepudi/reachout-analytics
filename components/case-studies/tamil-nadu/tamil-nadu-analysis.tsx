@@ -6,8 +6,7 @@ import {
   TN_COLOR, TN_GROUPS, TN_LABEL, TN_SEAT_GROUPS,
   type TnAggregates, type TnGroup, type TnSeatGroup, type TnShares, type TnYear,
 } from "@/lib/tamil-nadu/model";
-import { AMI_EXIT_POLL, ECI_ACTUAL, TN_SOCIAL } from "@/lib/tamil-nadu/comparison";
-import { TVK_ACTUAL_SEATS, TVK_FORECASTERS } from "@/lib/tamil-nadu/forecasters";
+import type { TnEciActualView, TnExitPollView, TnForecaster, TnSocial } from "@/lib/tamil-nadu/view-data";
 import type { OpinionPollView, TnTab, TnView } from "@/components/case-studies/tamil-nadu/tamil-nadu-rail";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
@@ -60,7 +59,7 @@ const tooltipStyle = (p: Pal) => ({
   extraCssText: "border-radius:8px;box-shadow:0 14px 34px -16px rgba(0,0,0,.6);max-width:360px;",
 });
 const pct = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? "—" : `${(v * 100).toFixed(1)}%`);
-const changePp = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? "—" : `${Math.abs(v) < 0.05 ? "" : v > 0 ? "+" : ""}${Math.abs(v) < 0.05 ? "0.0" : v.toFixed(1)}pp`);
+const signedPp = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? "—" : `${Math.abs(v) < 0.05 ? "" : v > 0 ? "+" : ""}${Math.abs(v) < 0.05 ? "0.0" : v.toFixed(1)}pp`);
 const rawValue = (d: unknown): unknown => (d && typeof d === "object" && "value" in d ? (d as { value: unknown }).value : d);
 const numericValue = (d: unknown): number | null => { const v = rawValue(d); if (typeof v === "number") return v; if (Array.isArray(v) && typeof v[1] === "number") return v[1]; return null; };
 const emptySeats = () => Object.fromEntries(TN_SEAT_GROUPS.map((g) => [g, 0])) as Record<TnSeatGroup, number>;
@@ -93,7 +92,7 @@ const groupSum = (shares: TnShares | null | undefined, group: AnalysisGroup) => 
 const SERIES_OPACITY = { exit: 0.42, opinion: 0.72, actual: 1, survey: 0.58, baseline: 0.34 };
 
 export default function TamilNaduAnalysis({
-  open, onClose, data, theme, initialScope, defaultBaseline, opinionPoll, initialView, initialTab,
+  open, onClose, data, theme, initialScope, defaultBaseline, opinionPoll, exitPoll, eciActual, social, forecasters, forecastActualSeats, initialView, initialTab,
 }: {
   open: boolean;
   onClose: () => void;
@@ -104,6 +103,11 @@ export default function TamilNaduAnalysis({
   onSelectDistrict?: (name: string) => void;
   onSelectAc?: (no: number) => void;
   opinionPoll: OpinionPollView;
+  exitPoll: TnExitPollView;
+  eciActual: TnEciActualView;
+  social: TnSocial;
+  forecasters: TnForecaster[];
+  forecastActualSeats: number;
   initialView: TnView;
   initialTab: TnTab;
 }) {
@@ -179,10 +183,10 @@ export default function TamilNaduAnalysis({
 
   /* ------------------------------ overview ------------------------------ */
   const allOverviewSeries = useMemo(() => {
-    const actualShares = ECI_ACTUAL.shares;
+    const actualShares = eciActual.shares;
     if (scopeIsState) {
       return [
-        { key: "exit", label: "Exit Poll", shares: AMI_EXIT_POLL.shares as TnShares, opacity: SERIES_OPACITY.exit },
+        { key: "exit", label: "Exit Poll", shares: exitPoll.shares, opacity: SERIES_OPACITY.exit },
         ...(opinionPoll.available ? [{ key: "opinion", label: "Opinion Poll", shares: opinionPoll.shares, opacity: SERIES_OPACITY.opinion }] : []),
         { key: "actual", label: "Actual Result", shares: actualShares, opacity: SERIES_OPACITY.actual },
       ];
@@ -239,13 +243,13 @@ export default function TamilNaduAnalysis({
     const series = (scopeIsState
       ? [
           { key: "exit", label: "Exit Poll − Actual", opacity: SERIES_OPACITY.exit, value: (group: AnalysisGroup) => {
-              const exit = groupSum(AMI_EXIT_POLL.shares as TnShares, group);
-              const actual = groupSum(ECI_ACTUAL.shares, group);
+              const exit = groupSum(exitPoll.shares, group);
+              const actual = groupSum(eciActual.shares, group);
               return exit == null || actual == null ? null : (exit - actual) * 100;
             } },
           ...(opinionPoll.available ? [{ key: "opinion", label: "Opinion Poll − Actual", opacity: SERIES_OPACITY.opinion, value: (group: AnalysisGroup) => {
               const opinion = groupSum(opinionPoll.shares, group);
-              const actual = groupSum(ECI_ACTUAL.shares, group);
+              const actual = groupSum(eciActual.shares, group);
               return opinion == null || actual == null ? null : (opinion - actual) * 100;
             } }] : []),
         ]
@@ -272,7 +276,7 @@ export default function TamilNaduAnalysis({
           const index = Array.isArray(params) ? (params[0] as { dataIndex: number } | undefined)?.dataIndex ?? 0 : 0;
           const group = ANALYSIS_GROUPS[index];
           if (!group) return "";
-          const rows = series.map((item) => `<div style="display:flex;justify-content:space-between;gap:18px"><span>${item.label}</span><b>${changePp(item.value(group))}</b></div>`).join("");
+          const rows = series.map((item) => `<div style="display:flex;justify-content:space-between;gap:18px"><span>${item.label}</span><b>${signedPp(item.value(group))}</b></div>`).join("");
           return `<div style="font-weight:600;margin-bottom:3px">${group.label}</div>${rows}`;
         },
       },
@@ -299,7 +303,7 @@ export default function TamilNaduAnalysis({
         markLine: { silent: true, symbol: "none", label: { show: false }, lineStyle: { color: p.axis, width: 1 }, data: [{ xAxis: 0 }] },
       })),
     };
-  }, [scopeIsState, opinionPoll.available, opinionPoll.shares, data.presence, baselineYear, baselineAvailable, currentShares, baselineShares, p, reduced, narrow, visibleSeries]);
+  }, [scopeIsState, opinionPoll.available, opinionPoll.shares, data.presence, baselineYear, baselineAvailable, currentShares, baselineShares, p, reduced, narrow, visibleSeries, eciActual, exitPoll]);
 
   const allChangeLegend = scopeIsState
     ? [
@@ -327,11 +331,11 @@ export default function TamilNaduAnalysis({
         }) },
       ],
     };
-  }, [actualSeats, estimatedSeats, p, reduced]);
+  }, [actualSeats, estimatedSeats, p, reduced, eciActual]);
 
   /* ---------------------------- forecaster ----------------------------- */
   const forecasterChartOption = useMemo(() => {
-    const max = Math.max(120, ...TVK_FORECASTERS.map((row) => (row.projectedSeats ?? 0) + 12));
+    const max = Math.max(120, ...forecasters.map((row) => (row.projectedSeats ?? 0) + 12));
     return {
       animation: !reduced, animationDuration: 520, animationEasing: "cubicOut",
       grid: { left: narrow ? 116 : 152, right: 44, top: 22, bottom: 26 },
@@ -339,16 +343,16 @@ export default function TamilNaduAnalysis({
         ...tooltipStyle(p), trigger: "axis", axisPointer: { type: "shadow" },
         formatter: (params: unknown) => {
           const index = Array.isArray(params) ? (params[0] as { dataIndex: number } | undefined)?.dataIndex ?? 0 : 0;
-          const row = TVK_FORECASTERS[index];
+          const row = forecasters[index];
           if (!row) return "";
           return `<div style="font-weight:600;margin-bottom:2px">${row.forecaster}</div>Projected <b>${row.projectedSeats ?? "—"}</b> seats<br/>Seats off <b>${row.differenceFromActual == null ? "—" : Math.abs(row.differenceFromActual)}</b><br/>${row.winnerCall}`;
         },
       },
       xAxis: { type: "value", max, axisLabel: { color: p.muted, fontSize: 9 }, splitLine: { lineStyle: { color: p.grid } }, axisLine: { show: false }, axisTick: { show: false } },
-      yAxis: { type: "category", data: TVK_FORECASTERS.map((row) => row.forecaster), inverse: true, axisTick: { show: false }, axisLine: { lineStyle: { color: p.axis } }, axisLabel: { color: p.text, fontSize: narrow ? 7.5 : 8.5, width: narrow ? 104 : 140, overflow: "truncate" } },
+      yAxis: { type: "category", data: forecasters.map((row) => row.forecaster), inverse: true, axisTick: { show: false }, axisLine: { lineStyle: { color: p.axis } }, axisLabel: { color: p.text, fontSize: narrow ? 7.5 : 8.5, width: narrow ? 104 : 140, overflow: "truncate" } },
       series: [{
         type: "bar", barMaxWidth: 10,
-        data: TVK_FORECASTERS.map((row) => ({
+        data: forecasters.map((row) => ({
           value: row.projectedSeats,
           itemStyle: { color: TN_COLOR.TVK, opacity: row.projectedSeats == null ? 0 : 0.82, borderRadius: 2 },
           label: { show: row.projectedSeats != null, position: "right", color: p.text, fontSize: 8.5, formatter: `${row.projectedSeats ?? ""}` },
@@ -356,12 +360,12 @@ export default function TamilNaduAnalysis({
         markLine: {
           silent: true, symbol: "none",
           lineStyle: { color: p.text, type: "dashed", width: 1, opacity: 0.7 },
-          label: { show: true, position: "end", color: p.text, fontSize: 8.5, formatter: `Actual ${TVK_ACTUAL_SEATS}` },
-          data: [{ xAxis: TVK_ACTUAL_SEATS }],
+          label: { show: true, position: "end", color: p.text, fontSize: 8.5, formatter: `Actual ${forecastActualSeats}` },
+          data: [{ xAxis: forecastActualSeats }],
         },
       }],
     };
-  }, [p, reduced, narrow]);
+  }, [p, reduced, narrow, forecasters, forecastActualSeats]);
 
   /* ---------------------------- historical ----------------------------- */
   const historicalOption = useMemo(() => {
@@ -614,7 +618,7 @@ export default function TamilNaduAnalysis({
       contentClassName="space-y-5"
     >
       {view === "social" ? (
-        <SocialOverview />
+        <SocialOverview social={social} />
       ) : (
         <>
           {/* ------------------------- polls overview ------------------------- */}
@@ -736,6 +740,7 @@ export default function TamilNaduAnalysis({
                         <>
                           <th scope="col" className="px-1.5 py-2 text-right font-semibold">Survey Estimate</th>
                           <th scope="col" className="px-1.5 py-2 text-right font-semibold">{baselineYear} Result</th>
+                          <th scope="col" title="Opinion Poll is statewide only" className="px-1.5 py-2 text-right font-semibold">Opinion Poll</th>
                           <th scope="col" className="border-l border-[var(--a-border)] px-1.5 py-2 text-right font-semibold">Actual Result</th>
                         </>
                       )}
@@ -749,14 +754,15 @@ export default function TamilNaduAnalysis({
                         </th>
                         {scopeIsState ? (
                           <>
-                            <td className="px-1.5 py-1.5 text-right tabular-nums">{pct(groupSum(AMI_EXIT_POLL.shares as TnShares, group))}</td>
+                            <td className="px-1.5 py-1.5 text-right tabular-nums">{pct(groupSum(exitPoll.shares, group))}</td>
                             <td className="px-1.5 py-1.5 text-right tabular-nums">{pct(opinionPoll.available ? groupSum(opinionPoll.shares, group) : null)}</td>
-                            <td className="border-l border-[var(--a-border)] px-1.5 py-1.5 text-right tabular-nums">{pct(groupSum(ECI_ACTUAL.shares, group))}</td>
+                            <td className="border-l border-[var(--a-border)] px-1.5 py-1.5 text-right tabular-nums">{pct(groupSum(eciActual.shares, group))}</td>
                           </>
                         ) : (
                           <>
                             <td className="px-1.5 py-1.5 text-right font-semibold tabular-nums">{pct(groupSum(currentShares, group))}</td>
                             <td className="px-1.5 py-1.5 text-right tabular-nums text-[var(--a-muted)]">{baselineAvailable && group.groups.some((key) => data.presence[baselineYear][key]) ? pct(groupSum(baselineShares, group)) : "—"}</td>
+                            <td className="px-1.5 py-1.5 text-right tabular-nums text-[var(--a-muted)]" title="Opinion Poll is statewide only">—</td>
                             <td className="border-l border-[var(--a-border)] px-1.5 py-1.5 text-right tabular-nums text-[var(--a-muted)]">—</td>
                           </>
                         )}
@@ -778,10 +784,10 @@ export default function TamilNaduAnalysis({
                   <h3 className="mt-0.5 font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">TVK seat projections</h3>
                   <p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">Rank, projected seats, seats off the actual result and winner call</p>
                 </div>
-                <span className="rounded-full border border-[var(--a-border)] bg-[var(--a-panel-2)] px-2.5 py-1 text-[10px] font-semibold text-[var(--a-ink)]">Actual {TVK_ACTUAL_SEATS} seats</span>
+                <span className="rounded-full border border-[var(--a-border)] bg-[var(--a-panel-2)] px-2.5 py-1 text-[10px] font-semibold text-[var(--a-ink)]">Actual {forecastActualSeats} seats</span>
               </div>
 
-              {TVK_FORECASTERS.length ? (
+              {forecasters.length ? (
                 <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]">
                   <div className="min-w-0 overflow-x-auto rounded-xl border border-[var(--a-border)]">
                     <table className="w-full min-w-[300px] border-collapse text-[9px] sm:min-w-[540px] sm:text-[10px]">
@@ -796,7 +802,7 @@ export default function TamilNaduAnalysis({
                         </tr>
                       </thead>
                       <tbody>
-                        {TVK_FORECASTERS.map((row) => (
+                        {forecasters.map((row) => (
                           <tr key={`${row.rank}-${row.forecaster}`} className="border-t border-[var(--a-border)]/70">
                             <td className="px-2 py-1.5 tabular-nums text-[var(--a-muted)]">{row.rank}</td>
                             <td className="px-2 py-1.5 font-medium">
@@ -814,7 +820,7 @@ export default function TamilNaduAnalysis({
                   <div className="min-w-0 rounded-xl border border-[var(--a-border)] bg-[var(--a-panel-2)] p-2">
                     <p className="mb-1 px-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--a-muted)]">Projected seats · dashed line at actual</p>
                     <div className="analysis-chart-enter">
-                      <EChart option={forecasterChartOption} height={Math.max(260, TVK_FORECASTERS.length * 24 + 40)} reduced={reduced} ariaLabel="TVK seat projections by forecaster with the actual seat reference line" />
+                      <EChart option={forecasterChartOption} height={Math.max(260, forecasters.length * 24 + 40)} reduced={reduced} ariaLabel="TVK seat projections by forecaster with the actual seat reference line" />
                     </div>
                   </div>
                 </div>
@@ -920,6 +926,7 @@ export default function TamilNaduAnalysis({
                   <thead>
                     <tr className="border-b border-[var(--a-border)] text-left text-[8px] uppercase tracking-wide text-[var(--a-muted)]">
                       <th className="px-2 py-1.5">Group</th>
+                      <th className="px-2 py-1.5 text-right" title="Opinion Poll has no seat figures">Opinion Poll</th>
                       <th className="px-2 py-1.5 text-right">Estimated</th>
                       <th className="px-2 py-1.5 text-right">Actual 2026</th>
                     </tr>
@@ -928,6 +935,7 @@ export default function TamilNaduAnalysis({
                     {TN_SEAT_GROUPS.map((group) => (
                       <tr key={group} className="border-t border-[var(--a-border)]/70">
                         <td className="px-2 py-1.5"><span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: TN_COLOR[group] }} />{TN_LABEL[group]}</span></td>
+                        <td className="px-2 py-1.5 text-right tabular-nums text-[var(--a-muted)]" title="Opinion Poll has no seat figures">—</td>
                         <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{(estimatedSeats as Partial<Record<TnSeatGroup, number>>)[group] ?? "—"}</td>
                         <td className="px-2 py-1.5 text-right tabular-nums">{(actualSeats as Partial<Record<TnSeatGroup, number>>)[group] ?? "—"}</td>
                       </tr>
@@ -936,6 +944,7 @@ export default function TamilNaduAnalysis({
                   <tfoot>
                     <tr className="border-t border-[var(--a-border)] bg-[var(--a-panel-2)] text-[10px]">
                       <td className="px-2 py-1.5">Total</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums text-[var(--a-muted)]">—</td>
                       <td className="px-2 py-1.5 text-right tabular-nums">{totalEstimated ?? "—"}</td>
                       <td className="px-2 py-1.5 text-right tabular-nums">{totalActual ?? "—"}</td>
                     </tr>
@@ -1075,15 +1084,15 @@ function SeriesLegend({ items }: { items: { label: string; opacity: number }[] }
 /* ------------------------------------------------------------------ *
  *  Social media view, kept as a readable table plus direct reach bars.
  * ------------------------------------------------------------------ */
-function SocialOverview() {
-  const rows = TN_SOCIAL.rows.filter((row) => row.platform !== "Total");
-  const total = TN_SOCIAL.rows.find((row) => row.platform === "Total");
+function SocialOverview({ social }: { social: TnSocial }) {
+  const rows = social.rows.filter((row) => row.platform !== "Total");
+  const total = social.rows.find((row) => row.platform === "Total");
   const max = Math.max(1, ...rows.map((row) => row.total));
   return (
     <section className="analysis-panel rounded-2xl p-4 sm:p-6" aria-label="Social media reach">
       <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-brass)]">Social media</p>
       <h3 className="mt-0.5 font-display text-[19px] font-semibold leading-tight text-[var(--a-ink)]">Tamil Nadu Meta reach</h3>
-      <p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">{TN_SOCIAL.window}</p>
+      <p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">{social.window}</p>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)]">
         <div className="overflow-x-auto rounded-xl border border-[var(--a-border)]">
@@ -1099,7 +1108,7 @@ function SocialOverview() {
               </tr>
             </thead>
             <tbody>
-              {TN_SOCIAL.rows.map((row) => (
+              {social.rows.map((row) => (
                 <tr key={row.platform} className={cn("border-t border-[var(--a-border)]/70", row.platform === "Total" && "bg-[var(--a-panel-2)] font-semibold")}>
                   <th scope="row" className="px-2 py-2 text-left font-medium">{row.platform}</th>
                   <td className="px-2 py-2 text-right tabular-nums">{row.organic.toLocaleString("en-US")}</td>
@@ -1129,12 +1138,12 @@ function SocialOverview() {
             ))}
           </div>
           <div className="mt-4 flex items-center justify-between text-[10px] font-semibold">
-            <span className="inline-flex items-center gap-1 text-[var(--a-muted)]"><span className="size-1.5 rounded-sm bg-[#2fbf4a]" />Organic {TN_SOCIAL.organicPct}%</span>
-            <span className="inline-flex items-center gap-1 text-[var(--a-muted)]"><span className="size-1.5 rounded-sm bg-saffron" />Paid {TN_SOCIAL.paidPct}%</span>
+            <span className="inline-flex items-center gap-1 text-[var(--a-muted)]"><span className="size-1.5 rounded-sm bg-[#2fbf4a]" />Organic {social.organicPct}%</span>
+            <span className="inline-flex items-center gap-1 text-[var(--a-muted)]"><span className="size-1.5 rounded-sm bg-saffron" />Paid {social.paidPct}%</span>
           </div>
-          <div className="mt-1 flex h-3 overflow-hidden rounded-full bg-[var(--a-border)]/40" role="img" aria-label={`Meta reach split: ${TN_SOCIAL.organicPct}% organic and ${TN_SOCIAL.paidPct}% paid`}>
-            <span className="bg-[#2fbf4a]" style={{ width: `${TN_SOCIAL.organicPct}%` }} />
-            <span className="bg-saffron" style={{ width: `${TN_SOCIAL.paidPct}%` }} />
+          <div className="mt-1 flex h-3 overflow-hidden rounded-full bg-[var(--a-border)]/40" role="img" aria-label={`Meta reach split: ${social.organicPct}% organic and ${social.paidPct}% paid`}>
+            <span className="bg-[#2fbf4a]" style={{ width: `${social.organicPct}%` }} />
+            <span className="bg-saffron" style={{ width: `${social.paidPct}%` }} />
           </div>
           {total && <p className="mt-3 text-[10px] text-[var(--a-muted)]">Total reach <b className="tabular-nums text-[var(--a-ink)]">{total.total.toLocaleString("en-US")}</b> · {total.followers.toLocaleString("en-US")} followers</p>}
         </div>

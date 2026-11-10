@@ -5,7 +5,7 @@ import { Expand, Maximize2 } from "lucide-react";
 import {
   PARTIES, PARTY_COLOR, PARTY_LABEL, fmtPct, fmtPp, type Party, type ShareSet,
 } from "@/lib/telangana/constants";
-import { winnerColour, winnerLabel, type ElectionYear, type HistoricYear } from "@/lib/telangana/history";
+import { winnerColour, winnerLabel, type ElectionYear, type HistoricYear } from "@/lib/telangana/history-runtime";
 import { fmtInt } from "@/lib/telangana/model";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";

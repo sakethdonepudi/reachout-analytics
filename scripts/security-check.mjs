@@ -71,5 +71,44 @@ report(hits.length === 0, "no tracked secrets found", hits.slice(0, 8).join(", "
 // 6. Gitleaks is optional; the tracked-file scan above is the equivalent check.
 console.log("• gitleaks optional — built-in tracked-file secret scan used");
 
+
+// 7. Static-chunk leak scan (run after `npm run build`).
+import { readdirSync, statSync } from "node:fs";
+function walk(dir) {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    const path = `${dir}/${name}`;
+    const stat = statSync(path);
+    if (stat.isDirectory()) out.push(...walk(path));
+    else out.push(path);
+  }
+  return out;
+}
+try {
+  const files = walk(".next/static");
+  const patterns = [
+    { name: "Vivo", test: (t) => t.includes("Vivo") },
+    { name: "medianPp", test: (t) => t.includes("medianPp") },
+    { name: "changePp", test: (t) => t.includes("changePp") },
+    { name: "crosswalk", test: (t) => t.includes("crosswalk") },
+    { name: "sourceAudit", test: (t) => t.includes("sourceAudit") },
+    { name: "tn-saket-v3", test: (t) => t.includes("tn-saket-v3") },
+    { name: "10866/8866", test: (t) => /10866[\s\S]{0,200}8866|8866[\s\S]{0,200}10866/.test(t) },
+    { name: "357118741", test: (t) => t.includes("357118741") },
+    { name: "Axis My India", test: (t) => t.includes("Axis My India") },
+  ];
+  const hits = [];
+  let scanned = 0;
+  for (const file of files) {
+    let text = "";
+    try { text = readFileSync(file, "utf8"); } catch { continue; }
+    scanned++;
+    for (const pattern of patterns) if (pattern.test(text)) hits.push(`${file}: ${pattern.name}`);
+  }
+  report(hits.length === 0, `static chunk data scan (${scanned} files)`, hits.slice(0, 20).join(", "));
+} catch {
+  report(false, "static chunk data scan", "run npm run build first");
+}
+
 console.log(failures ? `\n${failures} security check(s) failed` : "\nAll security checks passed");
 if (failures) process.exitCode = 1;

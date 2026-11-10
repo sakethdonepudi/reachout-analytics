@@ -1,4 +1,4 @@
-import { PARTY_COLOR } from "./oct26";
+import { PARTY_COLOR } from "./constants";
 import type { DetailSet } from "./history";
 
 /* =====================================================================

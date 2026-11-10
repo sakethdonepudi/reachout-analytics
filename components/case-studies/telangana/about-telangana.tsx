@@ -1,8 +1,8 @@
 import { fmtInt } from "@/lib/telangana/model";
 import type { Oct26 } from "@/lib/telangana/constants";
-import { HISTORY } from "@/lib/telangana/history";
+import type { ClientHistoryBundle } from "@/lib/telangana/history-runtime";
 
-export default function AboutTelangana({ data }: { data: Oct26 }) {
+export default function AboutTelangana({ data, history }: { data: Oct26; history: ClientHistoryBundle }) {
   const c = data.counts;
   const s = data.statewide;
   const ext = data.aimimExtension;
@@ -16,8 +16,8 @@ export default function AboutTelangana({ data }: { data: Oct26 }) {
       <div className="space-y-2.5 rounded-b-xl border border-t-0 border-border bg-card px-4 py-3 text-[11px] leading-relaxed text-muted-foreground">
         <p>
           <b className="text-foreground/85">Four election years.</b> The <b>2014</b> and <b>2018</b> figures are actual
-          ECI-derived OpenCity/TCPD mirror results (vote totals {fmtInt(HISTORY.years["2014"].total)} and {fmtInt(HISTORY.years["2018"].total)});
-          <b> 2023</b> is the final workbook&apos;s ECI result table ({fmtInt(HISTORY.years["2023"].total)} votes). None are exit
+          ECI-derived OpenCity/TCPD mirror results (vote totals {fmtInt(history.years["2014"].total)} and {fmtInt(history.years["2018"].total)});
+          <b> 2023</b> is the final workbook&apos;s ECI result table ({fmtInt(history.years["2023"].total)} votes). None are exit
           polls. <b>2028</b> is the final workbook&apos;s AC prediction model, aggregated by 2023 vote weight ({fmtInt(s.votes2023)}),
           not an observed result or a latest-round survey percentage.
         </p>
@@ -81,7 +81,7 @@ export default function AboutTelangana({ data }: { data: Oct26 }) {
         <p>
           <b className="text-foreground/85">Provenance.</b> Source file {data.sourceFile}; workbook SHA-256{" "}
           <code className="break-all text-[10px]">{data.sourceHash}</code>; import version {data.version}; override version{" "}
-          {data.overrideVersion}. Historical/map sources: {HISTORY.sourceAudit.historical.map((h) => `${h.year} (${fmtInt(h.totalVotes)} votes)`).join(" · ")}.
+          {data.overrideVersion}. Historical/map sources: {history.sa.historical.map((h) => `${h.year} (${fmtInt(h.totalVotes)} votes)`).join(" · ")}.
           Public pages expose aggregates only — no Entry IDs, raw rows, IPs or phone numbers.
         </p>
       </div>

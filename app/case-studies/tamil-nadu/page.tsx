@@ -3,6 +3,9 @@ import Navbar from "@/components/site/navbar";
 import CompanyExperience from "@/components/site/company-marquee";
 import TamilNaduDashboard from "@/components/case-studies/tamil-nadu/tamil-nadu-dashboard";
 import { requirePageSession } from "@/lib/require-session";
+import { AMI_EXIT_POLL, ECI_ACTUAL, TN_OPINION_POLL, TN_SOCIAL } from "@/lib/tamil-nadu/comparison";
+import { TVK_ACTUAL_SEATS, TVK_FORECASTERS } from "@/lib/tamil-nadu/forecasters";
+import type { TnCaseData } from "@/lib/tamil-nadu/view-data";
 
 export const metadata: Metadata = {
   title: "Tamil Nadu — ReachOut's Election Intelligence",
@@ -20,11 +23,19 @@ export const dynamic = "force-dynamic";
 
 export default async function TamilNaduCaseStudyPage() {
   await requirePageSession("/case-studies/tamil-nadu");
+  const caseData: TnCaseData = {
+    exitPoll: AMI_EXIT_POLL,
+    opinionPoll: TN_OPINION_POLL,
+    actual: ECI_ACTUAL,
+    social: TN_SOCIAL,
+    forecasters: TVK_FORECASTERS,
+    forecastActualSeats: TVK_ACTUAL_SEATS,
+  };
 
   return (
     <>
       <Navbar />
-      <TamilNaduDashboard />
+      <TamilNaduDashboard caseData={caseData} />
       <CompanyExperience />
     </>
   );

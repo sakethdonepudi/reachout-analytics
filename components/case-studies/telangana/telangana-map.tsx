@@ -5,9 +5,8 @@ import * as THREE from "three";
 import { geoIdentity } from "d3-geo";
 import { rafLoop } from "@/lib/raf-loop";
 import { PARTIES, PARTY_COLOR, PARTY_LABEL, NO_DATA_COLOR, fmtPct, type AcRow, type Party, type ShareSet } from "@/lib/telangana/constants";
-import { DEVICE_AC, historicalAc, type ElectionYear } from "@/lib/telangana/history";
+import { DEVICE_AC, historicalAc, type ElectionYear } from "@/lib/telangana/history-runtime";
 import { MAP_STYLE, addMapLights, createScreenLine, setScreenLinePoints, updateLineResolution, gradientColor, topTwo, labelSize, type TopTwo } from "@/lib/map-style";
-import { brandMarker } from "@/lib/telangana/brands";
 
 /* =====================================================================
    Telangana 2.5D map — October workbook.
@@ -43,7 +42,6 @@ type Props = {
   district: string | null;
   ac: number | null;
   year: ElectionYear;
-  layer: "party" | "device";
   theme: "light" | "dark";
   /** Increment after a split resize to refit without changing selection. */
   fitKey?: number;
@@ -53,11 +51,6 @@ type Props = {
 };
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
-type MarkerDef = {
-  key: string; level: "district" | "ac" | "brand"; brand: string;
-  entries: number; share: number; title: string;
-  x: number; z: number; no: number | null; district: string | null;
-};
 function mulberry32(seed: number) {
   let a = seed >>> 0;
   return () => {
@@ -95,30 +88,21 @@ const PAL = {
   light: { none: "#e7ebef", side: "#d3d9e0", line: "rgb(40,58,78)", hover: "#1d4ed8", sel: "#111827", label: "#1b2430", halo: "rgba(255,255,255,.94)" },
 };
 
-export default function TelanganaMap({ acs, district, ac, year, layer, theme, fitKey = 0, onSelectDistrict, onSelectAc, onReset }: Props) {
+export default function TelanganaMap({ acs, district, ac, year, theme, fitKey = 0, onSelectDistrict, onSelectAc, onReset }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
-  const markerRef = useRef<HTMLDivElement>(null);
-  const [markers, setMarkers] = useState<MarkerDef[]>([]);
-  const markerDefsRef = useRef(new Map<string, MarkerDef>());
-  markerDefsRef.current = new Map(markers.map((m) => [m.key, m]));
-  const buildMarkersRef = useRef<() => void>(() => {});
   const [geo, setGeo] = useState<FC | null>(null);
   const [districtGeo, setDistrictGeo] = useState<DistrictFC | null>(null);
   const [tip, setTip] = useState<{ x: number; y: number; title: string; sub: string; value: string; colours: string[] } | null>(null);
 
-  const live = useRef({ acs, district, ac, year, layer, theme, fitKey, onSelectDistrict, onSelectAc, onReset });
-  live.current = { acs, district, ac, year, layer, theme, fitKey, onSelectDistrict, onSelectAc, onReset };
+  const live = useRef({ acs, district, ac, year, theme, fitKey, onSelectDistrict, onSelectAc, onReset });
+  live.current = { acs, district, ac, year, theme, fitKey, onSelectDistrict, onSelectAc, onReset };
   const acByNo = useMemo(() => new Map(acs.map((a) => [a.no, a])), [acs]);
   const acRef = useRef(acByNo);
   acRef.current = acByNo;
 
   useEffect(() => { setTip(null); }, [year]);
-
-  useEffect(() => {
-    buildMarkersRef.current();
-  }, [layer, district, ac, acs]);
 
   useEffect(() => {
     let cancelled = false;
@@ -392,62 +376,6 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, fi
       groupLabelPoint.set(g, best);
     }
 
-    const buildMarkers = () => {
-      const { layer: activeLayer, district: activeDistrict, ac: activeAc, acs: allAcs } = live.current;
-      if (activeLayer !== "device") { setMarkers([]); return; }
-      const list: MarkerDef[] = [];
-      const acMap = new Map(allAcs.map((a) => [a.no, a]));
-      if (activeAc != null) {
-        const rec = DEVICE_AC(activeAc);
-        const anchors = acAnchors.get(activeAc) ?? [];
-        if (rec && anchors.length) {
-          const top = [...rec.brands].sort((a, b) => b.entries - a.entries).slice(0, Math.min(4, anchors.length));
-          top.forEach((b, i) => list.push({
-            key: `brand-${activeAc}-${b.brand}`, level: "brand", brand: b.brand,
-            entries: b.entries, share: b.share, title: acMap.get(activeAc)?.name ?? `AC ${activeAc}`,
-            x: anchors[i].x, z: anchors[i].z, no: activeAc, district: activeDistrict,
-          }));
-        }
-      } else if (activeDistrict) {
-        const rows = allAcs.filter((x) => x.district === activeDistrict).map((a) => {
-          const rec = DEVICE_AC(a.no);
-          const anchors = acAnchors.get(a.no) ?? [];
-          const b = rec ? [...rec.brands].sort((x, y) => y.entries - x.entries)[0] : null;
-          return rec && anchors.length && b ? { a, rec, anchors, b } : null;
-        }).filter((x): x is NonNullable<typeof x> => !!x);
-        const chosen = typeof window !== "undefined" && window.innerWidth < 640 ? rows.sort((x, y) => y.rec.total - x.rec.total).slice(0, 10) : rows;
-        for (const { a, anchors, b } of chosen) {
-          list.push({
-            key: `ac-${a.no}`, level: "ac", brand: b.brand, entries: b.entries, share: b.share,
-            title: a.name, x: anchors[0].x, z: anchors[0].z, no: a.no, district: activeDistrict,
-          });
-        }
-      } else {
-        const districts = [...byGroup.entries()].map(([g, nos]) => {
-          let total = 0;
-          const totals = new Map<string, number>();
-          for (const no of nos) {
-            const rec = DEVICE_AC(no);
-            if (!rec) continue;
-            total += rec.total;
-            for (const b of rec.brands) totals.set(b.brand, (totals.get(b.brand) ?? 0) + b.entries);
-          }
-          const top = [...totals.entries()].sort((a, b) => b[1] - a[1])[0];
-          const anchor = groupCentroid.get(g);
-          return total && top && anchor ? { g, total, top, anchor } : null;
-        }).filter((x): x is NonNullable<typeof x> => !!x);
-        const chosen = typeof window !== "undefined" && window.innerWidth < 640 ? districts.sort((a, b) => b.total - a.total).slice(0, 8) : districts;
-        for (const { g, total, top, anchor } of chosen) {
-          list.push({
-            key: `g-${g}`, level: "district", brand: top[0], entries: top[1], share: top[1] / total,
-            title: g, x: anchor.x, z: anchor.z, no: null, district: g,
-          });
-        }
-      }
-      setMarkers(list);
-    };
-    buildMarkersRef.current = buildMarkers;
-    buildMarkers();
 
     /* ---------------- camera ---------------- */
     let theta = 0, phi = 0.6, dist = 2020;
@@ -771,38 +699,6 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, fi
         });
       }
 
-      /* device markers follow the elevated assembly transform */
-      const markerEls = markerRef.current?.querySelectorAll<HTMLElement>("[data-marker]");
-      if (markerEls) {
-        markerEls.forEach((el) => {
-          const def = markerDefsRef.current.get(el.dataset.marker ?? "");
-          if (!def || live.current.layer !== "device" || (grp && def.district && def.district !== grp)) {
-            el.style.display = "none";
-            return;
-          }
-          let elev = 0;
-          if (def.no != null) {
-            const e = entries.get(def.no);
-            elev = e ? e.elev + e.hover * 1.5 : 0;
-          } else if (def.district) {
-            const nos = byGroup.get(def.district) ?? [];
-            if (nos.length) {
-              let sum = 0;
-              for (const no of nos) sum += entries.get(no)?.elev ?? 0;
-              elev = sum / nos.length;
-            }
-          }
-          const p = toScreen(def.x, DEPTH + 0.9 + elev, def.z);
-          if (p.behind || p.x < -20 || p.x > hostRect.width + 20 || p.y < -20 || p.y > hostRect.height + 20) {
-            el.style.display = "none";
-            return;
-          }
-          const oy = def.level === "district" ? 22 : def.level === "ac" ? 16 : 14;
-          el.style.display = "";
-          el.style.transform = `translate(-50%,-50%) translate(${p.x.toFixed(1)}px, ${(p.y + oy).toFixed(1)}px)`;
-        });
-      }
-
       renderer.render(scene, camera);
     };
 
@@ -852,23 +748,6 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, fi
             {l.text}
           </span>;
         })}
-      </div>
-
-      <div ref={markerRef} className="pointer-events-none absolute inset-0 z-10" aria-label="Illustrative device-brand placement">
-        {markers.map((m) => (
-          <button key={m.key} data-marker={m.key} data-device-marker type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (m.no != null) onSelectAc(m.no);
-              else if (m.district) onSelectDistrict(m.district);
-            }}
-            style={{ display: "none" }}
-            className={`pointer-events-auto absolute left-0 top-0 grid place-items-center rounded-full border border-white/75 bg-card/95 shadow-md backdrop-blur transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 ${m.level === "brand" ? "size-8" : "size-7"}`}
-            title={`${m.title} · ${m.brand} · ${(m.share * 100).toFixed(1)}% of device metadata. Illustrative placement, not GPS.`}
-            aria-label={`${m.title}: ${m.brand}, ${(m.share * 100).toFixed(1)} percent of aggregate device metadata. Illustrative placement, not a handset location.`}>
-            <img src={brandMarker(m.brand).src} alt="" className="h-4 w-5 object-contain" draggable={false} />
-          </button>
-        ))}
       </div>
 
       {tip && (

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Maximize2 } from "lucide-react";
 import { TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_FULL, TN_SEAT_GROUPS, tnPct, type TnGroup, type TnSeatGroup, type TnShares, type TnYear } from "@/lib/tamil-nadu/model";
-import { AMI_EXIT_POLL, TN_SOCIAL } from "@/lib/tamil-nadu/comparison";
+import type { TnExitPollView, TnOpinionPollView, TnSocial } from "@/lib/tamil-nadu/view-data";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,7 @@ const tip = (p: Pal) => ({
 });
 const signed = (v: number, digits = 2) => `${v > 0 ? "+" : ""}${v.toFixed(digits)}`;
 
-export type OpinionPollView = { shares: TnShares | null; valid: number; asOf: string | null; available: boolean; source: "published" | "workbook" };
+export type OpinionPollView = TnOpinionPollView;
 
 type DisplayGroup = { key: string; label: string; color: string; groups: TnGroup[] };
 
@@ -73,7 +73,7 @@ const segButton = (active: boolean) => cn(
   active ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
 );
 
-function SocialMediaPanel({ compact }: { compact: boolean }) {
+function SocialMediaPanel({ compact, social }: { compact: boolean; social: TnSocial }) {
   return (
     <div className="mt-2">
       <div className="overflow-x-auto rounded-lg border border-border/70">
@@ -90,7 +90,7 @@ function SocialMediaPanel({ compact }: { compact: boolean }) {
             </tr>
           </thead>
           <tbody>
-            {TN_SOCIAL.rows.map((row) => {
+            {social.rows.map((row) => {
               const total = row.platform === "Total";
               return (
                 <tr key={row.platform} className={cn("border-t border-border/50", total && "bg-muted/15 font-semibold")}>
@@ -108,12 +108,12 @@ function SocialMediaPanel({ compact }: { compact: boolean }) {
 
       <div className="mt-2.5">
         <div className="flex items-center justify-between text-[8.5px] font-semibold text-muted-foreground">
-          <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm bg-[#2fbf4a]" />Organic {TN_SOCIAL.organicPct}%</span>
-          <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm bg-saffron" />Paid {TN_SOCIAL.paidPct}%</span>
+          <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm bg-[#2fbf4a]" />Organic {social.organicPct}%</span>
+          <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm bg-saffron" />Paid {social.paidPct}%</span>
         </div>
-        <div className="mt-1 flex h-2.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={`Meta reach split: ${TN_SOCIAL.organicPct}% organic and ${TN_SOCIAL.paidPct}% paid`}>
-          <span className="bg-[#2fbf4a]" style={{ width: `${TN_SOCIAL.organicPct}%` }} />
-          <span className="bg-saffron" style={{ width: `${TN_SOCIAL.paidPct}%` }} />
+        <div className="mt-1 flex h-2.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={`Meta reach split: ${social.organicPct}% organic and ${social.paidPct}% paid`}>
+          <span className="bg-[#2fbf4a]" style={{ width: `${social.organicPct}%` }} />
+          <span className="bg-saffron" style={{ width: `${social.paidPct}%` }} />
         </div>
       </div>
     </div>
@@ -144,12 +144,12 @@ function DisplayPartyCell({ group, compact }: { group: DisplayGroup; compact: bo
 }
 
 export default function TamilNaduRail({
-  scope, tab, onTab, onExpand, theme, selectedYear, isStatewide, opinionPoll, actualShares,
+  scope, tab, onTab, onExpand, theme, selectedYear, isStatewide, opinionPoll, exitPoll, social, actualShares,
   view, onView, panelWidth = 500,
 }: {
   scope: TnScopeResult; tab: TnTab; onTab: (t: TnTab) => void; onExpand: () => void;
   theme: "light" | "dark"; selectedYear: TnYear | "2026"; isStatewide: boolean;
-  opinionPoll: OpinionPollView; actualShares: TnShares | null;
+  opinionPoll: OpinionPollView; exitPoll: TnExitPollView; social: TnSocial; actualShares: TnShares | null;
   view: TnView; onView: (view: TnView) => void; panelWidth?: number;
 }) {
   const reduced = usePrefersReducedMotion();
@@ -294,7 +294,7 @@ export default function TamilNaduRail({
       </div>
 
       {view === "social" ? (
-        <SocialMediaPanel compact={compact} />
+        <SocialMediaPanel compact={compact} social={social} />
       ) : (
         <>
           {isStatewide ? (
@@ -314,7 +314,7 @@ export default function TamilNaduRail({
                   {displayGroups.map((group) => (
                     <tr key={group.key} className="border-t border-border/50">
                       <th scope="row" className={cn("px-1.5 text-left font-medium", rowPad)}><DisplayPartyCell group={group} compact={compact} /></th>
-                      <td className={cn("px-1 text-right tabular-nums", rowPad)}>{tnPct(sumShares(AMI_EXIT_POLL.shares, group.groups))}</td>
+                      <td className={cn("px-1 text-right tabular-nums", rowPad)}>{tnPct(sumShares(exitPoll.shares, group.groups))}</td>
                       <td className={cn("px-1 text-right tabular-nums", rowPad)}>{tnPct(opinionPoll.available ? sumShares(opinionPoll.shares, group.groups) : null)}</td>
                       <td className={cn("border-l border-border/60 px-1 text-right tabular-nums", rowPad)}>{tnPct(sumShares(actualShares, group.groups))}</td>
                     </tr>
@@ -324,14 +324,15 @@ export default function TamilNaduRail({
             </div>
           ) : (
             <div className="mt-2 overflow-x-auto rounded-lg border border-border/70">
-              <table className={cn("w-full table-fixed border-collapse", compact ? "min-w-[312px] text-[8.5px]" : "min-w-[390px] text-[9.5px]")}>
-                <caption className="sr-only">{scope.label} local survey estimate, {baselineLabel} historical result and local actual availability.</caption>
-                <colgroup><col className="w-[34%]" /><col className="w-[22%]" /><col className="w-[22%]" /><col className="w-[22%]" /></colgroup>
+              <table className={cn("w-full table-fixed border-collapse", compact ? "min-w-[360px] text-[8.5px]" : "min-w-[430px] text-[9.5px]")}>
+                <caption className="sr-only">{scope.label} local survey estimate, {baselineLabel} historical result, statewide opinion availability and local actual availability.</caption>
+                <colgroup><col className="w-[30%]" /><col className="w-[19%]" /><col className="w-[17%]" /><col className="w-[17%]" /><col className="w-[17%]" /></colgroup>
                 <thead>
                   <tr className="border-b border-border/70 text-left text-[8px] uppercase tracking-wide text-muted-foreground">
                     <th scope="col" className={cn("px-1.5 text-left font-semibold", compact ? "py-1" : "py-1.5")}>Party</th>
                     <th scope="col" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Survey Estimate</th>
                     <th scope="col" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>{baselineLabel} Result</th>
+                    <th scope="col" title="Opinion Poll is statewide only" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Opinion Poll</th>
                     <th scope="col" className={cn("border-l border-border/60 px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Actual Result</th>
                   </tr>
                 </thead>
@@ -341,6 +342,7 @@ export default function TamilNaduRail({
                       <th scope="row" className={cn("px-1.5 text-left font-medium", rowPad)}><DisplayPartyCell group={group} compact={compact} /></th>
                       <td className={cn("px-1 text-right font-semibold tabular-nums", rowPad)}>{tnPct(currentValue(group))}</td>
                       <td className={cn("px-1 text-right tabular-nums text-muted-foreground", rowPad)} title={baselineTitle(group)}>{tnPct(baselineValue(group))}</td>
+                      <td className={cn("px-1 text-right tabular-nums text-muted-foreground", rowPad)} title="Opinion Poll is statewide only">—</td>
                       <td className={cn("border-l border-border/60 px-1 text-right tabular-nums text-muted-foreground", rowPad)}>—</td>
                     </tr>
                   ))}
@@ -378,6 +380,7 @@ export default function TamilNaduRail({
                     <thead>
                       <tr className="border-b border-border/70 text-[8px] uppercase tracking-wide text-muted-foreground">
                         <th className={cn("px-1 text-left", rowPad)}>Party</th>
+                        <th className={cn("px-1 text-right", rowPad)} title="Opinion Poll has no seat figures">Opinion Poll</th>
                         <th className={cn("px-1 text-right", rowPad)}>Estimated</th>
                         <th className={cn("px-1 text-right", rowPad)}>Actual 2026</th>
                       </tr>
@@ -394,6 +397,7 @@ export default function TamilNaduRail({
                               </span>
                             </span>
                           </td>
+                          <td className={cn("px-1 text-right tabular-nums text-muted-foreground", rowPad)} title="Opinion Poll has no seat figures">—</td>
                           <td className={cn("px-1 text-right font-semibold tabular-nums", rowPad)}>{(scope.estimatedSeats as Partial<Record<TnSeatGroup, number>>)[g] ?? "—"}</td>
                           <td className={cn("px-1 text-right tabular-nums", rowPad)}>{(scope.actualSeats as Partial<Record<TnSeatGroup, number>>)[g] ?? "—"}</td>
                         </tr>
@@ -402,6 +406,7 @@ export default function TamilNaduRail({
                     <tfoot>
                       <tr className="border-t border-border bg-muted/20 text-[9px]">
                         <td className={cn("px-1", rowPad)}>Total</td>
+                        <td className={cn("px-1 text-right tabular-nums text-muted-foreground", rowPad)}>—</td>
                         <td className={cn("px-1 text-right tabular-nums", rowPad)}>{estimatedTotal ?? "—"}</td>
                         <td className={cn("px-1 text-right tabular-nums", rowPad)}>{actualTotal ?? "—"}</td>
                       </tr>

@@ -281,7 +281,7 @@ export type PinAllocationSummary = {
   unresolvedGeography: { noDistrict: number; noCandidates: string[] };
   ambiguousPins: string[];
   reference: { name: string; source: string; version: string; note: string; completeness: "subset" | "complete" };
-  crosswalk: { constituencies: number; version: string; source: string };
+  pinMapping: { constituencies: number; version: string; source: string };
   allocationVersion: string;
   reconcile: { assignedPlusUnresolved: number; eligible: number; ok: boolean; partyOk: boolean; pinDistrictOk: boolean };
 };
@@ -351,7 +351,7 @@ export function summarizeAllocation(records: AssignedRecord[]): PinAllocationSum
     unresolvedGeography: { noDistrict, noCandidates: [...noCandidates].sort() },
     ambiguousPins: referenceAudit().ambiguousPins,
     reference: { name: POSTAL_REFERENCE.name, source: POSTAL_REFERENCE.source, version: POSTAL_REFERENCE.version, note: POSTAL_REFERENCE.note, completeness: POSTAL_REFERENCE.completeness },
-    crosswalk: { constituencies: cw.constituencies, version: cw.version, source: AC_CROSSWALK_SOURCE.source },
+    pinMapping: { constituencies: cw.constituencies, version: cw.version, source: AC_CROSSWALK_SOURCE.source },
     allocationVersion: PIN_ALLOCATION_VERSION,
     reconcile: {
       assignedPlusUnresolved: assigned + unresolved,

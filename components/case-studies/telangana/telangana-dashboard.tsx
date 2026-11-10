@@ -12,9 +12,9 @@ import {
   type Oct26, type ShareSet,
 } from "@/lib/telangana/constants";
 import {
-  ELECTION_YEARS, YEAR_LABEL, baselineYear, deviceSummary, historicalAc, historicalShares,
-  historicalTotal, winnerColour, winnerLabel, winnerSeats, type ElectionYear,
-} from "@/lib/telangana/history";
+  ELECTION_YEARS, YEAR_LABEL, baselineYear, historicalAc, historicalShares,
+  historicalTotal, setHistoryBundle, winnerColour, winnerLabel, winnerSeats, type ElectionYear,
+} from "@/lib/telangana/history-runtime";
 import TelanganaRail, { type ScopeResult } from "./telangana-rail";
 import CaseStudySplit from "@/components/case-studies/shared/case-study-split";
 import type { MapTheme } from "./telangana-map";
@@ -119,6 +119,7 @@ function SearchSelect({
 export default function TelanganaDashboard() {
   const { theme } = useTheme();
   const [data, setData] = useState<Oct26 | null>(null);
+  const [historyReady, setHistoryReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -148,6 +149,23 @@ export default function TelanganaDashboard() {
       .catch((e) => {
         if (cancelled || (e as Error)?.name === "AbortError") return;
         setError(e instanceof Error ? e.message : "Could not load Telangana data");
+      });
+    return () => { cancelled = true; controller.abort(); };
+  }, [reloadKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    fetch("/api/public/case-studies/telangana/history", { cache: "no-store", signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((payload) => {
+        if (cancelled || !payload?.history) return;
+        setHistoryBundle(payload.history);
+        setHistoryReady(true);
+      })
+      .catch((e) => {
+        if (cancelled || (e as Error)?.name === "AbortError") return;
+        setError(e instanceof Error ? e.message : "Could not load Telangana history");
       });
     return () => { cancelled = true; controller.abort(); };
   }, [reloadKey]);
@@ -255,7 +273,14 @@ export default function TelanganaDashboard() {
       </main>
     );
   }
-  if (!data) {
+  if (error && data && !historyReady) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-background px-6 text-center text-foreground">
+        <div><h1 className="font-display text-2xl font-semibold">Telangana history unavailable</h1><p className="mt-2 text-sm text-muted-foreground">{error}</p></div>
+      </main>
+    );
+  }
+  if (!data || !historyReady) {
     return (
       <main className="grid min-h-screen place-items-center bg-background text-foreground">
         <p className="text-sm text-muted-foreground">Loading Telangana election intelligence…</p>
@@ -328,7 +353,7 @@ export default function TelanganaDashboard() {
           )}
           map={(
             <div className="relative h-full min-h-0">
-              <TelanganaMap acs={acs} district={district} ac={acNo} year={year} layer="party"
+              <TelanganaMap acs={acs} district={district} ac={acNo} year={year}
                 theme={(theme === "light" ? "light" : "dark") as MapTheme} fitKey={fitKey}
                 onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={reset} />
               {(district || currentAc) && (

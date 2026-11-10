@@ -96,7 +96,7 @@ export type Oct26 = {
   statewide: {
     name: string; acs: number; votes2023: number;
     actual: ShareSet; prediction: ShareSet;
-    answered2028: number; changePp: ShareSet;
+    answered2028: number; swingPp: ShareSet;
     leads: Record<string, number>; leader: Party | "Tie"; tied: Party[]; marginPp: number;
   };
   districts: DistrictRow[];
@@ -142,7 +142,7 @@ export function leaderOf(shares: ShareSet, parties: Party[] = PARTIES): { leader
   };
 }
 
-export function changePp(actual: ShareSet, next: ShareSet): ShareSet {
+export function swingPp(actual: ShareSet, next: ShareSet): ShareSet {
   const out: ShareSet = { ...EMPTY };
   for (const p of PARTIES) out[p] = (next[p] - actual[p]) * 100;
   return out;

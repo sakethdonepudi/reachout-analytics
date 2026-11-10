@@ -1,4 +1,5 @@
-import type { TnShares } from "@/lib/tamil-nadu/model";
+import "server-only";
+import type { TnSeatGroup, TnShares } from "@/lib/tamil-nadu/model";
 
 /** Statewide Tamil Nadu comparison sources used by the case-study rail. */
 
@@ -28,24 +29,48 @@ export const AMI_EXIT_POLL = {
  * column. A published opinion dataset can still replace this fallback through
  * the summary API if one is imported later.
  */
+const TN_OPINION_VALID = 31_672;
+const TN_OPINION_COUNTS = {
+  TVK: 10_866,
+  "AIADMK+BJP+PMK+AMMK": 8_866,
+  "DMK+INC+VCK": 9_518,
+  NTK: 2_173,
+  NOTA: 249,
+} as const;
+
+/**
+ * Owner-designated Tamil Nadu Opinion Poll.
+ *
+ * Source: data/sources/tamil-nadu/SAKET_TN_District_Estimate_opinion.xlsx
+ * SHA-256: c86dd033e4c87b6341ca1990ff67e55194f2371b35fbb8752fee8e7883e82583
+ * Grand Total row of the "AC Estimate" sheet: 31,672 responses.
+ * Others is not a survey category; the combined Others & NOTA cell is NOTA only.
+ */
 export const TN_OPINION_POLL = {
   label: "Opinion Poll",
-  sourceFile: null,
-  denominator: null,
-  weighting: null,
-  note: "No Tamil Nadu Opinion Poll dataset with real rows is available. The supplied Opinion Poll sheet is empty; the v3 raw shares are exit-poll party choice, not an opinion poll.",
-  available: false,
-  shares: null,
+  sourceFile: "SAKET_TN_District_Estimate_opinion.xlsx",
+  sha256: "c86dd033e4c87b6341ca1990ff67e55194f2371b35fbb8752fee8e7883e82583",
+  denominator: TN_OPINION_VALID,
+  weighting: "unweighted",
+  note: "Designated as the Tamil Nadu opinion poll by the owner on 2026-11-11. Same survey responses as the v3 raw shares.",
+  available: true,
+  counts: TN_OPINION_COUNTS,
+  shares: {
+    TVK: TN_OPINION_COUNTS.TVK / TN_OPINION_VALID,
+    "AIADMK+BJP+PMK+AMMK": TN_OPINION_COUNTS["AIADMK+BJP+PMK+AMMK"] / TN_OPINION_VALID,
+    "DMK+INC+VCK": TN_OPINION_COUNTS["DMK+INC+VCK"] / TN_OPINION_VALID,
+    NTK: TN_OPINION_COUNTS.NTK / TN_OPINION_VALID,
+    NOTA: TN_OPINION_COUNTS.NOTA / TN_OPINION_VALID,
+  } as TnShares,
 };
 
 /**
  * Verified 2026 ECI result, grouped for the case-study columns.
  *
- * Grouping (fixed here so the UI never re-derives it):
- *   AIADMK+ = ADMK + BJP + PMK + AMMK
- *   DMK+    = DMK + INC + VCK
- *   TVK, NTK, NOTA stay separate
- *   Others  = every other party and independent
+ * AIADMK+ = ADMK + BJP + PMK + AMMK
+ * DMK+    = DMK + INC + VCK + CPI + CPI(M) + IUML + DMDK
+ * TVK, NTK and NOTA stay separate
+ * Others  = all remaining parties and independents
  *
  * Counts were recomputed from the 234 ECI 2026 constituency results as
  * published by IndiaVotes, including the NOTA count on every AC page. The ECI
@@ -54,13 +79,33 @@ export const TN_OPINION_POLL = {
  * Denominator = total valid votes = 49,324,121.
  */
 const ECI_VALID_VOTES = 49_324_121;
-const ECI_COUNTS = {
+
+/** Per-party counts, kept apart so the DMK+ alliance move is auditable. */
+const ECI_PARTY_COUNTS = {
   TVK: 17_226_209,
-  "AIADMK+BJP+PMK+AMMK": 13_425_260,
-  "DMK+INC+VCK": 14_130_512,
+  ADMK: 10_462_146,
+  BJP: 1_467_024,
+  PMK: 1_070_745,
+  AMMK: 425_345,
+  DMK: 11_929_144,
+  INC: 1_661_312,
+  VCK: 540_056,
+  CPI: 326_488,
+  "CPI(M)": 293_817,
+  IUML: 142_465,
+  DMDK: 589_500,
   NTK: 1_972_537,
-  Others: 2_369_802,
   NOTA: 199_801,
+  Others: 1_017_532,
+} as const;
+
+const ECI_COUNTS = {
+  TVK: ECI_PARTY_COUNTS.TVK,
+  "AIADMK+BJP+PMK+AMMK": ECI_PARTY_COUNTS.ADMK + ECI_PARTY_COUNTS.BJP + ECI_PARTY_COUNTS.PMK + ECI_PARTY_COUNTS.AMMK,
+  "DMK+INC+VCK": ECI_PARTY_COUNTS.DMK + ECI_PARTY_COUNTS.INC + ECI_PARTY_COUNTS.VCK + ECI_PARTY_COUNTS.CPI + ECI_PARTY_COUNTS["CPI(M)"] + ECI_PARTY_COUNTS.IUML + ECI_PARTY_COUNTS.DMDK,
+  NTK: ECI_PARTY_COUNTS.NTK,
+  Others: ECI_PARTY_COUNTS.Others,
+  NOTA: ECI_PARTY_COUNTS.NOTA,
 } as const;
 
 export const ECI_ACTUAL = {
@@ -70,16 +115,22 @@ export const ECI_ACTUAL = {
   mirror: "https://www.indiavotes.com/vidhan-sabha/tamil-nadu/2026/",
   sourceName: "Election Commission of India",
   declaration: "Declared 4 May 2026",
-  verifiedAt: "2026-11-10",
+  verifiedAt: "2026-11-11",
   denominator: ECI_VALID_VOTES,
   counts: ECI_COUNTS,
+  partyCounts: ECI_PARTY_COUNTS,
+  seats: {
+    TVK: 108,
+    "AIADMK+BJP+PMK+AMMK": 53,
+    "DMK+INC+VCK": 73,
+  } as Record<TnSeatGroup, number>,
   mapping: {
-    "AIADMK+BJP+PMK+AMMK": ["ADMK", "BJP", "PMK", "AMMK"],
-    "DMK+INC+VCK": ["DMK", "INC", "VCK"],
+    "AIADMK+": ["ADMK", "BJP", "PMK", "AMMK"],
+    "DMK+": ["DMK", "INC", "VCK", "CPI", "CPI(M)", "IUML", "DMDK"],
     TVK: ["TVK"],
     NTK: ["Naam Tamilar Katchi"],
     NOTA: ["NOTA"],
-    Others: "All remaining parties and independents (CPI, CPI(M), IUML, DMDK, ...)",
+    Others: "All remaining parties and independents",
   },
   shares: {
     TVK: ECI_COUNTS.TVK / ECI_VALID_VOTES,
@@ -89,7 +140,7 @@ export const ECI_ACTUAL = {
     Others: ECI_COUNTS.Others / ECI_VALID_VOTES,
     NOTA: ECI_COUNTS.NOTA / ECI_VALID_VOTES,
   } as TnShares,
-  note: "Alliances: AIADMK+ = ADMK + BJP + PMK + AMMK; DMK+ = DMK + INC + VCK. TVK, NTK, NOTA and Others stay separate. Total valid votes = 49,324,121.",
+  note: "Alliances: AIADMK+ = ADMK + BJP + PMK + AMMK; DMK+ = DMK + INC + VCK + CPI + CPI(M) + IUML + DMDK. TVK, NTK, NOTA and Others stay separate. Total valid votes = 49,324,121.",
 };
 
 export type SocialRow = {

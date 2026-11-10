@@ -12,7 +12,7 @@ import {
 } from "@/lib/tamil-nadu/model";
 import TamilNaduRail, { type TnScopeResult, type TnTab, type TnView } from "./tamil-nadu-rail";
 import CaseStudySplit from "@/components/case-studies/shared/case-study-split";
-import { ECI_ACTUAL, TN_OPINION_POLL } from "@/lib/tamil-nadu/comparison";
+import type { TnCaseData } from "@/lib/tamil-nadu/view-data";
 import type { MapTheme } from "./tamil-nadu-map";
 
 const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
@@ -25,16 +25,6 @@ const TamilNaduAnalysis = dynamic(() => import("./tamil-nadu-analysis"), {
 });
 
 type Option = { value: string; label: string; hint?: string };
-type OpinionPollState = { shares: TnShares | null; valid: number; asOf: string | null; available: boolean; source: "published" | "workbook" };
-// No genuine opinion-poll dataset is available. The supplied Opinion Poll
-// sheet is empty; published opinion data can still replace this fallback.
-const WORKBOOK_OPINION: OpinionPollState = {
-  shares: TN_OPINION_POLL.shares,
-  valid: TN_OPINION_POLL.denominator ?? 0,
-  asOf: null,
-  available: TN_OPINION_POLL.available,
-  source: "workbook",
-};
 const LABEL = "text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
 const YEARS: { id: TnYearOrCurrent; label: string }[] = [
   { id: "2011", label: "2011" }, { id: "2016", label: "2016" }, { id: "2021", label: "2021" }, { id: "2026", label: "2026" },
@@ -100,10 +90,10 @@ function SearchSelect({ label, value, options, placeholder, onChange, disabled =
   );
 }
 
-export default function TamilNaduDashboard() {
+export default function TamilNaduDashboard({ caseData }: { caseData: TnCaseData }) {
   const { theme } = useTheme();
+  const opinionPoll = caseData.opinionPoll;
   const [data, setData] = useState<TnAggregates | null>(null);
-  const [opinionPoll, setOpinionPoll] = useState<OpinionPollState>(WORKBOOK_OPINION);
   const [error, setError] = useState<string | null>(null);
   const [district, setDistrict] = useState<string | null>(null);
   const [acNo, setAcNo] = useState<number | null>(null);
@@ -120,24 +110,6 @@ export default function TamilNaduDashboard() {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((d: TnAggregates) => setData(d))
       .catch((e) => { if ((e as Error)?.name !== "AbortError") setError(e instanceof Error ? e.message : "Could not load Tamil Nadu data"); });
-
-    // Prefer a published opinion-poll dataset. If none is available, every
-    // Opinion Poll cell stays unavailable; no exit-poll figures are substituted.
-    fetch("/api/public/case-studies/tamil-nadu/summary", { cache: "no-store", signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        const rows = Array.isArray(d?.opinion?.shares) ? d.opinion.shares as Array<{ party?: string; count?: number; pct?: number }> : [];
-        if (!d?.published || !rows.length) return;
-        const shares: TnShares = {};
-        for (const row of rows) {
-          if (!row.party || !(TN_GROUPS as readonly string[]).includes(row.party) || typeof row.pct !== "number") continue;
-          shares[row.party as TnGroup] = row.pct / 100;
-        }
-        if (!Object.keys(shares).length) return;
-        const valid = Number(d.opinion.counts?.valid ?? rows.reduce((sum, row) => sum + (row.count ?? 0), 0));
-        setOpinionPoll({ shares, valid, asOf: d.opinion.asOf ?? null, available: true, source: "published" });
-      })
-      .catch(() => { /* unavailable; the table shows the explicit unavailable state */ });
 
     return () => controller.abort();
   }, []);
@@ -159,7 +131,7 @@ export default function TamilNaduDashboard() {
     : currentDistrict?.finalSeats ?? data?.statewide.finalSeats ?? emptySeats;
   const actualSeats = currentAc
     ? { ...emptySeats, ...(currentAc.actual2026.winner ? { [currentAc.actual2026.winner]: 1 } : {}) }
-    : currentDistrict?.actualSeats ?? data?.statewide.actualSeats ?? emptySeats;
+    : currentDistrict?.actualSeats ?? caseData.actual.seats ?? emptySeats;
   const scopeLabel = currentAc ? currentAc.name : currentDistrict ? currentDistrict.name : "Tamil Nadu";
 
   const scope = useMemo<TnScopeResult>(() => {
@@ -264,7 +236,7 @@ export default function TamilNaduDashboard() {
             </div>
           )}
           panel={(panelWidth) => (
-            <TamilNaduRail scope={scope} tab={tab} onTab={setTab} onExpand={openAnalysis} theme={theme === "light" ? "light" : "dark"} selectedYear={year} isStatewide={isStatewide} opinionPoll={opinionPoll} actualShares={ECI_ACTUAL.shares} view={view} onView={setView} panelWidth={panelWidth} />
+            <TamilNaduRail scope={scope} tab={tab} onTab={setTab} onExpand={openAnalysis} theme={theme === "light" ? "light" : "dark"} selectedYear={year} isStatewide={isStatewide} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} social={caseData.social} actualShares={caseData.actual.shares} view={view} onView={setView} panelWidth={panelWidth} />
           )}
         />
       </section>
@@ -272,7 +244,7 @@ export default function TamilNaduDashboard() {
 
       {chartOpen && (
         <TamilNaduAnalysis open={chartOpen} onClose={closeAnalysis} data={data} theme={theme === "light" ? "light" : "dark"}
-          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} onSelectAc={selectAc} opinionPoll={opinionPoll} initialView={view} initialTab={tab} />
+          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} onSelectAc={selectAc} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} eciActual={caseData.actual} social={caseData.social} forecasters={caseData.forecasters} forecastActualSeats={caseData.forecastActualSeats} initialView={view} initialTab={tab} />
       )}
     </div>
   );

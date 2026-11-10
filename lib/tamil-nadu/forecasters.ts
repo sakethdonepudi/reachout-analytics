@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * TVK seat projections from the supplied multi-state HTML report.
  * Only the Tamil Nadu section is used.
