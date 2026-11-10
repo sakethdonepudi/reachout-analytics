@@ -1,12 +1,10 @@
 const REQUIRED = [
-  "GOOGLE_CLIENT_ID",
-  "GOOGLE_CLIENT_SECRET",
-  "OWNER_EMAILS",
-  "TOKEN_ENCRYPTION_KEY",
+  "ADMIN_PASSWORD",
+  "CLIENT_PASSWORD",
   "ADMIN_SESSION_SECRET",
+  "MONGODB_URI",
+  "TOKEN_ENCRYPTION_KEY",
   "CRON_SECRET",
-  "TURNSTILE_SECRET_KEY",
-  "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
 ] as const;
 
 /** Meta is optional: without it the site still starts and Meta Ads is disabled. */
@@ -16,6 +14,15 @@ export function metaConfigWarning(): string | null {
   if (!process.env.META_APP_SECRET) missing.push("META_APP_SECRET");
   if (!missing.length) return null;
   return `Meta Ads is disabled: ${missing.join(" and ")} not configured.`;
+}
+
+export function turnstileConfigProblems(): string[] {
+  if (process.env.TURNSTILE_ENABLED !== "true") return [];
+  const problems: string[] = [];
+  for (const key of ["TURNSTILE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY"] as const) {
+    if (!process.env[key]) problems.push(`${key} is required when TURNSTILE_ENABLED=true`);
+  }
+  return problems;
 }
 
 export function secretProblems(): string[] {
@@ -34,9 +41,12 @@ export function secretProblems(): string[] {
       problems.push("TOKEN_ENCRYPTION_KEY is not valid base64");
     }
   }
-  const owners = String(process.env.OWNER_EMAILS ?? "").split(",").map((x) => x.trim()).filter(Boolean);
-  if (process.env.OWNER_EMAILS && owners.length === 0) problems.push("OWNER_EMAILS must contain at least one email");
-  if (process.env.NODE_ENV === "production" && !process.env.MONGODB_URI) problems.push("MONGODB_URI is missing");
+  const ownerPassword = process.env.ADMIN_PASSWORD;
+  const clientPassword = process.env.CLIENT_PASSWORD;
+  if (ownerPassword && clientPassword && ownerPassword === clientPassword) {
+    problems.push("ADMIN_PASSWORD and CLIENT_PASSWORD must be different");
+  }
+  problems.push(...turnstileConfigProblems());
   return problems;
 }
 

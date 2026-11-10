@@ -9,7 +9,6 @@ export type SessionRole = "owner" | "client" | null;
 export function useSession() {
   const [state, setState] = useState<SessionState>("loading");
   const [role, setRole] = useState<SessionRole>(null);
-  const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -20,11 +19,10 @@ export function useSession() {
         const data = await r.json();
         setState("auth");
         setRole(data.role === "client" ? "client" : "owner");
-        setEmail(typeof data.email === "string" ? data.email : null);
       })
       .catch(() => alive && setState("anon"));
     return () => { alive = false; };
   }, []);
 
-  return { state, authed: state === "auth", anon: state === "anon", role, email };
+  return { state, authed: state === "auth", anon: state === "anon", role };
 }

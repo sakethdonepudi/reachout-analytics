@@ -1,8 +1,17 @@
 /**
  * Server-side Cloudflare Turnstile verification.
  * The secret key never leaves the server. Tokens are single-use and expire.
+ *
+ * Turnstile is opt-in. When TURNSTILE_ENABLED is not "true", the login page
+ * does not load the widget and the server does not call Cloudflare.
  */
+
+export function turnstileEnabled(): boolean {
+  return process.env.TURNSTILE_ENABLED === "true";
+}
+
 export async function verifyTurnstile(token: string, ip: string): Promise<{ configured: boolean; ok: boolean; error?: string }> {
+  if (!turnstileEnabled()) return { configured: false, ok: true };
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (!secret) return { configured: false, ok: false, error: "CAPTCHA not configured" };
   if (!token) return { configured: true, ok: false, error: "Missing CAPTCHA token" };

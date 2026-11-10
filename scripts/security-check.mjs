@@ -54,7 +54,7 @@ report(bypass.length === 0, "no CASE_STUDY_DEV_BYPASS in tracked files");
 const files = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n").filter((f) => f && f !== ".env.example" && !f.startsWith(".context/") && !f.startsWith("node_modules/") && !f.startsWith("scripts/security-"));
 const secretPatterns = [
   /mongodb(?:\+srv)?:\/\/[^\s<"']+:[^\s<"']+@/i,
-  /(?:ADMIN_PASSWORD|TOKEN_ENCRYPTION_KEY|GOOGLE_CLIENT_SECRET|META_APP_SECRET|ADMIN_SESSION_SECRET)\s*=\s*["']?(?!\[SENSITIVE\]|$)[^\s#"']{6,}/,
+  /(?:ADMIN_PASSWORD|CLIENT_PASSWORD|TOKEN_ENCRYPTION_KEY|META_APP_SECRET|ADMIN_SESSION_SECRET)\s*=\s*["']?(?!\[SENSITIVE\]|$)[^\s#"']{6,}/,
   /(?:sk_live_|AIza[0-9A-Za-z_-]{35})/,
 ];
 const hits = [];

@@ -62,7 +62,7 @@ export function safeNextPath(value: string | null | undefined, role: Role): stri
   const url = new URL(value, "https://internal.invalid");
   if (url.origin !== "https://internal.invalid") return null;
   const path = `${url.pathname}${url.search}${url.hash}`;
-  if (path.startsWith("/login") || path.startsWith("/no-access")) return null;
+  if (path.startsWith("/login")) return null;
   if (path.startsWith("/api/")) return null;
   if (!canAccess(role, url.pathname)) return null;
   return path;

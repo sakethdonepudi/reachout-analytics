@@ -240,7 +240,27 @@ export default function AdminPortal() {
     finally { setBusy(false); }
   }
 
+  async function ensureRecent(): Promise<boolean> {
+    const session = await fetch("/api/auth/session", { cache: "no-store" });
+    if (!session.ok) { router.replace("/login"); return false; }
+    const data = await session.json();
+    if (data.recent) return true;
+    const password = window.prompt("Re-enter the owner password to continue");
+    if (!password) return false;
+    const res = await fetch("/api/auth/reauth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) {
+      window.alert(res.status === 401 ? "Incorrect password" : "Could not re-authenticate");
+      return false;
+    }
+    return true;
+  }
+
   async function applyPinScenario() {
+    if (!(await ensureRecent())) return;
     if (!pinConfirm) { setPinMsg("Tick the confirmation box to commit the allocation."); return; }
     setPinBusy(true); setPinMsg("Applying…");
     try {
@@ -431,7 +451,7 @@ export default function AdminPortal() {
                 </div>
                 <div className="ml-auto flex gap-2">
                   <a href="/api/data/template" className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] hover:bg-elevated"><FileSpreadsheet className="size-4" /> Template</a>
-                  <a href={`/api/data/export?caseStudyId=${encodeURIComponent(caseId)}`} className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] hover:bg-elevated"><Download className="size-4" /> Export</a>
+                  <a href={`/api/data/export?caseStudyId=${encodeURIComponent(caseId)}`} onClick={async (event) => { if (!(await ensureRecent())) event.preventDefault(); }} className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] hover:bg-elevated"><Download className="size-4" /> Export</a>
                 </div>
               </div>
 
@@ -746,7 +766,7 @@ export default function AdminPortal() {
                 </div>
                 <div className="rounded-xl border border-border bg-card/60 p-4">
                   <p className="font-semibold">Environment</p>
-                  <p className="mt-1 text-muted-foreground">Secrets are server-side only (ADMIN_PASSWORD, ADMIN_SESSION_SECRET, MONGODB_URI). They are never exposed to the browser. Uploads and exports are admin-only.</p>
+                  <p className="mt-1 text-muted-foreground">Secrets are server-side only (ADMIN_PASSWORD, CLIENT_PASSWORD, ADMIN_SESSION_SECRET, MONGODB_URI, TOKEN_ENCRYPTION_KEY, CRON_SECRET). They are never exposed to the browser. Uploads and exports are admin-only.</p>
                 </div>
               </div>
             </div>

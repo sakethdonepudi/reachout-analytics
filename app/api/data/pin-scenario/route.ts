@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireRecentAuth } from "@/lib/auth";
 import { z } from "zod";
 import { requireCsrf } from "@/lib/csrf";
 import { previewPinAssignment, applyPinAssignment, getPinScenario, isConfigured } from "@/lib/poll-store";
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const csrf = requireCsrf(req);
   if (csrf) return csrf;
-  const auth = await requireAdmin(req);
+  const auth = await requireRecentAuth(req);
   if ("deny" in auth) return auth.deny;
   if (!(await isConfigured())) return Response.json({ ok: false, error: "Database not configured" }, { status: 503 });
 

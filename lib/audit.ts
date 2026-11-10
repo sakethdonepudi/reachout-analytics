@@ -6,9 +6,9 @@ import type { Role } from "@/lib/access";
 const DB = process.env.MONGODB_DB || "reachout";
 
 export type AuditAction =
-  | "login_success" | "login_failed" | "login_denied" | "logout" | "logout_all"
+  | "login_success" | "login_failed" | "login_denied" | "reauth" | "logout" | "logout_all"
   | "role_denied" | "meta_connect" | "meta_disconnect" | "meta_settings"
-  | "client_added" | "client_removed" | "export" | "csrf_rejected";
+  | "export" | "csrf_rejected";
 
 export async function audit(input: {
   action: AuditAction;

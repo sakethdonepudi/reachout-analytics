@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -9,20 +9,10 @@ import ThemeToggle from "@/components/site/theme-toggle";
 import Turnstile from "@/components/site/turnstile";
 import { useTheme } from "@/components/theme-provider";
 
-function GoogleMark() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
-      <path fill="#4285F4" d="M23.5 12.27c0-.8-.07-1.57-.2-2.32H12v4.4h6.45a5.52 5.52 0 0 1-2.39 3.62v3h3.86c2.26-2.08 3.58-5.15 3.58-8.7Z" />
-      <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.86-3c-1.07.72-2.44 1.15-4.09 1.15-3.14 0-5.8-2.12-6.75-4.97H1.26v3.09A12 12 0 0 0 12 24Z" />
-      <path fill="#FBBC05" d="M5.25 14.28A7.2 7.2 0 0 1 4.87 12c0-.79.14-1.56.38-2.28V6.63H1.26A12 12 0 0 0 0 12c0 1.94.46 3.77 1.26 5.37l3.99-3.09Z" />
-      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.26 6.63l3.99 3.09C6.2 6.87 8.86 4.75 12 4.75Z" />
-    </svg>
-  );
-}
-
-function LoginClient({ googleEnabled, nonce }: { googleEnabled: boolean; nonce?: string }) {
+function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; nonce?: string }) {
   const { theme } = useTheme();
   const search = useSearchParams();
+  const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,14 +21,41 @@ function LoginClient({ googleEnabled, nonce }: { googleEnabled: boolean; nonce?:
   const next = search.get("next") ?? "";
   const queryError = search.get("error");
 
-  function signIn() {
-    if (!googleEnabled) return;
-    if (!token) { setError("Complete the CAPTCHA to continue."); return; }
+  async function signIn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (turnstileEnabled && !token) {
+      setError("Complete the CAPTCHA to continue.");
+      return;
+    }
     setLoading(true);
     setError("");
-    const params = new URLSearchParams({ turnstile: token });
-    if (next) params.set("next", next);
-    window.location.assign(`/api/auth/google/start?${params.toString()}`);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, next, turnstileToken: token }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && typeof data.redirect === "string") {
+        window.location.assign(data.redirect);
+        return;
+      }
+      setError(
+        res.status === 401
+          ? "Incorrect password"
+          : res.status === 429
+            ? "Too many attempts. Try again later."
+            : typeof data.error === "string"
+              ? data.error
+              : "Sign-in failed. Please try again.",
+      );
+      setPassword("");
+      if (turnstileEnabled) setResetNonce((value) => value + 1);
+    } catch {
+      setError("Sign-in failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -59,7 +76,7 @@ function LoginClient({ googleEnabled, nonce }: { googleEnabled: boolean; nonce?:
             <span className="text-gradient-saffron font-serif font-normal italic">behind sign-in.</span>
           </p>
           <p className="mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground">
-            The state selector, campaign workspace and election dashboards are restricted to the ReachOut team. Continue with Google to open your workspace.
+            The state selector, campaign workspace and election dashboards are restricted to the ReachOut team. Enter the workspace password to open your workspace.
           </p>
           <ul className="mt-8 space-y-2.5 text-[13px] text-foreground/70">
             {["Case-study dashboards", "Campaign and Meta workspace", "Protected exports and data"].map((item) => (
@@ -76,46 +93,58 @@ function LoginClient({ googleEnabled, nonce }: { googleEnabled: boolean; nonce?:
           <div className="rounded-3xl border border-border bg-card p-6 shadow-[0_24px_60px_-34px_rgba(15,20,30,.45)]">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Secure access</p>
             <h1 className="mt-2 font-display text-2xl font-semibold tracking-[-0.02em]">Sign in to ReachOut</h1>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">Use your approved Google account to continue.</p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">Enter the owner or client password to continue.</p>
 
-            {!googleEnabled && (
-              <p role="alert" className="mt-5 rounded-xl border border-saffron/30 bg-saffron/10 px-3 py-2 text-[12.5px] text-saffron-2">
-                Google sign-in is not configured on this deployment.
-              </p>
-            )}
             {(error || queryError) && (
               <p role="alert" className="mt-5 rounded-xl border border-saffron/30 bg-saffron/10 px-3 py-2 text-[12.5px] text-saffron-2">
                 {error || "Sign-in could not be completed. Please try again."}
               </p>
             )}
 
-            <div className="mt-6 flex justify-center">
-              <Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} />
-            </div>
-            {!token && <p className="mt-2 text-center text-[12px] text-muted-foreground">Complete the CAPTCHA to enable sign in.</p>}
+            <form onSubmit={signIn} className="mt-5 space-y-3">
+              <label htmlFor="password" className="block text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Password</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition focus:border-saffron focus:ring-2 focus:ring-saffron/25"
+              />
 
-            <button
-              type="button"
-              onClick={signIn}
-              disabled={loading || !token || !googleEnabled}
-              className="mt-5 flex w-full items-center justify-center gap-2.5 rounded-xl border border-border bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50"
-            >
-              {loading ? <Loader2 className="size-4 animate-spin" /> : <GoogleMark />}
-              Continue with Google
-            </button>
+              {turnstileEnabled && (
+                <div className="flex justify-center">
+                  <Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} />
+                </div>
+              )}
+              {turnstileEnabled && !token && (
+                <p className="text-center text-[12px] text-muted-foreground">Complete the CAPTCHA to enable sign in.</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || (turnstileEnabled && !token)}
+                className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-border bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50"
+              >
+                {loading && <Loader2 className="size-4 animate-spin" />}
+                Sign in
+              </button>
+            </form>
 
             <div className="mt-4 text-center text-[12px] text-muted-foreground">
               <Link href="/" className="hover:text-foreground">Back to site</Link>
             </div>
           </div>
-          <p className="mt-5 text-center text-[12px] text-muted-foreground">Access is limited to approved accounts.</p>
+          <p className="mt-5 text-center text-[12px] text-muted-foreground">Access is limited to the ReachOut owner and approved clients.</p>
         </div>
       </div>
     </main>
   );
 }
 
-export default function LoginPageClient(props: { googleEnabled: boolean; nonce?: string }) {
+export default function LoginPageClient(props: { turnstileEnabled: boolean; nonce?: string }) {
   return (
     <Suspense fallback={<main className="grid min-h-[100svh] place-items-center bg-background text-sm text-muted-foreground">Loading sign in…</main>}>
       <LoginClient {...props} />

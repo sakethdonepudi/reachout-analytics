@@ -5,13 +5,15 @@ export const PROTECTED_HEADERS = {
 
 export function buildCsp(nonce: string): string {
   const dev = process.env.NODE_ENV !== "production";
+  const turnstile = process.env.TURNSTILE_ENABLED === "true";
   const script = [
     "'self'",
     `'nonce-${nonce}'`,
     "'strict-dynamic'",
-    "https://challenges.cloudflare.com",
+    ...(turnstile ? ["https://challenges.cloudflare.com"] : []),
     ...(dev ? ["'unsafe-eval'"] : []),
   ].join(" ");
+  const frames = ["https://www.facebook.com", ...(turnstile ? ["https://challenges.cloudflare.com"] : [])].join(" ");
   return [
     "default-src 'self'",
     `script-src ${script}`,
@@ -20,11 +22,11 @@ export function buildCsp(nonce: string): string {
     "font-src 'self' https://fonts.gstatic.com data:",
     "connect-src 'self'",
     "media-src 'self' https://*.fbcdn.net",
-    "frame-src https://challenges.cloudflare.com https://www.facebook.com",
+    `frame-src ${frames}`,
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'none'",
-    "form-action 'self' https://accounts.google.com https://www.facebook.com",
+    "form-action 'self' https://www.facebook.com",
     "object-src 'none'",
     "upgrade-insecure-requests",
   ].join("; ");

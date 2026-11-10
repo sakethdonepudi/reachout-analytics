@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Loader2, PlugZap, RefreshCw, ShieldCheck, Trash2, Unplug, UserPlus } from "lucide-react";
+import { ArrowLeft, Check, Loader2, PlugZap, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
 import Navbar from "@/components/site/navbar";
 import { cn } from "@/lib/utils";
 
@@ -38,21 +38,21 @@ export default function MetaSettings({ metaConfigured = true }: { metaConfigured
   const [status, setStatus] = useState<Status>(EMPTY);
   const [recent, setRecent] = useState(true);
   const [selected, setSelected] = useState<string[]>([]);
-  const [owners, setOwners] = useState<string[]>([]);
-  const [clients, setClients] = useState<string[]>([]);
   const [audit, setAudit] = useState<AuditRow[]>([]);
-  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [reauthOpen, setReauthOpen] = useState(false);
+  const [reauthPassword, setReauthPassword] = useState("");
+  const [reauthBusy, setReauthBusy] = useState(false);
+  const [reauthError, setReauthError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [statusRes, clientsRes, auditRes, sessionRes] = await Promise.all([
+      const [statusRes, auditRes, sessionRes] = await Promise.all([
         fetch("/api/meta/owner/status", { cache: "no-store" }),
-        fetch("/api/meta/owner/clients", { cache: "no-store" }),
         fetch("/api/meta/owner/audit?limit=50", { cache: "no-store" }),
         fetch("/api/auth/session", { cache: "no-store" }),
       ]);
@@ -61,11 +61,6 @@ export default function MetaSettings({ metaConfigured = true }: { metaConfigured
         setStatus(data.status ?? EMPTY);
         setSelected((data.status?.enabledAdAccounts ?? []) as string[]);
         setRecent(Boolean(data.recent));
-      }
-      if (clientsRes.ok) {
-        const data = await clientsRes.json();
-        setOwners(data.owners ?? []);
-        setClients(data.clients ?? []);
       }
       if (auditRes.ok) setAudit((await auditRes.json()).rows ?? []);
       if (sessionRes.ok) {
@@ -89,7 +84,35 @@ export default function MetaSettings({ metaConfigured = true }: { metaConfigured
   }
 
   function reauth() {
-    window.location.assign("/api/auth/google/start?next=/meta-ads/settings");
+    setReauthError("");
+    setReauthPassword("");
+    setReauthOpen(true);
+  }
+
+  async function submitReauth(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setReauthBusy(true);
+    setReauthError("");
+    try {
+      const res = await fetch("/api/auth/reauth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: reauthPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setReauthError(res.status === 401 ? "Incorrect password" : data.error || "Could not re-authenticate");
+        return;
+      }
+      setReauthOpen(false);
+      setReauthPassword("");
+      setMessage("Owner re-authenticated.");
+      await load();
+    } catch {
+      setReauthError("Could not re-authenticate");
+    } finally {
+      setReauthBusy(false);
+    }
   }
 
   async function saveSelection() {
@@ -101,7 +124,7 @@ export default function MetaSettings({ metaConfigured = true }: { metaConfigured
         body: JSON.stringify({ adAccountIds: selected }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 403 && data.code === "reauth_required") { setError("Re-authenticate to change Meta settings."); return; }
+      if (res.status === 403 && data.code === "reauth_required") { reauth(); return; }
       if (!res.ok) throw new Error("Could not save the ad account selection");
       setMessage("Ad account selection saved.");
       await load();
@@ -116,43 +139,12 @@ export default function MetaSettings({ metaConfigured = true }: { metaConfigured
     try {
       const res = await fetch("/api/meta/owner/disconnect", { method: "POST" });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 403 && data.code === "reauth_required") { setError("Re-authenticate to disconnect Meta."); return; }
+      if (res.status === 403 && data.code === "reauth_required") { reauth(); return; }
       if (!res.ok) throw new Error("Could not disconnect Meta");
       setMessage("Meta disconnected and permissions revoked.");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not disconnect Meta");
-    } finally { setBusy(""); }
-  }
-
-  async function addClient() {
-    setBusy("client"); setError(""); setMessage("");
-    try {
-      const res = await fetch("/api/meta/owner/clients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not add the client email");
-      setClients(data.clients ?? []);
-      setEmail("");
-      setMessage("Client email added.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add the client email");
-    } finally { setBusy(""); }
-  }
-
-  async function removeClient(value: string) {
-    setBusy(`remove:${value}`); setError(""); setMessage("");
-    try {
-      const res = await fetch(`/api/meta/owner/clients?email=${encodeURIComponent(value)}`, { method: "DELETE" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not remove the client email");
-      setClients(data.clients ?? []);
-      setMessage("Client email removed.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not remove the client email");
     } finally { setBusy(""); }
   }
 
@@ -254,32 +246,12 @@ export default function MetaSettings({ metaConfigured = true }: { metaConfigured
           )}
 
           <section className="mt-6 rounded-3xl border border-border bg-card p-6">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Access</p>
-            <h2 className="mt-2 font-display text-xl font-semibold">Client emails</h2>
-            <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Owner emails come from <code className="rounded bg-muted px-1">OWNER_EMAILS</code> and cannot be removed here. Added clients can open case studies and campaigns.</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="client@example.com" type="email" className="min-w-0 flex-1 rounded-xl border border-border bg-elevated/60 px-3.5 py-2.5 text-[13px] outline-none focus:border-saffron/60 focus:ring-2 focus:ring-saffron/20" />
-              <button type="button" onClick={addClient} disabled={busy === "client" || !email} className="inline-flex items-center gap-2 rounded-xl bg-saffron px-4 py-2.5 text-sm font-semibold text-[#241203] disabled:opacity-60">
-                {busy === "client" ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />} Add client
-              </button>
-            </div>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Owners (env)</p>
-                <ul className="mt-2 space-y-1 text-[12.5px]">{owners.map((owner) => <li key={owner} className="rounded-lg border border-border/60 px-2.5 py-1.5">{owner}</li>)}</ul>
-              </div>
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Clients</p>
-                <ul className="mt-2 space-y-1 text-[12.5px]">{clients.map((client) => (
-                  <li key={client} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 px-2.5 py-1.5">
-                    <span className="truncate">{client}</span>
-                    <button type="button" onClick={() => removeClient(client)} disabled={busy === `remove:${client}`} aria-label={`Remove ${client}`} className="text-muted-foreground hover:text-rose-500">
-                      {busy === `remove:${client}` ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                    </button>
-                  </li>
-                ))}</ul>
-              </div>
-            </div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Sensitive actions</p>
+            <h2 className="mt-2 font-display text-xl font-semibold">Owner re-authentication</h2>
+            <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Meta connect or disconnect, the party map and exports require the owner password again if your last sign-in was more than 15 minutes ago.</p>
+            <button type="button" onClick={reauth} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold hover:bg-elevated">
+              <ShieldCheck className="size-4" /> Re-authenticate
+            </button>
           </section>
 
           <section className="mt-6 rounded-3xl border border-border bg-card p-6">
@@ -292,13 +264,13 @@ export default function MetaSettings({ metaConfigured = true }: { metaConfigured
             </div>
             <div className="mt-4 overflow-x-auto rounded-2xl border border-border">
               <table className="w-full min-w-[540px] border-collapse text-[11.5px]">
-                <thead><tr className="border-b border-border text-left text-[9px] uppercase tracking-wide text-muted-foreground"><th className="px-3 py-2">Time</th><th className="px-3 py-2">Action</th><th className="px-3 py-2">Email</th><th className="px-3 py-2">Role</th></tr></thead>
+                <thead><tr className="border-b border-border text-left text-[9px] uppercase tracking-wide text-muted-foreground"><th className="px-3 py-2">Time</th><th className="px-3 py-2">Action</th><th className="px-3 py-2">Role</th><th className="px-3 py-2">IP hash</th></tr></thead>
                 <tbody>{audit.map((row, index) => (
                   <tr key={`${row.at}-${index}`} className="border-t border-border/60">
                     <td className="px-3 py-1.5 text-muted-foreground">{fmt(row.at)}</td>
                     <td className="px-3 py-1.5 font-medium">{row.action}</td>
-                    <td className="px-3 py-1.5 text-muted-foreground">{row.email ?? "—"}</td>
                     <td className="px-3 py-1.5 text-muted-foreground">{row.role ?? "—"}</td>
+                    <td className="px-3 py-1.5 font-mono text-[10px] text-muted-foreground">{row.ipHash ?? "—"}</td>
                   </tr>
                 ))}</tbody>
               </table>
@@ -306,6 +278,32 @@ export default function MetaSettings({ metaConfigured = true }: { metaConfigured
           </section>
         </div>
       </main>
+
+      {reauthOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 px-4" role="dialog" aria-modal="true" aria-labelledby="reauth-title">
+          <form onSubmit={submitReauth} className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-2xl">
+            <h2 id="reauth-title" className="font-display text-xl font-semibold">Confirm owner password</h2>
+            <p className="mt-2 text-[13px] text-muted-foreground">Re-enter the owner password to continue.</p>
+            <label htmlFor="reauth-password" className="mt-4 block text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Password</label>
+            <input
+              id="reauth-password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={reauthPassword}
+              onChange={(event) => setReauthPassword(event.target.value)}
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition focus:border-saffron focus:ring-2 focus:ring-saffron/25"
+            />
+            {reauthError && <p role="alert" className="mt-2 text-[12.5px] text-rose-600 dark:text-rose-400">{reauthError}</p>}
+            <div className="mt-5 flex gap-2">
+              <button type="submit" disabled={reauthBusy || !reauthPassword} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-saffron px-4 py-2.5 text-sm font-semibold text-[#241203] disabled:opacity-60">
+                {reauthBusy ? <Loader2 className="size-4 animate-spin" /> : null} Continue
+              </button>
+              <button type="button" onClick={() => setReauthOpen(false)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold hover:bg-elevated">Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
     </>
   );
 }

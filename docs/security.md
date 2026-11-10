@@ -6,17 +6,16 @@
 - `client` — case studies, campaigns, `/api/meta/client/**`.
 - `/api/data/template` is the only blank template exception and stays public.
 - Wrong-role API requests return `403`; page requests redirect to the role home (`/meta-ads` or `/campaigns`).
-- Owner emails come from `OWNER_EMAILS` only. Client emails can also be managed in `/meta-ads/settings`; those are stored in MongoDB `access_emails`.
-- Sensitive owner actions (Meta connect/disconnect, client email changes, party-map changes, CSV/Excel exports) require a sign-in within 15 minutes (`authTime`).
+- Sign-in is password-only. The owner password maps to `owner`; the client password maps to `client`. No email allowlist is used.
+- Sensitive owner actions (Meta connect/disconnect, party-map changes, CSV/Excel exports) require a password re-check within 15 minutes (`authTime`). `POST /api/auth/reauth` refreshes that timestamp.
 
 ## Sessions
 
-- Google Authorization Code + PKCE (S256), signed 10-minute state/nonce cookie.
-- ID tokens are verified with `google-auth-library` (JWKS signature, issuer, audience, expiry, nonce, `email_verified`).
+- Password login with a constant-time comparison against `ADMIN_PASSWORD` and `CLIENT_PASSWORD`.
+- 5 login attempts per 15 minutes per IP, plus a 15-minute lockout after 10 failures.
 - Session cookie is `__Host-ro_session` in production and `ro_session` in development.
 - 12-hour absolute lifetime, 2-hour idle timeout, server-side session record in MongoDB `sessions`, session id rotated at every sign-in.
-- Logout revokes the session record. “Sign out of all devices” deletes every session for the email.
-- Break-glass password login exists only when `BREAKGLASS_LOGIN_ENABLED=true`, is limited to 5 attempts/hour/IP and writes an audit event.
+- Logout revokes the session record. “Sign out of all devices” deletes every session for the subject (`owner` or `client`).
 
 ## CSRF
 
@@ -33,27 +32,28 @@ The middleware issues the CSRF cookie; `components/site/csrf-fetch.tsx` adds the
 - HSTS, `nosniff`, strict referrer policy, restrictive permissions policy, `frame-ancestors 'none'`, `object-src 'none'`.
 - Protected pages/APIs send `Cache-Control: private, no-store` and `Vary: Cookie`.
 - Source maps are disabled in production.
+- Turnstile is off by default. When `TURNSTILE_ENABLED` is not `true`, the login page does not load the widget, the server does not call Cloudflare, and the CSP does not allow `challenges.cloudflare.com`.
 
 ## Secrets
 
 Required in production:
 
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
-- `OWNER_EMAILS` (comma-separated), `CLIENT_EMAILS` (optional seed list)
-- `META_APP_ID`, `META_APP_SECRET`
-- `TOKEN_ENCRYPTION_KEY` (32 bytes, base64; e.g. `openssl rand -base64 32`)
+- `ADMIN_PASSWORD`, `CLIENT_PASSWORD` (must be different)
 - `ADMIN_SESSION_SECRET` (at least 32 characters)
+- `MONGODB_URI`
+- `TOKEN_ENCRYPTION_KEY` (32 bytes, base64; e.g. `openssl rand -base64 32`)
 - `CRON_SECRET`
-- `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
-- `MONGODB_URI`, `MONGODB_DB`
-- Optionally `ADMIN_PASSWORD` for break-glass, `BREAKGLASS_LOGIN_ENABLED=true`
-- Optionally `NEXT_PUBLIC_SITE_URL`, `GOOGLE_REDIRECT_URI`, `META_REDIRECT_URI`, `MAX_UPLOAD_MB`, `TOKEN_KEY_VERSION`
 
-`instrumentation.ts` fails production startup if required values are missing or too short.
+Optional:
 
-## OAuth console setup
+- `META_APP_ID`, `META_APP_SECRET` — without them the site starts normally, `/meta-ads/settings` shows “Meta app not configured”, and `/api/meta/owner/connect/*` returns `503`.
+- `TURNSTILE_ENABLED=true`, `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` — all three are needed together when Turnstile is enabled.
+- `MONGODB_DB`, `NEXT_PUBLIC_SITE_URL`, `META_REDIRECT_URI`, `MAX_UPLOAD_MB`, `TOKEN_KEY_VERSION`, `META_SYSTEM_USER_TOKEN`.
 
-- Google Cloud: create an OAuth 2.0 Web client. Authorised redirect URI: `https://<host>/api/auth/google/callback` for each environment.
+`instrumentation.ts` fails production startup if required values are missing or invalid, and logs one Meta warning when Meta is unconfigured.
+
+## Meta OAuth console setup
+
 - Meta: Facebook Login for Business app. Valid OAuth redirect URI: `https://<host>/api/meta/owner/connect/callback`. Request `ads_read`, `read_insights`, `business_management`, `pages_read_engagement`, `instagram_basic`. App review/advanced access may be required before non-test users can grant them.
 
 ## Meta token storage
@@ -77,7 +77,7 @@ Create a dedicated MongoDB user for the app:
 
 - Enable Deployment Protection for preview deployments so preview URLs are not public.
 - Keep production secrets scoped to Production only.
-- Do not deploy until `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OWNER_EMAILS`, `META_APP_ID`, `META_APP_SECRET`, `TOKEN_ENCRYPTION_KEY`, `ADMIN_SESSION_SECRET` and `CRON_SECRET` are set; otherwise the startup check blocks the deployment.
+- Do not deploy until `ADMIN_PASSWORD`, `CLIENT_PASSWORD`, `ADMIN_SESSION_SECRET`, `MONGODB_URI`, `TOKEN_ENCRYPTION_KEY` and `CRON_SECRET` are set; otherwise the startup check blocks the deployment.
 
 ## Residual audit findings
 
@@ -88,8 +88,6 @@ Create a dedicated MongoDB user for the app:
 
 The critical Next.js advisories were addressed by upgrading Next to 15.5.29. `sharp`, `source-map-js` and `zod` were upgraded by `npm audit fix`.
 
-## Known residual: Telangana chunk
+## Chunk data scan
 
-`app/case-studies/telangana/page-*.js` still contains historical swing figures because `lib/telangana/history.ts` imports `history.json` from a client component. The page itself is dynamic and protected, but the static chunk URL is publicly fetchable. The next hardening step is to serve the historical bundle from `/api/public/case-studies/telangana/history` and pass it through the server page instead of importing it in the client graph. The same check should be repeated after that change.
-
-The Tamil Nadu page chunk contains labels but no survey figures.
+`npm run check:security` scans every file under `.next/static` after a build. It fails if survey, device, historical or opinion-poll identifiers appear in a client chunk. The Telangana history bundle and the Tamil Nadu comparison/opinion/forecaster data are server-side only.
