@@ -227,33 +227,30 @@ export default function CaseStudySplit({
         onDoubleClick={() => finish(defaultPanelWidth)}
         className="group relative hidden cursor-col-resize touch-none select-none items-center justify-center focus-visible:outline-none lg:flex"
       >
+        {/* Short resting hint. It grows into the brass highlight on hover,
+            focus or drag instead of drawing a full-height divider. */}
         <span
           aria-hidden
           className={cn(
-            "absolute inset-y-1 left-1/2 w-px -translate-x-1/2 bg-border transition-colors duration-150",
-            dragging && "bg-[#a67c3e] dark:bg-[#c9a25e]",
-            !dragging && "group-hover:bg-[#a67c3e]/70 group-focus-visible:bg-[#a67c3e] dark:group-hover:bg-[#c9a25e]/70 dark:group-focus-visible:bg-[#c9a25e]",
+            "absolute right-[1px] top-1/2 -translate-y-1/2 rounded-full transition-all duration-200",
+            dragging
+              ? "h-24 w-[3px] bg-[#a67c3e] opacity-100 dark:bg-[#c9a25e]"
+              : "h-9 w-[2px] bg-[#a67c3e]/35 opacity-80 group-hover:h-24 group-hover:w-[3px] group-hover:bg-[#a67c3e]/85 group-hover:opacity-100 group-focus-visible:h-24 group-focus-visible:w-[3px] group-focus-visible:bg-[#a67c3e] dark:bg-[#c9a25e]/35 dark:group-hover:bg-[#c9a25e]/85 dark:group-focus-visible:bg-[#c9a25e]",
           )}
         />
-        <span
-          aria-hidden
-          className={cn(
-            "absolute inset-y-0 left-1/2 w-[7px] -translate-x-1/2 rounded-full bg-transparent transition-opacity duration-150",
-            dragging ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100",
-          )}
-        >
-          <span className="absolute inset-x-[2px] inset-y-4 rounded-full bg-[#a67c3e]/15 dark:bg-[#c9a25e]/15" />
-        </span>
+        {/* Grip tab sits on the panel's edge so the control reads as part of
+            the box rather than a separate line in the gap. */}
         <span
           className={cn(
-            "relative z-10 grid size-6 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-all duration-150",
-            "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100",
-            "group-hover:border-[#a67c3e]/60 group-hover:text-[#a67c3e] dark:group-hover:border-[#c9a25e]/60 dark:group-hover:text-[#c9a25e]",
-            "group-focus-visible:ring-2 group-focus-visible:ring-[#a67c3e]/40 dark:group-focus-visible:ring-[#c9a25e]/40",
-            dragging && "border-[#a67c3e]/70 text-[#a67c3e] dark:border-[#c9a25e]/70 dark:text-[#c9a25e]",
+            "absolute right-[-5px] top-1/2 z-10 grid h-9 w-6 -translate-y-1/2 place-items-center rounded-full border bg-card/95 shadow-sm transition-all duration-200",
+            "border-[#a67c3e]/30 bg-[#a67c3e]/10 text-[#a67c3e] opacity-90 dark:border-[#c9a25e]/30 dark:bg-[#c9a25e]/10 dark:text-[#c9a25e]",
+            "group-hover:scale-105 group-hover:border-[#a67c3e]/70 group-hover:bg-[#a67c3e]/15 group-hover:text-[#a67c3e] group-hover:opacity-100 group-hover:shadow-md",
+            "group-focus-visible:border-[#a67c3e] group-focus-visible:bg-[#a67c3e]/15 group-focus-visible:text-[#a67c3e] group-focus-visible:opacity-100 group-focus-visible:ring-2 group-focus-visible:ring-[#a67c3e]/35",
+            "dark:group-hover:border-[#c9a25e]/70 dark:group-hover:bg-[#c9a25e]/15 dark:group-hover:text-[#c9a25e] dark:group-focus-visible:border-[#c9a25e] dark:group-focus-visible:bg-[#c9a25e]/15 dark:group-focus-visible:text-[#c9a25e] dark:group-focus-visible:ring-[#c9a25e]/30",
+            dragging && "scale-105 border-[#a67c3e]/80 text-[#a67c3e] opacity-100 shadow-md dark:border-[#c9a25e]/80 dark:text-[#c9a25e]",
           )}
         >
-          <GripVertical className="size-3" aria-hidden />
+          <GripVertical className="size-3.5" aria-hidden />
         </span>
       </div>
 
