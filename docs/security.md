@@ -87,3 +87,9 @@ Create a dedicated MongoDB user for the app:
 - `postcss` nested inside Next.js — fixed only by a Next major upgrade. Track the Next advisory and upgrade when the app is ready for the major version.
 
 The critical Next.js advisories were addressed by upgrading Next to 15.5.29. `sharp`, `source-map-js` and `zod` were upgraded by `npm audit fix`.
+
+## Known residual: Telangana chunk
+
+`app/case-studies/telangana/page-*.js` still contains historical swing figures because `lib/telangana/history.ts` imports `history.json` from a client component. The page itself is dynamic and protected, but the static chunk URL is publicly fetchable. The next hardening step is to serve the historical bundle from `/api/public/case-studies/telangana/history` and pass it through the server page instead of importing it in the client graph. The same check should be repeated after that change.
+
+The Tamil Nadu page chunk contains labels but no survey figures.
