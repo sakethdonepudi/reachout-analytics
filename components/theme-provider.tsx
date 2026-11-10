@@ -52,7 +52,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
 }
 
 /** Inline head script: reads stored/system theme and sets the class pre-paint. */
-export function ThemeScript() {
+export function ThemeScript({ nonce }: { nonce?: string }) {
   const code = `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}var r=document.documentElement;r.classList.toggle('dark',t==='dark');r.dataset.theme=t;r.style.colorScheme=t;}catch(e){document.documentElement.classList.add('dark');}})();`;
-  return <script dangerouslySetInnerHTML={{ __html: code }} />;
+  return <script nonce={nonce} dangerouslySetInnerHTML={{ __html: code }} />;
 }

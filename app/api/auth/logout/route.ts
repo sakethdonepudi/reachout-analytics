@@ -1,11 +1,17 @@
 import type { NextRequest } from "next/server";
-import { COOKIE, getSessionToken, revokeSession } from "@/lib/auth";
+import { clearSessionCookie, getSession, getSessionToken, revokeSession } from "@/lib/auth";
+import { requireCsrf } from "@/lib/csrf";
+import { audit } from "@/lib/audit";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  const csrf = requireCsrf(req);
+  if (csrf) return csrf;
+  const session = await getSession(req);
   await revokeSession(getSessionToken(req));
+  await audit({ action: "logout", email: session?.sub, role: session?.role, ip: req.headers.get("x-forwarded-for")?.split(",")[0].trim() });
   const res = Response.json({ ok: true });
-  res.headers.append("Set-Cookie", `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+  clearSessionCookie(res);
   return res;
 }

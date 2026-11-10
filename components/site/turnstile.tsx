@@ -23,10 +23,12 @@ export default function Turnstile({
   onVerify,
   theme = "light",
   resetNonce = 0,
+  nonce,
 }: {
   onVerify: (token: string) => void;
   theme?: "light" | "dark";
   resetNonce?: number;
+  nonce?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
@@ -59,6 +61,7 @@ export default function Turnstile({
       const s = document.createElement("script");
       s.id = scriptId;
       s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      if (nonce) s.nonce = nonce;
       s.async = true; s.defer = true;
       s.onload = render;
       s.onerror = () => setStatus("error");

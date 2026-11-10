@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, ChevronDown, LayoutDashboard, LogOut, Menu, UserRound, X } from "lucide-react";
+import { ArrowUpRight, BarChart3, ChevronDown, LayoutDashboard, LogOut, Menu, Megaphone, ShieldCheck, UserRound, X } from "lucide-react";
 import ThemeToggle from "@/components/site/theme-toggle";
 import { useSession } from "@/components/site/use-session";
 import { cn } from "@/lib/utils";
@@ -58,7 +58,7 @@ function MenuLink({ href, active, onClick, children }: { href: string; active: b
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { state, authed } = useSession();
+  const { state, authed, role } = useSession();
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
@@ -91,6 +91,16 @@ export default function Navbar() {
   async function signOut() {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      setAccountOpen(false);
+      router.replace("/login");
+      router.refresh();
+    }
+  }
+
+  async function signOutAll() {
+    try {
+      await fetch("/api/auth/logout-all", { method: "POST" });
     } finally {
       setAccountOpen(false);
       router.replace("/login");
@@ -149,13 +159,32 @@ export default function Navbar() {
                   <ChevronDown className={cn("size-3.5 text-[var(--h-muted)] transition-transform", accountOpen && "rotate-180")} aria-hidden />
                 </button>
                 {accountOpen && (
-                  <div role="menu" className="site-group absolute right-0 top-[calc(100%+8px)] w-44 rounded-2xl p-1.5 text-[var(--h-ink)]">
+                  <div role="menu" className="site-group absolute right-0 top-[calc(100%+8px)] w-56 rounded-2xl p-1.5 text-[var(--h-ink)]">
+                    {role === "owner" && (
+                      <>
+                        <Link href="/meta-ads" role="menuitem" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">
+                          <Megaphone className="size-3.5" aria-hidden /> Meta Ads
+                        </Link>
+                        <Link href="/admin" role="menuitem" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">
+                          <LayoutDashboard className="size-3.5" aria-hidden /> Dashboard
+                        </Link>
+                      </>
+                    )}
+                    {role === "client" && (
+                      <Link href="/campaigns" role="menuitem" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">
+                        <BarChart3 className="size-3.5" aria-hidden /> Campaigns
+                      </Link>
+                    )}
+                    <Link href={role === "client" ? "/campaigns" : "/case-studies"} role="menuitem" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">
+                      <ShieldCheck className="size-3.5" aria-hidden /> {role === "client" ? "Case Studies" : "Workspace"}
+                    </Link>
+                    <div className="my-1 h-px bg-[var(--h-border)]/20" />
                     <button type="button" role="menuitem" onClick={signOut} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[12.5px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">
                       <LogOut className="size-3.5" aria-hidden /> Sign Out
                     </button>
-                    <Link href="/admin" role="menuitem" onClick={() => setAccountOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">
-                      <LayoutDashboard className="size-3.5" aria-hidden /> Dashboard
-                    </Link>
+                    <button type="button" role="menuitem" onClick={signOutAll} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[12.5px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">
+                      <LogOut className="size-3.5" aria-hidden /> Sign out of all devices
+                    </button>
                   </div>
                 )}
               </div>
@@ -189,12 +218,27 @@ export default function Navbar() {
             )}
             {authed && (
               <div className="mt-1 border-t border-[var(--h-border)]/20 pt-1">
+                {role === "owner" && (
+                  <>
+                    <Link href="/meta-ads" onClick={() => setOpen(false)} className="flex h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)]">
+                      <Megaphone className="size-4" aria-hidden /> Meta Ads
+                    </Link>
+                    <Link href="/admin" onClick={() => setOpen(false)} className="flex h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)]">
+                      <LayoutDashboard className="size-4" aria-hidden /> Dashboard
+                    </Link>
+                  </>
+                )}
+                {role === "client" && (
+                  <Link href="/campaigns" onClick={() => setOpen(false)} className="flex h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)]">
+                    <BarChart3 className="size-4" aria-hidden /> Campaigns
+                  </Link>
+                )}
                 <button type="button" onClick={signOut} className="flex h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-[14px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)]">
                   <LogOut className="size-4" aria-hidden /> Sign Out
                 </button>
-                <Link href="/admin" onClick={() => setOpen(false)} className="flex h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)]">
-                  <LayoutDashboard className="size-4" aria-hidden /> Dashboard
-                </Link>
+                <button type="button" onClick={signOutAll} className="flex h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-[14px] font-medium text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)]">
+                  <LogOut className="size-4" aria-hidden /> Sign out of all devices
+                </button>
               </div>
             )}
           </div>
