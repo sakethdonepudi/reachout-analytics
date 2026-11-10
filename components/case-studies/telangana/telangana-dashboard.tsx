@@ -16,6 +16,7 @@ import {
   historicalTotal, winnerColour, winnerLabel, winnerSeats, type ElectionYear,
 } from "@/lib/telangana/history";
 import TelanganaRail, { type ScopeResult } from "./telangana-rail";
+import CaseStudySplit from "@/components/case-studies/shared/case-study-split";
 import type { MapTheme } from "./telangana-map";
 
 const TelanganaMap = dynamic(() => import("./telangana-map"), {
@@ -124,7 +125,8 @@ export default function TelanganaDashboard() {
   const [district, setDistrict] = useState<string | null>(null);
   const [acNo, setAcNo] = useState<number | null>(null);
   const [year, setYear] = useState<ElectionYear>("2028");
-  const [tab, setTab] = useState<Tab>("change");
+  const [tab, setTab] = useState<Tab>("share");
+  const [fitKey, setFitKey] = useState(0);
   const [chartOpen, setChartOpen] = useState(false);
   const expandFocus = useRef<HTMLElement | null>(null);
   const openAnalysis = useCallback(() => {
@@ -267,74 +269,87 @@ export default function TelanganaDashboard() {
     <div className="relative min-h-screen bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_18%_8%,rgba(229,0,125,0.055),transparent_60%)]" aria-hidden />
 
-      <section className="relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-24 sm:pt-28 lg:h-[100svh] lg:min-h-[760px] lg:overflow-hidden lg:px-6 lg:pt-20">
-        <aside aria-label="Map controls" className="relative z-30 lg:absolute lg:left-8 lg:top-24 lg:w-[264px] lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
-          <Link href="/case-studies"
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-[12.5px] text-muted-foreground backdrop-blur-xl transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
-            <ArrowLeft className="size-3.5" /> Back to Case Studies
-          </Link>
+      <section className="relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-24 sm:pt-28 lg:flex lg:h-[100svh] lg:min-h-[760px] lg:flex-col lg:overflow-hidden lg:px-6 lg:pt-20">
+        <CaseStudySplit
+          storageKey="telangana"
+          controlsWidth={250}
+          defaultPanelWidth={420}
+          minPanelWidth={340}
+          maxPanelWidth={620}
+          minMapWidth={320}
+          controlsLabel="Telangana map controls"
+          panelLabel="Telangana comparison"
+          onResizeEnd={() => setFitKey((key) => key + 1)}
+          className="lg:flex-1"
+          controls={(
+            <div className="relative z-30 lg:min-h-0">
+              <Link href="/case-studies"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-[12.5px] text-muted-foreground backdrop-blur-xl transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                <ArrowLeft className="size-3.5" /> Back to Case Studies
+              </Link>
 
-          <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Telangana</p>
-          <h1 className="mt-1 font-display text-[clamp(27px,3.2vw,40px)] font-semibold leading-[1.02] tracking-[-0.03em]">ReachOut&apos;s Election Intelligence</h1>
-          <PartyIdentity party="BRS" state="Telangana" size="sm" className="mt-3" />
+              <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Telangana</p>
+              <h1 className="mt-1 font-display text-[clamp(27px,3.2vw,40px)] font-semibold leading-[1.02] tracking-[-0.03em]">ReachOut&apos;s Election Intelligence</h1>
+              <PartyIdentity party="BRS" state="Telangana" size="sm" className="mt-3" />
 
-          <div className="mt-5 space-y-3">
-            <div>
-              <span className={LABEL}>Election year</span>
-              <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-border p-0.5" role="group" aria-label="Election year">
-                {ELECTION_YEARS.map((y) => (
-                  <button key={y} type="button" aria-pressed={year === y} onClick={() => setYear(y)}
-                    className={cn("rounded-md px-2 py-1.5 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
-                      year === y ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
-                    {YEAR_LABEL[y]}
-                  </button>
-                ))}
+              <div className="mt-5 space-y-3 pb-2">
+                <div>
+                  <span className={LABEL}>Election year</span>
+                  <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-border p-0.5" role="group" aria-label="Election year">
+                    {ELECTION_YEARS.map((y) => (
+                      <button key={y} type="button" aria-pressed={year === y} onClick={() => setYear(y)}
+                        className={cn("rounded-md px-2 py-1.5 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
+                          year === y ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
+                        {YEAR_LABEL[y]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <SearchSelect label="District" value={district ?? ""} options={districtOptions} placeholder="Select a district"
+                  onChange={(v) => selectDistrict(v || null)} />
+                <SearchSelect label="Assembly" value={acNo != null ? String(acNo) : ""} options={assemblyOptions} placeholder="Select an assembly"
+                  onChange={(v) => selectAc(v ? Number(v) : null)} />
+
+                <div>
+                  <span className={LABEL}>{year === "2028" ? "Leading party" : `${YEAR_LABEL[year]} winners`}</span>
+                  <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] font-medium text-muted-foreground">
+                    {legendItems.map((item) => (
+                      <span key={item.key} className="flex min-w-0 items-center gap-1.5">
+                        <span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15"
+                          style={{ background: item.split ? `linear-gradient(90deg, ${PARTY_COLOR.BRS} 0 50%, ${PARTY_COLOR.Congress} 50% 100%)` : item.key === "none" ? NO_DATA_COLOR : `linear-gradient(90deg, ${shadeHex(item.colour, 0.2)} 0%, ${item.colour} 50%, ${shadeHex(item.colour, 0.7)} 100%)` }} />
+                        <span className="truncate">{item.label}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
-
-            <SearchSelect label="District" value={district ?? ""} options={districtOptions} placeholder="Select a district"
-              onChange={(v) => selectDistrict(v || null)} />
-            <SearchSelect label="Assembly" value={acNo != null ? String(acNo) : ""} options={assemblyOptions} placeholder="Select an assembly"
-              onChange={(v) => selectAc(v ? Number(v) : null)} />
-
-            <div>
-              <span className={LABEL}>{year === "2028" ? "Leading party" : `${YEAR_LABEL[year]} winners`}</span>
-              <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] font-medium text-muted-foreground">
-                {legendItems.map((item) => (
-                  <span key={item.key} className="flex min-w-0 items-center gap-1.5">
-                    <span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15"
-                      style={{ background: item.split ? `linear-gradient(90deg, ${PARTY_COLOR.BRS} 0 50%, ${PARTY_COLOR.Congress} 50% 100%)` : item.key === "none" ? NO_DATA_COLOR : `linear-gradient(90deg, ${shadeHex(item.colour, 0.2)} 0%, ${item.colour} 50%, ${shadeHex(item.colour, 0.7)} 100%)` }} />
-                    <span className="truncate">{item.label}</span>
-                  </span>
-                ))}
-              </div>
-
-            </div>
-          </div>
-        </aside>
-
-        <div className="relative z-0 mt-4 h-[52svh] min-h-[360px] overflow-hidden rounded-2xl border border-border bg-card lg:absolute lg:inset-x-0 lg:top-16 lg:bottom-0 lg:mt-0 lg:h-auto lg:rounded-none lg:border-0 lg:bg-transparent">
-          <TelanganaMap acs={acs} district={district} ac={acNo} year={year} layer="party"
-            theme={(theme === "light" ? "light" : "dark") as MapTheme}
-            onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={reset} />
-          {(district || currentAc) && (
-            <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 lg:left-[312px]">
-              <button type="button" onClick={reset}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
-                <ArrowLeft className="size-3" /> Telangana
-              </button>
-              <button type="button" onClick={reset}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
-                <RotateCcw className="size-3" /> Reset
-              </button>
             </div>
           )}
-        </div>
-
-        <section className="relative z-20 mx-auto mt-4 max-w-xl lg:absolute lg:right-6 lg:top-24 lg:mt-0 lg:w-[340px] lg:max-w-none lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]">
-          <TelanganaRail scope={scope} year={year} tab={tab} onTab={setTab} onExpand={openAnalysis}
-            theme={theme === "light" ? "light" : "dark"} leads2028={leads2028} actualSeats={actualSeats} actualSeatsYear={actualSeatsYear} isStatewide={isStatewide} />
-        </section>
+          map={(
+            <div className="relative h-full min-h-0">
+              <TelanganaMap acs={acs} district={district} ac={acNo} year={year} layer="party"
+                theme={(theme === "light" ? "light" : "dark") as MapTheme} fitKey={fitKey}
+                onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={reset} />
+              {(district || currentAc) && (
+                <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5">
+                  <button type="button" onClick={reset}
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                    <ArrowLeft className="size-3" /> Telangana
+                  </button>
+                  <button type="button" onClick={reset}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                    <RotateCcw className="size-3" /> Reset
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          panel={(panelWidth) => (
+            <TelanganaRail scope={scope} year={year} tab={tab} onTab={setTab} onExpand={openAnalysis}
+              theme={theme === "light" ? "light" : "dark"} leads2028={leads2028} actualSeats={actualSeats} actualSeatsYear={actualSeatsYear} isStatewide={isStatewide} panelWidth={panelWidth} />
+          )}
+        />
       </section>
 
 

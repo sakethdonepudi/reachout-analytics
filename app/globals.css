@@ -577,3 +577,58 @@ html.theme-transition *::after {
   background: var(--h-surface-inset);
   box-shadow: inset 0 2px 4px rgba(28, 26, 22, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
+/* =====================================================================
+   Shared case-study presentation view
+   ===================================================================== */
+.analysis-shell {
+  --a-canvas: #f2eee5;
+  --a-panel: #ffffff;
+  --a-panel-2: #faf7f0;
+  --a-ink: #1b1a17;
+  --a-muted: rgba(27, 26, 23, 0.58);
+  --a-border: rgba(30, 27, 23, 0.12);
+  --a-brass: #a67c3e;
+  --a-brass-soft: rgba(166, 124, 62, 0.14);
+  --a-shadow: 0 20px 48px -38px rgba(30, 27, 23, 0.5);
+  background: var(--a-canvas);
+  color: var(--a-ink);
+}
+.dark .analysis-shell {
+  --a-canvas: #0c1117;
+  --a-panel: #151b23;
+  --a-panel-2: #10161e;
+  --a-ink: #f1efe9;
+  --a-muted: rgba(241, 239, 233, 0.56);
+  --a-border: rgba(255, 255, 255, 0.10);
+  --a-brass: #c9a25e;
+  --a-brass-soft: rgba(201, 162, 94, 0.16);
+  --a-shadow: 0 24px 56px -40px rgba(0, 0, 0, 0.9);
+}
+.analysis-panel {
+  background: var(--a-panel);
+  border: 1px solid var(--a-border);
+  box-shadow: var(--a-shadow);
+}
+.analysis-soft {
+  background: var(--a-panel-2);
+  border: 1px solid var(--a-border);
+}
+.analysis-enter {
+  animation: analysis-enter 220ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+  transform-origin: 50% 46%;
+}
+@keyframes analysis-enter {
+  from { opacity: 0; transform: scale(0.988) translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.analysis-chart-enter {
+  animation: analysis-chart-enter 420ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+}
+@keyframes analysis-chart-enter {
+  from { opacity: 0.35; transform: scaleY(0.96); transform-origin: 50% 100%; }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .analysis-enter,
+  .analysis-chart-enter { animation: none !important; transform: none !important; }
+}

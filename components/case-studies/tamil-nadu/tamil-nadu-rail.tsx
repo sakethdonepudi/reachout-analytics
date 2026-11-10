@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Maximize2 } from "lucide-react";
 import { TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_FULL, TN_SEAT_GROUPS, tnPct, type TnGroup, type TnSeatGroup, type TnShares, type TnYear } from "@/lib/tamil-nadu/model";
 import { AMI_EXIT_POLL, TN_SOCIAL } from "@/lib/tamil-nadu/comparison";
@@ -12,6 +12,7 @@ export type TnTab = "change" | "share" | "seats";
 const TABS: { id: TnTab; label: string }[] = [
   { id: "change", label: "Change" }, { id: "share", label: "Share" }, { id: "seats", label: "Seats" },
 ];
+export type TnView = "polls" | "social";
 
 export type TnScopeResult = {
   label: string;
@@ -59,15 +60,22 @@ const sumShares = (shares: TnShares | null | undefined, groups: TnGroup[]) => {
   return values.length ? values.reduce((total, value) => total + value, 0) : null;
 };
 
-function SocialMediaPanel() {
+/* One active-tab treatment across the whole compact panel. */
+const segWrap = "inline-flex items-center gap-0.5 rounded-lg border border-border/70 bg-muted/20 p-0.5";
+const segButton = (active: boolean) => cn(
+  "rounded-md px-2 py-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
+  active ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+);
+
+function SocialMediaPanel({ compact }: { compact: boolean }) {
   return (
     <div className="mt-2">
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full min-w-[300px] table-fixed border-collapse text-[8.5px]">
+      <div className="overflow-x-auto rounded-lg border border-border/70">
+        <table className={cn("w-full table-fixed border-collapse", compact ? "min-w-[270px] text-[8px]" : "min-w-[300px] text-[8.5px]")}>
           <caption className="sr-only">Tamil Nadu statewide Meta reach</caption>
           <colgroup><col className="w-[20%]" /><col className="w-[20%]" /><col className="w-[20%]" /><col className="w-[22%]" /><col className="w-[18%]" /></colgroup>
           <thead>
-            <tr className="bg-muted/30 text-right text-[7px] uppercase tracking-wide text-muted-foreground">
+            <tr className="border-b border-border/70 text-right text-[7px] uppercase tracking-wide text-muted-foreground">
               <th scope="col" className="px-1 py-1.5 text-left font-semibold">Platform</th>
               <th scope="col" className="px-1 py-1.5 font-semibold">Organic reach</th>
               <th scope="col" className="px-1 py-1.5 font-semibold">Paid reach</th>
@@ -79,12 +87,12 @@ function SocialMediaPanel() {
             {TN_SOCIAL.rows.map((row) => {
               const total = row.platform === "Total";
               return (
-                <tr key={row.platform} className={cn("border-t border-border/60", total && "bg-muted/20 font-semibold")}>
-                  <th scope="row" className="px-1 py-1.5 text-left font-medium">{row.platform}</th>
-                  <td className="px-1 py-1.5 text-right tabular-nums">{fmtNumber(row.organic)}</td>
-                  <td className="px-1 py-1.5 text-right tabular-nums">{fmtNumber(row.paid)}</td>
-                  <td className="px-1 py-1.5 text-right tabular-nums">{fmtNumber(row.total)}</td>
-                  <td className="px-1 py-1.5 text-right tabular-nums">{fmtNumber(row.followers)}</td>
+                <tr key={row.platform} className={cn("border-t border-border/50", total && "bg-muted/15 font-semibold")}>
+                  <th scope="row" className={cn("px-1 text-left font-medium", compact ? "py-1" : "py-1.5")}>{row.platform}</th>
+                  <td className={cn("px-1 text-right tabular-nums", compact ? "py-1" : "py-1.5")}>{fmtNumber(row.organic)}</td>
+                  <td className={cn("px-1 text-right tabular-nums", compact ? "py-1" : "py-1.5")}>{fmtNumber(row.paid)}</td>
+                  <td className={cn("px-1 text-right tabular-nums", compact ? "py-1" : "py-1.5")}>{fmtNumber(row.total)}</td>
+                  <td className={cn("px-1 text-right tabular-nums", compact ? "py-1" : "py-1.5")}>{fmtNumber(row.followers)}</td>
                 </tr>
               );
             })}
@@ -102,29 +110,28 @@ function SocialMediaPanel() {
           <span className="bg-saffron" style={{ width: `${TN_SOCIAL.paidPct}%` }} />
         </div>
       </div>
-
     </div>
   );
 }
 
-function PartyCell({ group }: { group: TnGroup }) {
+function PartyCell({ group, compact }: { group: TnGroup; compact: boolean }) {
   const partners = TN_FULL[group].split("+").slice(1).join(" + ");
   return (
     <span className="flex items-start gap-1">
-      <span className="mt-1 size-1.5 shrink-0 rounded-sm" style={{ background: TN_COLOR[group] }} />
+      <span className={cn("shrink-0 rounded-sm", compact ? "mt-[4px] size-1.5" : "mt-[5px] size-1.5")} style={{ background: TN_COLOR[group] }} />
       <span className="min-w-0">
         <span className="block leading-tight">{TN_LABEL[group]}</span>
-        {partners && <span className="mt-0.5 block text-[7px] font-normal leading-tight text-muted-foreground">{partners}</span>}
+        {partners && !compact && <span className="mt-0.5 block text-[7px] font-normal leading-tight text-muted-foreground">{partners}</span>}
       </span>
     </span>
   );
 }
 
-function DisplayPartyCell({ group }: { group: DisplayGroup }) {
-  if (group.groups.length === 1) return <PartyCell group={group.groups[0]} />;
+function DisplayPartyCell({ group, compact }: { group: DisplayGroup; compact: boolean }) {
+  if (group.groups.length === 1) return <PartyCell group={group.groups[0]} compact={compact} />;
   return (
     <span className="flex items-start gap-1">
-      <span className="mt-1 size-1.5 shrink-0 rounded-sm" style={{ background: group.color }} />
+      <span className={cn("shrink-0 rounded-sm", compact ? "mt-[4px] size-1.5" : "mt-[5px] size-1.5")} style={{ background: group.color }} />
       <span className="min-w-0"><span className="block leading-tight">{group.label}</span></span>
     </span>
   );
@@ -132,14 +139,17 @@ function DisplayPartyCell({ group }: { group: DisplayGroup }) {
 
 export default function TamilNaduRail({
   scope, tab, onTab, onExpand, theme, selectedYear, isStatewide, opinionPoll, actualShares,
+  view, onView, panelWidth = 500,
 }: {
   scope: TnScopeResult; tab: TnTab; onTab: (t: TnTab) => void; onExpand: () => void;
   theme: "light" | "dark"; selectedYear: TnYear | "2026"; isStatewide: boolean;
   opinionPoll: OpinionPollView; actualShares: TnShares | null;
+  view: TnView; onView: (view: TnView) => void; panelWidth?: number;
 }) {
   const reduced = usePrefersReducedMotion();
-  const [view, setView] = useState<"polls" | "social">("polls");
   const p = palette(theme);
+  const compact = panelWidth < 430;
+  const roomy = panelWidth >= 540;
   const baselineLabel = scope.baselineYear;
   const displayGroups = useMemo<DisplayGroup[]>(() => {
     const source = isStatewide ? TN_GROUPS : TN_SURVEY_GROUPS;
@@ -166,6 +176,7 @@ export default function TamilNaduRail({
     return undefined;
   };
   const partners = (group: TnGroup) => TN_FULL[group].split("+").slice(1).join(" + ");
+  const rowPad = compact ? "py-1" : "py-1.5";
 
   const changeOption = useMemo(() => {
     const values = displayGroups.map(changeValue).filter((value): value is number => value != null);
@@ -175,7 +186,7 @@ export default function TamilNaduRail({
     const sorted = [...displayGroups].sort((a, b) => (changeValue(b) ?? -999) - (changeValue(a) ?? -999));
     return {
       animation: !reduced, animationDuration: 500, animationEasing: "cubicOut",
-      grid: { left: 104, right: 42, top: 8, bottom: 22 },
+      grid: { left: compact ? 96 : 108, right: roomy ? 46 : 38, top: 8, bottom: 22 },
       tooltip: {
         ...tip(p), trigger: "axis", axisPointer: { type: "shadow" },
         formatter: (params: unknown) => {
@@ -200,18 +211,26 @@ export default function TamilNaduRail({
         type: "bar", barMaxWidth: 12,
         data: sorted.map((group) => {
           const value = changeValue(group);
-          return { value: value == null ? 0 : +value.toFixed(2), itemStyle: { color: value == null ? "transparent" : group.color, borderRadius: 2 }, opacity: value == null ? 0 : 1 };
+          const showLabel = roomy && value != null;
+          return {
+            value: value == null ? null : +value.toFixed(2),
+            itemStyle: { color: group.color, borderRadius: 2 },
+            label: showLabel ? {
+              show: true, position: value >= 0 ? "right" : "left", color: p.text, fontSize: 8.5, fontWeight: 600,
+              formatter: `${value > 0 ? "+" : ""}${value.toFixed(1)}`,
+            } : { show: false },
+          };
         }),
         markLine: { silent: true, symbol: "none", label: { show: false }, lineStyle: { color: p.axis, width: 1 }, data: [{ xAxis: 0 }] },
       }],
     };
-  }, [scope, baselineLabel, p, reduced, theme, displayGroups]);
+  }, [scope, baselineLabel, p, reduced, displayGroups, compact, roomy]);
 
   const shareOption = useMemo(() => {
     const max = Math.max(10, Math.ceil((Math.max(...displayGroups.map((group) => currentValue(group) ?? 0)) * 100 + 4) / 10) * 10);
     return {
       animation: !reduced, animationDuration: 500,
-      grid: { left: 104, right: 44, top: 8, bottom: 22 },
+      grid: { left: compact ? 96 : 108, right: roomy ? 52 : 44, top: 8, bottom: 22 },
       tooltip: {
         ...tip(p), trigger: "axis", axisPointer: { type: "shadow" },
         formatter: (params: unknown) => {
@@ -228,91 +247,92 @@ export default function TamilNaduRail({
         data: displayGroups.map((group) => ({
           value: +((currentValue(group) ?? 0) * 100).toFixed(2),
           itemStyle: { color: group.color, borderRadius: 2 },
-          label: { show: true, position: "right", color: p.text, fontSize: 8.5, formatter: currentValue(group) == null ? "—" : `${((currentValue(group) ?? 0) * 100).toFixed(2)}%` },
+          label: compact ? { show: false } : { show: true, position: "right", color: p.text, fontSize: 8.5, formatter: currentValue(group) == null ? "—" : `${((currentValue(group) ?? 0) * 100).toFixed(2)}%` },
         })),
       }],
     };
-  }, [scope, baselineLabel, p, reduced, theme, displayGroups]);
+  }, [scope, baselineLabel, p, reduced, displayGroups, compact, roomy]);
 
-  const chartHeight = 176;
+  const chartHeight = roomy ? 210 : compact ? 160 : 180;
   const seatRows = [...TN_SEAT_GROUPS];
   const estimatedTotal = seatRows.reduce((s2, g) => s2 + (scope.estimatedSeats[g] ?? 0), 0);
   const actualTotal = seatRows.reduce((s2, g) => s2 + (scope.actualSeats[g] ?? 0), 0);
+
   return (
     <section aria-label="Tamil Nadu vote share" className="rounded-2xl border border-border bg-card/95 p-3 shadow-[0_18px_50px_-30px_rgba(15,20,30,0.55)] backdrop-blur-xl">
-      <div className="min-w-0">
-        <h2 className="font-display text-lg font-semibold leading-tight">Tamil Nadu {selectedYear} · Vote Share</h2>
-        <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
-          {isStatewide ? "Statewide" : scope.label}
-        </p>
-      </div>
-
-      <div className="mt-2 flex items-center gap-2">
-        <div className="grid flex-1 grid-cols-2 gap-1 rounded-lg border border-border p-0.5" role="tablist" aria-label="Comparison content">
-          <button type="button" role="tab" aria-selected={view === "polls"} onClick={() => setView("polls")}
-            className={cn("rounded-md px-2 py-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60", view === "polls" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
-            Polls
-          </button>
-          <button type="button" role="tab" aria-selected={view === "social"} onClick={() => setView("social")}
-            className={cn("rounded-md px-2 py-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60", view === "social" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
-            Social Media
-          </button>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="font-display text-lg font-semibold leading-tight">Tamil Nadu {selectedYear} · Vote Share</h2>
+          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+            {isStatewide ? "Statewide" : scope.label}
+          </p>
         </div>
         <button type="button" onClick={onExpand} aria-label="Expand the vote-share analysis"
-          className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+          className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-muted-foreground transition-colors hover:border-saffron/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
           <Maximize2 className="size-3" /> Expand
         </button>
       </div>
 
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className={cn(segWrap, "grid min-w-0 flex-1 grid-cols-2")} role="tablist" aria-label="Comparison content">
+          <button type="button" role="tab" aria-selected={view === "polls"} onClick={() => onView("polls")} className={segButton(view === "polls")}>
+            Polls
+          </button>
+          <button type="button" role="tab" aria-selected={view === "social"} onClick={() => onView("social")} className={segButton(view === "social")}>
+            Social Media
+          </button>
+        </div>
+      </div>
+
       {view === "social" ? (
-        <SocialMediaPanel />
+        <SocialMediaPanel compact={compact} />
       ) : (
         <>
           {isStatewide ? (
-            <div className="mt-2 overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[400px] table-fixed border-collapse text-[9.5px]">
+            <div className="mt-2 overflow-x-auto rounded-lg border border-border/70">
+              <table className={cn("w-full table-fixed border-collapse", compact ? "min-w-[318px] text-[8.5px]" : "min-w-[400px] text-[9.5px]")}>
                 <caption className="sr-only">Tamil Nadu vote-share comparison</caption>
                 <colgroup><col className="w-[34%]" /><col className="w-[22%]" /><col className="w-[22%]" /><col className="w-[22%]" /></colgroup>
                 <thead>
-                  <tr className="bg-muted/30 text-left text-[8px] uppercase tracking-wide text-muted-foreground">
-                    <th scope="col" className="px-1.5 py-1.5 font-semibold">Party</th>
-                    <th scope="col" className="px-1 py-1.5 text-right font-semibold">Exit Poll</th>
-                    <th scope="col" className="px-1 py-1.5 text-right font-semibold">Opinion Poll</th>
-                    <th scope="col" className="border-l border-border/70 px-1 py-1.5 text-right font-semibold">Actual Result</th>
+                  <tr className="border-b border-border/70 text-left text-[8px] uppercase tracking-wide text-muted-foreground">
+                    <th scope="col" className={cn("px-1.5 text-left font-semibold", compact ? "py-1" : "py-1.5")}>Party</th>
+                    <th scope="col" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Exit Poll</th>
+                    <th scope="col" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Opinion Poll</th>
+                    <th scope="col" className={cn("border-l border-border/60 px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Actual Result</th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayGroups.map((group) => (
-                    <tr key={group.key} className="border-t border-border/60">
-                      <th scope="row" className="px-1.5 py-1.5 text-left font-medium"><DisplayPartyCell group={group} /></th>
-                      <td className="px-1 py-1.5 text-right tabular-nums">{tnPct(sumShares(AMI_EXIT_POLL.shares, group.groups))}</td>
-                      <td className="px-1 py-1.5 text-right tabular-nums">{tnPct(opinionPoll.available ? sumShares(opinionPoll.shares, group.groups) : null)}</td>
-                      <td className="border-l border-border/70 px-1 py-1.5 text-right tabular-nums">{tnPct(sumShares(actualShares, group.groups))}</td>
+                    <tr key={group.key} className="border-t border-border/50">
+                      <th scope="row" className={cn("px-1.5 text-left font-medium", rowPad)}><DisplayPartyCell group={group} compact={compact} /></th>
+                      <td className={cn("px-1 text-right tabular-nums", rowPad)}>{tnPct(sumShares(AMI_EXIT_POLL.shares, group.groups))}</td>
+                      <td className={cn("px-1 text-right tabular-nums", rowPad)}>{tnPct(opinionPoll.available ? sumShares(opinionPoll.shares, group.groups) : null)}</td>
+                      <td className={cn("border-l border-border/60 px-1 text-right tabular-nums", rowPad)}>{tnPct(sumShares(actualShares, group.groups))}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           ) : (
-            <div className="mt-2 overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[390px] table-fixed border-collapse text-[9.5px]">
+            <div className="mt-2 overflow-x-auto rounded-lg border border-border/70">
+              <table className={cn("w-full table-fixed border-collapse", compact ? "min-w-[312px] text-[8.5px]" : "min-w-[390px] text-[9.5px]")}>
                 <caption className="sr-only">{scope.label} local survey estimate, {baselineLabel} historical result and local actual availability.</caption>
                 <colgroup><col className="w-[34%]" /><col className="w-[22%]" /><col className="w-[22%]" /><col className="w-[22%]" /></colgroup>
                 <thead>
-                  <tr className="bg-muted/30 text-left text-[8px] uppercase tracking-wide text-muted-foreground">
-                    <th scope="col" className="px-1.5 py-1.5 font-semibold">Party</th>
-                    <th scope="col" className="px-1 py-1.5 text-right font-semibold">Survey Estimate</th>
-                    <th scope="col" className="px-1 py-1.5 text-right font-semibold">{baselineLabel} Result</th>
-                    <th scope="col" className="border-l border-border/70 px-1 py-1.5 text-right font-semibold">Actual Result</th>
+                  <tr className="border-b border-border/70 text-left text-[8px] uppercase tracking-wide text-muted-foreground">
+                    <th scope="col" className={cn("px-1.5 text-left font-semibold", compact ? "py-1" : "py-1.5")}>Party</th>
+                    <th scope="col" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Survey Estimate</th>
+                    <th scope="col" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>{baselineLabel} Result</th>
+                    <th scope="col" className={cn("border-l border-border/60 px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Actual Result</th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayGroups.map((group) => (
-                    <tr key={group.key} className="border-t border-border/60">
-                      <th scope="row" className="px-1.5 py-1.5 text-left font-medium"><DisplayPartyCell group={group} /></th>
-                      <td className="px-1 py-1.5 text-right tabular-nums font-semibold">{tnPct(currentValue(group))}</td>
-                      <td className="px-1 py-1.5 text-right tabular-nums text-muted-foreground" title={baselineTitle(group)}>{tnPct(baselineValue(group))}</td>
-                      <td className="border-l border-border/70 px-1 py-1.5 text-right tabular-nums text-muted-foreground">—</td>
+                    <tr key={group.key} className="border-t border-border/50">
+                      <th scope="row" className={cn("px-1.5 text-left font-medium", rowPad)}><DisplayPartyCell group={group} compact={compact} /></th>
+                      <td className={cn("px-1 text-right font-semibold tabular-nums", rowPad)}>{tnPct(currentValue(group))}</td>
+                      <td className={cn("px-1 text-right tabular-nums text-muted-foreground", rowPad)} title={baselineTitle(group)}>{tnPct(baselineValue(group))}</td>
+                      <td className={cn("border-l border-border/60 px-1 text-right tabular-nums text-muted-foreground", rowPad)}>—</td>
                     </tr>
                   ))}
                 </tbody>
@@ -320,27 +340,63 @@ export default function TamilNaduRail({
             </div>
           )}
 
-          <div className="mt-2 flex gap-1 border-b border-border" role="tablist" aria-label="Comparison views">
+          <div className={cn(segWrap, "mt-2 grid w-full grid-cols-3")} role="tablist" aria-label="Comparison views">
             {TABS.map((t) => (
-              <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => onTab(t.id)}
-                className={cn("-mb-px rounded-t-md border-b-2 px-2 py-1 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
-                  tab === t.id ? "border-saffron text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
+              <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => onTab(t.id)} className={segButton(tab === t.id)}>
                 {t.label}
               </button>
             ))}
           </div>
 
           <div className="pt-2">
-            {tab === "change" && <><p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Estimated minus {baselineLabel} (pp)</p><EChart option={changeOption} height={chartHeight} reduced={reduced} ariaLabel={`Signed percentage-point change from ${baselineLabel} to the 2026 estimate for ${scope.label}`} /></>}
-            {tab === "share" && <><p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Estimated vote share</p><EChart option={shareOption} height={chartHeight} reduced={reduced} ariaLabel={`2026 estimated vote share for ${scope.label}`} /></>}
+            {tab === "change" && (
+              <>
+                <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Estimated minus {baselineLabel} (pp)</p>
+                <EChart option={changeOption} height={chartHeight} reduced={reduced} ariaLabel={`Signed percentage-point change from ${baselineLabel} to the 2026 estimate for ${scope.label}`} />
+              </>
+            )}
+            {tab === "share" && (
+              <>
+                <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Estimated vote share</p>
+                <EChart option={shareOption} height={chartHeight} reduced={reduced} ariaLabel={`2026 estimated vote share for ${scope.label}`} />
+              </>
+            )}
             {tab === "seats" && (
               <div className="space-y-2">
                 <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Estimated seats · actual shown separately</p>
-                <div className="overflow-hidden rounded-md border border-border">
-                  <table className="w-full border-collapse text-[10px]">
-                    <thead><tr className="bg-muted/30 text-[8px] uppercase tracking-wide text-muted-foreground"><th className="px-1 py-1 text-left">Party</th><th className="px-1 py-1 text-right">Estimated</th><th className="px-1 py-1 text-right">Actual 2026</th></tr></thead>
-                    <tbody>{seatRows.map((g) => <tr key={g} className="border-t border-border/60"><td className="px-1 py-1"><span className="inline-flex items-start gap-1" style={{ color: TN_COLOR[g] }}><span className="mt-1 size-1.5 shrink-0 rounded-sm" style={{ background: TN_COLOR[g] }} /><span className="min-w-0"><span className="block leading-tight">{TN_LABEL[g]}</span>{partners(g) && <span className="mt-0.5 block text-[7px] font-normal leading-tight text-muted-foreground">{partners(g)}</span>}</span></span></td><td className="px-1 py-1 text-right font-semibold tabular-nums">{scope.estimatedSeats[g] ?? 0}</td><td className="px-1 py-1 text-right tabular-nums">{scope.actualSeats[g] ?? 0}</td></tr>)}</tbody>
-                    <tfoot><tr className="border-t border-border bg-muted/20 text-[9px]"><td className="px-1 py-1">Total</td><td className="px-1 py-1 text-right tabular-nums">{estimatedTotal}</td><td className="px-1 py-1 text-right tabular-nums">{actualTotal}</td></tr></tfoot>
+                <div className="overflow-hidden rounded-md border border-border/70">
+                  <table className={cn("w-full border-collapse", compact ? "text-[9px]" : "text-[10px]")}>
+                    <thead>
+                      <tr className="border-b border-border/70 text-[8px] uppercase tracking-wide text-muted-foreground">
+                        <th className={cn("px-1 text-left", rowPad)}>Party</th>
+                        <th className={cn("px-1 text-right", rowPad)}>Estimated</th>
+                        <th className={cn("px-1 text-right", rowPad)}>Actual 2026</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {seatRows.map((g) => (
+                        <tr key={g} className="border-t border-border/50">
+                          <td className={cn("px-1", rowPad)}>
+                            <span className="inline-flex items-start gap-1" style={{ color: TN_COLOR[g] }}>
+                              <span className="mt-[4px] size-1.5 shrink-0 rounded-sm" style={{ background: TN_COLOR[g] }} />
+                              <span className="min-w-0">
+                                <span className="block leading-tight">{TN_LABEL[g]}</span>
+                                {partners(g) && !compact && <span className="mt-0.5 block text-[7px] font-normal leading-tight text-muted-foreground">{partners(g)}</span>}
+                              </span>
+                            </span>
+                          </td>
+                          <td className={cn("px-1 text-right font-semibold tabular-nums", rowPad)}>{scope.estimatedSeats[g] ?? 0}</td>
+                          <td className={cn("px-1 text-right tabular-nums", rowPad)}>{scope.actualSeats[g] ?? 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t border-border bg-muted/20 text-[9px]">
+                        <td className={cn("px-1", rowPad)}>Total</td>
+                        <td className={cn("px-1 text-right tabular-nums", rowPad)}>{estimatedTotal}</td>
+                        <td className={cn("px-1 text-right tabular-nums", rowPad)}>{actualTotal}</td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               </div>

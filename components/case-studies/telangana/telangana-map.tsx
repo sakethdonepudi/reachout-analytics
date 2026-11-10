@@ -45,6 +45,8 @@ type Props = {
   year: ElectionYear;
   layer: "party" | "device";
   theme: "light" | "dark";
+  /** Increment after a split resize to refit without changing selection. */
+  fitKey?: number;
   onSelectDistrict: (name: string) => void;
   onSelectAc: (no: number) => void;
   onReset: () => void;
@@ -93,7 +95,7 @@ const PAL = {
   light: { none: "#e7ebef", side: "#d3d9e0", line: "rgb(40,58,78)", hover: "#1d4ed8", sel: "#111827", label: "#1b2430", halo: "rgba(255,255,255,.94)" },
 };
 
-export default function TelanganaMap({ acs, district, ac, year, layer, theme, onSelectDistrict, onSelectAc, onReset }: Props) {
+export default function TelanganaMap({ acs, district, ac, year, layer, theme, fitKey = 0, onSelectDistrict, onSelectAc, onReset }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
@@ -106,8 +108,8 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
   const [districtGeo, setDistrictGeo] = useState<DistrictFC | null>(null);
   const [tip, setTip] = useState<{ x: number; y: number; title: string; sub: string; value: string; colours: string[] } | null>(null);
 
-  const live = useRef({ acs, district, ac, year, layer, theme, onSelectDistrict, onSelectAc, onReset });
-  live.current = { acs, district, ac, year, layer, theme, onSelectDistrict, onSelectAc, onReset };
+  const live = useRef({ acs, district, ac, year, layer, theme, fitKey, onSelectDistrict, onSelectAc, onReset });
+  live.current = { acs, district, ac, year, layer, theme, fitKey, onSelectDistrict, onSelectAc, onReset };
   const acByNo = useMemo(() => new Map(acs.map((a) => [a.no, a])), [acs]);
   const acRef = useRef(acByNo);
   acRef.current = acByNo;
@@ -460,8 +462,9 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
     const fit = (nos: number[] | null, opts: { margin?: number; min?: number } = {}) => {
       const rect = host.getBoundingClientRect();
       const vw = Math.max(320, rect.width), vh = Math.max(320, rect.height);
-      const wide = window.innerWidth > 1024;
-      const leftPx = wide ? 300 : 0, rightPx = wide ? 340 : 0;
+      /* The split layout gives the map its own column, so no overlay
+         reservations are needed. Keep the state centred in that column. */
+      const leftPx = 0, rightPx = 0;
       const { margin = 1.35, min = 90 } = opts;
       let b = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
       for (const e of entries.values()) {
@@ -613,7 +616,7 @@ export default function TelanganaMap({ acs, district, ac, year, layer, theme, on
       last = now;
       const grp = live.current.district;
       const selAc = live.current.ac;
-      const sig = `${grp ?? ""}|${selAc ?? ""}`;
+      const sig = `${grp ?? ""}|${selAc ?? ""}|${live.current.fitKey}`;
       if (sig !== lastSig) {
         lastSig = sig;
         if (selAc != null) fit([selAc], { margin: 1.75, min: 140 });

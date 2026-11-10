@@ -48,6 +48,7 @@ export default function EChart({ option, height, ariaLabel, reduced, onEvents, c
         charts.BarChart, charts.LineChart, charts.ScatterChart, charts.EffectScatterChart, charts.BoxplotChart,
         components.GridComponent, components.TooltipComponent, components.DataZoomComponent,
         components.MarkLineComponent, components.MarkAreaComponent, components.AriaComponent,
+        components.LegendComponent, components.GraphicComponent,
         features.LabelLayout,
         renderers.CanvasRenderer,
       ]);

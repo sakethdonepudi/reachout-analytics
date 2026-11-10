@@ -45,6 +45,8 @@ type Props = {
   acNo: number | null;
   year: TnYearOrCurrent;
   theme: MapTheme;
+  /** Increment after a split resize to refit without changing selection. */
+  fitKey?: number;
   onSelectDistrict: (name: string) => void;
   onSelectAc: (no: number) => void;
   onReset: () => void;
@@ -128,7 +130,7 @@ function blendColor(blend: BlendInfo, t: number): THREE.Color {
   return gradientColor(blend.color1, blend.color2, blend.p1, t);
 }
 
-export default function TamilNaduMap({ acs, districts, district, acNo, year, theme, onSelectDistrict, onSelectAc, onReset }: Props) {
+export default function TamilNaduMap({ acs, districts, district, acNo, year, theme, fitKey = 0, onSelectDistrict, onSelectAc, onReset }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
@@ -632,7 +634,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
   useEffect(() => {
     if (!ready) return;
     apiRef.current?.setSelection(district, acNo, year);
-  }, [ready, district, acNo, year, acs, districts]);
+  }, [ready, district, acNo, year, acs, districts, fitKey]);
 
   return (
     <div className="relative h-full w-full">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RotateCcw, X } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { PARTY_COLOR, fmtPct, type AcRow, type DistrictRow } from "@/lib/telangana/oct26";
 import { historicalDetail, type HistoricYear } from "@/lib/telangana/history";
 import {
@@ -9,6 +9,7 @@ import {
 } from "@/lib/telangana/round-model";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
+import AnalysisShell from "@/components/case-studies/shared/analysis-shell";
 import { cn } from "@/lib/utils";
 
 /* =====================================================================
@@ -97,8 +98,6 @@ export default function TelanganaAnalysis({
 }) {
   const reduced = usePrefersReducedMotion();
   const p = palette(theme);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
   const requestSeq = useRef(0);
 
   const [scope, setScope] = useState(initialScope);
@@ -132,29 +131,6 @@ export default function TelanganaAnalysis({
       .finally(() => { if (id === requestSeq.current) setLoading(false); });
     return () => controller.abort();
   }, [open, scope]);
-
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const t = window.setTimeout(() => closeRef.current?.focus(), 30);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); onClose(); }
-      if (e.key === "Tab" && dialogRef.current) {
-        const nodes = dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])');
-        if (!nodes.length) return;
-        const first = nodes[0], last = nodes[nodes.length - 1];
-        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = previous;
-      document.removeEventListener("keydown", onKey);
-      window.clearTimeout(t);
-    };
-  }, [open, onClose]);
 
   const scopeAcs = useMemo(() => {
     if (scope === "state") return acs;
@@ -465,180 +441,219 @@ export default function TelanganaAnalysis({
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-[140] flex items-start justify-center overflow-y-auto bg-background/80 p-0 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-labelledby="tg-analysis-title" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div ref={dialogRef} className="min-h-full w-full max-w-6xl overflow-y-auto border border-border bg-card shadow-2xl sm:min-h-0 sm:max-h-[96svh] sm:rounded-2xl">
-        <div className="sticky top-0 z-30 flex items-start justify-between gap-3 border-b border-border bg-card/95 px-4 py-3 backdrop-blur-xl">
-          <div className="min-w-0">
-            <h2 id="tg-analysis-title" className="font-display text-lg font-semibold leading-tight">Telangana analysis</h2>
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{scopeName} · 2028 projection by survey round</p>
-          </div>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close analysis" className="grid size-8 shrink-0 place-items-center rounded-full border border-border text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60"><X className="size-4" /></button>
-        </div>
+  const controls = (
+    <div className="analysis-soft rounded-xl p-3">
+      <div className="inline-flex w-full rounded-lg border border-[var(--a-border)] bg-[var(--a-panel)] p-0.5" role="group" aria-label="Metric">
+        {([["share", "Vote share"], ["swing", "Swing"]] as const).map(([id, label]) => (
+          <button key={id} type="button" aria-pressed={metric === id} onClick={() => setMetric(id)} className={cn("flex-1 rounded-md px-2.5 py-1 text-[10px] font-semibold transition-colors", metric === id ? "bg-[var(--a-ink)] text-[var(--a-canvas)]" : "text-[var(--a-muted)] hover:text-[var(--a-ink)]")}>{label}</button>
+        ))}
+      </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
-          <div className="inline-flex rounded-full border border-border p-0.5" role="group" aria-label="Metric">
-            {([["share", "Vote share"], ["swing", "Swing"]] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={metric === id} onClick={() => setMetric(id)} className={cn("rounded-full px-3 py-1 text-[11px] font-medium", metric === id ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>{label}</button>)}
-          </div>
-          <label className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">Baseline
-            <select value={baseline} onChange={(e) => setBaseline(e.target.value as HistoricYear)} className="rounded-md border border-border bg-background px-1.5 py-1 text-[10px] text-foreground">
-              {BASELINES.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
-          </label>
-          <div className="inline-flex flex-wrap gap-1" role="group" aria-label="Smoothing">
-            {SMOOTHS.map((s) => <button key={s.id} type="button" aria-pressed={smooth === s.id} onClick={() => setSmooth(s.id)} className={cn("rounded-full border px-2 py-1 text-[10px]", smooth === s.id ? "border-foreground/40 bg-muted/40 text-foreground" : "border-border text-muted-foreground")}>{s.label}</button>)}
-          </div>
-          <div className="inline-flex gap-1" role="group" aria-label="Round size">
-            {(["388", "688"] as const).map((n) => <button key={n} type="button" aria-pressed={roundSize === n} onClick={() => setRoundSize(n)} className={cn("rounded-full border px-2 py-1 text-[10px]", roundSize === n ? "border-foreground/40 bg-muted/40 text-foreground" : "border-border text-muted-foreground")}>Samples {n}</button>)}
-          </div>
-          <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Parties">
-            {P7S.map((party) => <button key={party} type="button" aria-pressed={parties.includes(party)} onClick={() => setParties((prev) => prev.includes(party) ? (prev.length > 1 ? prev.filter((x) => x !== party) : prev) : [...prev, party])} className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px]", parties.includes(party) ? "border-border text-foreground" : "border-border/60 text-muted-foreground opacity-45")}><span className="size-2 rounded-sm" style={{ background: P7_COLOR[party] }} />{P7_LABEL[party]}</button>)}
-            <button type="button" onClick={() => setParties([...P7S])} className={cn("rounded-full border px-2 py-1 text-[10px]", parties.length === P7S.length ? "border-foreground/40 bg-muted/40 text-foreground" : "border-border text-muted-foreground hover:text-foreground")}>All parties</button>
-          </div>
-          <span className="text-[10px] text-muted-foreground">Range <b className="font-medium text-foreground/80">{data?.dateMin ?? "—"} – {data?.dateMax ?? "—"}</b></span>
-          <button type="button" aria-pressed={showMedian} onClick={() => setShowMedian((v) => !v)} className={cn("rounded-full border px-2 py-1 text-[10px]", showMedian ? "border-foreground/40 bg-muted/40 text-foreground" : "border-border text-muted-foreground")}>Show median</button>
-          <button type="button" aria-pressed={highlightOutliers} onClick={() => setHighlightOutliers((v) => !v)} className={cn("rounded-full border px-2 py-1 text-[10px]", highlightOutliers ? "border-foreground/40 bg-muted/40 text-foreground" : "border-border text-muted-foreground")}>Highlight outliers</button>
-          <button type="button" onClick={() => { setMetric("share"); setBaseline("2023"); setSmooth("raw"); setRoundSize("388"); setParties([...P7S]); setShowMedian(true); setHighlightOutliers(true); setDistUnit("day"); setResetKey((k) => k + 1); }} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[10px] text-muted-foreground hover:text-foreground"><RotateCcw className="size-3" /> Reset</button>
-        </div>
+      <label className="mt-3 flex items-center justify-between gap-2 text-[10px] font-medium text-[var(--a-muted)]">Baseline
+        <select value={baseline} onChange={(event) => setBaseline(event.target.value as HistoricYear)} className="rounded-md border border-[var(--a-border)] bg-[var(--a-panel)] px-1.5 py-1 text-[10px] text-[var(--a-ink)]">
+          {BASELINES.map((year) => <option key={year} value={year}>{year}</option>)}
+        </select>
+      </label>
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-2 text-[10px] text-muted-foreground">
-          <span>Collection <b className="text-foreground/80">{data?.dateMin && data?.dateMax ? `${data.dateMin.slice(0, 10)} – ${data.dateMax.slice(0, 10)}` : "—"}</b></span>
-          <span>Rounds <b className="text-foreground/80">{periods.length || "—"}</b></span>
-          <span>Latest <b className="text-foreground/80">{latestPeriod ? dateOf(latestPeriod.end) : "—"}</b></span>
-          {latestLeader && <span className="ml-auto">Latest leading party <b style={{ color: P7_COLOR[latestLeader] }}>{P7_LABEL[latestLeader]}</b> <b className="text-foreground/80">{latestLeaderShare == null ? "—" : `${latestLeaderShare.toFixed(2)}%`}</b> {latestLeaderSwing == null ? "" : `· ${signed(latestLeaderSwing)} pp`}</span>}
-        </div>
-
-        <div className="space-y-5 px-4 pb-8 pt-4">
-          {latestProjection && (
-            <section aria-label="Latest party summary">
-              <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 className="font-display text-[15px] font-semibold">Latest round · party summary</h3><span className="text-[10px] text-muted-foreground">{latestPeriod ? `${latestPeriod.label} · ${dates(latestPeriod.start, latestPeriod.end)}` : ""}</span></div>
-              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
-                {parties.map((party) => { const v = latestProjection[party]; const sw = latestProjection[party] - baselineDetail[party] * 100; return <div key={party} className="rounded-lg border border-border bg-card/70 px-2.5 py-2"><div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: P7_COLOR[party] }}><span className="size-1.5 rounded-sm" style={{ background: P7_COLOR[party] }} />{P7_LABEL[party]}</div><div className="mt-1 font-display text-[17px] tabular-nums text-foreground">{v.toFixed(2)}%</div><div className="text-[9px] tabular-nums text-muted-foreground">{sw == null ? "—" : `${signed(sw)} pp`} vs {baseline}</div></div>; })}
-              </div>
-            </section>
-          )}
-          {error && <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-600 dark:text-rose-400">{error}</div>}
-          {loading && !data && <div className="grid h-48 place-items-center text-[12px] text-muted-foreground">Loading survey periods…</div>}
-
-          {data && (
-            <>
-              <section>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div>
-                    <h3 className="font-display text-[15px] font-semibold">{metric === "share" ? "Projected 2028 vote share by survey round" : `Swing vs ${baseline} by survey round`}</h3>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">Round model · 2023 actual + (2028 intention − recalled 2023) · normalised</p>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">{data.dateMin} – {data.dateMax} · {periods.length} {smooth === "quarter" ? "quarters" : "rounds"} · {smooth === "quarter" ? "calendar quarters" : `${roundSize} samples`}</span>
-                </div>
-                {showMedian && medianRows.some((r) => r.median != null) && (
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[9.5px] text-muted-foreground">
-                    {medianRows.filter((r) => r.median != null).map((r) => <span key={r.party} className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: P7_COLOR[r.party] }} />{P7_LABEL[r.party]} median <b className="tabular-nums text-foreground/80">{r.median!.toFixed(1)}{unit}</b></span>)}
-                  </div>
-                )}
-                {periods.length ? (
-                  <EChart key={resetKey} option={chartOption} height={340} reduced={reduced} replaceSeries ariaLabel={`${metric === "share" ? "Projected 2028 vote share" : `Swing vs ${baseline}`} for ${scopeName}`} onEvents={{ click: (params) => {
-                    const q = params as { dataIndex?: number; data?: { value?: [number, number] } };
-                    const x = Array.isArray(q.data?.value) ? q.data.value[0] : (q.dataIndex ?? -1);
-                    const idx = x - offset;
-                    if (idx >= 0 && idx < periods.length) {
-                      setSelectedPeriod(idx);
-                      document.getElementById(`tg-round-${idx}`)?.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
-                    }
-                  } }} />
-                ) : <div className="grid h-36 place-items-center text-[12px] text-muted-foreground">No rounds in this dataset.</div>}
-              </section>
-
-              <section>
-                <h3 className="font-display text-[15px] font-semibold">Round-wise detail</h3>
-                <div className="mt-2 max-h-[460px] overflow-auto rounded-xl border border-border">
-                  <table className="w-full border-collapse text-[10px]">
-                    <caption className="sr-only">Projected round detail for {scopeName}</caption>
-                    <thead className="sticky top-0 z-20 bg-card">
-                      <tr className="text-left text-[8.5px] uppercase tracking-wide text-muted-foreground">
-                        <th rowSpan={2} className="sticky left-0 z-30 w-14 bg-card px-2 py-1.5">Round</th>
-                        <th rowSpan={2} className="sticky left-14 z-30 w-28 bg-card px-2 py-1.5">Dates</th>
-                        <th rowSpan={2} className="sticky left-[10.5rem] z-30 w-16 bg-card px-2 py-1.5 text-right">Entries</th>
-                        <th colSpan={parties.length} className={cn("px-2 py-1 text-center", metric === "share" && "text-foreground/85")}>Projected party shares</th>
-                        <th colSpan={parties.length} className={cn("px-2 py-1 text-center", metric === "swing" && "text-foreground/85")}>Party swings vs {baseline}</th>
-                      </tr>
-                      <tr className="text-left text-[8.5px] text-muted-foreground">
-                        {parties.map((party) => <th key={`p-${party}`} className="whitespace-nowrap px-2 py-1 text-right" style={{ color: P7_COLOR[party] }}>{P7_LABEL[party]}</th>)}
-                        {parties.map((party) => <th key={`s-${party}`} className="whitespace-nowrap px-2 py-1 text-right" style={{ color: P7_COLOR[party] }}>Δ {P7_LABEL[party]}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {periods.map((per, i) => {
-                        const proj = projections[i];
-                        return (
-                          <tr key={`${per.label}-${i}`} id={`tg-round-${i}`} tabIndex={0}
-                            onMouseEnter={() => setFocusPeriod(i)} onMouseLeave={() => setFocusPeriod(null)} onFocus={() => setFocusPeriod(i)} onBlur={() => setFocusPeriod(null)}
-                            onClick={() => { setSelectedPeriod(i); document.getElementById(`tg-round-${i}`)?.scrollIntoView({ block: "nearest" }); }}
-                            className={cn("cursor-pointer border-t border-border/60 outline-none", selected === i ? "bg-saffron/10" : "hover:bg-muted/30 focus:bg-muted/30")}>
-                            <td className="sticky left-0 z-10 bg-card px-2 py-1 font-medium">{per.label}</td>
-                            <td className="sticky left-14 z-10 bg-card px-2 py-1 text-muted-foreground">{dates(per.start, per.end)}</td>
-                            <td className="sticky left-[10.5rem] z-10 bg-card px-2 py-1 text-right tabular-nums">{per.entries.toLocaleString("en-IN")}{per.partial ? <span className="ml-0.5 opacity-60">*</span> : null}</td>
-                            {parties.map((party) => <td key={`p-${party}`} className={cn("px-2 py-1 text-right tabular-nums", metric === "share" ? "font-semibold text-foreground" : "text-muted-foreground")}>{proj ? proj[party].toFixed(2) : "—"}</td>)}
-                            {parties.map((party) => <td key={`s-${party}`} className={cn("px-2 py-1 text-right tabular-nums", metric === "swing" ? "font-semibold text-foreground" : "text-muted-foreground")}>{proj ? signed(proj[party] - baselineDetail[party] * 100) : "—"}</td>)}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="mt-1 text-[9px] text-muted-foreground">* Final remainder round, not a full sample.</p>
-              </section>
-
-              <section>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div><h3 className="font-display text-[15px] font-semibold">District projection</h3><p className="mt-0.5 text-[10px] text-muted-foreground">2028 final AC model · AIMIM extracted from Others · weighted by 2023 votes.</p></div>
-                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">Sort
-                    <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="rounded-md border border-border bg-background px-1.5 py-1 text-[10px] text-foreground"><option value="name">Name</option><option value="leader">2028 leading party</option><option value="margin">Margin</option></select>
-                  </div>
-                </div>
-                <div className="mt-2 max-h-72 overflow-auto rounded-xl border border-border">
-                  <table className="w-full border-collapse text-[10.5px]">
-                    <caption className="sr-only">District 2028 AC model projection</caption>
-                    <thead className="sticky top-0 z-10 bg-card"><tr className="text-left text-[8.5px] uppercase tracking-wide text-muted-foreground"><th className="px-2 py-1.5">District</th><th className="px-2 py-1.5">2028 leading party</th><th className="px-2 py-1.5 text-right">BRS</th><th className="px-2 py-1.5 text-right">Congress+</th><th className="px-2 py-1.5 text-right">BJP</th><th className="px-2 py-1.5 text-right">AIMIM</th><th className="px-2 py-1.5 text-right">Others</th><th className="px-2 py-1.5 text-right">Margin</th></tr></thead>
-                    <tbody>
-                      {sortedDistricts.map((d) => (
-                        <tr key={d.name} className={cn("cursor-pointer border-t border-border/60 hover:bg-muted/30", scope === `d:${d.name}` && "bg-saffron/10")} onClick={() => { setScope(`d:${d.name}`); onSelectDistrict(d.name); }}>
-                          <td className="px-2 py-1 font-medium">{d.name}</td>
-                          <td className="px-2 py-1"><span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: d.leader === "Tie" ? p.muted : P7_COLOR[(d.leader === "Congress" ? "Congress" : d.leader) as P7] ?? P7_COLOR.Others }} />{d.leader}</span></td>
-                          <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.BRS)}</td>
-                          <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.Congress)}</td>
-                          <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.BJP)}</td>
-                          <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.AIMIM)}</td>
-                          <td className="px-2 py-1 text-right tabular-nums">{fmtPct(d.prediction.Others)}</td>
-                          <td className="px-2 py-1 text-right tabular-nums">{d.marginPp.toFixed(1)} pp</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
-              <section>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h3 className="font-display text-[15px] font-semibold">Projected 2028 distribution</h3>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <div className="inline-flex rounded-full border border-border p-0.5" role="group" aria-label="Distribution period">
-                      {([["day", "Daily"], ["block", "Every 50 responses"]] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={distUnit === id} onClick={() => setDistUnit(id)} className={cn("rounded-full px-2.5 py-1 text-[10px]", distUnit === id ? "bg-foreground text-background" : "text-muted-foreground")}>{label}</button>)}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">{metric === "share" ? "Projected 2028 share" : `Swing vs ${baseline}`} · {distAvailable} periods · {distEntries.toLocaleString("en-IN")} entries</span>
-                  </div>
-                </div>
-                {showMedian && (
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[9.5px] text-muted-foreground">
-                    {parties.map((party) => { const st = boxStats(distValues[party].map((x) => x.value)); return st ? <span key={party} className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: P7_COLOR[party] }} />{P7_LABEL[party]} median <b className="tabular-nums text-foreground/80">{st.median.toFixed(1)}{unit}</b></span> : null; })}
-                  </div>
-                )}
-                <EChart option={distOption} height={310} reduced={reduced} replaceSeries ariaLabel={`${metric === "share" ? "Projected 2028 share" : "Swing"} distribution by party for ${scopeName}`} />
-                <p className="mt-0.5 text-[9px] text-muted-foreground">Box Q1–Q3 · line median · rings IQR outliers</p>
-              </section>
-            </>
-          )}
+      <div className="mt-3">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--a-muted)]">Smoothing</span>
+        <div className="mt-1 flex flex-wrap gap-1" role="group" aria-label="Smoothing">
+          {SMOOTHS.map((item) => <button key={item.id} type="button" aria-pressed={smooth === item.id} onClick={() => setSmooth(item.id)} className={cn("rounded-full border px-2 py-1 text-[9.5px]", smooth === item.id ? "border-[var(--a-brass)]/50 bg-[var(--a-brass-soft)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)]")}>{item.label}</button>)}
         </div>
       </div>
+
+      <div className="mt-3">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--a-muted)]">Round size</span>
+        <div className="mt-1 grid grid-cols-2 gap-1" role="group" aria-label="Round size">
+          {(["388", "688"] as const).map((count) => <button key={count} type="button" aria-pressed={roundSize === count} onClick={() => setRoundSize(count)} className={cn("rounded-md border px-2 py-1 text-[9.5px]", roundSize === count ? "border-[var(--a-brass)]/50 bg-[var(--a-brass-soft)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)]")}>Samples {count}</button>)}
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--a-muted)]">Parties</span>
+        <div className="mt-1 flex flex-wrap gap-1" role="group" aria-label="Parties">
+          {P7S.map((party) => <button key={party} type="button" aria-pressed={parties.includes(party)} onClick={() => setParties((previous) => previous.includes(party) ? (previous.length > 1 ? previous.filter((item) => item !== party) : previous) : [...previous, party])} className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[9.5px]", parties.includes(party) ? "border-[var(--a-border)] text-[var(--a-ink)]" : "border-[var(--a-border)]/60 text-[var(--a-muted)] opacity-50")}><span className="size-2 rounded-sm" style={{ background: P7_COLOR[party] }} />{P7_LABEL[party]}</button>)}
+          <button type="button" onClick={() => setParties([...P7S])} className={cn("rounded-full border px-2 py-1 text-[9.5px]", parties.length === P7S.length ? "border-[var(--a-brass)]/50 bg-[var(--a-brass-soft)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)]")}>All</button>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-1">
+        <button type="button" aria-pressed={showMedian} onClick={() => setShowMedian((value) => !value)} className={cn("rounded-lg border px-2 py-1.5 text-left text-[10px]", showMedian ? "border-[var(--a-brass)]/50 bg-[var(--a-brass-soft)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)]")}>Show median</button>
+        <button type="button" aria-pressed={highlightOutliers} onClick={() => setHighlightOutliers((value) => !value)} className={cn("rounded-lg border px-2 py-1.5 text-left text-[10px]", highlightOutliers ? "border-[var(--a-brass)]/50 bg-[var(--a-brass-soft)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)]")}>Highlight outliers</button>
+      </div>
+
+      <button type="button" onClick={() => { setMetric("share"); setBaseline("2023"); setSmooth("raw"); setRoundSize("388"); setParties([...P7S]); setShowMedian(true); setHighlightOutliers(true); setDistUnit("day"); setResetKey((key) => key + 1); }} className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-[var(--a-border)] px-2 py-1.5 text-[10px] font-semibold text-[var(--a-muted)] hover:text-[var(--a-ink)]">
+        <RotateCcw className="size-3" /> Reset controls
+      </button>
     </div>
+  );
+
+  return (
+    <AnalysisShell
+      open={open}
+      onClose={onClose}
+      eyebrow="2028 analysis"
+      title={`${scopeName} · projection`}
+      subtitle="2028 projection by survey round · round model"
+      contentClassName="space-y-5"
+    >
+      {latestProjection && (
+        <section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="Latest party summary">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-brass)]">Latest round</p>
+              <h3 className="mt-0.5 font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">Party summary</h3>
+            </div>
+            <span className="text-[10px] text-[var(--a-muted)]">{latestPeriod ? `${latestPeriod.label} · ${dates(latestPeriod.start, latestPeriod.end)}` : ""}</span>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
+            {parties.map((party) => {
+              const value = latestProjection[party];
+              const swing = latestProjection[party] - baselineDetail[party] * 100;
+              return (
+                <div key={party} className="rounded-lg border border-[var(--a-border)] bg-[var(--a-panel-2)] px-2.5 py-2">
+                  <div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: P7_COLOR[party] }}><span className="size-1.5 rounded-sm" style={{ background: P7_COLOR[party] }} />{P7_LABEL[party]}</div>
+                  <div className="mt-1 font-display text-[17px] tabular-nums text-[var(--a-ink)]">{value.toFixed(2)}%</div>
+                  <div className="text-[9px] tabular-nums text-[var(--a-muted)]">{swing == null ? "—" : `${signed(swing)} pp`} vs {baseline}</div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {error && <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-600 dark:text-rose-400">{error}</div>}
+      {loading && !data && <div className="grid h-48 place-items-center text-[12px] text-[var(--a-muted)]">Loading survey periods…</div>}
+
+      {data && (
+        <>
+          <section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="Projection by survey round">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-brass)]">Survey rounds</p>
+                <h3 className="mt-0.5 font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">{metric === "share" ? "Projected 2028 vote share" : `Swing vs ${baseline}`}</h3>
+                <p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">Round model · 2023 actual + (2028 intention − recalled 2023) · normalised</p>
+              </div>
+              <span className="text-[10px] text-[var(--a-muted)]">{periods.length} {smooth === "quarter" ? "quarters" : "rounds"} · {smooth === "quarter" ? "calendar quarters" : `${roundSize} samples`}</span>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-[250px_minmax(0,1fr)]">
+              <aside aria-label="Projection controls">{controls}</aside>
+              <div className="min-w-0">
+                {showMedian && medianRows.some((row) => row.median != null) && (
+                  <div className="mb-1 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-[var(--a-muted)]">
+                    {medianRows.filter((row) => row.median != null).map((row) => <span key={row.party} className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: P7_COLOR[row.party] }} />{P7_LABEL[row.party]} median <b className="tabular-nums text-[var(--a-ink)]/80">{row.median!.toFixed(1)}{unit}</b></span>)}
+                  </div>
+                )}
+                <div className="analysis-chart-enter">
+                  {periods.length ? (
+                    <EChart key={resetKey} option={chartOption} height={340} reduced={reduced} replaceSeries ariaLabel={`${metric === "share" ? "Projected 2028 vote share" : `Swing vs ${baseline}`} for ${scopeName}`} onEvents={{ click: (params) => {
+                      const query = params as { dataIndex?: number; data?: { value?: [number, number] } };
+                      const x = Array.isArray(query.data?.value) ? query.data.value[0] : (query.dataIndex ?? -1);
+                      const index = x - offset;
+                      if (index >= 0 && index < periods.length) {
+                        setSelectedPeriod(index);
+                        document.getElementById(`tg-round-${index}`)?.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
+                      }
+                    } }} />
+                  ) : <div className="grid h-36 place-items-center text-[12px] text-[var(--a-muted)]">No rounds in this dataset.</div>}
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[var(--a-border)] pt-2 text-[10px] text-[var(--a-muted)]">
+                  <span>Collection <b className="text-[var(--a-ink)]/80">{data.dateMin && data.dateMax ? `${data.dateMin.slice(0, 10)} – ${data.dateMax.slice(0, 10)}` : "—"}</b></span>
+                  <span>Rounds <b className="text-[var(--a-ink)]/80">{periods.length || "—"}</b></span>
+                  <span>Latest <b className="text-[var(--a-ink)]/80">{latestPeriod ? dateOf(latestPeriod.end) : "—"}</b></span>
+                  {latestLeader && <span className="ml-auto">Leading <b style={{ color: P7_COLOR[latestLeader] }}>{P7_LABEL[latestLeader]}</b> <b className="text-[var(--a-ink)]/80">{latestLeaderShare == null ? "—" : `${latestLeaderShare.toFixed(2)}%`}</b> {latestLeaderSwing == null ? "" : `· ${signed(latestLeaderSwing)} pp`}</span>}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="Round-wise detail">
+            <h3 className="font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">Round-wise detail</h3>
+            <div className="mt-3 max-h-[460px] overflow-auto rounded-xl border border-[var(--a-border)]">
+              <table className="w-full border-collapse text-[10px]">
+                <caption className="sr-only">Projected round detail for {scopeName}</caption>
+                <thead className="sticky top-0 z-20 bg-[var(--a-panel)]">
+                  <tr className="border-b border-[var(--a-border)] text-left text-[8px] uppercase tracking-wide text-[var(--a-muted)]">
+                    <th rowSpan={2} className="sticky left-0 z-30 w-14 bg-[var(--a-panel)] px-2 py-1.5">Round</th>
+                    <th rowSpan={2} className="sticky left-14 z-30 w-28 bg-[var(--a-panel)] px-2 py-1.5">Dates</th>
+                    <th rowSpan={2} className="sticky left-[10.5rem] z-30 w-16 bg-[var(--a-panel)] px-2 py-1.5 text-right">Entries</th>
+                    <th colSpan={parties.length} className={cn("px-2 py-1 text-center", metric === "share" && "text-[var(--a-ink)]")}>Projected party shares</th>
+                    <th colSpan={parties.length} className={cn("px-2 py-1 text-center", metric === "swing" && "text-[var(--a-ink)]")}>Party swings vs {baseline}</th>
+                  </tr>
+                  <tr className="text-left text-[8px] text-[var(--a-muted)]">
+                    {parties.map((party) => <th key={`p-${party}`} className="whitespace-nowrap px-2 py-1 text-right" style={{ color: P7_COLOR[party] }}>{P7_LABEL[party]}</th>)}
+                    {parties.map((party) => <th key={`s-${party}`} className="whitespace-nowrap px-2 py-1 text-right" style={{ color: P7_COLOR[party] }}>Δ {P7_LABEL[party]}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {periods.map((period, index) => {
+                    const projection = projections[index];
+                    return (
+                      <tr key={`${period.label}-${index}`} id={`tg-round-${index}`} tabIndex={0}
+                        onMouseEnter={() => setFocusPeriod(index)} onMouseLeave={() => setFocusPeriod(null)} onFocus={() => setFocusPeriod(index)} onBlur={() => setFocusPeriod(null)}
+                        onClick={() => { setSelectedPeriod(index); document.getElementById(`tg-round-${index}`)?.scrollIntoView({ block: "nearest" }); }}
+                        className={cn("cursor-pointer border-t border-[var(--a-border)]/70 outline-none", selected === index ? "bg-[var(--a-brass-soft)]" : "hover:bg-[var(--a-panel-2)] focus:bg-[var(--a-panel-2)]")}>
+                        <td className="sticky left-0 z-10 bg-[var(--a-panel)] px-2 py-1 font-medium">{period.label}</td>
+                        <td className="sticky left-14 z-10 bg-[var(--a-panel)] px-2 py-1 text-[var(--a-muted)]">{dates(period.start, period.end)}</td>
+                        <td className="sticky left-[10.5rem] z-10 bg-[var(--a-panel)] px-2 py-1 text-right tabular-nums">{period.entries.toLocaleString("en-IN")}{period.partial ? <span className="ml-0.5 opacity-60">*</span> : null}</td>
+                        {parties.map((party) => <td key={`p-${party}`} className={cn("px-2 py-1 text-right tabular-nums", metric === "share" ? "font-semibold text-[var(--a-ink)]" : "text-[var(--a-muted)]")}>{projection ? projection[party].toFixed(2) : "—"}</td>)}
+                        {parties.map((party) => <td key={`s-${party}`} className={cn("px-2 py-1 text-right tabular-nums", metric === "swing" ? "font-semibold text-[var(--a-ink)]" : "text-[var(--a-muted)]")}>{projection ? signed(projection[party] - baselineDetail[party] * 100) : "—"}</td>)}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-1 text-[9px] text-[var(--a-muted)]">* Final remainder round, not a full sample.</p>
+          </section>
+
+          <section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="District projection">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div><h3 className="font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">District projection</h3><p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">2028 final AC model · AIMIM extracted from Others · weighted by 2023 votes.</p></div>
+              <label className="inline-flex items-center gap-1 text-[10px] text-[var(--a-muted)]">Sort
+                <select value={sortBy} onChange={(event) => setSortBy(event.target.value as typeof sortBy)} className="rounded-md border border-[var(--a-border)] bg-[var(--a-panel)] px-1.5 py-1 text-[10px] text-[var(--a-ink)]"><option value="name">Name</option><option value="leader">2028 leading party</option><option value="margin">Margin</option></select>
+              </label>
+            </div>
+            <div className="mt-3 max-h-72 overflow-auto rounded-xl border border-[var(--a-border)]">
+              <table className="w-full border-collapse text-[10.5px]">
+                <caption className="sr-only">District 2028 AC model projection</caption>
+                <thead className="sticky top-0 z-10 bg-[var(--a-panel)]"><tr className="border-b border-[var(--a-border)] text-left text-[8px] uppercase tracking-wide text-[var(--a-muted)]"><th className="px-2 py-1.5">District</th><th className="px-2 py-1.5">2028 leading party</th><th className="px-2 py-1.5 text-right">BRS</th><th className="px-2 py-1.5 text-right">Congress+</th><th className="px-2 py-1.5 text-right">BJP</th><th className="px-2 py-1.5 text-right">AIMIM</th><th className="px-2 py-1.5 text-right">Others</th><th className="px-2 py-1.5 text-right">Margin</th></tr></thead>
+                <tbody>
+                  {sortedDistricts.map((district) => (
+                    <tr key={district.name} className={cn("cursor-pointer border-t border-[var(--a-border)]/70 hover:bg-[var(--a-panel-2)]", scope === `d:${district.name}` && "bg-[var(--a-brass-soft)]")} onClick={() => setScope(`d:${district.name}`)}>
+                      <td className="px-2 py-1 font-medium">{district.name}</td>
+                      <td className="px-2 py-1"><span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: district.leader === "Tie" ? p.muted : P7_COLOR[(district.leader === "Congress" ? "Congress" : district.leader) as P7] ?? P7_COLOR.Others }} />{district.leader}</span></td>
+                      <td className="px-2 py-1 text-right tabular-nums">{fmtPct(district.prediction.BRS)}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{fmtPct(district.prediction.Congress)}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{fmtPct(district.prediction.BJP)}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{fmtPct(district.prediction.AIMIM)}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{fmtPct(district.prediction.Others)}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{district.marginPp.toFixed(1)} pp</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="Projected distribution">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div><h3 className="font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">Projected 2028 distribution</h3><p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">{metric === "share" ? "Projected 2028 share" : `Swing vs ${baseline}`} · {distAvailable} periods · {distEntries.toLocaleString("en-IN")} entries</p></div>
+              <div className="inline-flex rounded-full border border-[var(--a-border)] bg-[var(--a-panel-2)] p-0.5" role="group" aria-label="Distribution period">
+                {([["day", "Daily"], ["block", "Every 50 responses"]] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={distUnit === id} onClick={() => setDistUnit(id)} className={cn("rounded-full px-2.5 py-1 text-[10px] font-semibold", distUnit === id ? "bg-[var(--a-ink)] text-[var(--a-canvas)]" : "text-[var(--a-muted)]")}>{label}</button>)}
+              </div>
+            </div>
+            {showMedian && (
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-[var(--a-muted)]">
+                {parties.map((party) => { const stats = boxStats(distValues[party].map((point) => point.value)); return stats ? <span key={party} className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: P7_COLOR[party] }} />{P7_LABEL[party]} median <b className="tabular-nums text-[var(--a-ink)]/80">{stats.median.toFixed(1)}{unit}</b></span> : null; })}
+              </div>
+            )}
+            <div className="analysis-chart-enter"><EChart option={distOption} height={310} reduced={reduced} replaceSeries ariaLabel={`${metric === "share" ? "Projected 2028 share" : "Swing"} distribution by party for ${scopeName}`} /></div>
+            <p className="mt-0.5 text-[9px] text-[var(--a-muted)]">Box Q1–Q3 · line median · rings IQR outliers</p>
+          </section>
+        </>
+      )}
+    </AnalysisShell>
   );
 }

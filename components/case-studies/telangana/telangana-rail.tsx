@@ -50,7 +50,7 @@ const tip = (p: Pal) => ({
 const signed = (v: number, digits = 2) => `${v > 0 ? "+" : ""}${v.toFixed(digits)}`;
 
 export default function TelanganaRail({
-  scope, year, tab, onTab, onExpand, theme, leads2028, actualSeats, actualSeatsYear, isStatewide,
+  scope, year, tab, onTab, onExpand, theme, leads2028, actualSeats, actualSeatsYear, isStatewide, panelWidth = 420,
 }: {
   scope: ScopeResult;
   year: ElectionYear;
@@ -62,9 +62,13 @@ export default function TelanganaRail({
   actualSeats: Record<string, number>;
   actualSeatsYear: HistoricYear;
   isStatewide: boolean;
+  panelWidth?: number;
 }) {
   const reduced = usePrefersReducedMotion();
   const p = palette(theme);
+  const compact = panelWidth < 400;
+  const roomy = panelWidth >= 520;
+  const rowPad = compact ? "py-1" : "py-1.5";
   const baselineLabel = scope.baselineYear;
   const predictedLabel = scope.predictedTied.length > 1
     ? `${scope.predictedTied.map((x) => PARTY_LABEL[x]).join(" / ")} tie`
@@ -79,7 +83,7 @@ export default function TelanganaRail({
     const sorted = [...PARTIES].sort((a, b) => scope.change[b] - scope.change[a]);
     return {
       animation: !reduced, animationDuration: 500, animationEasing: "cubicOut",
-      grid: { left: 82, right: 42, top: 8, bottom: 22 },
+      grid: { left: compact ? 78 : 88, right: roomy ? 46 : 38, top: 8, bottom: 22 },
       tooltip: {
         ...tip(p), trigger: "axis", axisPointer: { type: "shadow" },
         formatter: (params: unknown) => {
@@ -100,20 +104,24 @@ export default function TelanganaRail({
       },
       series: [{
         type: "bar", barMaxWidth: 12,
-        data: sorted.map((x) => ({
-          value: +scope.change[x].toFixed(2),
-          itemStyle: { color: PARTY_COLOR[x], borderRadius: 2 },
-        })),
+        data: sorted.map((x) => {
+          const value = +scope.change[x].toFixed(2);
+          return {
+            value,
+            itemStyle: { color: PARTY_COLOR[x], borderRadius: 2 },
+            label: roomy ? { show: true, position: value >= 0 ? "right" : "left", color: p.text, fontSize: 8.5, fontWeight: 600, formatter: `${value > 0 ? "+" : ""}${value.toFixed(1)}` } : { show: false },
+          };
+        }),
         markLine: { silent: true, symbol: "none", label: { show: false }, lineStyle: { color: p.axis, width: 1 }, data: [{ xAxis: 0 }] },
       }],
     };
-  }, [scope, baselineLabel, p, reduced]);
+  }, [scope, baselineLabel, p, reduced, compact, roomy]);
 
   const shareOption = useMemo(() => {
     const max = Math.max(10, Math.ceil((Math.max(...PARTIES.map((x) => scope.prediction[x])) * 100 + 4) / 10) * 10);
     return {
       animation: !reduced, animationDuration: 500,
-      grid: { left: 82, right: 42, top: 8, bottom: 22 },
+      grid: { left: compact ? 78 : 88, right: roomy ? 46 : 38, top: 8, bottom: 22 },
       tooltip: {
         ...tip(p), trigger: "axis", axisPointer: { type: "shadow" },
         formatter: (params: unknown) => {
@@ -129,13 +137,13 @@ export default function TelanganaRail({
         data: PARTIES.map((x) => ({
           value: +(scope.prediction[x] * 100).toFixed(2),
           itemStyle: { color: PARTY_COLOR[x], borderRadius: 2 },
-          label: { show: true, position: "right", color: p.text, fontSize: 8.5, formatter: `${(scope.prediction[x] * 100).toFixed(2)}%` },
+          label: compact ? { show: false } : { show: true, position: "right", color: p.text, fontSize: 8.5, formatter: `${(scope.prediction[x] * 100).toFixed(2)}%` },
         })),
       }],
     };
-  }, [scope, baselineLabel, p, reduced]);
+  }, [scope, baselineLabel, p, reduced, compact, roomy]);
 
-  const chartHeight = 176;
+  const chartHeight = roomy ? 210 : compact ? 160 : 180;
   const leadRows = (counts: Record<string, number>, label: string, detailed = false) => {
     const keys = Object.keys(counts).filter((x) => (counts[x] ?? 0) > 0).sort((a, b) => counts[b] - counts[a]);
     const max = Math.max(1, ...Object.values(counts));
@@ -175,11 +183,11 @@ export default function TelanganaRail({
       </div>
 
       <div className="mt-2 overflow-hidden rounded-lg border border-border">
-        <table className="w-full table-fixed border-collapse text-[10.5px]">
+        <table className={cn("w-full table-fixed border-collapse", compact ? "text-[9.5px]" : "text-[10.5px]")}>
           <caption className="sr-only">{scope.label} {baselineLabel} result, 2028 prediction and change</caption>
           <colgroup><col className="w-[33%]" /><col className="w-[22%]" /><col className="w-[24%]" /><col className="w-[21%]" /></colgroup>
           <thead>
-            <tr className="bg-muted/30 text-left text-[8.5px] uppercase tracking-wide text-muted-foreground">
+            <tr className="border-b border-border/70 text-left text-[8.5px] uppercase tracking-wide text-muted-foreground">
               <th scope="col" className="px-1.5 py-1.5 font-semibold">Party</th>
               <th scope="col" className="px-1 py-1.5 text-right font-semibold">{baselineLabel} result</th>
               <th scope="col" className="px-1 py-1.5 text-right font-semibold">2028 prediction</th>
@@ -188,13 +196,13 @@ export default function TelanganaRail({
           </thead>
           <tbody>
             {PARTIES.map((x) => (
-              <tr key={x} className="border-t border-border/60">
-                <th scope="row" className="px-1.5 py-1.5 text-left font-medium">
-                  <span className="flex items-center gap-1"><span className="size-1.5 rounded-sm" style={{ background: PARTY_COLOR[x] }} />{PARTY_LABEL[x]}</span>
+              <tr key={x} className="border-t border-border/50">
+                <th scope="row" className={cn("px-1.5 text-left font-medium", rowPad)}>
+                  <span className="flex items-center gap-1"><span className="size-1.5 shrink-0 rounded-sm" style={{ background: PARTY_COLOR[x] }} />{PARTY_LABEL[x]}</span>
                 </th>
-                <td className="px-1 py-1.5 text-right tabular-nums text-muted-foreground">{fmtPct(scope.baseline[x])}</td>
-                <td className="px-1 py-1.5 text-right tabular-nums font-semibold">{fmtPct(scope.prediction[x])}</td>
-                <td className={cn("px-1 py-1.5 text-right tabular-nums", scope.change[x] > 0 ? "text-emerald-600 dark:text-emerald-400" : scope.change[x] < 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground")}>
+                <td className={cn("px-1 text-right tabular-nums text-muted-foreground", rowPad)}>{fmtPct(scope.baseline[x])}</td>
+                <td className={cn("px-1 text-right tabular-nums font-semibold", rowPad)}>{fmtPct(scope.prediction[x])}</td>
+                <td className={cn("px-1 text-right tabular-nums", rowPad, scope.change[x] > 0 ? "text-emerald-600 dark:text-emerald-400" : scope.change[x] < 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground")}>
                   {signed(scope.change[x])}
                 </td>
               </tr>
@@ -204,11 +212,11 @@ export default function TelanganaRail({
         </table>
       </div>
 
-      <div className="mt-2 flex gap-1 border-b border-border" role="tablist" aria-label="Comparison views">
+      <div className="mt-2 grid w-full grid-cols-3 gap-0.5 rounded-lg border border-border/70 bg-muted/20 p-0.5" role="tablist" aria-label="Comparison views">
         {TABS.map((t) => (
           <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => onTab(t.id)}
-            className={cn("-mb-px rounded-t-md border-b-2 px-2 py-1 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
-              tab === t.id ? "border-saffron text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
+            className={cn("rounded-md px-2 py-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
+              tab === t.id ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground")}>
             {t.label}
           </button>
         ))}
