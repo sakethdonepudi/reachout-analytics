@@ -66,3 +66,26 @@ export function resetLoginGuards() {
   attempts.clear();
   failures.clear();
 }
+
+export function loginRateLimitMessage(retryAfter: number): string {
+  const minutes = Math.max(1, Math.ceil(retryAfter / 60));
+  return `Too many attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`;
+}
+
+export function loginRateLimitResponse(retryAfter: number) {
+  return Response.json(
+    {
+      ok: false,
+      error: loginRateLimitMessage(retryAfter),
+      retryAfter,
+    },
+    {
+      status: 429,
+      headers: {
+        "Retry-After": String(retryAfter),
+        "Cache-Control": "private, no-store",
+        Vary: "Cookie",
+      },
+    },
+  );
+}

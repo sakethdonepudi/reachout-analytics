@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, Loader2, PlugZap, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
 import Navbar from "@/components/site/navbar";
+import { useReauth } from "@/components/auth/reauth-provider";
 import { cn } from "@/lib/utils";
 
 type AdAccount = { id: string; accountId: string; name: string; status: number | null; currency: string | null };
@@ -45,10 +46,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [reauthOpen, setReauthOpen] = useState(false);
-  const [reauthPassword, setReauthPassword] = useState("");
-  const [reauthBusy, setReauthBusy] = useState(false);
-  const [reauthError, setReauthError] = useState("");
+  const { requestReauth } = useReauth();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,44 +83,23 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
     setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   }
 
-  function reauth() {
-    setReauthError("");
-    setReauthPassword("");
-    setReauthOpen(true);
+  async function reauthNow() {
+    const ok = await requestReauth();
+    if (ok) await load();
   }
 
-  function startConnect() {
-    if (!recent) { reauth(); return; }
+  async function startConnect() {
+    const session = await fetch("/api/auth/session", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .catch(() => null);
+    if (!session?.recent) {
+      const ok = await requestReauth();
+      if (!ok) return;
+    }
     window.location.assign("/api/meta/owner/connect/start");
   }
 
-  async function submitReauth(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setReauthBusy(true);
-    setReauthError("");
-    try {
-      const res = await fetch("/api/auth/reauth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: reauthPassword }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setReauthError(res.status === 401 ? "Incorrect password" : data.error || "Could not re-authenticate");
-        return;
-      }
-      setReauthOpen(false);
-      setReauthPassword("");
-      setMessage("Owner re-authenticated.");
-      await load();
-    } catch {
-      setReauthError("Could not re-authenticate");
-    } finally {
-      setReauthBusy(false);
-    }
-  }
-
-  async function saveSelection() {
+  async function saveSelection(retry = false) {
     setBusy("save"); setError(""); setMessage("");
     try {
       const res = await fetch("/api/meta/owner/connect/confirm", {
@@ -131,7 +108,12 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
         body: JSON.stringify({ adAccountIds: selected }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 403 && data.code === "reauth_required") { reauth(); return; }
+      if (res.status === 403 && data.code === "reauth_required") {
+        const ok = retry ? false : await requestReauth();
+        if (!ok) { setError("Re-authentication required."); return; }
+        await saveSelection(true);
+        return;
+      }
       if (!res.ok) throw new Error("Could not save the ad account selection");
       setMessage("Ad account selection saved.");
       await load();
@@ -140,13 +122,18 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
     } finally { setBusy(""); }
   }
 
-  async function disconnect() {
-    if (!window.confirm("Disconnect Meta and revoke the granted permissions?")) return;
+  async function disconnect(retry = false) {
+    if (!retry && !window.confirm("Disconnect Meta and revoke the granted permissions?")) return;
     setBusy("disconnect"); setError(""); setMessage("");
     try {
       const res = await fetch("/api/meta/owner/disconnect", { method: "POST" });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 403 && data.code === "reauth_required") { reauth(); return; }
+      if (res.status === 403 && data.code === "reauth_required") {
+        const ok = retry ? false : await requestReauth();
+        if (!ok) { setError("Re-authentication required."); return; }
+        await disconnect(true);
+        return;
+      }
       if (!res.ok) throw new Error("Could not disconnect Meta");
       setMessage("Meta disconnected and permissions revoked.");
       await load();
@@ -180,7 +167,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
           {status.expiresSoon && (
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-saffron/40 bg-saffron/10 px-4 py-3 text-[13px] text-saffron-2">
               <span>The Meta token expires within 7 days.</span>
-              <button type="button" onClick={startConnect} className="inline-flex items-center gap-1.5 rounded-lg bg-saffron px-3 py-1.5 text-[12px] font-semibold text-[#241203]">
+              <button type="button" onClick={() => void startConnect()} className="inline-flex items-center gap-1.5 rounded-lg bg-saffron px-3 py-1.5 text-[12px] font-semibold text-[#241203]">
                 <RefreshCw className="size-3.5" /> Reconnect Meta
               </button>
             </div>
@@ -188,7 +175,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
           {status.reconnectRequired && (
             <div role="alert" className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-[13px] text-rose-600 dark:text-rose-400">
               <span>The stored Meta token can no longer be decrypted.</span>
-              <button type="button" onClick={startConnect} className="inline-flex items-center gap-1.5 rounded-lg bg-saffron px-3 py-1.5 text-[12px] font-semibold text-[#241203]">
+              <button type="button" onClick={() => void startConnect()} className="inline-flex items-center gap-1.5 rounded-lg bg-saffron px-3 py-1.5 text-[12px] font-semibold text-[#241203]">
                 <RefreshCw className="size-3.5" /> Reconnect Meta
               </button>
             </div>
@@ -209,7 +196,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
               </div>
               <div className="flex flex-wrap gap-2">
                 {!recent ? (
-                  <button type="button" onClick={reauth} disabled={!metaConfigured} className="inline-flex items-center gap-2 rounded-xl bg-saffron px-4 py-2.5 text-sm font-semibold text-[#241203] disabled:cursor-not-allowed disabled:opacity-50">
+                  <button type="button" onClick={() => void reauthNow()} disabled={!metaConfigured} className="inline-flex items-center gap-2 rounded-xl bg-saffron px-4 py-2.5 text-sm font-semibold text-[#241203] disabled:cursor-not-allowed disabled:opacity-50">
                     <ShieldCheck className="size-4" /> Re-authenticate
                   </button>
                 ) : (
@@ -218,7 +205,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
                   </button>
                 )}
                 {status.connected && (
-                  <button type="button" onClick={disconnect} disabled={busy === "disconnect"} className="inline-flex items-center gap-2 rounded-xl border border-rose-500/40 px-4 py-2.5 text-sm font-semibold text-rose-600 disabled:opacity-60 dark:text-rose-400">
+                  <button type="button" onClick={() => void disconnect()} disabled={busy === "disconnect"} className="inline-flex items-center gap-2 rounded-xl border border-rose-500/40 px-4 py-2.5 text-sm font-semibold text-rose-600 disabled:opacity-60 dark:text-rose-400">
                     {busy === "disconnect" ? <Loader2 className="size-4 animate-spin" /> : <Unplug className="size-4" />} Disconnect
                   </button>
                 )}
@@ -242,7 +229,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Ad accounts</p>
                   <h2 className="mt-2 font-display text-xl font-semibold">Choose what to sync</h2>
                 </div>
-                <button type="button" onClick={saveSelection} disabled={busy === "save"} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-[12px] font-semibold hover:bg-elevated disabled:opacity-60">
+                <button type="button" onClick={() => void saveSelection()} disabled={busy === "save"} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-[12px] font-semibold hover:bg-elevated disabled:opacity-60">
                   {busy === "save" ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />} Save selection
                 </button>
               </div>
@@ -268,7 +255,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Sensitive actions</p>
             <h2 className="mt-2 font-display text-xl font-semibold">Owner re-authentication</h2>
             <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Meta connect or disconnect, the party map and exports require the owner password again if your last sign-in was more than 15 minutes ago.</p>
-            <button type="button" onClick={reauth} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold hover:bg-elevated">
+            <button type="button" onClick={() => void reauthNow()} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold hover:bg-elevated">
               <ShieldCheck className="size-4" /> Re-authenticate
             </button>
           </section>
@@ -298,31 +285,6 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
         </div>
       </main>
 
-      {reauthOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 px-4" role="dialog" aria-modal="true" aria-labelledby="reauth-title">
-          <form onSubmit={submitReauth} className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-2xl">
-            <h2 id="reauth-title" className="font-display text-xl font-semibold">Confirm owner password</h2>
-            <p className="mt-2 text-[13px] text-muted-foreground">Re-enter the owner password to continue.</p>
-            <label htmlFor="reauth-password" className="mt-4 block text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Password</label>
-            <input
-              id="reauth-password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={reauthPassword}
-              onChange={(event) => setReauthPassword(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition focus:border-saffron focus:ring-2 focus:ring-saffron/25"
-            />
-            {reauthError && <p role="alert" className="mt-2 text-[12.5px] text-rose-600 dark:text-rose-400">{reauthError}</p>}
-            <div className="mt-5 flex gap-2">
-              <button type="submit" disabled={reauthBusy || !reauthPassword} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-saffron px-4 py-2.5 text-sm font-semibold text-[#241203] disabled:opacity-60">
-                {reauthBusy ? <Loader2 className="size-4 animate-spin" /> : null} Continue
-              </button>
-              <button type="button" onClick={() => setReauthOpen(false)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold hover:bg-elevated">Cancel</button>
-            </div>
-          </form>
-        </div>
-      )}
     </>
   );
 }

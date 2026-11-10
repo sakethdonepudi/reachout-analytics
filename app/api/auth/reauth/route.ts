@@ -3,9 +3,8 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { refreshSessionAuth, requireRole } from "@/lib/auth";
 import { requireCsrf } from "@/lib/csrf";
-import { beginLoginAttempt, recordLoginFailure, recordLoginSuccess } from "@/lib/login-guard";
+import { beginLoginAttempt, loginRateLimitResponse, recordLoginFailure, recordLoginSuccess } from "@/lib/login-guard";
 import { ownerPasswordMatches } from "@/lib/passwords";
-import { rateLimitResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -23,7 +22,7 @@ export async function POST(req: NextRequest) {
   const attempt = beginLoginAttempt(ip);
   if (!attempt.ok) {
     await audit({ action: "login_failed", role: "owner", ip, meta: { stage: "reauth-rate-limit" } });
-    return rateLimitResponse(attempt.retryAfter);
+    return loginRateLimitResponse(attempt.retryAfter);
   }
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -34,7 +33,7 @@ export async function POST(req: NextRequest) {
   if (!ownerPasswordMatches(parsed.data.password)) {
     const failure = recordLoginFailure(ip);
     await audit({ action: "login_failed", role: "owner", ip, meta: { stage: "reauth" } });
-    if (failure.locked) return rateLimitResponse(failure.retryAfter);
+    if (failure.locked) return loginRateLimitResponse(failure.retryAfter);
     return Response.json({ ok: false, error: "Incorrect password" }, { status: 401, headers });
   }
 

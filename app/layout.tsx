@@ -4,6 +4,7 @@ import "./globals.css";
 import RouteTransition from "@/components/site/route-transition";
 import ThemeProvider, { ThemeScript } from "@/components/theme-provider";
 import CsrfFetch from "@/components/site/csrf-fetch";
+import { ReauthProvider } from "@/components/auth/reauth-provider";
 
 export const metadata: Metadata = {
   title: "ReachOut Analytics — Winning Elections with Data",
@@ -28,7 +29,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body>
         <ThemeProvider>
           <CsrfFetch />
-          {children}
+          <ReauthProvider>{children}</ReauthProvider>
           <RouteTransition />
         </ThemeProvider>
       </body>

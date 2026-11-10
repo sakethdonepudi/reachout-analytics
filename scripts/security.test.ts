@@ -2,7 +2,7 @@
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { canAccess, rolesForPath, safeNextPath } from "@/lib/access";
+import { canAccess, roleHome, rolesForPath, safeNextPath } from "@/lib/access";
 import { csrfCheck } from "@/lib/csrf";
 import { verifyPkce, createPkce } from "@/lib/oauth-pkce";
 import { signPayload, verifyPayload } from "@/lib/signed-cookie";
@@ -11,11 +11,12 @@ import { publicClientSummary } from "@/lib/meta/public";
 import { META_SCOPES, metaConfigured, metaRedirect, setMetaStateCookie } from "@/lib/meta/oauth";
 import { encryptToken, tryDecryptToken } from "@/lib/meta/crypto";
 import { publicStatus, type MetaConnectionDoc } from "@/lib/meta/store";
+import { RECENT_MS, sessionIsRecent, type Session } from "@/lib/auth";
 import { buildCsp, PROTECTED_HEADERS } from "@/lib/security";
 import { metaConfigWarning, secretProblems, turnstileConfigProblems } from "@/lib/security-config";
 import { turnstileEnabled } from "@/lib/turnstile";
 import { passwordsAreEqual, roleForPassword } from "@/lib/passwords";
-import { beginLoginAttempt, loginLockRemaining, recordLoginFailure, recordLoginSuccess, resetLoginGuards } from "@/lib/login-guard";
+import { beginLoginAttempt, loginLockRemaining, loginRateLimitMessage, recordLoginFailure, recordLoginSuccess, resetLoginGuards } from "@/lib/login-guard";
 
 let pass = 0, fail = 0;
 function ok(name: string, condition: boolean, detail = "") {
@@ -48,6 +49,8 @@ eq("admin client", canAccess("client", "/admin"), false);
 eq("data client", canAccess("client", "/api/data/summary"), false);
 eq("template public", rolesForPath("/api/data/template"), null);
 eq("home public", rolesForPath("/"), null);
+eq("owner home", roleHome("owner"), "/meta-ads");
+eq("client home", roleHome("client"), "/case-studies");
 
 console.log("\n3. Password login");
 eq("owner password", roleForPassword("owner-pass", "owner-pass", "client-pass"), "owner");
@@ -76,6 +79,13 @@ resetLoginGuards();
 for (let i = 0; i < 9; i++) recordLoginFailure("ip-d", t0);
 recordLoginSuccess("ip-d");
 eq("success clears failures", loginLockRemaining("ip-d", t0), 0);
+eq("rate-limit message uses minutes", loginRateLimitMessage(120), "Too many attempts. Try again in 2 minutes.");
+
+console.log("\n4b. Recent authentication");
+const now = Date.now();
+const fresh: Session = { sub: "owner", role: "owner", exp: now + 60_000, iat: now, lastSeen: now, authTime: now };
+ok("fresh session is recent", sessionIsRecent(fresh));
+ok("stale session needs re-auth", !sessionIsRecent({ ...fresh, authTime: now - RECENT_MS - 1 }));
 
 console.log("\n5. CSRF");
 const base = { origin: "https://app.example", siteOrigin: "https://app.example", headerToken: "a".repeat(32), cookieToken: "a".repeat(32) };

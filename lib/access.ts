@@ -4,7 +4,7 @@ export type Role = "owner" | "client";
 
 export const ROLE_HOME: Record<Role, string> = {
   owner: "/meta-ads",
-  client: "/campaigns",
+  client: "/case-studies",
 };
 
 type Rule = { prefixes: string[]; roles: Role[] };

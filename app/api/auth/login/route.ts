@@ -3,9 +3,8 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { roleHome, safeNextPath } from "@/lib/access";
 import { createSession, setSessionCookie, subjectForRole } from "@/lib/auth";
-import { beginLoginAttempt, recordLoginFailure, recordLoginSuccess } from "@/lib/login-guard";
+import { beginLoginAttempt, loginRateLimitResponse, recordLoginFailure, recordLoginSuccess } from "@/lib/login-guard";
 import { roleForPassword } from "@/lib/passwords";
-import { rateLimitResponse } from "@/lib/rate-limit";
 import { turnstileEnabled, verifyTurnstile } from "@/lib/turnstile";
 
 export const runtime = "nodejs";
@@ -24,7 +23,7 @@ export async function POST(req: NextRequest) {
   const attempt = beginLoginAttempt(ip);
   if (!attempt.ok) {
     await audit({ action: "login_failed", ip, meta: { method: "password", stage: "rate-limit" } });
-    return rateLimitResponse(attempt.retryAfter);
+    return loginRateLimitResponse(attempt.retryAfter);
   }
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -44,7 +43,7 @@ export async function POST(req: NextRequest) {
   if (!role) {
     const failure = recordLoginFailure(ip);
     await audit({ action: "login_failed", ip, meta: { method: "password" } });
-    if (failure.locked) return rateLimitResponse(failure.retryAfter);
+    if (failure.locked) return loginRateLimitResponse(failure.retryAfter);
     return Response.json({ ok: false, error: "Incorrect password" }, { status: 401, headers });
   }
 

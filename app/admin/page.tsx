@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Download, FileSpreadsheet, History, LayoutDashboard, LogOut, Loader2, Map as MapIcon, Settings, Table2, Upload, UserCog } from "lucide-react";
 import { Logo } from "@/components/site/navbar";
+import { useReauth } from "@/components/auth/reauth-provider";
 import ThemeToggle from "@/components/site/theme-toggle";
 import AboutEditor from "@/components/admin/about-editor";
 import TelanganaAdmin from "@/components/admin/telangana-admin";
@@ -76,6 +77,7 @@ type SectionId = (typeof SECTIONS)[number]["id"];
 
 export default function AdminPortal() {
   const router = useRouter();
+  const { requestReauth } = useReauth();
   const [ready, setReady] = useState(false);
   const [cases, setCases] = useState<CaseRecord[]>([]);
   const [caseId, setCaseId] = useState("tamil-nadu");
@@ -245,18 +247,30 @@ export default function AdminPortal() {
     if (!session.ok) { router.replace("/login"); return false; }
     const data = await session.json();
     if (data.recent) return true;
-    const password = window.prompt("Re-enter the owner password to continue");
-    if (!password) return false;
-    const res = await fetch("/api/auth/reauth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-    if (!res.ok) {
-      window.alert(res.status === 401 ? "Incorrect password" : "Could not re-authenticate");
-      return false;
+    return requestReauth();
+  }
+
+  async function downloadExport(retry = false) {
+    const response = await fetch(`/api/data/export?caseStudyId=${encodeURIComponent(caseId)}`);
+    if (response.status === 403) {
+      const data = await response.json().catch(() => ({}));
+      if (data.code === "reauth_required") {
+        const ok = retry ? false : await requestReauth();
+        if (ok) { await downloadExport(true); return; }
+      }
+      setMessage("Re-authentication is required to export.");
+      return;
     }
-    return true;
+    if (!response.ok) { setMessage("Export failed."); return; }
+    const blob = await response.blob();
+    const disposition = response.headers.get("Content-Disposition") ?? "";
+    const filename = disposition.match(/filename="?([^";]+)"?/)?.[1] ?? `${caseId}-export.xlsx`;
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 
   async function applyPinScenario() {
@@ -451,7 +465,7 @@ export default function AdminPortal() {
                 </div>
                 <div className="ml-auto flex gap-2">
                   <a href="/api/data/template" className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] hover:bg-elevated"><FileSpreadsheet className="size-4" /> Template</a>
-                  <a href={`/api/data/export?caseStudyId=${encodeURIComponent(caseId)}`} onClick={async (event) => { if (!(await ensureRecent())) event.preventDefault(); }} className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] hover:bg-elevated"><Download className="size-4" /> Export</a>
+                  <button type="button" onClick={() => void downloadExport()} className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] hover:bg-elevated"><Download className="size-4" /> Export</button>
                 </div>
               </div>
 

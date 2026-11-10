@@ -3,23 +3,30 @@
 import { Suspense, useCallback, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/navbar";
 import ThemeToggle from "@/components/site/theme-toggle";
 import Turnstile from "@/components/site/turnstile";
 import { useTheme } from "@/components/theme-provider";
+import { cn } from "@/lib/utils";
 
 function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; nonce?: string }) {
   const { theme } = useTheme();
   const search = useSearchParams();
   const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [shake, setShake] = useState(0);
   const [resetNonce, setResetNonce] = useState(0);
   const onVerify = useCallback((value: string) => setToken(value), []);
   const next = search.get("next") ?? "";
-  const queryError = search.get("error");
+
+  function updateCapsLock(event: React.KeyboardEvent<HTMLInputElement>) {
+    setCapsLock(event.getModifierState("CapsLock"));
+  }
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,101 +50,99 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
       setError(
         res.status === 401
           ? "Incorrect password"
-          : res.status === 429
-            ? "Too many attempts. Try again later."
-            : typeof data.error === "string"
-              ? data.error
-              : "Sign-in failed. Please try again.",
+          : typeof data.error === "string"
+            ? data.error
+            : "Sign-in failed. Please try again.",
       );
+      setShake((value) => value + 1);
       setPassword("");
       if (turnstileEnabled) setResetNonce((value) => value + 1);
     } catch {
       setError("Sign-in failed. Please try again.");
+      setShake((value) => value + 1);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="relative min-h-[100svh] overflow-hidden bg-background text-foreground">
+    <main className="relative grid min-h-[100svh] place-items-center overflow-hidden bg-[var(--surface-canvas)] px-5 py-14 text-[var(--text-primary)]">
       <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <div className="absolute -left-40 -top-24 size-[520px] rounded-full bg-[radial-gradient(circle,rgba(245,138,36,.12),transparent_66%)] blur-2xl" />
-        <div className="absolute -right-32 bottom-0 size-[460px] rounded-full bg-[radial-gradient(circle,rgba(47,191,74,.09),transparent_68%)] blur-2xl" />
+        <img
+          src="/images/hero/slide-1-1672.webp"
+          alt=""
+          className="h-full w-full object-cover object-[72%_50%] opacity-30 dark:opacity-20"
+          decoding="async"
+        />
+        <div className="absolute inset-0 bg-[var(--surface-canvas)]/78 dark:bg-[#070b12]/72" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--surface-canvas)]/20 to-[var(--surface-canvas)]" />
+        <div className="absolute -left-32 top-1/4 size-96 rounded-full bg-[radial-gradient(circle,rgba(245,138,36,.14),transparent_68%)] blur-3xl" />
       </div>
+
       <div className="absolute right-5 top-5 z-10"><ThemeToggle /></div>
 
-      <div className="relative mx-auto grid min-h-[100svh] w-full max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.05fr_.95fr] lg:px-10">
-        <section className="hidden lg:block">
-          <Logo />
-          <p className="mt-14 text-[10px] font-bold uppercase tracking-[0.24em] text-saffron-2">Protected workspace</p>
-          <p className="mt-4 max-w-xl font-display text-[clamp(42px,4.6vw,68px)] font-semibold leading-[.96] tracking-[-0.045em]">
-            Election intelligence,
-            <br />
-            <span className="text-gradient-saffron font-serif font-normal italic">behind sign-in.</span>
-          </p>
-          <p className="mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground">
-            The state selector, campaign workspace and election dashboards are restricted to the ReachOut team. Enter the workspace password to open your workspace.
-          </p>
-          <ul className="mt-8 space-y-2.5 text-[13px] text-foreground/70">
-            {["Case-study dashboards", "Campaign and Meta workspace", "Protected exports and data"].map((item) => (
-              <li key={item} className="flex items-center gap-2.5">
-                <span className="size-1.5 rounded-full bg-saffron" aria-hidden />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </section>
+      <div className="relative w-full max-w-sm">
+        <div className="mb-7 flex justify-center"><Logo /></div>
+        <div className="rounded-[var(--radius-panel)] border border-[var(--border-hairline)] bg-[var(--surface-panel)]/95 p-7 shadow-[var(--shadow-soft)] backdrop-blur-xl">
+          <p className="type-micro text-[var(--accent-brass)]">Secure access</p>
+          <h1 className="type-h1 mt-2 text-[var(--text-primary)]">Sign in</h1>
+          <p className="type-small mt-2 text-[var(--text-muted)]">Enter your workspace password to continue.</p>
 
-        <div className="w-full max-w-sm justify-self-center lg:justify-self-end">
-          <div className="mb-8 flex justify-center lg:hidden"><Logo /></div>
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-[0_24px_60px_-34px_rgba(15,20,30,.45)]">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Secure access</p>
-            <h1 className="mt-2 font-display text-2xl font-semibold tracking-[-0.02em]">Sign in to ReachOut</h1>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">Enter the owner or client password to continue.</p>
+          {error && (
+            <p role="alert" className={cn("mt-5 rounded-[var(--radius-control)] border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-2 text-[12.5px] text-[var(--danger)]", shake > 0 && "login-shake")} key={shake}>
+              {error}
+            </p>
+          )}
 
-            {(error || queryError) && (
-              <p role="alert" className="mt-5 rounded-xl border border-saffron/30 bg-saffron/10 px-3 py-2 text-[12.5px] text-saffron-2">
-                {error || "Sign-in could not be completed. Please try again."}
-              </p>
-            )}
-
-            <form onSubmit={signIn} className="mt-5 space-y-3">
-              <label htmlFor="password" className="block text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Password</label>
+          <form onSubmit={signIn} className="mt-5 space-y-3">
+            <label htmlFor="password" className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Password</label>
+            <div className="relative">
               <input
                 id="password"
                 name="password"
-                type="password"
+                type={show ? "text" : "password"}
                 autoComplete="current-password"
+                autoFocus
                 required
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition focus:border-saffron focus:ring-2 focus:ring-saffron/25"
+                onKeyDown={updateCapsLock}
+                onKeyUp={updateCapsLock}
+                className="min-h-11 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-3.5 pr-12 text-[14px] text-[var(--text-primary)] outline-none transition focus:border-[var(--accent-brass)] focus:ring-2 focus:ring-[var(--accent-brass)]/25"
               />
-
-              {turnstileEnabled && (
-                <div className="flex justify-center">
-                  <Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} />
-                </div>
-              )}
-              {turnstileEnabled && !token && (
-                <p className="text-center text-[12px] text-muted-foreground">Complete the CAPTCHA to enable sign in.</p>
-              )}
-
               <button
-                type="submit"
-                disabled={loading || (turnstileEnabled && !token)}
-                className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-border bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/50"
+                type="button"
+                onClick={() => setShow((value) => !value)}
+                aria-label={show ? "Hide password" : "Show password"}
+                className="absolute right-1 top-1 grid size-9 place-items-center rounded-[var(--radius-control)] text-[var(--text-muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]"
               >
-                {loading && <Loader2 className="size-4 animate-spin" />}
-                Sign in
+                {show ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
               </button>
-            </form>
-
-            <div className="mt-4 text-center text-[12px] text-muted-foreground">
-              <Link href="/" className="hover:text-foreground">Back to site</Link>
             </div>
+            {capsLock && <p className="text-[11.5px] text-[var(--warning)]">Caps Lock is on.</p>}
+
+            {turnstileEnabled && (
+              <div className="flex justify-center">
+                <Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} />
+              </div>
+            )}
+            {turnstileEnabled && !token && (
+              <p className="text-center text-[12px] text-[var(--text-muted)]">Complete the CAPTCHA to enable sign in.</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || (turnstileEnabled && !token)}
+              className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[14px] font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]"
+            >
+              {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              Sign in
+            </button>
+          </form>
+
+          <div className="mt-5 text-center text-[12px] text-[var(--text-muted)]">
+            <Link href="/" className="hover:text-[var(--text-primary)]">Back to site</Link>
           </div>
-          <p className="mt-5 text-center text-[12px] text-muted-foreground">Access is limited to the ReachOut owner and approved clients.</p>
         </div>
       </div>
     </main>
@@ -146,7 +151,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
 
 export default function LoginPageClient(props: { turnstileEnabled: boolean; nonce?: string }) {
   return (
-    <Suspense fallback={<main className="grid min-h-[100svh] place-items-center bg-background text-sm text-muted-foreground">Loading sign in…</main>}>
+    <Suspense fallback={<main className="grid min-h-[100svh] place-items-center bg-[var(--surface-canvas)] text-sm text-[var(--text-muted)]">Loading sign in…</main>}>
       <LoginClient {...props} />
     </Suspense>
   );

@@ -7,7 +7,12 @@ export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const auth = await requireRecentAuth(req);
-  if ("deny" in auth) return auth.deny;
+  if ("deny" in auth) {
+    if (auth.deny.status === 403 && req.headers.get("accept")?.includes("text/html")) {
+      return metaRedirect(new URL("/meta-ads/settings?reauth=1", req.nextUrl.origin));
+    }
+    return auth.deny;
+  }
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
   const limit = rateLimit(`meta-connect:${ip}`, 10, 10 * 60 * 1000);
   if (!limit.ok) return rateLimitResponse(limit.retryAfter);
