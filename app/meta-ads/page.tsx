@@ -39,7 +39,7 @@ export default async function MetaAdsPage() {
                   <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
                     {status.connected
                       ? `${status.enabledAdAccounts.length} of ${status.adAccounts.length} ad accounts enabled.`
-                      : "Connect with Facebook Login for Business to authorise ads_read, insights, pages and Instagram access."}
+                      : "Connect with Facebook Login for Business to authorise ads_read, business management and page access."}
                   </p>
                 </div>
                 <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${status.connected ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border-border text-muted-foreground"}`}>

@@ -8,7 +8,7 @@ import { verifyPkce, createPkce } from "@/lib/oauth-pkce";
 import { signPayload, verifyPayload } from "@/lib/signed-cookie";
 import { redact, maskEmail } from "@/lib/redact";
 import { publicClientSummary } from "@/lib/meta/public";
-import { metaConfigured, metaRedirect, setMetaStateCookie } from "@/lib/meta/oauth";
+import { META_SCOPES, metaConfigured, metaRedirect, setMetaStateCookie } from "@/lib/meta/oauth";
 import { encryptToken, tryDecryptToken } from "@/lib/meta/crypto";
 import { publicStatus, type MetaConnectionDoc } from "@/lib/meta/store";
 import { buildCsp, PROTECTED_HEADERS } from "@/lib/security";
@@ -246,6 +246,14 @@ try {
 } finally {
   setEnv("ADMIN_SESSION_SECRET", redirectSecret);
 }
+
+console.log("\n14. Meta scopes");
+eq("meta scopes exactly match the approved app scopes", META_SCOPES, [
+  "ads_read",
+  "business_management",
+  "pages_read_engagement",
+  "pages_show_list",
+]);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exitCode = 1;

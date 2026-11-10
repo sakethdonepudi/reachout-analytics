@@ -7,7 +7,7 @@ import Navbar from "@/components/site/navbar";
 import { cn } from "@/lib/utils";
 
 type AdAccount = { id: string; accountId: string; name: string; status: number | null; currency: string | null };
-type Page = { id: string; name: string; instagramId?: string | null; instagramUsername?: string | null };
+type Page = { id: string; name: string };
 type Status = {
   connected: boolean;
   accountName: string | null;
@@ -36,7 +36,7 @@ function fmt(value: string | null) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
-export default function MetaSettings({ metaConfigured = true }: { metaConfigured?: boolean }) {
+export default function MetaSettings({ metaConfigured = true, approvedScopes = [] }: { metaConfigured?: boolean; approvedScopes?: string[] }) {
   const [status, setStatus] = useState<Status>(EMPTY);
   const [recent, setRecent] = useState(true);
   const [selected, setSelected] = useState<string[]>([]);
@@ -227,7 +227,7 @@ export default function MetaSettings({ metaConfigured = true }: { metaConfigured
 
             {status.connected && (
               <dl className="mt-6 grid gap-4 text-[12.5px] sm:grid-cols-2 lg:grid-cols-4">
-                <div><dt className="text-muted-foreground">Permissions</dt><dd className="mt-1 font-medium">{status.permissions.join(", ") || "—"}</dd></div>
+                <div><dt className="text-muted-foreground">Permissions</dt><dd className="mt-1 font-medium">{status.permissions.filter((permission) => approvedScopes.includes(permission)).join(", ") || "—"}</dd></div>
                 <div><dt className="text-muted-foreground">Token expiry</dt><dd className="mt-1 font-medium">{fmt(status.tokenExpiresAt)}</dd></div>
                 <div><dt className="text-muted-foreground">Last sync</dt><dd className="mt-1 font-medium">{fmt(status.lastSyncAt)}</dd></div>
                 <div><dt className="text-muted-foreground">Connected</dt><dd className="mt-1 font-medium">{fmt(status.connectedAt)}</dd></div>

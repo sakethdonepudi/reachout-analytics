@@ -54,7 +54,7 @@ Optional:
 
 ## Meta OAuth console setup
 
-- Meta: Facebook Login for Business app. Valid OAuth redirect URI: `https://<host>/api/meta/owner/connect/callback`. Request `ads_read`, `read_insights`, `business_management`, `pages_read_engagement`, `instagram_basic`. App review/advanced access may be required before non-test users can grant them.
+- Meta: Facebook Login for Business app. Valid OAuth redirect URI: `https://<host>/api/meta/owner/connect/callback`. Request `ads_read`, `business_management`, `pages_read_engagement`, `pages_show_list`. App review/advanced access may be required before non-test users can grant them.
 
 ## Meta token storage
 

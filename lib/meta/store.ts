@@ -5,7 +5,7 @@ const DB = process.env.MONGODB_DB || "reachout";
 const ID = "owner";
 
 export type MetaAdAccount = { id: string; accountId: string; name: string; status: number | null; currency: string | null };
-export type MetaPage = { id: string; name: string; instagramId?: string | null; instagramUsername?: string | null };
+export type MetaPage = { id: string; name: string };
 
 export type MetaConnectionDoc = {
   _id: string;

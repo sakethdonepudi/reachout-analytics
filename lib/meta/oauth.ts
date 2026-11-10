@@ -4,7 +4,7 @@ import { createPkce, createOAuthState } from "@/lib/oauth-pkce";
 
 export const META_STATE_COOKIE = "ro_meta_state";
 export const META_STATE_TTL = 10 * 60 * 1000;
-export const META_SCOPES = ["ads_read", "read_insights", "business_management", "pages_read_engagement", "instagram_basic"];
+export const META_SCOPES = ["ads_read", "business_management", "pages_read_engagement", "pages_show_list"];
 const GRAPH = "https://graph.facebook.com/v21.0";
 
 export type MetaState = { state: string; verifier: string; next?: string | null };
@@ -108,8 +108,8 @@ export async function fetchMetaIdentity(token: string) {
     fields: "id,account_id,name,account_status,currency",
     limit: "200",
   });
-  const pages = await graphAuthed<{ data?: Array<{ id: string; name: string; instagram_business_account?: { id: string; username?: string } }> }>("/me/accounts", token, {
-    fields: "id,name,instagram_business_account{id,username}",
+  const pages = await graphAuthed<{ data?: Array<{ id: string; name: string }> }>("/me/accounts", token, {
+    fields: "id,name",
     limit: "200",
   });
   const permissions = await graphAuthed<{ data?: Array<{ permission: string; status: string }> }>("/me/permissions", token);
@@ -125,8 +125,6 @@ export async function fetchMetaIdentity(token: string) {
     pages: (pages.data ?? []).map((page) => ({
       id: page.id,
       name: page.name,
-      instagramId: page.instagram_business_account?.id ?? null,
-      instagramUsername: page.instagram_business_account?.username ?? null,
     })),
     scopes: (permissions.data ?? []).filter((p) => p.status === "granted").map((p) => p.permission),
   };
