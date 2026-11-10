@@ -107,6 +107,7 @@ export default function TamilNaduAnalysis({
   const [scope, setScope] = useState(initialScope);
   const [view, setView] = useState<TnView>(initialView);
   const [chartMode, setChartMode] = useState<TnTab>(initialTab);
+  const [visibleSeries, setVisibleSeries] = useState<string[]>(initialScope.startsWith("a:") || initialScope.startsWith("d:") ? ["survey", "baseline"] : ["exit", "opinion", "actual"]);
   const [baselineYear, setBaselineYear] = useState<TnYear>(defaultBaseline);
   const [parties, setParties] = useState<string[]>([...ALL_GROUP_KEYS]);
   const [showMedian, setShowMedian] = useState(true);
@@ -145,6 +146,20 @@ export default function TamilNaduAnalysis({
   const baselineShares = baseline?.shares ?? null;
   const baselineAvailable = !!baseline?.available;
 
+  useEffect(() => {
+    setVisibleSeries(scopeIsState ? ["exit", "opinion", "actual"] : ["survey", "baseline"]);
+  }, [scopeIsState]);
+
+  const scopeSeriesKeys = scopeIsState ? ["exit", "opinion", "actual"] : ["survey", "baseline"];
+  const toggleSeries = (key: string) => setVisibleSeries((previous) => previous.includes(key) ? (previous.length > 1 ? previous.filter((item) => item !== key) : previous) : [...previous, key]);
+  const selectChartMode = (mode: TnTab) => {
+    setChartMode(mode);
+    if (mode === "change") {
+      const changeKeys = scopeIsState ? ["exit", "opinion"] : ["survey"];
+      if (!changeKeys.some((key) => visibleSeries.includes(key))) setVisibleSeries((previous) => [...previous, changeKeys[0]]);
+    }
+  };
+
   const estimatedSeats = useMemo(() => {
     if (scope.startsWith("a:")) { const ac = data.acs.find((a) => a.no === Number(scope.slice(2))); return { ...emptySeats(), ...(ac?.final.leader ? { [ac.final.leader]: 1 } : {}) }; }
     if (scope.startsWith("d:")) return data.districts.find((d) => d.name === scope.slice(2))?.finalSeats ?? emptySeats();
@@ -157,7 +172,7 @@ export default function TamilNaduAnalysis({
   }, [data, scope]);
 
   /* ------------------------------ overview ------------------------------ */
-  const overviewSeries = useMemo(() => {
+  const allOverviewSeries = useMemo(() => {
     const actualShares = data.statewide.actualVoteShares.shares;
     if (scopeIsState) {
       return [
@@ -172,10 +187,14 @@ export default function TamilNaduAnalysis({
     ];
   }, [scopeIsState, data.statewide.actualVoteShares.shares, opinionPoll.available, opinionPoll.shares, currentShares, baselineYear, baselineAvailable, baselineShares]);
 
+  const overviewSeries = useMemo(
+    () => allOverviewSeries.filter((series) => visibleSeries.includes(series.key)),
+    [allOverviewSeries, visibleSeries],
+  );
+
   const shareChartOption = useMemo(() => {
-    const max = Math.max(10, Math.ceil((Math.max(
-      ...overviewSeries.flatMap((series) => ANALYSIS_GROUPS.map((group) => (groupSum(series.shares, group) ?? 0) * 100)),
-    ) + 5) / 10) * 10);
+    const values = overviewSeries.flatMap((series) => ANALYSIS_GROUPS.map((group) => (groupSum(series.shares, group) ?? 0) * 100));
+    const max = Math.max(10, Math.ceil((Math.max(10, ...values) + 5) / 10) * 10);
     return {
       animation: !reduced, animationDuration: 520, animationEasing: "cubicOut",
       grid: { left: 92, right: 34, top: 12, bottom: 24 },
@@ -211,7 +230,7 @@ export default function TamilNaduAnalysis({
   }, [overviewSeries, p, reduced, narrow]);
 
   const changeChartOption = useMemo(() => {
-    const series = scopeIsState
+    const series = (scopeIsState
       ? [
           { key: "exit", label: "Exit Poll − Actual", opacity: SERIES_OPACITY.exit, value: (group: AnalysisGroup) => {
               const exit = groupSum(AMI_EXIT_POLL.shares as TnShares, group);
@@ -234,7 +253,7 @@ export default function TamilNaduAnalysis({
               const base = groupSum(baselineShares, group);
               return current == null || base == null ? null : (current - base) * 100;
             } },
-        ];
+        ]).filter((item) => visibleSeries.includes(item.key));
     const values = series.flatMap((item) => ANALYSIS_GROUPS.map((group) => item.value(group))).filter((value): value is number => value != null);
     const magnitude = Math.max(0.5, ...values.map((value) => Math.abs(value)));
     const step = Math.max(1, Math.ceil((magnitude * 1.15) / 2));
@@ -275,11 +294,12 @@ export default function TamilNaduAnalysis({
         markLine: { silent: true, symbol: "none", label: { show: false }, lineStyle: { color: p.axis, width: 1 }, data: [{ xAxis: 0 }] },
       })),
     };
-  }, [scopeIsState, opinionPoll.available, opinionPoll.shares, data.statewide.actualVoteShares.shares, data.presence, baselineYear, baselineAvailable, currentShares, baselineShares, p, reduced, narrow]);
+  }, [scopeIsState, opinionPoll.available, opinionPoll.shares, data.statewide.actualVoteShares.shares, data.presence, baselineYear, baselineAvailable, currentShares, baselineShares, p, reduced, narrow, visibleSeries]);
 
-  const changeLegend = scopeIsState
-    ? [{ label: "Exit Poll − Actual", opacity: SERIES_OPACITY.exit }, { label: "Opinion Poll − Actual", opacity: SERIES_OPACITY.opinion }]
-    : [{ label: `Survey − ${baselineYear}`, opacity: SERIES_OPACITY.survey }];
+  const allChangeLegend = scopeIsState
+    ? [{ key: "exit", label: "Exit Poll − Actual", opacity: SERIES_OPACITY.exit }, { key: "opinion", label: "Opinion Poll − Actual", opacity: SERIES_OPACITY.opinion }]
+    : [{ key: "survey", label: `Survey − ${baselineYear}`, opacity: SERIES_OPACITY.survey }];
+  const changeLegend = allChangeLegend.filter((item) => visibleSeries.includes(item.key));
 
   const seatChartOption = useMemo(() => {
     const totalEstimated = TN_SEAT_GROUPS.reduce((sum, group) => sum + (estimatedSeats[group] ?? 0), 0);
@@ -488,52 +508,159 @@ export default function TamilNaduAnalysis({
       ) : (
         <>
           {/* ------------------------- polls overview ------------------------- */}
+          <section className="analysis-panel rounded-2xl p-3 sm:p-4" aria-label="Party summary">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-brass)]">{scopeIsState ? "Polls snapshot" : "Scope snapshot"}</p>
+                <h3 className="mt-0.5 font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">Party summary</h3>
+              </div>
+              <span className="text-[10px] text-[var(--a-muted)]">{scopeIsState ? "Opinion poll vs actual result" : `Survey estimate vs ${baselineYear}`}</span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+              {ANALYSIS_GROUPS.map((group) => {
+                const current = scopeIsState
+                  ? (opinionPoll.available ? groupSum(opinionPoll.shares, group) : null)
+                  : groupSum(currentShares, group);
+                const comparison = scopeIsState
+                  ? groupSum(data.statewide.actualVoteShares.shares, group)
+                  : (baselineAvailable ? groupSum(baselineShares, group) : null);
+                const delta = current != null && comparison != null ? (current - comparison) * 100 : null;
+                return (
+                  <div key={group.key} className="rounded-lg border border-[var(--a-border)] bg-[var(--a-panel-2)] px-2.5 py-2">
+                    <div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: group.color }}>
+                      <span className="size-1.5 rounded-sm" style={{ background: group.color }} />{group.label}
+                    </div>
+                    <div className="mt-1 font-display text-[17px] tabular-nums text-[var(--a-ink)]">{current == null ? "—" : `${(current * 100).toFixed(2)}%`}</div>
+                    <div className="text-[9px] tabular-nums text-[var(--a-muted)]">
+                      {scopeIsState ? "Actual" : baselineYear} {comparison == null ? "—" : `${(comparison * 100).toFixed(1)}%`} · {delta == null ? "—" : `${delta > 0 ? "+" : ""}${delta.toFixed(1)} pp`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
           <section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="Polls overview">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div>
                 <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-brass)]">Polls overview</p>
                 <h3 className="mt-0.5 font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">
                   {scopeIsState ? "Exit, opinion and actual vote share" : `Survey, ${baselineYear} result and actual availability`}
                 </h3>
                 <p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">{scopeName} · {scopeIsState ? "Statewide" : scope.startsWith("a:") ? "Assembly" : "District"}</p>
               </div>
-              <div className="inline-flex items-center gap-0.5 rounded-full border border-[var(--a-border)] bg-[var(--a-panel-2)] p-0.5" role="tablist" aria-label="Chart mode">
-                {modeTabs.map((mode) => (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={chartMode === mode.id}
-                    onClick={() => setChartMode(mode.id)}
-                    className={cn(
-                      "rounded-full px-2.5 py-1 text-[10.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--a-brass)]/40",
-                      chartMode === mode.id ? "bg-[var(--a-ink)] text-[var(--a-canvas)]" : "text-[var(--a-muted)] hover:text-[var(--a-ink)]",
-                    )}
-                  >
-                    {mode.label}
-                  </button>
-                ))}
-              </div>
+              <span className="text-[10px] text-[var(--a-muted)]">Party colours · series opacity</span>
             </div>
 
-            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-              <div className="min-w-0 overflow-x-auto rounded-xl border border-[var(--a-border)]">
-                <table className="w-full min-w-[360px] border-collapse text-[10px]">
+            <div className="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_300px]">
+              <aside className="analysis-soft h-fit rounded-xl p-3" aria-label="Polls chart controls">
+                <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--a-muted)]">Chart mode</span>
+                <div className="mt-1 grid gap-1">
+                  {modeTabs.map((mode) => (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      aria-pressed={chartMode === mode.id}
+                      onClick={() => selectChartMode(mode.id)}
+                      className={cn(
+                        "rounded-lg border px-2 py-1.5 text-left text-[10px] font-semibold transition-colors",
+                        chartMode === mode.id ? "border-[var(--a-brass)]/50 bg-[var(--a-brass-soft)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)] hover:text-[var(--a-ink)]",
+                      )}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+
+                <span className="mt-3 block text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--a-muted)]">Series</span>
+                <div className="mt-1 grid gap-1">
+                  {chartMode === "seats" ? (
+                    [{ label: "Estimated", opacity: 0.55 }, { label: "Actual 2026", opacity: 1 }].map((item) => (
+                      <div key={item.label} className="flex items-center gap-1.5 rounded-lg border border-[var(--a-border)] px-2 py-1.5 text-[10px] font-medium text-[var(--a-ink)]">
+                        <span className="h-2 w-4 rounded-sm" style={{ background: "linear-gradient(90deg, #EAB308, #16A34A, #DC2626, #7C3AED, #64748B)", opacity: item.opacity }} />
+                        {item.label}
+                      </div>
+                    ))
+                  ) : (
+                    (chartMode === "share" ? allOverviewSeries : allChangeLegend).map((series) => {
+                      const active = visibleSeries.includes(series.key);
+                      return (
+                        <button
+                          key={series.key}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => toggleSeries(series.key)}
+                          className={cn(
+                            "flex items-center justify-between gap-2 rounded-lg border px-2 py-1.5 text-[10px] font-medium transition-opacity",
+                            active ? "border-[var(--a-border)] text-[var(--a-ink)]" : "border-[var(--a-border)]/60 text-[var(--a-muted)] opacity-50",
+                          )}
+                        >
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="h-2 w-4 rounded-sm" style={{ background: "linear-gradient(90deg, #EAB308, #16A34A, #DC2626, #7C3AED, #64748B)", opacity: series.opacity }} />
+                            {series.label}
+                          </span>
+                          <span className="text-[8px] uppercase tracking-wide">{active ? "On" : "Off"}</span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                {chartMode !== "seats" && (
+                  <button
+                    type="button"
+                    onClick={() => setVisibleSeries(scopeSeriesKeys)}
+                    className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-[var(--a-border)] px-2 py-1.5 text-[10px] font-semibold text-[var(--a-muted)] hover:text-[var(--a-ink)]"
+                  >
+                    <RotateCcw className="size-3" /> Show all series
+                  </button>
+                )}
+                <p className="mt-3 text-[9px] leading-relaxed text-[var(--a-muted)]">Party colours carry the bars; the series differ by opacity.</p>
+              </aside>
+
+              <div className="min-w-0 rounded-xl border border-[var(--a-border)] bg-[var(--a-panel-2)] p-2">
+                <p className="mb-1 px-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--a-muted)]">
+                  {chartMode === "share" ? "Vote share" : chartMode === "change" ? "Signed change (percentage points)" : "Seat counts"}
+                </p>
+                <div key={chartMode} className="analysis-chart-enter">
+                  {chartMode === "share" && (
+                    <>
+                      <SeriesLegend items={overviewSeries.map((series) => ({ label: series.label, opacity: series.opacity }))} />
+                      <EChart option={shareChartOption} height={340} reduced={reduced} ariaLabel={`Grouped vote share for ${scopeName}`} />
+                    </>
+                  )}
+                  {chartMode === "change" && (
+                    <>
+                      <SeriesLegend items={changeLegend} />
+                      <EChart option={changeChartOption} height={340} reduced={reduced} ariaLabel={`Signed change for ${scopeName}`} />
+                    </>
+                  )}
+                  {chartMode === "seats" && (
+                    <>
+                      <SeriesLegend items={[{ label: "Estimated", opacity: 0.55 }, { label: "Actual 2026", opacity: 1 }]} />
+                      <EChart option={seatChartOption} height={340} reduced={reduced} ariaLabel={`Estimated and actual seats for ${scopeName}`} />
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="min-w-0 overflow-x-auto rounded-xl border border-[var(--a-border)] lg:col-span-2 xl:col-span-1">
+                <table className="w-full min-w-[280px] border-collapse text-[9px]">
                   <caption className="sr-only">{scopeName} vote-share comparison</caption>
                   <thead>
-                    <tr className="border-b border-[var(--a-border)] text-left text-[8px] uppercase tracking-wide text-[var(--a-muted)]">
+                    <tr className="border-b border-[var(--a-border)] text-left text-[7.5px] uppercase tracking-wide text-[var(--a-muted)]">
                       <th scope="col" className="px-2 py-2 text-left font-semibold">Party</th>
                       {scopeIsState ? (
                         <>
-                          <th scope="col" className="px-2 py-2 text-right font-semibold">Exit Poll</th>
-                          <th scope="col" className="px-2 py-2 text-right font-semibold">Opinion Poll</th>
-                          <th scope="col" className="border-l border-[var(--a-border)] px-2 py-2 text-right font-semibold">Actual Result</th>
+                          <th scope="col" className="px-1.5 py-2 text-right font-semibold">Exit Poll</th>
+                          <th scope="col" className="px-1.5 py-2 text-right font-semibold">Opinion Poll</th>
+                          <th scope="col" className="border-l border-[var(--a-border)] px-1.5 py-2 text-right font-semibold">Actual Result</th>
                         </>
                       ) : (
                         <>
-                          <th scope="col" className="px-2 py-2 text-right font-semibold">Survey Estimate</th>
-                          <th scope="col" className="px-2 py-2 text-right font-semibold">{baselineYear} Result</th>
-                          <th scope="col" className="border-l border-[var(--a-border)] px-2 py-2 text-right font-semibold">Actual Result</th>
+                          <th scope="col" className="px-1.5 py-2 text-right font-semibold">Survey Estimate</th>
+                          <th scope="col" className="px-1.5 py-2 text-right font-semibold">{baselineYear} Result</th>
+                          <th scope="col" className="border-l border-[var(--a-border)] px-1.5 py-2 text-right font-semibold">Actual Result</th>
                         </>
                       )}
                     </tr>
@@ -546,15 +673,15 @@ export default function TamilNaduAnalysis({
                         </th>
                         {scopeIsState ? (
                           <>
-                            <td className="px-2 py-1.5 text-right tabular-nums">{pct(groupSum(AMI_EXIT_POLL.shares as TnShares, group))}</td>
-                            <td className="px-2 py-1.5 text-right tabular-nums">{pct(opinionPoll.available ? groupSum(opinionPoll.shares, group) : null)}</td>
-                            <td className="border-l border-[var(--a-border)] px-2 py-1.5 text-right tabular-nums">{pct(groupSum(data.statewide.actualVoteShares.shares, group))}</td>
+                            <td className="px-1.5 py-1.5 text-right tabular-nums">{pct(groupSum(AMI_EXIT_POLL.shares as TnShares, group))}</td>
+                            <td className="px-1.5 py-1.5 text-right tabular-nums">{pct(opinionPoll.available ? groupSum(opinionPoll.shares, group) : null)}</td>
+                            <td className="border-l border-[var(--a-border)] px-1.5 py-1.5 text-right tabular-nums">{pct(groupSum(data.statewide.actualVoteShares.shares, group))}</td>
                           </>
                         ) : (
                           <>
-                            <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{pct(groupSum(currentShares, group))}</td>
-                            <td className="px-2 py-1.5 text-right tabular-nums text-[var(--a-muted)]">{baselineAvailable && group.groups.some((key) => data.presence[baselineYear][key]) ? pct(groupSum(baselineShares, group)) : "—"}</td>
-                            <td className="border-l border-[var(--a-border)] px-2 py-1.5 text-right tabular-nums text-[var(--a-muted)]">—</td>
+                            <td className="px-1.5 py-1.5 text-right font-semibold tabular-nums">{pct(groupSum(currentShares, group))}</td>
+                            <td className="px-1.5 py-1.5 text-right tabular-nums text-[var(--a-muted)]">{baselineAvailable && group.groups.some((key) => data.presence[baselineYear][key]) ? pct(groupSum(baselineShares, group)) : "—"}</td>
+                            <td className="border-l border-[var(--a-border)] px-1.5 py-1.5 text-right tabular-nums text-[var(--a-muted)]">—</td>
                           </>
                         )}
                       </tr>
@@ -564,32 +691,6 @@ export default function TamilNaduAnalysis({
                 <p className="px-2 py-1.5 text-[9px] text-[var(--a-muted)]">
                   {scopeIsState ? "Opinion poll: ReachOut workbook. Actual: ECI." : "Local actual results are not available at this scope."}
                 </p>
-              </div>
-
-              <div className="min-w-0 rounded-xl border border-[var(--a-border)] bg-[var(--a-panel-2)] p-2">
-                <p className="mb-1 px-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--a-muted)]">
-                  {chartMode === "share" ? "Vote share" : chartMode === "change" ? "Signed change (percentage points)" : "Seat counts"}
-                </p>
-                <div key={chartMode} className="analysis-chart-enter">
-                  {chartMode === "share" && (
-                    <>
-                      <SeriesLegend items={overviewSeries.map((series) => ({ label: series.label, opacity: series.opacity }))} />
-                      <EChart option={shareChartOption} height={268} reduced={reduced} ariaLabel={`Grouped vote share for ${scopeName}`} />
-                    </>
-                  )}
-                  {chartMode === "change" && (
-                    <>
-                      <SeriesLegend items={changeLegend} />
-                      <EChart option={changeChartOption} height={268} reduced={reduced} ariaLabel={`Signed change for ${scopeName}`} />
-                    </>
-                  )}
-                  {chartMode === "seats" && (
-                    <>
-                      <SeriesLegend items={[{ label: "Estimated", opacity: 0.55 }, { label: "Actual 2026", opacity: 1 }]} />
-                      <EChart option={seatChartOption} height={268} reduced={reduced} ariaLabel={`Estimated and actual seats for ${scopeName}`} />
-                    </>
-                  )}
-                </div>
               </div>
             </div>
           </section>
