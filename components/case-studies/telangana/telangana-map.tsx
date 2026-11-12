@@ -23,7 +23,7 @@ import { MAP_STYLE, addMapLights, createScreenLine, setScreenLinePoints, updateL
    official administrative boundary.
    ===================================================================== */
 
-export type MapTheme = "light" | "dark";
+export type MapTheme = "light";
 
 const BOX = 1000;
 const DEPTH = 10;
@@ -42,7 +42,7 @@ type Props = {
   district: string | null;
   ac: number | null;
   year: ElectionYear;
-  theme: "light" | "dark";
+  theme: "light";
   /** Increment after a split resize to refit without changing selection. */
   fitKey?: number;
   onSelectDistrict: (name: string) => void;
@@ -84,7 +84,6 @@ const signedArea = (r: number[][]) => {
 };
 
 const PAL = {
-  dark: { none: "#2b3442", side: "#1c2531", line: "rgb(210,222,238)", hover: "#93c5fd", sel: "#ffffff", label: "#e8edf4", halo: "rgba(6,10,18,.86)" },
   light: { none: "#e7ebef", side: "#d3d9e0", line: "rgb(40,58,78)", hover: "#1d4ed8", sel: "#111827", label: "#1b2430", halo: "rgba(255,255,255,.94)" },
 };
 

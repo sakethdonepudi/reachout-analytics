@@ -168,7 +168,7 @@ export default function ContactSection() {
                 </div>
                 <label className="block"><span className={label}>Message</span><textarea name="message" rows={4} className={`${field} resize-none`} placeholder="Tell us about your constituency, timeline and goals" /></label>
                 {error && <p className="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-200">{error}</p>}
-                <ShimmerButton text={sending ? "Sending..." : "Send message"} duration={1.6} className="w-full border-saffron/40 py-3.5 dark:bg-[#0a1a44]/80 backdrop-blur-xl" />
+                <ShimmerButton text={sending ? "Sending..." : "Send message"} duration={1.6} className="w-full border-saffron/40 py-3.5 backdrop-blur-xl" />
               </form>
             )}
           </div>

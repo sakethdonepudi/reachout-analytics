@@ -4,15 +4,12 @@ import { useCallback, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/brand";
-import ThemeToggle from "@/components/site/theme-toggle";
 import Turnstile from "@/components/site/turnstile";
 import { passwordStrength } from "@/lib/password-policy";
-import { useTheme } from "@/components/theme-provider";
 
 const STRENGTH = ["", "Weak", "Fair", "Good", "Strong"];
 
 export default function SetupClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; nonce?: string }) {
-  const { theme } = useTheme();
   const [form, setForm] = useState({ setupToken: "", username: "", displayName: "", password: "", confirm: "" });
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
@@ -46,7 +43,7 @@ export default function SetupClient({ turnstileEnabled, nonce }: { turnstileEnab
 
   return (
     <main className="relative grid min-h-[100svh] place-items-center bg-[var(--surface-canvas)] px-5 py-14 text-[var(--text-primary)]">
-      <div className="absolute right-5 top-5"><ThemeToggle /></div>
+      <div className="absolute right-5 top-5"></div>
       <div className="w-full max-w-md">
         <div className="mb-7 flex justify-center"><Logo /></div>
         <div className="rounded-[var(--radius-panel)] border border-[var(--border-hairline)] bg-[var(--surface-panel)] p-7 shadow-[var(--shadow-soft)]">
@@ -66,7 +63,7 @@ export default function SetupClient({ turnstileEnabled, nonce }: { turnstileEnab
               </div>
             </div>
             <Field label="Confirm password" type="password" value={form.confirm} onChange={(value) => set("confirm", value)} autoComplete="new-password" />
-            {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} action="setup" /></div>}
+            {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="setup" /></div>}
             <button type="submit" disabled={busy || (turnstileEnabled && !token)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
               {busy && <Loader2 className="size-4 animate-spin" />} Create owner
             </button>

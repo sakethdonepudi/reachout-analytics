@@ -128,7 +128,7 @@ export default function ServicesEnquiry({ categories = SERVICE_CATEGORIES, group
               <textarea value={values.requirement} onChange={(e) => change("requirement", e.target.value)} required rows={6} className={cn(field, "resize-y")} placeholder="What are you trying to understand, improve or decide? Include timeline, geography and available data if relevant." aria-invalid={!values.requirement && !!error} />
             </label>
             <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
-            {error && <p role="alert" className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-rose-700 dark:text-rose-300"><AlertCircle className="mt-0.5 size-4 shrink-0" />{error}</p>}
+            {error && <p role="alert" className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-rose-700"><AlertCircle className="mt-0.5 size-4 shrink-0" />{error}</p>}
             <div className="mt-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
               <p className="text-[10.5px] text-muted-foreground">Fields marked * are required. Your details are used only to respond to this enquiry.</p>
               <button type="submit" disabled={sending} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-saffron px-5 py-3 text-[13px] font-semibold text-[#241203] transition hover:brightness-105 disabled:cursor-wait disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">

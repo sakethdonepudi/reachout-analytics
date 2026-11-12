@@ -126,10 +126,10 @@ export default function ServicesPage() {
           <div className="mx-auto max-w-6xl px-6 py-16 sm:px-10 sm:py-20">
             <Reveal className="grid gap-6 lg:grid-cols-[1.02fr_.98fr] lg:items-end">
               <div>
-                <div className="flex items-center gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#2fbf4a] dark:text-[#65df7a]">Practice 02</p><AreaMotif variant="data" className="h-8 w-16" /></div>
+                <div className="flex items-center gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#2fbf4a]">Practice 02</p><AreaMotif variant="data" className="h-8 w-16" /></div>
                 <h2 className="mt-3 font-display text-[clamp(30px,4vw,48px)] font-semibold tracking-[-0.03em]">Data & Business Analytics</h2>
               </div>
-              <div><p className="max-w-2xl text-[14.5px] leading-relaxed text-muted-foreground">From preparing a reliable dataset to building a dashboard, model or training programme, our work is scoped around the decision you need to make and the evidence available.</p><Link href={serviceHref("Data analysis & preparation")} className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-foreground hover:text-[#2fbf4a] dark:hover:text-[#65df7a]">Discuss a data project<ArrowRight className="size-3.5" /></Link></div>
+              <div><p className="max-w-2xl text-[14.5px] leading-relaxed text-muted-foreground">From preparing a reliable dataset to building a dashboard, model or training programme, our work is scoped around the decision you need to make and the evidence available.</p><Link href={serviceHref("Data analysis & preparation")} className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-foreground hover:text-[#2fbf4a]">Discuss a data project<ArrowRight className="size-3.5" /></Link></div>
             </Reveal>
             <div className="mt-10 grid gap-4 md:auto-rows-fr md:grid-cols-2 lg:grid-cols-3">
               {DATA_SERVICES.map((s, i) => <ServiceCard key={s.title} service={s} delay={i * 35} />)}
@@ -143,8 +143,8 @@ export default function ServicesPage() {
               <div className="relative flex flex-col gap-6 overflow-hidden rounded-3xl border border-border bg-card p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
                 <AreaMotif variant="research" className="pointer-events-none absolute right-5 top-5 hidden h-14 w-24 opacity-80 sm:block sm:right-8" />
                 <div className="flex max-w-2xl items-start gap-4 sm:pr-20 lg:pr-0">
-                  <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#3a6ea5]/20 bg-[#3a6ea5]/[.07] text-[#3a6ea5] dark:border-[#9cc0e8]/25 dark:text-[#9cc0e8]"><BookOpenCheck className="size-5" /></span>
-                  <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#3a6ea5] dark:text-[#9cc0e8]">Research & Content</p><h2 className="mt-2 font-display text-[clamp(22px,2.6vw,32px)] font-semibold tracking-[-0.025em]">Research, dissertation and professional content support</h2><p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">Proposal guidance, thesis and dissertation support, statistical analysis, research editing, business content and SEO-aware web writing.</p></div>
+                  <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#3a6ea5]/20 bg-[#3a6ea5]/[.07] text-[#3a6ea5]"><BookOpenCheck className="size-5" /></span>
+                  <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#3a6ea5]">Research & Content</p><h2 className="mt-2 font-display text-[clamp(22px,2.6vw,32px)] font-semibold tracking-[-0.025em]">Research, dissertation and professional content support</h2><p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">Proposal guidance, thesis and dissertation support, statistical analysis, research editing, business content and SEO-aware web writing.</p></div>
                 </div>
                 <Link href="/services/research-content" className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border px-5 py-3 text-[13px] font-semibold text-foreground transition hover:border-[#3a6ea5]/40 hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3a6ea5]/40">Explore research & content<ArrowUpRight className="size-4" /></Link>
               </div>

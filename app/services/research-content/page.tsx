@@ -81,7 +81,7 @@ export default function ResearchContentPage() {
               <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-saffron-2">Support for your work</p><h2 className="mt-3 font-display text-[clamp(30px,4vw,48px)] font-semibold tracking-[-0.03em]">Research & content services</h2></div>
               <p className="max-w-2xl text-[14.5px] leading-relaxed text-muted-foreground">Practical support at each stage of a research or content project. Academic services support the researcher&apos;s own work using properly sourced or client-provided data.</p>
             </Reveal>
-            <div className="mt-9 rounded-2xl border border-saffron/25 bg-saffron/5 p-4 text-[12.5px] leading-relaxed text-foreground/75 dark:bg-saffron/10">
+            <div className="mt-9 rounded-2xl border border-saffron/25 bg-saffron/5 p-4 text-[12.5px] leading-relaxed text-foreground/75">
               <b className="text-foreground">Academic integrity.</b> We support planning, analysis, editing and communication. We do not provide fabricated research, guaranteed publication or ghostwritten submissions. Datasets must be properly sourced or provided by the client.
             </div>
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">

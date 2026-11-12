@@ -169,8 +169,8 @@ export function AreaMotif({ variant, className }: { variant: MotifVariant; class
     variant === "political"
       ? "text-saffron-2"
       : variant === "data"
-        ? "text-[#2fbf4a] dark:text-[#65df7a]"
-        : "text-[#3a6ea5] dark:text-[#9cc0e8]";
+        ? "text-[#2fbf4a]"
+        : "text-[#3a6ea5]";
 
   return (
     <div ref={ref} aria-hidden className={cn("area-motif shrink-0", tone, onScreen && "is-live", className)}>

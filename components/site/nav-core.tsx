@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Lock, LogOut, Menu, Settings, Shield, Users } from "lucide-react";
-import ThemeToggle from "@/components/site/theme-toggle";
 import { Logo } from "@/components/site/brand";
 import { Sheet } from "@/components/ui/sheet";
 import { useIdle } from "@/components/auth/idle-provider";
@@ -154,7 +153,6 @@ export default function NavCore({ variant, displayName, username, organisation, 
             )}
           </nav>
           <div className="ml-auto flex items-center gap-1">
-            <ThemeToggle bare />
             {variant === "public" ? (
               <Link href="/login" className="hidden h-9 items-center rounded-full bg-[var(--h-ink)] px-4 text-[12px] font-semibold text-[var(--h-surface)] md:inline-flex">Login</Link>
             ) : (
@@ -197,7 +195,6 @@ export default function NavCore({ variant, displayName, username, organisation, 
                           <MenuLink href="/account/security" icon={<Shield className="size-3.5" />}>Security</MenuLink>
                         </>
                       )}
-                      <div className="flex items-center justify-between px-2 py-1 text-[11.5px] text-[var(--h-muted)]"><span>Theme</span><ThemeToggle bare /></div>
                       <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-left text-[12px] font-medium text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)]"><LogOut className="size-3.5" /> Sign out</button>
                     </div>
                   )}

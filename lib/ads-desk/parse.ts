@@ -24,7 +24,7 @@ export type AdsRegion = {
   key: string; label: string; short: string; range: string; note: string; asOf: string; viewsLabel: string | null;
   accounts: AdsAccount[];
   totals: { accounts: number; campaigns: number; active: number; spend: number; reach: number; impressions: number; views: number; clicks: number; engagements: number };
-  colors: { band: string; bandSoft: string; bg: string; darkBand: string; darkBandSoft: string; darkBg: string };
+  colors: { band: string; bandSoft: string; bg: string };
 };
 export type SnapAccount = {
   id: string; name: string; business: string; status: string; hasPayment: boolean; currency: string; stats: number[];
@@ -106,7 +106,7 @@ function jsonAfter(source: string, marker: string): unknown {
 }
 
 type Color = { band: string; bandSoft: string; bg: string };
-function colorFor(css: string, region: string, dark: boolean): Color {
+function colorFor(css: string, region: string, darkTheme: boolean): Color {
   const pattern = new RegExp(`\\[data-region="${region}"\\]\\s*\\{([^}]*)\\}`, "g");
   let match: RegExpExecArray | null;
   const found: Color[] = [];
@@ -117,8 +117,8 @@ function colorFor(css: string, region: string, dark: boolean): Color {
     const bg = /--bg\s*:\s*([^;]+)/.exec(body)?.[1]?.trim();
     if (band && bandSoft && bg) found.push({ band, bandSoft, bg });
   }
-  const fallback = dark ? { band: "#9aa4b2", bandSoft: "#2a313b", bg: "#10151b" } : { band: "#64748b", bandSoft: "#e2e8f0", bg: "#f8fafc" };
-  return dark ? found[1] ?? found[0] ?? fallback : found[0] ?? fallback;
+  const fallback = { band: "#64748b", bandSoft: "#e2e8f0", bg: "#f8fafc" };
+  return found[0] ?? fallback;
 }
 
 function num(value: unknown): number {
@@ -184,11 +184,11 @@ export function parseAdsDeskHtml(html: string): AdsParse {
       impressions: all.reduce((sum, item) => sum + item.impressions, 0), views: all.reduce((sum, item) => sum + item.views, 0),
       clicks: all.reduce((sum, item) => sum + item.clicks, 0), engagements: all.reduce((sum, item) => sum + item.engagements, 0),
     };
-    const light = colorFor(css, key, false), dark = colorFor(css, key, true);
+    const light = colorFor(css, key, false);
     return {
       key, label: region.label, short: region.short, range: region.range, note: region.note,
       asOf: region.asOf || String(snap.takenAt ?? ""), viewsLabel: region.viewsLabel ?? null, accounts, totals,
-      colors: { ...light, darkBand: dark.band, darkBandSoft: dark.bandSoft, darkBg: dark.bg },
+      colors: light,
     };
   });
 

@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { headers } from "next/headers";
 import "./globals.css";
 import RouteTransition from "@/components/site/route-transition";
-import ThemeProvider, { ThemeScript } from "@/components/theme-provider";
 import CsrfFetch from "@/components/site/csrf-fetch";
 import { ReauthProvider } from "@/components/auth/reauth-provider";
 import IdleProvider from "@/components/auth/idle-provider";
@@ -47,18 +45,12 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${interTight.variable} ${instrumentSerif.variable}`}>
-      <head>
-        <ThemeScript nonce={nonce} />
-      </head>
+    <html lang="en" className={`${inter.variable} ${interTight.variable} ${instrumentSerif.variable}`}>
       <body>
-        <ThemeProvider>
-          <CsrfFetch />
-          <ReauthProvider><IdleProvider>{children}</IdleProvider></ReauthProvider>
-          <RouteTransition />
-        </ThemeProvider>
+        <CsrfFetch />
+        <ReauthProvider><IdleProvider>{children}</IdleProvider></ReauthProvider>
+        <RouteTransition />
       </body>
     </html>
   );

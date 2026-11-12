@@ -497,7 +497,7 @@ export default function TelanganaAnalysis({
       subtitle="2028 projection by survey round · round model"
       contentClassName="space-y-5"
     >
-      {error && <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-600 dark:text-rose-400">{error}</div>}
+      {error && <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-600">{error}</div>}
       {loading && !data && <div className="grid h-48 place-items-center text-[12px] text-[var(--a-muted)]">Loading survey periods…</div>}
 
       {data && (

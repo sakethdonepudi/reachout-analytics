@@ -156,10 +156,10 @@ export default function TelanganaAdmin() {
         {preview && (
           <div className="mt-3 space-y-3 rounded-xl border border-border bg-background/60 p-3">
             <div className="flex flex-wrap items-center gap-2 text-[11px]">
-              <span className={cn("rounded-full border px-2 py-0.5 font-medium", preview.ok ? "border-emerald-500/40 text-emerald-600 dark:text-emerald-400" : "border-rose-500/40 text-rose-600 dark:text-rose-400")}>
+              <span className={cn("rounded-full border px-2 py-0.5 font-medium", preview.ok ? "border-emerald-500/40 text-emerald-600" : "border-rose-500/40 text-rose-600")}>
                 {preview.ok ? "Pack reconciles" : "Pack blocked"}
               </span>
-              {preview.missing.length > 0 && <span className="text-rose-600 dark:text-rose-400">Missing: {preview.missing.join(", ")}</span>}
+              {preview.missing.length > 0 && <span className="text-rose-600">Missing: {preview.missing.join(", ")}</span>}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[10.5px]">
@@ -168,9 +168,9 @@ export default function TelanganaAdmin() {
                   {preview.files.map((f) => (
                     <tr key={f.key} className="border-t border-border/60 align-top">
                       <td className="max-w-[210px] px-2 py-1.5"><span className="block truncate font-medium" title={f.name}>{f.name}</span><span className="text-[9px] text-muted-foreground">{f.present ? "present" : "missing"}</span></td>
-                      <td className="px-2 py-1.5"><span className={cn("font-medium", f.hashMatches ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>{f.present ? (f.hashMatches ? "matches" : "mismatch") : "—"}</span><br /><code className="text-[9px] text-muted-foreground" title={f.sha256}>{short(f.sha256)}</code></td>
+                      <td className="px-2 py-1.5"><span className={cn("font-medium", f.hashMatches ? "text-emerald-600" : "text-rose-600")}>{f.present ? (f.hashMatches ? "matches" : "mismatch") : "—"}</span><br /><code className="text-[9px] text-muted-foreground" title={f.sha256}>{short(f.sha256)}</code></td>
                       <td className="px-2 py-1.5 text-muted-foreground">{f.checks.join(" · ") || "—"}</td>
-                      <td className="max-w-[240px] px-2 py-1.5 text-[10px] text-amber-700 dark:text-amber-400">{f.warnings.join("; ") || "—"}</td>
+                      <td className="max-w-[240px] px-2 py-1.5 text-[10px] text-amber-700">{f.warnings.join("; ") || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -190,7 +190,7 @@ export default function TelanganaAdmin() {
                 {preview.counts.devices ? <p>{n(preview.counts.devices.rows)} matched · {n(preview.counts.devices.cutoffRows)} cutoff · {preview.counts.devices.uniqueEntryIds} unique IDs · {preview.counts.devices.acs} ACs</p> : <p>—</p>}
               </div>
             </div>
-            {preview.warnings.length > 0 && <ul className="list-disc space-y-1 pl-4 text-[10.5px] text-amber-700 dark:text-amber-400">{preview.warnings.map((w) => <li key={w}>{w}</li>)}</ul>}
+            {preview.warnings.length > 0 && <ul className="list-disc space-y-1 pl-4 text-[10.5px] text-amber-700">{preview.warnings.map((w) => <li key={w}>{w}</li>)}</ul>}
           </div>
         )}
       </div>
@@ -207,7 +207,7 @@ export default function TelanganaAdmin() {
                   <td className="whitespace-nowrap px-2 py-1.5">{new Date(h.at).toLocaleString()}</td>
                   <td className="whitespace-nowrap px-2 py-1.5">{h.version}</td>
                   <td className="px-2 py-1.5">{h.files.length}</td>
-                  <td className={cn("px-2 py-1.5 font-medium", h.outcome === "success" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>{h.outcome}</td>
+                  <td className={cn("px-2 py-1.5 font-medium", h.outcome === "success" ? "text-emerald-600" : "text-rose-600")}>{h.outcome}</td>
                   <td className="px-2 py-1.5">{h.uploader}</td>
                   <td className="max-w-[260px] truncate px-2 py-1.5 text-muted-foreground" title={h.error}>{h.error ?? "—"}</td>
                 </tr>

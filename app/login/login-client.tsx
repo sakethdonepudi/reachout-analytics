@@ -6,13 +6,10 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/brand";
-import ThemeToggle from "@/components/site/theme-toggle";
 import Turnstile from "@/components/site/turnstile";
-import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 
 function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; nonce?: string }) {
-  const { theme } = useTheme();
   const search = useSearchParams();
   const [step, setStep] = useState<"password" | "totp">("password");
   const [username, setUsername] = useState("");
@@ -91,11 +88,11 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
   return (
     <main className="relative grid min-h-[100svh] place-items-center overflow-hidden bg-[var(--surface-canvas)] px-5 py-14 text-[var(--text-primary)]">
       <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <Image src="/images/hero/slide-1-1672.webp" alt="" fill priority sizes="100vw" className="object-cover object-[72%_50%] opacity-30 dark:opacity-20" />
-        <div className="absolute inset-0 bg-[var(--surface-canvas)]/78 dark:bg-[#070b12]/72" />
+        <Image src="/images/hero/slide-1-1672.webp" alt="" fill priority sizes="100vw" className="object-cover object-[72%_50%] opacity-30" />
+        <div className="absolute inset-0 bg-[var(--surface-canvas)]/78" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--surface-canvas)]/20 to-[var(--surface-canvas)]" />
       </div>
-      <div className="absolute right-5 top-5 z-10"><ThemeToggle /></div>
+      <div className="absolute right-5 top-5 z-10"></div>
 
       <div className="relative w-full max-w-sm">
         <div className="mb-7 flex justify-center"><Logo /></div>
@@ -132,7 +129,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
                 </div>
               </label>
               {capsLock && <p className="text-[11.5px] text-[var(--warning)]">Caps Lock is on.</p>}
-              {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} action="login" /></div>}
+              {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="login" /></div>}
               <button type="submit" disabled={loading || (turnstileEnabled && !token)} className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
                 {loading && <Loader2 className="size-4 animate-spin" />} Continue
               </button>
@@ -154,7 +151,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
                   <input value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value)} autoComplete="off" className="mt-1 min-h-11 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-3 font-mono text-[14px] outline-none focus:border-[var(--accent-brass)]" />
                 </label>
               )}
-              {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} action="totp" /></div>}
+              {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="totp" /></div>}
               <button type="submit" disabled={loading || (turnstileEnabled && !token) || (!recovery && digits.join("").length !== 6)} className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
                 {loading && <Loader2 className="size-4 animate-spin" />} Verify
               </button>

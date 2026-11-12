@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight } from "lucide-react";
 import PartyOrbit from "@/components/site/party-orbit";
-import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ *
@@ -59,7 +58,7 @@ function Slide({
 }
 
 export default function Hero() {
-  const { theme } = useTheme();
+  const theme = "light" as const;
   const root = useRef<HTMLElement>(null);
 
   // Active slide plus a monotonic cycle counter, so every mount is uniquely

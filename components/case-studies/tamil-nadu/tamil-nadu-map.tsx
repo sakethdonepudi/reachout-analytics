@@ -11,7 +11,7 @@ import {
   type TnAc, type TnDistrict, type TnGroup, type TnShares, type TnYearOrCurrent,
 } from "@/lib/tamil-nadu/model";
 
-export type MapTheme = "light" | "dark";
+export type MapTheme = "light";
 export type MapMode = "state" | "district";
 
 const BOX = 1000;
@@ -53,10 +53,6 @@ type Props = {
 };
 
 const PAL = {
-  dark: {
-    none: "#2b3442", side: "#1c2531", line: "rgba(210,222,238,.55)", hover: "#93c5fd",
-    sel: "#ffffff", label: "#e8edf4", halo: "rgba(6,10,18,.88)", bg: "rgba(16,22,30,.97)", border: "rgba(120,135,155,.35)",
-  },
   light: {
     none: "#e7ebef", side: "#d3d9e0", line: "rgba(40,58,78,.50)", hover: "#1d4ed8",
     sel: "#111827", label: "#1b2430", halo: "rgba(255,255,255,.94)", bg: "rgba(255,255,255,.98)", border: "rgba(20,24,31,.14)",

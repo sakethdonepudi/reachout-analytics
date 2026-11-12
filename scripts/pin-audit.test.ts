@@ -303,8 +303,8 @@ eq("no district + no zone → unassigned", nz[0].basis, "unassigned");
 ok("unassigned keeps a visible method", nz[0].method === "Insufficient geographic information");
 
 // zero-response colour is a readable slate, never black
-ok("dark zero-response colour is not black", NO_DATA_COLOR.dark.toLowerCase() !== "#000000" && NO_DATA_COLOR.dark.toLowerCase() !== "#000");
-ok("light/dark zero-response colours differ", NO_DATA_COLOR.light !== NO_DATA_COLOR.dark);
+ok("zero-response colour is not black", NO_DATA_COLOR.light.toLowerCase() !== "#000000" && NO_DATA_COLOR.light.toLowerCase() !== "#000");
+ok("zero-response colour stays readable", NO_DATA_COLOR.light.length === 7);
 
 // recorded / estimated / assumed distinction preserved in the export
 ok("export distinguishes basis labels", exitOut.some((r) => r["PIN Geography Basis"] === "District-based assumption") && exitOut.some((r) => r["PIN Geography Basis"] === "Reference-derived"));

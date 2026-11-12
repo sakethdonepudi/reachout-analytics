@@ -6,7 +6,7 @@
    from what is rendered on the map.
    ===================================================================== */
 
-export type ThemeName = "light" | "dark";
+export type ThemeName = "light";
 
 /** Number of data-driven intensity bands. */
 export const INTENSITY_BANDS = 5;
@@ -14,7 +14,6 @@ export const INTENSITY_BANDS = 5;
 /** Sequential blue ramp, low → high valid survey responses. */
 export const BAND_COLORS: Record<ThemeName, string[]> = {
   light: ["#d8e3f1", "#b9cbe4", "#93b0d6", "#5f88c2", "#3566ad"],
-  dark: ["#244066", "#2f5686", "#3b6ea8", "#4d8fd0", "#79b4f0"],
 };
 
 /**
@@ -23,16 +22,13 @@ export const BAND_COLORS: Record<ThemeName, string[]> = {
  */
 export const NO_DATA_COLOR: Record<ThemeName, string> = {
   light: "#e6e9ee",
-  dark: "#41506a",
 };
 
 /** Selected-district fill + its outline (brand orange family). */
 export const SELECTED_FILL: Record<ThemeName, string> = {
   light: "#f7c894",
-  dark: "#c2591a",
 };
 
 export const SELECTED_LINE: Record<ThemeName, string> = {
   light: "#e07617",
-  dark: "#f58a24",
 };

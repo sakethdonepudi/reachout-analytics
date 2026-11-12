@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Download, FileSpreadsheet, History, LayoutDashboard, LogOut, Loader2, Map as MapIcon, Settings, Table2, Upload, UserCog } from "lucide-react";
 import { Logo } from "@/components/site/brand";
 import { useReauth } from "@/components/auth/reauth-provider";
-import ThemeToggle from "@/components/site/theme-toggle";
 import AboutEditor from "@/components/admin/about-editor";
 import TelanganaAdmin from "@/components/admin/telangana-admin";
 import MappingEditor from "@/components/ads-desk/mapping-editor";
@@ -313,7 +312,6 @@ export default function AdminPortal() {
               </select>
             </label>
             <Link href="/dashboard" className="rounded-full border border-[var(--border-hairline)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)]">Dashboard</Link>
-            <ThemeToggle className="size-9" />
             <button onClick={logout} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12.5px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60"><LogOut className="size-3.5" /> Sign out</button>
           </div>
         </div>

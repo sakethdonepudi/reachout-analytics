@@ -4,12 +4,10 @@ import { useCallback, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import Turnstile from "@/components/site/turnstile";
 import { passwordStrength } from "@/lib/password-policy";
-import { useTheme } from "@/components/theme-provider";
 
 const STRENGTH = ["", "Weak", "Fair", "Good", "Strong"];
 
 export default function PasswordClient({ first, turnstileEnabled, nonce }: { first: boolean; turnstileEnabled: boolean; nonce?: string }) {
-  const { theme } = useTheme();
   const [form, setForm] = useState({ current: "", password: "", confirm: "" });
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
@@ -55,7 +53,7 @@ export default function PasswordClient({ first, turnstileEnabled, nonce }: { fir
             </div>
           </div>
           <Field label="Confirm new password" type="password" value={form.confirm} onChange={(value) => setForm((current) => ({ ...current, confirm: value }))} autoComplete="new-password" />
-          {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} action="password" /></div>}
+          {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="password" /></div>}
           <button type="submit" disabled={busy || (turnstileEnabled && !token)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
             {busy && <Loader2 className="size-4 animate-spin" />} Save password
           </button>

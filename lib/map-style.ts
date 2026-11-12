@@ -3,7 +3,7 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 
-export type MapTheme = "light" | "dark";
+export type MapTheme = "light";
 
 /** Shared visual hierarchy for both state maps. */
 export const MAP_STYLE = {
@@ -11,8 +11,8 @@ export const MAP_STYLE = {
     district: { size: 14, mobile: 13, weight: 600 },
     assembly: { size: 12, mobile: 11, weight: 500 },
     selectedAssembly: { size: 13, mobile: 12, weight: 600 },
-    halo: { light: "rgba(255,255,255,.92)", dark: "rgba(6,10,18,.86)" },
-    backing: { light: "rgba(255,255,255,.52)", dark: "rgba(12,18,27,.5)" },
+    halo: { light: "rgba(255,255,255,.92)" },
+    backing: { light: "rgba(255,255,255,.52)" },
   },
   border: { state: 1.7, district: 1.1, assembly: 0.72, selected: 2.0 },
   gradient: { edge: 0.13, axisX: 0.86, axisZ: 0.5 },

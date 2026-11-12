@@ -10,7 +10,7 @@ export default function CaseCta() {
       text="Plan your campaign with us"
       duration={1.8}
       onClick={() => router.push("/#contact")}
-      className="border-saffron/40 px-7 py-3.5 dark:bg-[#0a1a44]/80 backdrop-blur-xl"
+      className="border-saffron/40 px-7 py-3.5 backdrop-blur-xl"
     />
   );
 }

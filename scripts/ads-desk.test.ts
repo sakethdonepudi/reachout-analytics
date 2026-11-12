@@ -25,7 +25,7 @@ ok("campaign totals", parsed.regions[0].totals.accounts === 1 && parsed.regions[
 ok("results and cost per result", parsed.regions[0].accounts[0].campaigns[0].results === 10 && parsed.regions[0].accounts[0].campaigns[0].costPerResult === 10.05);
 ok("SNAP assignment pages", parsed.snap.pages[0].name === "Test Page");
 ok("SNAP daily summed", parsed.snap.daily["123456789012345"][0] === 55.25 && parsed.snap.daily["123456789012345"][1] === 95.5);
-ok("light and dark colors", parsed.regions[0].colors.band === "#0b8a3e" && parsed.regions[0].colors.darkBand === "#4fc982");
+ok("region colour", parsed.regions[0].colors.band === "#0b8a3e" && parsed.regions[0].colors.bandSoft === "#c3e7cd");
 ok("sha is stable", parseAdsDeskHtml(html).sha256 === parsed.sha256);
 
 console.log("\n2. Literal-only rejection");

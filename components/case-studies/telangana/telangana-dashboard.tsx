@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Check, ChevronDown, RotateCcw, Search } from "lucide-react";
-import { useTheme } from "@/components/theme-provider";
 import { PartyIdentity } from "@/components/site/party-mark";
 import { cn } from "@/lib/utils";
 import {
@@ -117,7 +116,7 @@ function SearchSelect({
 }
 
 export default function TelanganaDashboard() {
-  const { theme } = useTheme();
+  const theme = "light" as const;
   const [data, setData] = useState<Oct26 | null>(null);
   const [historyReady, setHistoryReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
