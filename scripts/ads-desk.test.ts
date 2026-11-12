@@ -6,6 +6,8 @@ import { parseAdsDeskHtml } from "@/lib/ads-desk/parse";
 import { buildAdsSocial } from "@/lib/ads-desk/client-dto";
 import { publishVersion, saveDraft } from "@/lib/ads-desk/store";
 import { getRegionMap, socialForCase, setRegionMapping, DEFAULT_REGION_MAP } from "@/lib/ads-desk/mapping";
+import { adsManagerAdsets, adsManagerAds, adsManagerCampaigns, adsManagerForCampaign, billing, pageLink, validMetaId } from "@/lib/ads-desk/links";
+import { withOwnerLinks } from "@/lib/ads-desk/owner-view";
 
 let pass = 0, fail = 0;
 function ok(name: string, condition: boolean, detail = "") {
@@ -22,7 +24,7 @@ ok("REGIONS and SNAP parse", parsed.regions.length === 1 && parsed.snap.accounts
 ok("campaign totals", parsed.regions[0].totals.accounts === 1 && parsed.regions[0].totals.campaigns === 2 && parsed.regions[0].totals.spend === 150.75);
 ok("results and cost per result", parsed.regions[0].accounts[0].campaigns[0].results === 10 && parsed.regions[0].accounts[0].campaigns[0].costPerResult === 10.05);
 ok("SNAP assignment pages", parsed.snap.pages[0].name === "Test Page");
-ok("SNAP daily summed", parsed.snap.daily["100"][0] === 55.25 && parsed.snap.daily["100"][1] === 95.5);
+ok("SNAP daily summed", parsed.snap.daily["123456789012345"][0] === 55.25 && parsed.snap.daily["123456789012345"][1] === 95.5);
 ok("light and dark colors", parsed.regions[0].colors.band === "#0b8a3e" && parsed.regions[0].colors.darkBand === "#4fc982");
 ok("sha is stable", parseAdsDeskHtml(html).sha256 === parsed.sha256);
 
@@ -51,9 +53,32 @@ const client = buildAdsSocial(parsed, "tn2026", false);
 const clientText = JSON.stringify(client).toLowerCase();
 ok("client sees no spend", !/spend|costperresult|cost_per_result|cpm|billing|adsmanager/.test(clientText));
 ok("client sees no rupee", !clientText.includes("₹"));
-ok("client sees no account or business id", !clientText.includes("test business") && !clientText.includes("\"100\""));
+ok("client sees no account or business id", !clientText.includes("test business") && !clientText.includes("123456789012345") && !clientText.includes("120240000000001"));
 const owner = buildAdsSocial(parsed, "tn2026", true);
 ok("owner sees spend and cost", owner.totals.spend === 150.75 && owner.accounts[0].campaigns[0].costPerResult === 10.05);
+ok("owner sees ad set and ad counts", owner.accounts[0].campaigns[0].adsets === 2 && owner.accounts[0].campaigns[0].ads === 2 && owner.accounts[0].campaigns[1].ads === null);
+const accountId = "123456789012345", campaignId = "120240000000001", pageId = "100368172755950";
+ok("owner account link is exact", owner.accounts[0].href === `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${accountId}`);
+ok("owner billing link is exact", owner.accounts[0].billingHref === `https://business.facebook.com/billing_hub/accounts/details?asset_id=${accountId}`);
+ok("owner all ad set and ad links are exact", owner.accounts[0].allAdsetsHref === `https://adsmanager.facebook.com/adsmanager/manage/adsets?act=${accountId}` && owner.accounts[0].allAdsHref === `https://adsmanager.facebook.com/adsmanager/manage/ads?act=${accountId}`);
+ok("owner campaign link is exact", owner.accounts[0].campaigns[0].href === `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${accountId}&selected_campaign_ids=${campaignId}`);
+ok("owner campaign ad set link is exact", owner.accounts[0].campaigns[0].adsetsHref === `https://adsmanager.facebook.com/adsmanager/manage/adsets?act=${accountId}&selected_campaign_ids=${campaignId}`);
+ok("owner campaign ad link is exact", owner.accounts[0].campaigns[0].adsHref === `https://adsmanager.facebook.com/adsmanager/manage/ads?act=${accountId}&selected_campaign_ids=${campaignId}`);
+ok("campaign without ads has no ad link", owner.accounts[0].campaigns[1].adsHref === null);
+const linked = withOwnerLinks(parsed);
+ok("owner directory links are exact", linked.snap.pages[0].href === `https://www.facebook.com/${pageId}` && linked.snap.pages[0].insightsHref === `https://business.facebook.com/latest/insights/overview?asset_id=${pageId}` && linked.snap.pages[0].adLibraryHref === `https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=IN&view_all_page_id=${pageId}`);
+ok("malicious ids produce no link", validMetaId("12345\"><script>alert(1)</script>") === null
+  && adsManagerCampaigns('12345\"><script>alert(1)</script>') === null
+  && adsManagerForCampaign(accountId, "12345' onmouseover='alert(1)") === null
+  && adsManagerAdsets(accountId, "javascript:alert(1)") === null
+  && adsManagerAds(accountId, "1 OR 1=1") === null
+  && billing("100\"><svg/onload=1") === null
+  && pageLink("1".repeat(21)) === null);
+const invalid = parseAdsDeskHtml(replaceOnce(html, "\"123456789012345\"", "\"abc\""));
+const invalidOwner = JSON.stringify(buildAdsSocial(invalid, "tn2026", true));
+ok("invalid account ids produce no link", !/adsmanager|billing_hub|act=/.test(invalidOwner));
+const dataPages = ["components/case-studies/tamil-nadu/tamil-nadu-dashboard.tsx", "components/case-studies/telangana/telangana-dashboard.tsx", "components/case-studies/shared/analysis-shell.tsx"];
+ok("data pages have no decorative classes", dataPages.every((file) => !/radial-gradient|backdrop-blur|glow/i.test(readFileSync(file, "utf8"))));
 
 (async () => {
   const uri = process.env.MONGODB_URI;
@@ -76,9 +101,9 @@ ok("owner sees spend and cost", owner.totals.spend === 150.75 && owner.accounts[
     ok("case can have several regions", (await socialForCase("telangana", false)).length >= 1);
     await setRegionMapping("tn2026", "tamil-nadu", "tester");
     const clientSocial = await socialForCase("tamil-nadu", false);
-    ok("client social has no cost/ids", !/spend|costperresult|₹|test business|"100"/i.test(JSON.stringify(clientSocial)));
+    ok("client social has no cost/ids", !/spend|costperresult|₹|test business|123456789012345|120240000000001|adsmanager|billing_hub|act=/i.test(JSON.stringify(clientSocial)));
     const ownerSocial = await socialForCase("tamil-nadu", true);
-    ok("owner social has spend", ownerSocial[0]?.totals.spend === 150.75);
+    ok("owner social has spend and links", ownerSocial[0]?.totals.spend === 150.75 && /adsmanager\.facebook\.com/.test(JSON.stringify(ownerSocial)) && /billing_hub/.test(JSON.stringify(ownerSocial)));
     await mongo.close();
   }
   console.log(`\n${pass} passed, ${fail} failed`);

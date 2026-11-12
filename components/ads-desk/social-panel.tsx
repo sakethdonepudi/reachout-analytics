@@ -37,15 +37,26 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
       <p className="mt-2 text-[10.5px] text-[var(--text-muted)]">Reach is added up per campaign, so a person reached by two campaigns counts twice.</p>
       <div className="mt-3 space-y-2">
         {region.accounts.map((account) => (
-          <details key={account.name} className="rounded border border-[var(--border-hairline)]">
-            <summary className="flex cursor-pointer flex-wrap items-center gap-2 px-3 py-2 text-[12px] font-semibold">{account.name}<span className="text-[10px] font-normal text-[var(--text-muted)]">{account.campaigns.length} campaigns</span></summary>
-            <div className="overflow-x-auto border-t border-[var(--border-hairline)]">
-              <table className="w-full min-w-[760px] border-collapse text-left text-[10.5px]">
-                <thead><tr className="sticky top-0 bg-[var(--surface-raised)] text-[8.5px] uppercase tracking-wide text-[var(--text-muted)]">{["Campaign", "Delivery", "Start", "End", "Reach", "Impressions", "Views", "Clicks", "Engagement", "Results"].map((label) => <th key={label} className="px-2 py-1.5">{label}</th>)}{owner && <><th className="px-2 py-1.5 text-right">Cost per result</th><th className="px-2 py-1.5 text-right">Spend</th></>}</tr></thead>
-                <tbody>{account.campaigns.map((campaign) => <tr key={campaign.name} className="border-t border-[var(--border-hairline)]/60"><td className="px-2 py-1.5">{campaign.name}</td><td className="px-2 py-1.5">{campaign.delivery}</td><td className="px-2 py-1.5">{campaign.start || "—"}</td><td className="px-2 py-1.5">{campaign.end || "—"}</td><td className="px-2 py-1.5 text-right tabular-nums">{number(campaign.reach)}</td><td className="px-2 py-1.5 text-right tabular-nums">{number(campaign.impressions)}</td><td className="px-2 py-1.5 text-right tabular-nums">{number(campaign.views)}</td><td className="px-2 py-1.5 text-right tabular-nums">{number(campaign.clicks)}</td><td className="px-2 py-1.5 text-right tabular-nums">{number(campaign.engagements)}</td><td className="px-2 py-1.5">{campaign.results == null ? "—" : `${number(campaign.results)} ${campaign.resultLabel ?? ""}`}</td>{owner && <><td className="px-2 py-1.5 text-right tabular-nums">{campaign.costPerResult == null ? "—" : money(campaign.costPerResult)}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.spend == null ? "—" : money(campaign.spend)}</td></>}</tr>)}</tbody>
-              </table>
+          <div key={account.name} className="rounded border border-[var(--border-hairline)]">
+            <div className="flex flex-wrap items-center gap-2 px-3 py-2 text-[12px] font-semibold">
+              {owner && account.href ? <a href={account.href} target="_blank" rel="noopener noreferrer" className="underline">{account.name}</a> : account.name}
+              <span className="text-[10px] font-normal text-[var(--text-muted)]">{account.campaigns.length} campaigns</span>
+              {owner && <span className="flex flex-wrap gap-2 text-[10px] font-normal">
+                {account.billingHref && <a href={account.billingHref} target="_blank" rel="noopener noreferrer" className="underline">Billing</a>}
+                {account.allAdsetsHref && <a href={account.allAdsetsHref} target="_blank" rel="noopener noreferrer" className="underline">All ad sets</a>}
+                {account.allAdsHref && <a href={account.allAdsHref} target="_blank" rel="noopener noreferrer" className="underline">All ads</a>}
+              </span>}
             </div>
-          </details>
+            <details className="border-t border-[var(--border-hairline)]">
+              <summary className="cursor-pointer px-3 py-1.5 text-[10px] font-semibold text-[var(--text-muted)]">Campaigns</summary>
+              <div className="overflow-x-auto border-t border-[var(--border-hairline)]">
+                <table className="w-full min-w-[760px] border-collapse text-left text-[10.5px]">
+                  <thead><tr className="sticky top-0 bg-[var(--surface-raised)] text-[8.5px] uppercase tracking-wide text-[var(--text-muted)]">{["Campaign", "Delivery", "Start", "End", "Reach", "Impressions", "Views", "Clicks", "Engagement", ...(owner ? ["Ad sets", "Ads"] : []), "Results"].map((label) => <th key={label} className="px-2 py-1.5">{label}</th>)}{owner && <><th className="px-2 py-1.5 text-right">Cost per result</th><th className="px-2 py-1.5 text-right">Spend</th></>}</tr></thead>
+                  <tbody>{account.campaigns.map((campaign) => <tr key={campaign.name} className="border-t border-[var(--border-hairline)]/60"><td className="px-2 py-1.5">{owner && campaign.href ? <a href={campaign.href} target="_blank" rel="noopener noreferrer" className="underline">{campaign.name}</a> : campaign.name}</td><td className="px-2 py-1.5">{campaign.delivery}</td><td className="px-2 py-1.5">{campaign.start || "—"}</td><td className="px-2 py-1.5">{campaign.end || "—"}</td><td className="px-2 py-1.5 text-right tabular-nums">{number(campaign.reach)}</td><td className="px-2 py-1.5 text-right tabular-nums">{number(campaign.impressions)}</td><td className="px-2 py-1.5 text-right tabular-nums">{number(campaign.views)}</td><td className="px-2 py-1.5 text-right tabular-nums">{number(campaign.clicks)}</td><td className="px-2 py-1.5 text-right tabular-nums">{number(campaign.engagements)}</td>{owner && <><td className="px-2 py-1.5 text-right tabular-nums">{campaign.adsets == null ? "–" : campaign.adsetsHref ? <a href={campaign.adsetsHref} target="_blank" rel="noopener noreferrer" className="underline">{number(campaign.adsets)}</a> : number(campaign.adsets)}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.ads == null ? "–" : campaign.adsHref ? <a href={campaign.adsHref} target="_blank" rel="noopener noreferrer" className="underline">{number(campaign.ads)}</a> : number(campaign.ads)}</td></>}<td className="px-2 py-1.5">{campaign.results == null ? "—" : `${number(campaign.results)} ${campaign.resultLabel ?? ""}`}</td>{owner && <><td className="px-2 py-1.5 text-right tabular-nums">{campaign.costPerResult == null ? "—" : money(campaign.costPerResult)}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.spend == null ? "—" : money(campaign.spend)}</td></>}</tr>)}</tbody>
+                </table>
+              </div>
+            </details>
+          </div>
         ))}
       </div>
     </section>

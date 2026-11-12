@@ -3,6 +3,7 @@ import AdsDesk from "@/components/ads-desk/ads-desk";
 import { requirePageSession } from "@/lib/require-session";
 import { getActiveVersion, listVersions } from "@/lib/ads-desk/store";
 import { unmappedRegions } from "@/lib/ads-desk/mapping";
+import { withOwnerLinks } from "@/lib/ads-desk/owner-view";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export default async function DashboardPage() {
             </div>
             <a href="/dashboard/case-studies" className="text-[12px] font-semibold text-[var(--accent-brass-strong)]">Case studies dashboard</a>
           </div>
-          <div className="mt-5"><AdsDesk data={active?.data ?? null} versions={versions.map((version) => ({ _id: version._id, uploadedAt: version.uploadedAt, uploadedBy: version.uploadedBy, sha256: version.sha256, fileName: version.fileName, status: version.status, takenAt: version.takenAt }))} defaultRegion="tn2026" unmapped={unmapped} /></div>
+          <div className="mt-5"><AdsDesk data={active ? withOwnerLinks(active.data) : null} versions={versions.map((version) => ({ _id: version._id, uploadedAt: version.uploadedAt, uploadedBy: version.uploadedBy, sha256: version.sha256, fileName: version.fileName, status: version.status, takenAt: version.takenAt }))} defaultRegion="tn2026" unmapped={unmapped} /></div>
         </div>
       </main>
     </>

@@ -2,21 +2,21 @@
 [data-region="tn2026"]{--bg:#e4f4e8;--band:#0b8a3e;--band-soft:#c3e7cd}
 .dark [data-region="tn2026"]{--bg:#0d1c13;--band:#4fc982;--band-soft:#173523}
 </style></head><body>
-<script>window.REGIONS = {"tn2026":{"label":"TN 2026","short":"Test","range":"1 Jan 2026 - 31 Jan 2026","note":"Synthetic test data.","asOf":"12 Nov 2026","viewsLabel":"3-second video views","accounts":{"100":{"name":"Test Account","business":"Test Business"}},"camps":{"100":[["c1","Campaign One","a","2026-01-01","",100.5,200,300,400,50,60],["c2","Campaign Two","o","2026-01-02","2026-01-03",50.25,100,150,200,25,30]]},"res":{"c1":[10,"Leads",10.05],"c2":[5,"Leads",10.05]},"adsets":{"c1":2,"c2":1}}};</script>
+<script>window.REGIONS = {"tn2026":{"label":"TN 2026","short":"Test","range":"1 Jan 2026 - 31 Jan 2026","note":"Synthetic test data.","asOf":"12 Nov 2026","viewsLabel":"3-second video views","accounts":{"123456789012345":{"name":"Test Account","business":"Test Business"}},"camps":{"123456789012345":[["120240000000001","Campaign One","a","2026-01-01","",100.5,200,300,400,50,60],["120240000000002","Campaign Two","o","2026-01-02","2026-01-03",50.25,100,150,200,25,30]]},"res":{"120240000000001":[10,"Leads",10.05],"120240000000002":[5,"Leads",10.05]},"adsets":{"120240000000001":2,"120240000000002":1}}};</script>
 <script>
 const SNAP = { takenAt: "2026-11-12T10:54:31+05:30", period: "last_30d", days: ["2026-11-11","2026-11-12"],
   // [id, name, business, status, readable, hasPaymentMethod, currency]
-  accounts: [["100","Test Account","Test Business","ACTIVE",1,1,"INR"]],
-  stats: {"100":[150.75,300,450,600,75,90]},
-  camps: {"100":[["c1","Campaign One","a","2026-01-01","",100.5,200,300,400,50,60]]},
-  daily: {"100":{"c1":[55.25,95.5]}},
-  campsLife: {"100":[["c1","Campaign One","a","2026-01-01","",100.5,200,300,400,50,60]]},
-  pages: [["p1","Test Page"]]
+  accounts: [["123456789012345","Test Account","Test Business","ACTIVE",1,1,"INR"]],
+  stats: {"123456789012345":[150.75,300,450,600,75,90]},
+  camps: {"123456789012345":[["120240000000001","Campaign One","a","2026-01-01","",100.5,200,300,400,50,60]]},
+  daily: {"123456789012345":{"120240000000001":[55.25,95.5]}},
+  campsLife: {"123456789012345":[["120240000000001","Campaign One","a","2026-01-01","",100.5,200,300,400,50,60]]},
+  pages: [["100368172755950","Test Page"]]
 };
-SNAP.res = {"c1":[10,"Leads",10.05]};
-SNAP.resLife = {"c1":[10,"Leads",10.05]};
-SNAP.adsets = {"c1":{"total":2,"by":{"c1":2}}};
-SNAP.ads = {"100":{"total":2,"by":{"c1":2}}};
-const SNAP2 = {"takenAt":"2026-11-12T10:54:31+05:30","shown":["100"],"per":{"100":{"periods":{"lifetime":[1,2,3],"30d":[4,5,6],"1y":[7,8,9]}}}};
+SNAP.res = {"120240000000001":[10,"Leads",10.05]};
+SNAP.resLife = {"120240000000001":[10,"Leads",10.05]};
+SNAP.adsets = {"120240000000001":{"total":2,"by":{"120240000000001":2}}};
+SNAP.ads = {"123456789012345":{"total":2,"by":{"120240000000001":2}}};
+const SNAP2 = {"takenAt":"2026-11-12T10:54:31+05:30","shown":["123456789012345"],"per":{"123456789012345":{"periods":{"lifetime":[1,2,3],"30d":[4,5,6],"1y":[7,8,9]}}}};
 </script>
 </body></html>

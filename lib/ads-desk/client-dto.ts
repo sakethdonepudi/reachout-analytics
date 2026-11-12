@@ -1,13 +1,22 @@
 import "server-only";
 
 import type { AdsParse, AdsRegion } from "@/lib/ads-desk/parse";
+import {
+  adsManagerAds, adsManagerAdsets, adsManagerCampaigns, adsManagerForCampaign, billing,
+} from "@/lib/ads-desk/links";
 
 export type AdsSocialCampaign = {
   name: string; delivery: string; start: string; end: string;
   reach: number; impressions: number; views: number; clicks: number; engagements: number;
   results: number | null; resultLabel: string | null; spend?: number; costPerResult?: number | null;
+  adsets?: number | null; ads?: number | null;
+  href?: string | null; adsetsHref?: string | null; adsHref?: string | null;
 };
-export type AdsSocialAccount = { name: string; campaigns: AdsSocialCampaign[] };
+export type AdsSocialAccount = {
+  name: string;
+  href?: string | null; billingHref?: string | null; allAdsetsHref?: string | null; allAdsHref?: string | null;
+  campaigns: AdsSocialCampaign[];
+};
 export type AdsSocialView = {
   available: boolean; label: string; range: string; note: string; asOf: string; viewsLabel: string | null;
   band: string; bandSoft: string;
@@ -39,12 +48,24 @@ export function buildAdsSocial(version: AdsParse | AdsRegion | null, regionKey: 
     },
     accounts: region.accounts.map((account) => ({
       name: account.name,
+      ...(includeCost ? {
+        href: adsManagerCampaigns(account.id),
+        billingHref: billing(account.id),
+        allAdsetsHref: adsManagerAdsets(account.id),
+        allAdsHref: adsManagerAds(account.id),
+      } : {}),
       campaigns: account.campaigns.map((campaign) => ({
         name: campaign.name, delivery: campaign.delivery, start: campaign.start, end: campaign.end,
         reach: campaign.reach, impressions: campaign.impressions, views: campaign.views,
         clicks: campaign.clicks, engagements: campaign.engagements,
         results: campaign.results, resultLabel: campaign.resultLabel,
-        ...(includeCost ? { spend: campaign.spend, costPerResult: campaign.costPerResult } : {}),
+        ...(includeCost ? {
+          spend: campaign.spend, costPerResult: campaign.costPerResult,
+          adsets: campaign.adsets ?? null, ads: campaign.ads ?? null,
+          href: adsManagerForCampaign(account.id, campaign.id),
+          adsetsHref: campaign.adsets == null ? null : adsManagerAdsets(account.id, campaign.id),
+          adsHref: campaign.ads == null ? null : adsManagerAds(account.id, campaign.id),
+        } : {}),
       })),
     })),
   };

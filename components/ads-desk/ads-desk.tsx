@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Loader2, Upload } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import { useReauth } from "@/components/auth/reauth-provider";
 import type { AdsParse, AdsAccount, AdsCampaign } from "@/lib/ads-desk/parse";
 import { cn } from "@/lib/utils";
@@ -182,7 +182,7 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
               <div className="overflow-x-auto rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)]">
                 <table className="w-full min-w-[1100px] border-collapse text-left text-[11.5px]">
                   <thead className="sticky top-0 bg-[var(--surface-raised)] text-[9.5px] uppercase tracking-[0.08em] text-[var(--text-muted)]"><tr>
-                    {["Account / campaign", "Delivery", "Start", "End", "Reach", "Impressions", "Views", "Clicks", "Post engagement", "Results", "Cost per result"].map((label) => <th key={label} className="px-2 py-2">{label}</th>)}
+                    {["Account / campaign", "Delivery", "Start", "End", "Reach", "Impressions", "Views", "Clicks", "Post engagement", "Ad sets", "Ads", "Results", "Cost per result"].map((label) => <th key={label} className="px-2 py-2">{label}</th>)}
                     <th className="sticky right-0 z-10 bg-[var(--surface-raised)] px-2 py-2 text-right">Spend</th>
                   </tr></thead>
                   <tbody>
@@ -226,7 +226,7 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
             <div className="overflow-x-auto rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)]">
               <table className="w-full min-w-[900px] border-collapse text-left text-[11.5px]">
                 <thead className="bg-[var(--surface-raised)] text-[9.5px] uppercase tracking-[0.08em] text-[var(--text-muted)]"><tr>{["Account", "Status", "Payment", "Spend", "Reach", "Impressions", "Views", "Clicks", "Engagement", "Owner links"].map((label) => <th key={label} className="px-2 py-2">{label}</th>)}</tr></thead>
-                <tbody>{data.snap.accounts.map((account) => <tr key={account.id} className="border-t border-[var(--border-hairline)]/60"><td className="px-2 py-2 font-medium">{account.name}</td><td className="px-2 py-2">{account.status}</td><td className="px-2 py-2">{account.hasPayment ? "Yes" : "No"}</td>{account.stats.map((value, index) => <td key={index} className="px-2 py-2 text-right tabular-nums">{index === 0 ? money(value) : count(value)}</td>)}<td className="px-2 py-2"><div className="flex gap-2"><a href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${account.id}`} target="_blank" rel="noreferrer" className="underline">Ads Manager</a><a href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${account.id}&business_id=`} target="_blank" rel="noreferrer" className="underline">Billing</a></div></td></tr>)}</tbody>
+                <tbody>{data.snap.accounts.map((account) => <tr key={account.id} className="border-t border-[var(--border-hairline)]/60"><td className="px-2 py-2 font-medium">{account.href ? <OwnerLink href={account.href}>{account.name}</OwnerLink> : account.name}</td><td className="px-2 py-2">{account.status}</td><td className="px-2 py-2">{account.hasPayment ? "Yes" : "No"}</td>{account.stats.map((value, index) => <td key={index} className="px-2 py-2 text-right tabular-nums">{index === 0 ? money(value) : count(value)}</td>)}<td className="px-2 py-2"><div className="flex flex-wrap gap-2">{account.href && <OwnerLink href={account.href}>Ads Manager</OwnerLink>}{account.billingHref && <OwnerLink href={account.billingHref}>Billing</OwnerLink>}{account.allAdsetsHref && <OwnerLink href={account.allAdsetsHref}>All ad sets</OwnerLink>}{account.allAdsHref && <OwnerLink href={account.allAdsHref}>All ads</OwnerLink>}</div></td></tr>)}</tbody>
               </table>
             </div>
             </>
@@ -235,7 +235,7 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
 
           {tab === "pages" && (
             <div className="overflow-x-auto rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)]">
-              <table className="w-full min-w-[520px] border-collapse text-left text-[12px]"><thead className="bg-[var(--surface-raised)] text-[9.5px] uppercase tracking-[0.08em] text-[var(--text-muted)]"><tr><th className="px-2 py-2">Page</th><th className="px-2 py-2">Links</th></tr></thead><tbody>{data.snap.pages.map((page) => <tr key={page.id} className="border-t border-[var(--border-hairline)]/60"><td className="px-2 py-2">{page.name}</td><td className="px-2 py-2"><div className="flex flex-wrap gap-2"><a href={`https://www.facebook.com/${page.id}`} target="_blank" rel="noreferrer" className="underline">Page</a><a href={`https://www.facebook.com/ads/library/?view_all_page_id=${page.id}`} target="_blank" rel="noreferrer" className="underline">Ad Library</a><a href={`https://business.facebook.com/latest/insights?asset_id=${page.id}`} target="_blank" rel="noreferrer" className="underline">Business insights</a></div></td></tr>)}</tbody></table>
+              <table className="w-full min-w-[520px] border-collapse text-left text-[12px]"><thead className="bg-[var(--surface-raised)] text-[9.5px] uppercase tracking-[0.08em] text-[var(--text-muted)]"><tr><th className="px-2 py-2">Page</th><th className="px-2 py-2">Links</th></tr></thead><tbody>{data.snap.pages.map((page) => <tr key={page.id} className="border-t border-[var(--border-hairline)]/60"><td className="px-2 py-2">{page.href ? <OwnerLink href={page.href}>{page.name}</OwnerLink> : page.name}</td><td className="px-2 py-2"><div className="flex flex-wrap gap-2">{page.insightsHref && <OwnerLink href={page.insightsHref}>Insights</OwnerLink>}{page.adLibraryHref && <OwnerLink href={page.adLibraryHref}>Ad Library</OwnerLink>}</div></td></tr>)}</tbody></table>
             </div>
           )}
         </>
@@ -244,21 +244,38 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
   );
 }
 
+function OwnerLink({ href, children }: { href: string; children: ReactNode }) {
+  return <a href={href} target="_blank" rel="noopener noreferrer" className="underline">{children}</a>;
+}
+
 function AccountRows({ account, open, onToggle, sorted, sort, setSort }: { account: AdsAccount; open: boolean; onToggle: () => void; sorted: (rows: AdsCampaign[]) => AdsCampaign[]; sort: { key: keyof AdsCampaign | "name"; asc: boolean }; setSort: (value: { key: keyof AdsCampaign | "name"; asc: boolean }) => void }) {
   const campaigns = sorted(account.campaigns);
   const totals = campaigns.reduce((acc, item) => ({ reach: acc.reach + item.reach, impressions: acc.impressions + item.impressions, views: acc.views + item.views, clicks: acc.clicks + item.clicks, engagements: acc.engagements + item.engagements, spend: acc.spend + item.spend }), { reach: 0, impressions: 0, views: 0, clicks: 0, engagements: 0, spend: 0 });
   return (
     <>
       <tr className="border-t border-[var(--border-hairline)] bg-[var(--surface-raised)]/60">
-        <td className="px-2 py-2"><button type="button" onClick={onToggle} className="flex items-center gap-1.5 font-semibold"><span className="text-[10px]">{open ? "▾" : "▸"}</span>{account.name}<span className="text-[10px] font-normal text-[var(--text-muted)]">{account.campaigns.length} campaigns</span></button></td>
+        <td className="px-2 py-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <button type="button" onClick={onToggle} aria-expanded={open} aria-label={`Toggle ${account.name}`} className="flex items-center gap-1 text-[10px]">{open ? "▾" : "▸"}</button>
+            {account.href ? <OwnerLink href={account.href}><span className="font-semibold">{account.name}</span></OwnerLink> : <span className="font-semibold">{account.name}</span>}
+            <span className="text-[10px] font-normal text-[var(--text-muted)]">{account.campaigns.length} campaigns</span>
+            <span className="flex flex-wrap gap-2 text-[10px] font-normal">
+              {account.billingHref && <OwnerLink href={account.billingHref}>Billing</OwnerLink>}
+              {account.allAdsetsHref && <OwnerLink href={account.allAdsetsHref}>All ad sets</OwnerLink>}
+              {account.allAdsHref && <OwnerLink href={account.allAdsHref}>All ads</OwnerLink>}
+            </span>
+          </div>
+        </td>
         <td className="px-2 py-2" /><td className="px-2 py-2" /><td className="px-2 py-2" />
-        <td className="px-2 py-2 text-right tabular-nums">{count(totals.reach)}</td><td className="px-2 py-2 text-right tabular-nums">{count(totals.impressions)}</td><td className="px-2 py-2 text-right tabular-nums">{count(totals.views)}</td><td className="px-2 py-2 text-right tabular-nums">{count(totals.clicks)}</td><td className="px-2 py-2 text-right tabular-nums">{count(totals.engagements)}</td><td className="px-2 py-2" /><td className="px-2 py-2" />
+        <td className="px-2 py-2 text-right tabular-nums">{count(totals.reach)}</td><td className="px-2 py-2 text-right tabular-nums">{count(totals.impressions)}</td><td className="px-2 py-2 text-right tabular-nums">{count(totals.views)}</td><td className="px-2 py-2 text-right tabular-nums">{count(totals.clicks)}</td><td className="px-2 py-2 text-right tabular-nums">{count(totals.engagements)}</td><td className="px-2 py-2" /><td className="px-2 py-2" /><td className="px-2 py-2" /><td className="px-2 py-2" />
         <td className="sticky right-0 bg-[var(--surface-raised)] px-2 py-2 text-right font-semibold tabular-nums">{money(totals.spend)}</td>
       </tr>
       {open && campaigns.map((campaign) => (
         <tr key={campaign.id} className="border-t border-[var(--border-hairline)]/50">
-          <td className="px-2 py-1.5 pl-6">{campaign.name}</td><td className="px-2 py-1.5">{campaign.delivery}</td><td className="px-2 py-1.5">{campaign.start || "—"}</td><td className="px-2 py-1.5">{campaign.end || "—"}</td>
+          <td className="px-2 py-1.5 pl-6">{campaign.href ? <OwnerLink href={campaign.href}>{campaign.name}</OwnerLink> : campaign.name}</td><td className="px-2 py-1.5">{campaign.delivery}</td><td className="px-2 py-1.5">{campaign.start || "—"}</td><td className="px-2 py-1.5">{campaign.end || "—"}</td>
           <td className="px-2 py-1.5 text-right tabular-nums">{count(campaign.reach)}</td><td className="px-2 py-1.5 text-right tabular-nums">{count(campaign.impressions)}</td><td className="px-2 py-1.5 text-right tabular-nums">{count(campaign.views)}</td><td className="px-2 py-1.5 text-right tabular-nums">{count(campaign.clicks)}</td><td className="px-2 py-1.5 text-right tabular-nums">{count(campaign.engagements)}</td>
+          <td className="px-2 py-1.5 text-right tabular-nums">{campaign.adsets == null ? "–" : campaign.adsetsHref ? <OwnerLink href={campaign.adsetsHref}>{count(campaign.adsets)}</OwnerLink> : count(campaign.adsets)}</td>
+          <td className="px-2 py-1.5 text-right tabular-nums">{campaign.ads == null ? "–" : campaign.adsHref ? <OwnerLink href={campaign.adsHref}>{count(campaign.ads)}</OwnerLink> : count(campaign.ads)}</td>
           <td className="px-2 py-1.5">{campaign.results == null ? "—" : `${count(campaign.results)} ${campaign.resultLabel ?? ""}`}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.costPerResult == null ? "—" : money(campaign.costPerResult)}</td>
           <td className="sticky right-0 bg-[var(--surface-panel)] px-2 py-1.5 text-right tabular-nums">{money(campaign.spend)}</td>
         </tr>

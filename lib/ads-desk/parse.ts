@@ -13,16 +13,24 @@ export type AdsCampaign = {
   id: string; name: string; delivery: string; start: string; end: string;
   spend: number; reach: number; impressions: number; views: number; clicks: number; engagements: number;
   results: number | null; resultLabel: string | null; costPerResult: number | null;
+  adsets?: number | null; ads?: number | null;
+  href?: string | null; adsetsHref?: string | null; adsHref?: string | null;
 };
-export type AdsAccount = { id: string; name: string; business: string; campaigns: AdsCampaign[] };
+export type AdsAccount = {
+  id: string; name: string; business: string; campaigns: AdsCampaign[];
+  href?: string | null; billingHref?: string | null; allAdsetsHref?: string | null; allAdsHref?: string | null;
+};
 export type AdsRegion = {
   key: string; label: string; short: string; range: string; note: string; asOf: string; viewsLabel: string | null;
   accounts: AdsAccount[];
   totals: { accounts: number; campaigns: number; active: number; spend: number; reach: number; impressions: number; views: number; clicks: number; engagements: number };
   colors: { band: string; bandSoft: string; bg: string; darkBand: string; darkBandSoft: string; darkBg: string };
 };
-export type SnapAccount = { id: string; name: string; business: string; status: string; hasPayment: boolean; currency: string; stats: number[] };
-export type SnapPage = { id: string; name: string };
+export type SnapAccount = {
+  id: string; name: string; business: string; status: string; hasPayment: boolean; currency: string; stats: number[];
+  href?: string | null; billingHref?: string | null; allAdsetsHref?: string | null; allAdsHref?: string | null;
+};
+export type SnapPage = { id: string; name: string; href?: string | null; insightsHref?: string | null; adLibraryHref?: string | null };
 export type AdsParse = {
   sha256: string; takenAt: string; asOf: string; regionKeys: string[];
   regions: AdsRegion[];
@@ -154,6 +162,16 @@ export function parseAdsDeskHtml(html: string): AdsParse {
           impressions: num(row[7]), views: num(row[8]), clicks: num(row[9]), engagements: num(row[10]),
           results: result ? num(result[0]) : null, resultLabel: result ? String(result[1] ?? "") : null,
           costPerResult: result && result[2] != null ? num(result[2]) : null,
+          adsets: (() => {
+            const raw = region.adsets[row[0] as string] as unknown;
+            const local = typeof raw === "object" && raw ? (raw as { total?: number }).total : raw;
+            if (local != null) return num(local);
+            const perAccount = (merged.adsets as Record<string, { by?: Record<string, number> }> | undefined)?.[accountId]?.by;
+            const direct = (merged.adsets as Record<string, unknown> | undefined)?.[String(row[0] ?? "")];
+            const fallback = perAccount?.[String(row[0] ?? "")] ?? (typeof direct === "object" && direct ? (direct as { total?: number }).total : direct);
+            return fallback == null ? null : num(fallback);
+          })(),
+          ads: (() => { const perAccount = (merged.ads as Record<string, { by?: Record<string, number> }> | undefined)?.[accountId]?.by; return perAccount?.[String(row[0] ?? "")] ?? null; })(),
         };
       });
       return { id: accountId, name: account.name, business: account.business ?? "", campaigns };

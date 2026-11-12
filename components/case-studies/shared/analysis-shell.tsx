@@ -95,7 +95,7 @@ export default function AnalysisShell({
         <header className="analysis-header sticky top-0 z-30 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-[var(--a-border)] bg-[var(--a-canvas)] px-4 py-2.5 sm:px-6 lg:px-10">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              {eyebrow && <span className="hidden text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-brass)] sm:inline">{eyebrow}</span>}
+              {eyebrow && <span className="hidden text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-ink)] opacity-70 sm:inline">{eyebrow}</span>}
               <h2 id={headingId} className="truncate font-display text-[16px] font-semibold leading-tight text-[var(--a-ink)] sm:text-[19px]">{title}</h2>
             </div>
             <p className="mt-0.5 truncate text-[10px] font-medium text-[var(--a-muted)] sm:text-[10.5px]">{subtitle}</p>

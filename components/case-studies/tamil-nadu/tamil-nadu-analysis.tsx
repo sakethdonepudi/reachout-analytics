@@ -1114,15 +1114,26 @@ function SocialOverview({ social }: { social: TnSocial }) {
       <p className="mt-2 text-[10.5px] text-[var(--a-muted)]">Reach is added up per campaign, so a person reached by two campaigns counts twice.</p>
       <div className="mt-4 space-y-2">
         {social.accounts.map((account) => (
-          <details key={account.name} className="rounded border border-[var(--a-border)]">
-            <summary className="flex cursor-pointer flex-wrap items-center gap-3 px-3 py-2 text-[12px] font-semibold">{account.name}<span className="text-[10px] font-normal text-[var(--a-muted)]">{account.campaigns.length} campaigns</span></summary>
-            <div className="overflow-x-auto border-t border-[var(--a-border)]">
-              <table className="w-full min-w-[720px] border-collapse text-left text-[10.5px]">
-                <thead><tr className="text-[8.5px] uppercase tracking-wide text-[var(--a-muted)]">{["Campaign", "Delivery", "Start", "End", "Reach", "Impressions", "Views", "Clicks", "Engagement", "Results"].map((label) => <th key={label} className="px-2 py-1.5">{label}</th>)}{social.totals.spend != null && <><th className="px-2 py-1.5 text-right">Cost per result</th><th className="px-2 py-1.5 text-right">Spend</th></>}</tr></thead>
-                <tbody>{account.campaigns.map((campaign) => <tr key={campaign.name} className="border-t border-[var(--a-border)]/60"><td className="px-2 py-1.5">{campaign.name}</td><td className="px-2 py-1.5">{campaign.delivery}</td><td className="px-2 py-1.5">{campaign.start || "—"}</td><td className="px-2 py-1.5">{campaign.end || "—"}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.reach.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.impressions.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.views.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.clicks.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.engagements.toLocaleString("en-IN")}</td><td className="px-2 py-1.5">{campaign.results == null ? "—" : `${campaign.results.toLocaleString("en-IN")} ${campaign.resultLabel ?? ""}`}</td>{social.totals.spend != null && <><td className="px-2 py-1.5 text-right tabular-nums">{campaign.costPerResult == null ? "—" : `₹${campaign.costPerResult.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.spend == null ? "—" : `₹${campaign.spend.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}</td></>}</tr>)}</tbody>
-              </table>
+          <div key={account.name} className="rounded border border-[var(--a-border)]">
+            <div className="flex flex-wrap items-center gap-3 px-3 py-2 text-[12px] font-semibold">
+              {social.totals.spend != null && account.href ? <a href={account.href} target="_blank" rel="noopener noreferrer" className="underline">{account.name}</a> : account.name}
+              <span className="text-[10px] font-normal text-[var(--a-muted)]">{account.campaigns.length} campaigns</span>
+              {social.totals.spend != null && <span className="flex flex-wrap gap-2 text-[10px] font-normal">
+                {account.billingHref && <a href={account.billingHref} target="_blank" rel="noopener noreferrer" className="underline">Billing</a>}
+                {account.allAdsetsHref && <a href={account.allAdsetsHref} target="_blank" rel="noopener noreferrer" className="underline">All ad sets</a>}
+                {account.allAdsHref && <a href={account.allAdsHref} target="_blank" rel="noopener noreferrer" className="underline">All ads</a>}
+              </span>}
             </div>
-          </details>
+            <details className="border-t border-[var(--a-border)]">
+              <summary className="cursor-pointer px-3 py-1.5 text-[10px] font-semibold text-[var(--a-muted)]">Campaigns</summary>
+              <div className="overflow-x-auto border-t border-[var(--a-border)]">
+                <table className="w-full min-w-[720px] border-collapse text-left text-[10.5px]">
+                  <thead><tr className="text-[8.5px] uppercase tracking-wide text-[var(--a-muted)]">{["Campaign", "Delivery", "Start", "End", "Reach", "Impressions", "Views", "Clicks", "Engagement", ...(social.totals.spend != null ? ["Ad sets", "Ads"] : []), "Results"].map((label) => <th key={label} className="px-2 py-1.5">{label}</th>)}{social.totals.spend != null && <><th className="px-2 py-1.5 text-right">Cost per result</th><th className="px-2 py-1.5 text-right">Spend</th></>}</tr></thead>
+                  <tbody>{account.campaigns.map((campaign) => <tr key={campaign.name} className="border-t border-[var(--a-border)]/60"><td className="px-2 py-1.5">{social.totals.spend != null && campaign.href ? <a href={campaign.href} target="_blank" rel="noopener noreferrer" className="underline">{campaign.name}</a> : campaign.name}</td><td className="px-2 py-1.5">{campaign.delivery}</td><td className="px-2 py-1.5">{campaign.start || "—"}</td><td className="px-2 py-1.5">{campaign.end || "—"}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.reach.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.impressions.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.views.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.clicks.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.engagements.toLocaleString("en-IN")}</td>{social.totals.spend != null && <><td className="px-2 py-1.5 text-right tabular-nums">{campaign.adsets == null ? "–" : campaign.adsetsHref ? <a href={campaign.adsetsHref} target="_blank" rel="noopener noreferrer" className="underline">{campaign.adsets.toLocaleString("en-IN")}</a> : campaign.adsets.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.ads == null ? "–" : campaign.adsHref ? <a href={campaign.adsHref} target="_blank" rel="noopener noreferrer" className="underline">{campaign.ads.toLocaleString("en-IN")}</a> : campaign.ads.toLocaleString("en-IN")}</td></>}<td className="px-2 py-1.5">{campaign.results == null ? "—" : `${campaign.results.toLocaleString("en-IN")} ${campaign.resultLabel ?? ""}`}</td>{social.totals.spend != null && <><td className="px-2 py-1.5 text-right tabular-nums">{campaign.costPerResult == null ? "—" : `₹${campaign.costPerResult.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.spend == null ? "—" : `₹${campaign.spend.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}</td></>}</tr>)}</tbody>
+                </table>
+              </div>
+            </details>
+          </div>
         ))}
       </div>
     </section>
