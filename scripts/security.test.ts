@@ -118,7 +118,7 @@ ok("embedded token masked in error text", !errorText.includes("abc123") && !erro
 
 console.log("\n8. Client-safe Meta summary");
 const summary = publicClientSummary({
-  connected: true, accountName: "ReachOut", metaUserName: "ReachOut", permissions: [], tokenExpiresAt: null, lastSyncAt: null,
+  connected: true, accountName: "ReachOut", metaUserName: "ReachOut", holderUserId: "u1", holderName: "Venkat", isHolder: true, status: "active", declinedScopes: [], permissions: [], tokenExpiresAt: null, lastSyncAt: null,
   connectedAt: null, adAccounts: [{ id: "act_1", accountId: "1", name: "Account", status: 1, currency: "INR" }],
   pages: [{ id: "p1", name: "Page" }], enabledAdAccounts: ["act_1"], expiresSoon: false,
   expiresAt: null, expired: false, reconnectRequired: false, keyVersion: "v1",
@@ -199,25 +199,25 @@ try {
 }
 
 console.log("\n12. Meta status failure safety");
-eq("missing connection is not connected", publicStatus(null).connected, false);
-eq("missing connection needs no reconnect", publicStatus(null).reconnectRequired, false);
-eq("malformed connection is not connected", publicStatus({ _id: "owner" } as MetaConnectionDoc).connected, false);
+eq("missing connection is not connected", publicStatus(null, null).connected, false);
+eq("missing connection needs no reconnect", publicStatus(null, null).reconnectRequired, false);
+eq("malformed connection is not connected", publicStatus({ _id: "owner" } as MetaConnectionDoc, null).connected, false);
 
 const tokenKey = process.env.TOKEN_ENCRYPTION_KEY;
 try {
   setEnv("TOKEN_ENCRYPTION_KEY", Buffer.alloc(32, 1).toString("base64"));
   const record = encryptToken("test-meta-token");
   const doc: MetaConnectionDoc = {
-    _id: "conn_1", sid: "sid_1", userId: "u1", metaUserId: "1", metaUserName: "Test User", ownerEmail: "owner", token: record, tokenExpiresAt: null,
+    _id: "workspace", holderUserId: "u1", metaUserId: "1", metaUserName: "Test User", ownerEmail: "owner", token: record, tokenExpiresAt: null, declinedScopes: [], grantedAssets: [], status: "active", lastCheckAt: null,
     scopes: [], account: { id: "1", name: "Test Account" }, adAccounts: [], pages: [],
     enabledAdAccounts: [], connectedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), lastSyncAt: null,
   };
-  const healthy = publicStatus(doc);
+  const healthy = publicStatus(doc, null);
   eq("valid token is connected", healthy.connected, true);
   eq("valid token needs no reconnect", healthy.reconnectRequired, false);
 
   setEnv("TOKEN_ENCRYPTION_KEY", Buffer.alloc(32, 2).toString("base64"));
-  const broken = publicStatus(doc);
+  const broken = publicStatus(doc, null);
   eq("changed key keeps connection visible", broken.connected, true);
   eq("changed key asks for reconnect", broken.reconnectRequired, true);
   eq("tampered token does not throw", tryDecryptToken({ ...record, tag: "AAAA" }).ok, false);

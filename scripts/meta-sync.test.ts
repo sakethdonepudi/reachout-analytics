@@ -32,10 +32,10 @@ eq("crore display", formatInr(12345000000), "₹12.35Cr");
 
 console.log("\n2. 12-hour connection lifetime");
 const connectedAt = "2026-11-11T10:00:00.000Z";
-eq("expires exactly 12 hours later", connectionExpiresAt(connectedAt), "2026-11-11T22:00:00.000Z");
+eq("expires exactly 60 days later", connectionExpiresAt(connectedAt), "2027-01-10T10:00:00.000Z");
 ok("fresh connection is not expired", !isConnectionExpired(connectionExpiresAt(connectedAt), new Date("2026-11-11T21:59:00.000Z").getTime()));
-ok("expired after 12 hours", isConnectionExpired(connectionExpiresAt(connectedAt), new Date("2026-11-11T22:00:01.000Z").getTime()));
-ok("expires within one hour", expiresWithinHour(connectionExpiresAt(connectedAt), new Date("2026-11-11T21:30:00.000Z").getTime()));
+ok("not expired before 60 days", !isConnectionExpired(connectionExpiresAt(connectedAt), new Date("2027-01-09T10:00:00.000Z").getTime()));
+ok("expires within one hour near the cap", expiresWithinHour(connectionExpiresAt(connectedAt), new Date("2027-01-10T09:30:00.000Z").getTime()));
 ok("not within one hour", !expiresWithinHour(connectionExpiresAt(connectedAt), new Date("2026-11-11T20:30:00.000Z").getTime()));
 
 console.log("\n3. Reach is not additive");

@@ -49,9 +49,9 @@ function installGraphStub() {
   const client = new MongoClient(uri);
   await client.connect();
   const db = client.db(process.env.MONGODB_DB || "reachout");
-  await Promise.all(["meta_connection", "meta_connect_states", "sessions", "users"].map((name) => db.collection(name).deleteMany({})));
+  await Promise.all(["meta_connection", "meta_connect_states", "sessions", "users", "settings", "meta_notifications"].map((name) => db.collection(name).deleteMany({})));
 
-  const owner = await createUser({ username: "owner-cb", displayName: "Owner Callback", role: "owner", password: "Correct-Horse-2026!", totpRequired: true, createdBy: null });
+  const owner = await createUser({ username: "venkatk", displayName: "Venkat", role: "owner", password: "Correct-Horse-2026!", totpRequired: true, createdBy: null });
   if (!owner.ok) throw new Error(owner.error);
   const clientUser = await createUser({ username: "client-cb", displayName: "Client Callback", role: "client", password: "Correct-Horse-2026!", createdBy: null });
   if (!clientUser.ok) throw new Error(clientUser.error);
@@ -70,8 +70,8 @@ function installGraphStub() {
   ok("bounce has a plain link", first.body.includes("<a href="));
   ok("bounce has no inline script", !/<script/i.test(first.body));
   ok("cache and referrer headers", first.headers.get("cache-control")?.includes("no-store") === true && first.headers.get("referrer-policy") === "no-referrer");
-  const stored = await db.collection("meta_connection").findOne({ sid } as never);
-  ok("connection stored without a session cookie", Boolean(stored) && Boolean(stored?.userId === owner.user._id && stored?.metaUserName === "Meta User"), JSON.stringify(stored ?? null).slice(0, 160));
+  const stored = await db.collection("meta_connection").findOne({ _id: "workspace" } as never);
+  ok("connection stored without a session cookie", Boolean(stored) && Boolean(stored?.holderUserId === owner.user._id && stored?.metaUserName === "Meta User"), JSON.stringify(stored ?? null).slice(0, 160));
   ok("state cookie cleared", first.headers.get("set-cookie")?.includes("ro_meta_state=;") === true);
 
   console.log("\n2. Replay and invalid states");

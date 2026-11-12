@@ -13,10 +13,10 @@
     "test:meta": "tsx scripts/meta-sync.test.ts",
     "test:tamil-nadu-consistency": "tsx --conditions react-server scripts/tamil-nadu-consistency.test.ts",
     "test:meta-client": "tsx --conditions react-server scripts/meta-client-dto.test.ts",
-    "test:meta-session": "tsx --conditions react-server scripts/meta-session.test.ts",
     "test:accounts": "tsx --conditions react-server scripts/accounts.test.ts",
     "test:session": "tsx --conditions react-server scripts/session.test.ts",
-    "test:meta-callback": "tsx --conditions react-server scripts/meta-callback.test.ts"
+    "test:meta-callback": "tsx --conditions react-server scripts/meta-callback.test.ts",
+    "test:meta-workspace": "tsx --conditions react-server scripts/meta-workspace.test.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",

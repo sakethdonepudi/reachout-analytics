@@ -4,7 +4,9 @@ import { checkPassword } from "@/lib/password-policy.server";
 import { passwordStrength } from "@/lib/password-policy";
 import { generateTotpSecret, totpCode, totpStep, verifyTotp, normaliseRecoveryCode } from "@/lib/totp";
 import { safeNextPath } from "@/lib/access";
-import { scopeAllowsCase } from "@/lib/users";
+import { needsEnrollment, scopeAllowsCase } from "@/lib/users";
+import { pendingTtlMs } from "@/lib/pending-auth";
+import { signPayload, verifyPayload } from "@/lib/signed-cookie";
 import { buildCsp } from "@/lib/security";
 import { turnstileConfigured, turnstileRequired } from "@/lib/turnstile";
 
@@ -30,6 +32,18 @@ ok("replay is rejected", !verifyTotp(secret, code, step).ok);
 ok("previous step is accepted once", verifyTotp(secret, totpCode(secret, step - 1), null).ok);
 ok("wrong code is rejected", !verifyTotp(secret, "000000", null).ok || code === "000000");
 ok("recovery codes normalise", normaliseRecoveryCode("abcd-2345") === "ABCD2345");
+
+console.log("\n2b. First-login pending windows");
+ok("password step lasts 15 minutes", pendingTtlMs("password") === 15 * 60 * 1000);
+ok("enrollment step lasts 15 minutes", pendingTtlMs("enroll") === 15 * 60 * 1000);
+ok("TOTP step stays at 3 minutes", pendingTtlMs("totp") === 3 * 60 * 1000);
+ok("owners always need enrollment", needsEnrollment({ role: "owner", totpRequired: false, totpEnabled: false }));
+ok("owner with TOTP does not enroll", !needsEnrollment({ role: "owner", totpRequired: true, totpEnabled: true }));
+ok("client without 2FA skips enrollment", !needsEnrollment({ role: "client", totpRequired: false, totpEnabled: false }));
+ok("client with 2FA enrolls", needsEnrollment({ role: "client", totpRequired: true, totpEnabled: false }));
+const pending = signPayload({ userId: "u1", purpose: "password" }, "test-secret", pendingTtlMs("password"));
+ok("a 4-minute-old first-login step is still valid", verifyPayload(pending, "test-secret") !== null);
+ok("a 16-minute-old step is rejected", verifyPayload(signPayload({ userId: "u1" }, "test-secret", -1), "test-secret") === null);
 
 console.log("\n3. Open redirect");
 const base = "https://internal.invalid";

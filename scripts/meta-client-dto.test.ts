@@ -22,7 +22,7 @@ const metrics = {
 };
 
 const overview: OwnerOverview = {
-  connection: { connected: true, expired: false, lastSyncAt: "2026-11-11T10:00:00.000Z", expiresAt: "2026-11-11T22:00:00.000Z", metaUserName: "Owner" },
+  connection: { connected: true, expired: false, lastSyncAt: "2026-11-11T10:00:00.000Z", expiresAt: "2026-11-11T22:00:00.000Z", metaUserName: "Owner", holderName: "Venkat", holderUserId: "u1", isHolder: true, status: "active" },
   range: { key: "7d", since: "2026-11-05", until: "2026-11-11" },
   totals: { ...metrics, activeCampaigns: 3, previous: metrics, reachIsUnique: true },
   groups: [],
