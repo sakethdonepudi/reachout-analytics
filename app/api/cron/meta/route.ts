@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { syncMeta } from "@/lib/meta/sync";
+import { checkWorkspaceHealth } from "@/lib/meta/health";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -22,6 +23,7 @@ export async function GET(req: NextRequest) {
     return Response.json({ ok: false, error: "Not authenticated" }, { status: 401 });
   }
 
+  await checkWorkspaceHealth().catch(() => {});
   const result = await syncMeta({ trigger: "cron" });
   if (result.skipped === "no-connections") {
     return Response.json({ ok: true, skipped: "no-connections" }, { headers: { "Cache-Control": "no-store" } });

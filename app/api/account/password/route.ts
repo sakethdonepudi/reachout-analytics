@@ -4,7 +4,7 @@ import { audit } from "@/lib/audit";
 import { createSession, refreshSessionAuth, requireRole, setSessionCookie } from "@/lib/auth";
 import { roleHome, safeNextPath } from "@/lib/access";
 import { clearPendingCookie, readPending, setPendingCookie } from "@/lib/pending-auth";
-import { getUser, setPassword, verifyPasswordHash } from "@/lib/users";
+import { getUser, needsEnrollment, setPassword, verifyPasswordHash } from "@/lib/users";
 import { turnstileConfigured, turnstileRequired, verifyTurnstile } from "@/lib/turnstile";
 
 export const runtime = "nodejs";
@@ -31,6 +31,12 @@ export async function POST(req: NextRequest) {
   }
 
   const pending = readPending(req);
+  if (!pending) {
+    const current = await requireRole(req, ["owner", "client"]);
+    if ("deny" in current) {
+      return Response.json({ ok: false, code: "pending_expired", error: "This sign-in step timed out. Sign in again with your temporary password." }, { status: 401, headers });
+    }
+  }
   if (pending?.purpose === "password") {
     const user = await getUser(pending.userId);
     if (!user) return Response.json({ ok: false, error: "Sign in again" }, { status: 401, headers });
@@ -38,14 +44,14 @@ export async function POST(req: NextRequest) {
     if (!result.ok) return Response.json({ ok: false, error: result.error }, { status: 400, headers });
     await audit({ action: "password_reset", role: user.role, ip, meta: { userId: user._id, firstLogin: true } });
 
-    if (user.totpRequired && !user.totpEnabled) {
+    if (needsEnrollment(user)) {
       const response = Response.json({ ok: true, redirect: "/account/security/enroll?first=1" }, { headers });
       setPendingCookie(response, { userId: user._id, purpose: "enroll", next: pending.next });
       return response;
     }
     const fresh = (await getUser(user._id))!;
     const token = await createSession({ userId: fresh._id, role: fresh.role, displayName: fresh.displayName, scope: fresh.clientScope }, { device: req.headers.get("user-agent")?.slice(0, 200) ?? undefined, ip });
-    const response = Response.json({ ok: true, redirect: safeNextPath(pending.next ?? null, fresh.role) ?? roleHome(fresh.role) }, { headers });
+    const response = Response.json({ ok: true, redirect: safeNextPath(pending.next ?? null, fresh.role) ?? (fresh.role === "owner" ? "/dashboard" : "/") }, { headers });
     setSessionCookie(response, token);
     clearPendingCookie(response);
     return response;

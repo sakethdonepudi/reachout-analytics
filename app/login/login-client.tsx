@@ -162,6 +162,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
                 {recovery ? "Use an authenticator code" : "Use a recovery code"}
               </button>
               <button type="button" onClick={() => { setStep("password"); setError(""); setRecovery(false); }} className="w-full text-center text-[12px] text-[var(--text-muted)]">Back to password</button>
+              {/timed out/i.test(error) && <a href="/login" className="block text-center text-[12px] font-semibold text-[var(--accent-brass-strong)] underline decoration-dotted underline-offset-4">Sign in again</a>}
             </form>
           )}
 

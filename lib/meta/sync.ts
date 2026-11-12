@@ -1,7 +1,7 @@
 import type { Db } from "mongodb";
 import { graphGet, graphPaged, MetaConnectionExpiredError, MetaReconnectError } from "@/lib/meta/client";
 import { connectionExpiresAt, isConnectionExpired, minorToPaise, toPaise } from "@/lib/meta/insights";
-import { expireConnection, getActiveConnections, getConnectionBySid, getMetaDb, markSynced, type MetaConnectionDoc } from "@/lib/meta/store";
+import { getMetaDb, getWorkspaceConnection, markWorkspaceConnection, markWorkspaceSynced, type MetaConnectionDoc } from "@/lib/meta/store";
 import { applyTagRules } from "@/lib/meta/tags";
 import { syncNotifications } from "@/lib/meta/notifications";
 import { finalizeSyncRun, type SyncTrigger } from "@/lib/meta/sync-health";
@@ -297,102 +297,66 @@ async function syncRanges(db: Db, connection: MetaConnectionDoc, accountId: stri
 }
 
 /** Sync one owner session's connection, or every active connection for cron. */
-export async function syncMeta(options: { backfill?: boolean; trigger?: SyncTrigger; sid?: string } = {}): Promise<SyncResult> {
+export async function syncMeta(options: { backfill?: boolean; trigger?: SyncTrigger } = {}): Promise<SyncResult> {
   const trigger: SyncTrigger = options.trigger ?? "manual";
   const db = await getMetaDb();
   if (!db) return { ok: false, skipped: "database" };
 
-  let connections: MetaConnectionDoc[];
-  if (options.sid) {
-    const doc = await getConnectionBySid(options.sid);
-    if (!doc) return { ok: false, skipped: "not-connected" };
-    const expiresAt = doc.expiresAt ?? (doc.connectedAt ? connectionExpiresAt(doc.connectedAt) : null);
-    if (isConnectionExpired(expiresAt)) {
-      await expireConnection(doc);
-      return { ok: false, skipped: "expired" };
-    }
-    connections = [doc];
-  } else {
-    connections = await getActiveConnections();
-    if (!connections.length) return { ok: false, skipped: "no-connections" };
+  const connection = await getWorkspaceConnection();
+  if (!connection) return { ok: false, skipped: "not-connected" };
+  if (connection.status !== "active") return { ok: false, skipped: connection.status === "expired" ? "expired" : "reconnect" };
+  const expiresAt = connection.expiresAt ?? (connection.connectedAt ? connectionExpiresAt(connection.connectedAt) : null);
+  if (isConnectionExpired(expiresAt)) {
+    await markWorkspaceConnection("expired", "sync-expired");
+    return { ok: false, skipped: "expired" };
   }
-
   if (!(await acquireLock(db))) return { ok: false, skipped: "locked" };
 
   const runId = globalThis.crypto.randomUUID();
   const startedAt = new Date();
   const counts: Record<string, number> = {};
-  const backfill = options.backfill || connections.some((connection) => !connection.lastSyncAt);
+  const backfill = options.backfill || !connection.lastSyncAt;
   const days = backfill ? 90 : 7;
   const untilDate = new Date();
   const sinceDate = new Date(untilDate.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
   const until = untilDate.toISOString().slice(0, 10);
   const since = sinceDate.toISOString().slice(0, 10);
-  const failures: string[] = [];
-  let succeeded = 0;
-  const runConnectionExpiresAt = connections
-    .map((connection) => connection.expiresAt ?? connectionExpiresAtOf(connection))
-    .filter((value): value is string => Boolean(value))
-    .sort()
-    .at(-1) ?? null;
+  const accounts = connection.enabledAdAccounts.length
+    ? connection.adAccounts.filter((account) => connection.enabledAdAccounts.includes(account.id))
+    : connection.adAccounts;
 
   try {
     await db.collection<{ _id: string } & Record<string, unknown>>("meta_sync_runs").insertOne({
-      _id: runId, startedAt, status: "running", trigger, backfill, days, connections: connections.length,
-      metaUserNames: connections.map((connection) => connection.metaUserName), counts: {}, error: null,
+      _id: runId, startedAt, status: "running", trigger, backfill, days, connections: 1,
+      metaUserNames: [connection.metaUserName], counts: {}, error: null,
     });
 
-    for (const connection of connections) {
-      const accounts = connection.enabledAdAccounts.length
-        ? connection.adAccounts.filter((account) => connection.enabledAdAccounts.includes(account.id))
-        : connection.adAccounts;
-      try {
-        for (const account of accounts) {
-          counts.meta_accounts = (counts.meta_accounts ?? 0) + await syncAccount(db, connection, account.id);
-          counts.meta_campaigns = (counts.meta_campaigns ?? 0) + await syncCampaigns(db, connection, account.id);
-          counts.meta_adsets = (counts.meta_adsets ?? 0) + await syncAdsets(db, connection, account.id);
-          counts.meta_ads = (counts.meta_ads ?? 0) + await syncAds(db, connection, account.id);
-          counts.meta_creatives = (counts.meta_creatives ?? 0) + await syncCreatives(db, connection, account.id);
-          counts.meta_insights_daily = (counts.meta_insights_daily ?? 0) + await syncDaily(db, connection, account.id, since, until);
-          counts.meta_insights_range = (counts.meta_insights_range ?? 0) + await syncRanges(db, connection, account.id);
-        }
-        await markSynced(connection._id, untilDate.toISOString());
-        succeeded += 1;
-      } catch (error) {
-        if (error instanceof MetaConnectionExpiredError) { failures.push("connection-expired"); continue; }
-        if (error instanceof MetaReconnectError) { failures.push("reconnect-required"); continue; }
-        failures.push(error instanceof Error ? error.message : "Sync failed");
-      }
+    for (const account of accounts) {
+      counts.meta_accounts = (counts.meta_accounts ?? 0) + await syncAccount(db, connection, account.id);
+      counts.meta_campaigns = (counts.meta_campaigns ?? 0) + await syncCampaigns(db, connection, account.id);
+      counts.meta_adsets = (counts.meta_adsets ?? 0) + await syncAdsets(db, connection, account.id);
+      counts.meta_ads = (counts.meta_ads ?? 0) + await syncAds(db, connection, account.id);
+      counts.meta_creatives = (counts.meta_creatives ?? 0) + await syncCreatives(db, connection, account.id);
+      counts.meta_insights_daily = (counts.meta_insights_daily ?? 0) + await syncDaily(db, connection, account.id, since, until);
+      counts.meta_insights_range = (counts.meta_insights_range ?? 0) + await syncRanges(db, connection, account.id);
     }
 
     let partial = false;
-    try {
-      counts.meta_campaign_tags = await applyTagRules(db);
-    } catch {
-      partial = true;
-      counts.meta_campaign_tags = 0;
-    }
-    try {
-      counts.meta_notifications = await syncNotifications(db);
-    } catch {
-      partial = true;
-      counts.meta_notifications = 0;
-    }
+    try { counts.meta_campaign_tags = await applyTagRules(db); } catch { partial = true; counts.meta_campaign_tags = 0; }
+    try { counts.meta_notifications = await syncNotifications(db); } catch { partial = true; counts.meta_notifications = 0; }
 
     const finishedAt = new Date();
-    const status = succeeded === 0 ? "failed" : failures.length ? "partial" : "success";
-    const outcome = succeeded === 0 ? "failed" : failures.length || partial ? "partial" : "ok";
-    const errorMessage = failures.length ? [...new Set(failures)].join("; ") : null;
+    const outcome = partial ? "partial" : "ok";
     await finalizeSyncRun(db, runId, {
-      trigger, status, outcome, error: errorMessage,
-      counts, days, backfill, startedAt, finishedAt, connectionExpiresAt: runConnectionExpiresAt,
+      trigger, status: partial ? "partial" : "success", outcome, error: null,
+      counts, days, backfill, startedAt, finishedAt, connectionExpiresAt: expiresAt,
     });
-    if (succeeded === 0) return { ok: false, error: errorMessage ?? "Sync failed", runId, counts };
+    await markWorkspaceSynced(untilDate.toISOString());
     return { ok: true, runId, counts };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Sync failed";
     const finishedAt = new Date();
-    await finalizeSyncRun(db, runId, { trigger, status: "failed", outcome: "failed", error: message, counts, days, backfill, startedAt, finishedAt, connectionExpiresAt: runConnectionExpiresAt });
+    await finalizeSyncRun(db, runId, { trigger, status: "failed", outcome: "failed", error: message, counts, days, backfill, startedAt, finishedAt, connectionExpiresAt: expiresAt });
     return { ok: false, error: message, runId };
   } finally {
     await releaseLock(db);

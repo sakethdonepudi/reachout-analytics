@@ -1,6 +1,6 @@
 import { tryDecryptToken } from "@/lib/meta/crypto";
 import { connectionExpiresAt, isConnectionExpired, isRateLimited, retryDelayMs, META_GRAPH_VERSION } from "@/lib/meta/insights";
-import { expireConnection, type MetaConnectionDoc } from "@/lib/meta/store";
+import { markWorkspaceConnection, type MetaConnectionDoc } from "@/lib/meta/store";
 import { revokeMetaToken } from "@/lib/meta/oauth";
 
 const GRAPH = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
@@ -26,8 +26,9 @@ export class MetaConnectionExpiredError extends Error {
 async function accessToken(connection?: MetaConnectionDoc | null): Promise<string> {
   if (connection?.token) {
     const expiresAt = connection.expiresAt ?? (connection.connectedAt ? connectionExpiresAt(connection.connectedAt) : null);
+    if (connection.status !== "active") throw new MetaReconnectError();
     if (isConnectionExpired(expiresAt)) {
-      await expireConnection(connection);
+      await markWorkspaceConnection("expired", "connection-expired");
       throw new MetaConnectionExpiredError();
     }
     const result = tryDecryptToken(connection.token);

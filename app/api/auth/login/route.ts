@@ -4,7 +4,7 @@ import { audit } from "@/lib/audit";
 import { createSession, setSessionCookie } from "@/lib/auth";
 import { roleHome, safeNextPath } from "@/lib/access";
 import { beginLoginAttempt, loginRateLimitResponse, recordLoginFailure, recordLoginSuccess } from "@/lib/login-guard";
-import { findUserByUsername, recordFailedLogin, touchLogin, verifyPasswordHash } from "@/lib/users";
+import { findUserByUsername, needsEnrollment, recordFailedLogin, touchLogin, verifyPasswordHash } from "@/lib/users";
 import { setPendingCookie } from "@/lib/pending-auth";
 import { alertNewDevice } from "@/lib/sign-in-alerts";
 import { turnstileConfigured, turnstileRequired, verifyTurnstile } from "@/lib/turnstile";
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     return response;
   }
 
-  if (user.role === "owner" && !user.totpEnabled) {
+  if (needsEnrollment(user)) {
     const response = Response.json({ ok: true, step: "enroll", redirect: "/account/security/enroll?first=1" }, { headers });
     setPendingCookie(response, { userId: user._id, purpose: "enroll", next });
     return response;

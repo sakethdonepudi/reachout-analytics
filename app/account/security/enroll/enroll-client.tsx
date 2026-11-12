@@ -8,7 +8,7 @@ type Enroll = { secret: string; qr: string; account: string };
 
 export default function EnrollClient() {
   const [enroll, setEnroll] = useState<Enroll | null>(null);
-  const [code, setCode] = useState("");
+  const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
   const [codes, setCodes] = useState<string[] | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -31,7 +31,7 @@ export default function EnrollClient() {
       const response = await fetch("/api/account/totp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, mode: "confirm" }),
+        body: JSON.stringify({ code: digits.join(""), mode: "confirm" }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "That code is not valid.");
@@ -49,7 +49,7 @@ export default function EnrollClient() {
           <>
             <p className="type-micro mt-6 text-[var(--accent-brass)]">Two-factor authentication</p>
             <h1 className="type-h1 mt-2">Set up your authenticator</h1>
-            <p className="type-small mt-2 text-[var(--text-muted)]">Scan the QR code with Google Authenticator or Microsoft Authenticator, then enter the 6-digit code.</p>
+            <p className="type-small mt-2 text-[var(--text-muted)]">Install Google Authenticator or Microsoft Authenticator, then scan the QR code and enter the 6-digit code.</p>
             {error && <p role="alert" className="mt-4 rounded-[var(--radius-control)] border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-2 text-[12.5px] text-[var(--danger)]">{error}</p>}
             {enroll ? (
               <div className="mt-5 grid gap-5 sm:grid-cols-[200px_1fr] sm:items-center">
@@ -58,11 +58,15 @@ export default function EnrollClient() {
                 <div>
                   <p className="text-[12px] text-[var(--text-muted)]">Manual key</p>
                   <p className="mt-1 break-all rounded-lg border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-2 py-1.5 font-mono text-[12px]">{enroll.secret}</p>
-                  <label className="mt-4 block">
+                  <div className="mt-4">
                     <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">6-digit code</span>
-                    <input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" className="mt-1 min-h-11 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-3 font-mono text-[18px] tracking-[0.35em] outline-none focus:border-[var(--accent-brass)]" />
-                  </label>
-                  <button type="button" onClick={() => void confirm()} disabled={busy || code.length !== 6} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
+                    <div className="mt-1 flex gap-1.5" onPaste={(event) => { event.preventDefault(); const clean = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6).split(""); setDigits(Array.from({ length: 6 }, (_v, i) => clean[i] ?? "")); }}>
+                      {digits.map((digit, index) => (
+                        <input key={index} value={digit} onChange={(event) => { const char = event.target.value.replace(/\D/g, "").slice(-1); setDigits((current) => current.map((item, i) => i === index ? char : item)); if (char) (event.target.nextElementSibling as HTMLInputElement | null)?.focus(); }} inputMode="numeric" autoComplete={index === 0 ? "one-time-code" : "off"} aria-label={`Digit ${index + 1}`} className="min-h-11 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] text-center font-mono text-[17px] outline-none focus:border-[var(--accent-brass)]" />
+                      ))}
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => void confirm()} disabled={busy || digits.join("").length !== 6} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
                     {busy && <Loader2 className="size-4 animate-spin" />} Confirm
                   </button>
                 </div>

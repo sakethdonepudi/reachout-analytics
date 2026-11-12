@@ -16,6 +16,8 @@ export type OverviewQuery = {
   /** null/undefined = every synced account; [] = no account is reachable. */
   accountIds?: string[] | null;
   connection?: MetaConnectionDoc | null;
+  holder?: { _id: string; displayName: string } | null;
+  viewerUserId?: string;
 };
 export type Metrics = {
   spend: number;
@@ -90,7 +92,10 @@ export type NotificationRow = {
   read: boolean;
 };
 export type OwnerOverview = {
-  connection: { connected: boolean; expired: boolean; lastSyncAt: string | null; expiresAt: string | null; metaUserName: string | null };
+  connection: {
+    connected: boolean; expired: boolean; lastSyncAt: string | null; expiresAt: string | null;
+    metaUserName: string | null; holderName: string | null; holderUserId: string | null; isHolder: boolean; status: string | null;
+  };
   range: { key: RangeKey; since: string | null; until: string | null };
   totals: Metrics & { activeCampaigns: number; previous: Metrics | null; reachIsUnique: boolean };
   groups: GroupRow[];
@@ -472,6 +477,10 @@ export async function getOwnerOverview(db: Db, query: OverviewQuery): Promise<Ow
       lastSyncAt: connection?.lastSyncAt ?? null,
       expiresAt,
       metaUserName: connection?.metaUserName ?? null,
+      holderName: query.holder?.displayName ?? null,
+      holderUserId: query.holder?._id ?? null,
+      isHolder: Boolean(query.viewerUserId && query.holder?._id === query.viewerUserId),
+      status: connection?.status ?? null,
     },
     range: { key: query.range, since: window.since, until: window.until },
     totals: {

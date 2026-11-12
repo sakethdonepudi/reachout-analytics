@@ -2,7 +2,7 @@ import "server-only";
 
 import type { Db } from "mongodb";
 import { connectionExpiresAt } from "@/lib/meta/insights";
-import { getConnectionBySid } from "@/lib/meta/store";
+import { getWorkspaceConnection } from "@/lib/meta/store";
 import { redactText } from "@/lib/redact";
 
 export type SyncTrigger = "cron" | "manual";
@@ -193,11 +193,11 @@ export async function finalizeSyncRun(db: Db, runId: string, input: {
 }
 
 /** Owner-only view: latest run plus live tagging, reach and connection state. */
-export async function getSyncHealth(db: Db, sid?: string): Promise<SyncHealthView> {
+export async function getSyncHealth(db: Db): Promise<SyncHealthView> {
   const [run, live, connection] = await Promise.all([
     db.collection<RunDoc>("meta_sync_runs").find({}).sort({ startedAt: -1 }).limit(1).next().catch(() => null),
     liveHealth(db).catch(() => null),
-    getConnectionBySid(sid).catch(() => null),
+    getWorkspaceConnection().catch(() => null),
   ]);
   const expiresAt = connection?.expiresAt ?? (connection?.connectedAt ? connectionExpiresAt(connection.connectedAt) : null);
 

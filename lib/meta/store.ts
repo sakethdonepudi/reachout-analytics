@@ -1,33 +1,34 @@
 import "server-only";
 
-import { randomBytes } from "node:crypto";
 import type { Collection, Db } from "mongodb";
 import { getMongo } from "@/lib/mongodb";
 import { tryDecryptToken, type EncryptedToken } from "@/lib/meta/crypto";
 import { connectionExpiresAt, isConnectionExpired } from "@/lib/meta/insights";
 import { revokeMetaToken } from "@/lib/meta/oauth";
 import { audit } from "@/lib/audit";
+import { findUserByUsername, getUser, type UserDoc } from "@/lib/users";
 
 const DB = process.env.MONGODB_DB || "reachout";
-const LEGACY_ID = "owner";
+const WORKSPACE_ID = "workspace";
+const HOLDER_SETTING_ID = "meta_holder";
+export const META_HOLDER_USERNAME = "venkatk";
 
 export type MetaAdAccount = { id: string; accountId: string; name: string; status: number | null; currency: string | null };
 export type MetaPage = { id: string; name: string };
+export type ConnectionStatus = "active" | "expired" | "revoked";
 
-/**
- * One Meta connection per signed-in owner session. The token is encrypted at
- * rest and is only decrypted inside server-only modules.
- */
+/** One workspace-wide Meta connection, held by one owner. */
 export type MetaConnectionDoc = {
   _id: string;
-  sid: string;
-  userId: string;
+  holderUserId: string;
   metaUserId: string;
   metaUserName: string;
   ownerEmail: string;
-  token: EncryptedToken;
+  token: EncryptedToken | null;
   tokenExpiresAt: string | null;
   scopes: string[];
+  declinedScopes: string[];
+  grantedAssets: string[];
   account: { id: string; name: string };
   adAccounts: MetaAdAccount[];
   pages: MetaPage[];
@@ -35,12 +36,13 @@ export type MetaConnectionDoc = {
   connectedAt: string;
   expiresAt?: string;
   lastSyncAt: string | null;
+  lastCheckAt: string | null;
+  status: ConnectionStatus;
 };
 
-export type MetaConnectionInput = Omit<MetaConnectionDoc, "_id" | "expiresAt" | "userId" | "metaUserId" | "metaUserName"> & {
-  userId: string;
-  metaUserId: string;
-  metaUserName: string;
+export type MetaConnectionInput = Omit<MetaConnectionDoc, "_id" | "expiresAt" | "lastCheckAt" | "status" | "declinedScopes" | "grantedAssets"> & {
+  declinedScopes?: string[];
+  grantedAssets?: string[];
   expiresAt?: string;
 };
 
@@ -48,7 +50,12 @@ export type PublicMetaStatus = {
   connected: boolean;
   accountName: string | null;
   metaUserName: string | null;
+  holderUserId: string | null;
+  holderName: string | null;
+  isHolder: boolean;
+  status: ConnectionStatus | null;
   permissions: string[];
+  declinedScopes: string[];
   tokenExpiresAt: string | null;
   lastSyncAt: string | null;
   connectedAt: string | null;
@@ -69,96 +76,76 @@ async function database() {
   return client.db(DB);
 }
 
-async function coll(): Promise<Collection<MetaConnectionDoc> | null> {
+async function connections(): Promise<Collection<MetaConnectionDoc> | null> {
   const db = await database();
   if (!db) return null;
-  const collection = db.collection<MetaConnectionDoc>("meta_connection");
-  await collection.createIndex({ sid: 1 }, { unique: true, sparse: true }).catch(() => {});
-  return collection;
-}
-
-/** The pre-session document is deleted without reading or migrating its token. */
-async function deleteLegacyConnection(db: Db): Promise<void> {
-  await db.collection("meta_connection").deleteOne({ _id: LEGACY_ID } as never).catch(() => {});
+  return db.collection<MetaConnectionDoc>("meta_connection");
 }
 
 export async function getMetaDb() {
-  try {
-    return await database();
-  } catch {
-    return null;
-  }
+  try { return await database(); } catch { return null; }
 }
 
-export async function getConnectionBySid(sid: string | undefined): Promise<MetaConnectionDoc | null> {
-  if (!sid) return null;
-  try {
-    const db = await database();
-    const col = await coll();
-    if (!db || !col) return null;
-    await deleteLegacyConnection(db);
-    return await col.findOne({ sid });
-  } catch {
-    return null;
-  }
+/** Resolve the configured holder, defaulting to the venkatk account once. */
+export async function getMetaHolder(): Promise<UserDoc | null> {
+  const db = await database();
+  if (!db) return null;
+  const setting = await db.collection<{ _id: string; userId?: string }>("settings").findOne({ _id: HOLDER_SETTING_ID });
+  if (setting?.userId) return getUser(setting.userId);
+  const user = await findUserByUsername(META_HOLDER_USERNAME);
+  if (!user) return null;
+  await db.collection<{ _id: string; userId?: string }>("settings").updateOne(
+    { _id: HOLDER_SETTING_ID },
+    { $setOnInsert: { userId: user._id } },
+    { upsert: true },
+  );
+  return user;
 }
 
-export async function getConnectionById(id: string): Promise<MetaConnectionDoc | null> {
+export async function getMetaHolderUserId(): Promise<string | null> {
+  return (await getMetaHolder())?._id ?? null;
+}
+
+export async function isMetaHolder(userId: string | undefined): Promise<boolean> {
+  if (!userId) return false;
+  const holder = await getMetaHolder();
+  return Boolean(holder && holder._id === userId && holder.role === "owner" && holder.status === "active");
+}
+
+export async function setMetaHolderUserId(userId: string): Promise<void> {
+  const db = await database();
+  if (!db) throw new Error("Database not configured");
+  const user = await getUser(userId);
+  if (!user || user.role !== "owner") throw new Error("The Meta holder must be an active owner.");
+  const current = await getMetaHolder();
+  await db.collection<{ _id: string; userId?: string }>("settings").updateOne({ _id: HOLDER_SETTING_ID }, { $set: { userId } }, { upsert: true });
+  if (current && current._id !== userId) await revokeWorkspaceConnection("holder-changed");
+}
+
+export async function getWorkspaceConnection(): Promise<MetaConnectionDoc | null> {
   try {
-    const col = await coll();
+    const col = await connections();
     if (!col) return null;
-    return await col.findOne({ _id: id });
-  } catch {
-    return null;
-  }
+    return await col.findOne({ _id: WORKSPACE_ID });
+  } catch { return null; }
 }
 
-/** Active connections for the cron. Expired documents are revoked and removed. */
-export async function getActiveConnections(): Promise<MetaConnectionDoc[]> {
-  try {
-    const db = await database();
-    const col = await coll();
-    if (!db || !col) return [];
-    await deleteLegacyConnection(db);
-    const docs = await col.find({ sid: { $exists: true } }).toArray();
-    const active: MetaConnectionDoc[] = [];
-    for (const doc of docs) {
-      const expiresAt = doc.expiresAt ?? (doc.connectedAt ? connectionExpiresAt(doc.connectedAt) : null);
-      if (isConnectionExpired(expiresAt)) {
-        await expireConnection(doc);
-        continue;
-      }
-      active.push(doc);
-    }
-    return active;
-  } catch {
-    return [];
-  }
-}
-
-/** Any active connection, used only server-side for read-only media proxying. */
-export async function getAnyActiveConnection(): Promise<MetaConnectionDoc | null> {
-  const connections = await getActiveConnections();
-  return connections[0] ?? null;
-}
-
-export async function saveConnection(input: MetaConnectionInput): Promise<MetaConnectionDoc> {
-  const col = await coll();
+export async function saveWorkspaceConnection(input: MetaConnectionInput): Promise<MetaConnectionDoc> {
+  const col = await connections();
   if (!col) throw new Error("Database not configured");
-  const existing = await col.findOne({ sid: input.sid });
-  if (existing) {
-    await revokeConnection(existing);
-    await col.deleteOne({ _id: existing._id });
-  }
+  const existing = await col.findOne({ _id: WORKSPACE_ID });
+  if (existing?.token) await revokeConnection(existing);
   const expiresAt = input.expiresAt ?? (input.connectedAt ? connectionExpiresAt(input.connectedAt) : undefined);
   const full: MetaConnectionDoc = {
-    _id: randomBytes(24).toString("base64url"),
+    _id: WORKSPACE_ID,
     ...input,
-    metaUserId: input.metaUserId,
-    metaUserName: input.metaUserName,
+    declinedScopes: input.declinedScopes ?? [],
+    grantedAssets: input.grantedAssets ?? [],
+    status: "active",
+    lastCheckAt: new Date().toISOString(),
     ...(expiresAt ? { expiresAt } : {}),
   };
-  await col.insertOne(full);
+  await col.replaceOne({ _id: WORKSPACE_ID }, full, { upsert: true });
   return full;
 }
 
@@ -166,73 +153,74 @@ async function revokeConnection(doc: MetaConnectionDoc | null): Promise<void> {
   if (!doc?.token) return;
   const decrypted = tryDecryptToken(doc.token);
   if (decrypted.ok) {
-    try { await revokeMetaToken(decrypted.token); } catch { /* ciphertext is removed below */ }
+    try { await revokeMetaToken(decrypted.token); } catch { /* ciphertext removed below */ }
   }
 }
 
-export async function deleteConnectionBySid(sid: string | undefined): Promise<MetaConnectionDoc | null> {
-  if (!sid) return null;
-  const col = await coll();
+export async function deleteWorkspaceConnection(): Promise<MetaConnectionDoc | null> {
+  const col = await connections();
   if (!col) return null;
-  const doc = await col.findOne({ sid });
-  if (doc) await col.deleteOne({ _id: doc._id });
+  const doc = await col.findOne({ _id: WORKSPACE_ID });
+  if (doc) await col.deleteOne({ _id: WORKSPACE_ID });
   return doc;
 }
 
-export async function deleteConnectionById(id: string): Promise<MetaConnectionDoc | null> {
-  const col = await coll();
-  if (!col) return null;
-  const doc = await col.findOne({ _id: id });
-  if (doc) await col.deleteOne({ _id: doc._id });
-  return doc;
+/** Holder-initiated disconnect, holder change, revoke or expiry. */
+export async function revokeWorkspaceConnection(reason: "disconnect" | "holder-changed" | "revoked" | "expired"): Promise<void> {
+  const doc = await deleteWorkspaceConnection();
+  if (doc) await revokeConnection(doc);
+  await audit({ action: reason === "disconnect" ? "meta_disconnect" : "meta_connection_expired", role: "owner", meta: { reason } }).catch(() => {});
 }
 
-/** Delete and revoke the connection owned by one session (logout, expiry). */
-export async function cleanupSessionConnection(sid: string | undefined, reason: "logout" | "expired" | "idle" = "logout"): Promise<void> {
-  const doc = await deleteConnectionBySid(sid);
+export async function markWorkspaceConnection(status: "expired" | "revoked", reason: string): Promise<void> {
+  const col = await connections();
+  if (!col) return;
+  const doc = await col.findOne({ _id: WORKSPACE_ID });
   if (!doc) return;
   await revokeConnection(doc);
-  await audit({
-    action: "meta_disconnect",
-    role: "owner",
-    meta: { reason, metaUserName: doc.metaUserName },
-  });
+  await col.updateOne({ _id: WORKSPACE_ID }, { $set: { status, token: null, lastCheckAt: new Date().toISOString() } });
+  await audit({ action: "meta_connection_expired", role: "owner", meta: { reason, status } }).catch(() => {});
 }
 
-export async function setEnabledAdAccounts(sid: string | undefined, ids: string[]): Promise<MetaConnectionDoc | null> {
-  const col = await coll();
-  if (!col || !sid) return null;
-  await col.updateOne({ sid }, { $set: { enabledAdAccounts: ids } });
-  return getConnectionBySid(sid);
+export async function markWorkspaceSynced(at = new Date().toISOString()): Promise<void> {
+  const col = await connections();
+  if (col) await col.updateOne({ _id: WORKSPACE_ID }, { $set: { lastSyncAt: at, lastCheckAt: at } });
 }
 
-export async function markSynced(connectionId: string, at = new Date().toISOString()): Promise<void> {
-  const col = await coll();
-  if (col) await col.updateOne({ _id: connectionId }, { $set: { lastSyncAt: at } });
+export async function setEnabledAdAccounts(ids: string[]): Promise<MetaConnectionDoc | null> {
+  const col = await connections();
+  if (!col) return null;
+  await col.updateOne({ _id: WORKSPACE_ID }, { $set: { enabledAdAccounts: ids } });
+  return getWorkspaceConnection();
 }
 
 function disconnectedStatus(expired = false): PublicMetaStatus {
   return {
-    connected: false, accountName: null, metaUserName: null, permissions: [], tokenExpiresAt: null,
-    lastSyncAt: null, connectedAt: null, adAccounts: [], pages: [], enabledAdAccounts: [],
-    expiresSoon: false, expiresAt: null, expired, reconnectRequired: false, keyVersion: null,
+    connected: false, accountName: null, metaUserName: null, holderUserId: null, holderName: null, isHolder: false,
+    status: null, permissions: [], declinedScopes: [], tokenExpiresAt: null, lastSyncAt: null, connectedAt: null,
+    adAccounts: [], pages: [], enabledAdAccounts: [], expiresSoon: false, expiresAt: null, expired,
+    reconnectRequired: false, keyVersion: null,
   };
 }
 
-export function publicStatus(doc: MetaConnectionDoc | null): PublicMetaStatus {
-  if (!doc || !doc.account || !doc.token) return disconnectedStatus();
-
-  const decrypted = tryDecryptToken(doc.token);
-  const reconnectRequired = !decrypted.ok;
+export function publicStatus(doc: MetaConnectionDoc | null, holder: UserDoc | null, viewerUserId?: string): PublicMetaStatus {
+  if (!doc || !doc.account) return disconnectedStatus();
+  const decrypted = doc.token ? tryDecryptToken(doc.token) : { ok: false as const, reason: "reconnect" as const };
+  const reconnectRequired = doc.status === "active" && !decrypted.ok;
   const expires = doc.tokenExpiresAt ? new Date(doc.tokenExpiresAt).getTime() : null;
   const expiresSoon = expires != null && expires - Date.now() < 7 * 24 * 60 * 60 * 1000;
-  const expiresAt = doc.expiresAt ?? (doc.connectedAt ? connectionExpiresAt(doc.connectedAt) : null);
-  const expired = isConnectionExpired(expiresAt);
+  const expiresAt = doc.expiresAt ?? null;
+  const expired = doc.status !== "active" || isConnectionExpired(expiresAt);
   return {
-    connected: !expired,
+    connected: doc.status === "active" && !expired,
     accountName: doc.account?.name ?? null,
-    metaUserName: doc.metaUserName ?? doc.account?.name ?? null,
+    metaUserName: doc.metaUserName ?? null,
+    holderUserId: doc.holderUserId ?? null,
+    holderName: holder?.displayName ?? null,
+    isHolder: Boolean(viewerUserId && doc.holderUserId === viewerUserId),
+    status: doc.status,
     permissions: Array.isArray(doc.scopes) ? doc.scopes : [],
+    declinedScopes: Array.isArray(doc.declinedScopes) ? doc.declinedScopes : [],
     tokenExpiresAt: doc.tokenExpiresAt ?? null,
     lastSyncAt: doc.lastSyncAt ?? null,
     connectedAt: doc.connectedAt ?? null,
@@ -247,24 +235,14 @@ export function publicStatus(doc: MetaConnectionDoc | null): PublicMetaStatus {
   };
 }
 
-export async function expireConnection(doc: MetaConnectionDoc | null): Promise<void> {
-  if (!doc) return;
-  await revokeConnection(doc);
-  await deleteConnectionById(doc._id);
-  await audit({ action: "meta_connection_expired", role: "owner", meta: { metaUserName: doc.metaUserName } });
-}
-
-export async function getMetaStatus(sid: string | undefined): Promise<PublicMetaStatus> {
+export async function getMetaStatus(viewerUserId?: string): Promise<PublicMetaStatus> {
   try {
-    const doc = await getConnectionBySid(sid);
+    const [doc, holder] = await Promise.all([getWorkspaceConnection(), getMetaHolder()]);
     if (!doc) return disconnectedStatus();
-    const expiresAt = doc.expiresAt ?? (doc.connectedAt ? connectionExpiresAt(doc.connectedAt) : null);
-    if (isConnectionExpired(expiresAt)) {
-      await expireConnection(doc);
-      return disconnectedStatus(true);
+    if (doc.status === "active" && doc.expiresAt && isConnectionExpired(doc.expiresAt)) {
+      await markWorkspaceConnection("expired", "connection-expired");
+      return publicStatus(await getWorkspaceConnection(), holder, viewerUserId);
     }
-    return publicStatus(doc);
-  } catch {
-    return disconnectedStatus();
-  }
+    return publicStatus(doc, holder, viewerUserId);
+  } catch { return disconnectedStatus(); }
 }

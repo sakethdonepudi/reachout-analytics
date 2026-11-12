@@ -265,6 +265,10 @@ export async function touchLogin(id: string, device: string): Promise<void> {
   await col.updateOne({ _id: id }, { $set: { lastLoginAt: new Date(), lastLoginDevice: device.slice(0, 200), failedLogins: 0, lockedUntil: null } });
 }
 
+export function needsEnrollment(user: Pick<UserDoc, "role" | "totpRequired" | "totpEnabled">): boolean {
+  return (user.role === "owner" || user.totpRequired) && !user.totpEnabled;
+}
+
 export function scopeAllowsCase(role: Role, scope: ClientScope | null | undefined, record: Pick<CaseRecord, "slug" | "state" | "title"> & { party?: string }): boolean {
   if (role === "owner") return true;
   if (!scope) return false;

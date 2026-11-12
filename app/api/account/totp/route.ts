@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       { userId: user._id, role: user.role, displayName: user.displayName, scope: user.clientScope },
       { device: req.headers.get("user-agent")?.slice(0, 200) ?? undefined },
     );
-    const response = Response.json({ ok: true, recoveryCodes: codes, redirect: safeNextPath(next ?? null, user.role) ?? roleHome(user.role) }, { headers });
+    const response = Response.json({ ok: true, recoveryCodes: codes, redirect: safeNextPath(next ?? null, user.role) ?? (user.role === "owner" ? "/dashboard" : "/") }, { headers });
     setSessionCookie(response, token);
     clearPendingCookie(response);
     return response;

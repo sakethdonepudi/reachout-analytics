@@ -14,7 +14,7 @@ type User = {
   clientScope: { caseStudies: string[]; states: string[]; parties: string[] };
 };
 type Meta = {
-  users: User[]; currentUserId: string;
+  users: User[]; currentUserId: string; metaHolderUserId: string | null; metaHolderName: string | null;
   cases: { slug: string; title: string; state: string; party: string }[];
   parties: string[]; states: string[];
 };
@@ -29,6 +29,7 @@ export default function UsersClient() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [firstLogin, setFirstLogin] = useState<{ username: string; role: "owner" | "client" } | null>(null);
 
   const load = useCallback(async () => {
     const response = await fetch("/api/account/users", { cache: "no-store" });
@@ -62,7 +63,7 @@ export default function UsersClient() {
 
   async function create() {
     const ok = await call(null, form, "POST");
-    if (ok) { setForm(EMPTY_FORM); setMessage("Account created. The user must change the temporary password at first sign-in."); }
+    if (ok) { setFirstLogin({ username: form.username, role: form.role }); setForm(EMPTY_FORM); setMessage(""); }
   }
 
   async function resetPassword(user: User) {
@@ -105,6 +106,35 @@ export default function UsersClient() {
 
       {error && <p role="alert" className="rounded-[var(--radius-control)] border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-2 text-[12.5px] text-[var(--danger)]">{error}</p>}
       {message && <p role="status" className="rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-raised)] px-3 py-2 text-[12.5px] text-[var(--text-muted)]">{message}</p>}
+      {firstLogin && (
+        <Card className="border-[var(--accent-brass)]/40 p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="type-micro text-[var(--accent-brass-strong)]">First-login steps</p>
+              <h2 className="type-h3 mt-1">{firstLogin.username}</h2>
+            </div>
+            <button type="button" onClick={() => setFirstLogin(null)} className="min-h-8 rounded border border-[var(--border-hairline)] px-2 text-[10.5px] font-semibold">Dismiss</button>
+          </div>
+          <ol className="mt-3 list-decimal space-y-1 pl-5 text-[12.5px] text-[var(--text-muted)]">
+            <li>Send the username and temporary password to the user through your normal secure channel.</li>
+            <li>The user signs in at <span className="font-semibold text-foreground">/login</span> and chooses a new password.</li>
+            {firstLogin.role === "owner" && <li>The owner scans the authenticator QR code and saves the 10 recovery codes.</li>}
+            <li>The user lands on {firstLogin.role === "owner" ? "/dashboard" : "the home page"}.</li>
+          </ol>
+        </Card>
+      )}
+
+      <Card className="p-5">
+        <div className="flex items-center gap-2"><UserPlus className="size-4" /><h2 className="type-h3">Meta account holder</h2></div>
+        <p className="mt-1 text-[12px] text-[var(--text-muted)]">Only this owner can connect, reconnect, disconnect and grant Meta permissions. Changing it revokes the current connection.</p>
+        <label className="mt-3 block max-w-sm text-[10.5px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">Holder
+          <select value={data?.metaHolderUserId ?? ""} onChange={(event) => { if (event.target.value) void call(event.target.value, { action: "set-meta-holder" }, "PATCH"); }} className="mt-1 min-h-10 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-panel)] px-2 text-[12px] normal-case tracking-normal">
+            <option value="">Select an owner</option>
+            {(data?.users ?? []).filter((user) => user.role === "owner" && user.status === "active").map((user) => <option key={user._id} value={user._id}>{user.displayName} (@{user.username})</option>)}
+          </select>
+        </label>
+        <p className="mt-2 text-[11.5px] text-[var(--text-muted)]">Current: {data?.metaHolderName ?? "—"}</p>
+      </Card>
 
       <Card className="p-5">
         <div className="flex items-center gap-2"><UserPlus className="size-4" /><h2 className="type-h3">Create account</h2></div>

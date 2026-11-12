@@ -1,11 +1,14 @@
+import { after } from "next/server";
 import Navbar from "@/components/site/navbar";
 import OwnerDashboard from "@/components/meta/owner-dashboard";
 import { requirePageSession } from "@/lib/require-session";
+import { maybeBackgroundSync } from "@/lib/meta/background";
 
 export const dynamic = "force-dynamic";
 
 export default async function MetaAdsPage() {
   await requirePageSession("/meta-ads", ["owner"]);
+  after(() => maybeBackgroundSync());
   return (
     <>
       <Navbar />

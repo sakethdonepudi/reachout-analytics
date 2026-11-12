@@ -10,6 +10,6 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   const auth = await requireRole(req, ["owner", "client"]);
   if ("deny" in auth) return auth.deny;
-  const status = auth.session.role === "owner" ? await getMetaStatus(auth.session.sid) : null;
+  const status = auth.session.role === "owner" ? await getMetaStatus(auth.session.userId) : null;
   return Response.json({ ok: true, summary: publicClientSummary(status) }, { headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
 }

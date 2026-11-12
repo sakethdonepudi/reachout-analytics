@@ -6,6 +6,7 @@ import { requireCsrf } from "@/lib/csrf";
 import { CASES } from "@/lib/cases";
 import { PARTIES } from "@/lib/parties";
 import { countActiveOwners, createUser, deleteUser, disableTotp, getUser, listUsers, setTemporaryPassword, updateUser } from "@/lib/users";
+import { getMetaHolder } from "@/lib/meta/store";
 
 export const runtime = "nodejs";
 const headers = { "Cache-Control": "private, no-store", Vary: "Cookie" };
@@ -36,8 +37,11 @@ function fieldErrors(issues: { path: PropertyKey[]; message: string }[]): Record
 export async function GET(req: NextRequest) {
   const auth = await requireRecentAuth(req);
   if ("deny" in auth) return auth.deny;
+  const holder = await getMetaHolder();
   return Response.json({
     ok: true,
+    metaHolderUserId: holder?._id ?? null,
+    metaHolderName: holder?.displayName ?? null,
     users: await listUsers(),
     currentUserId: auth.session.userId,
     cases: CASES.map((item) => ({ slug: item.slug, title: item.title, state: item.stateName, party: item.party })),

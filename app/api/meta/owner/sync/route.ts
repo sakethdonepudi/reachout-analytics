@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   const limit = rateLimit(`meta-sync:${ip}`, 1, 60_000);
   if (!limit.ok) return rateLimitResponse(limit.retryAfter);
 
-  const result = await syncMeta({ trigger: "manual", sid: auth.session.sid });
+  const result = await syncMeta({ trigger: "manual" });
   const status = result.ok ? 200 : result.skipped === "locked" ? 409 : 503;
   return Response.json(result, { status, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
 }

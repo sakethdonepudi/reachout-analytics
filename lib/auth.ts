@@ -4,7 +4,6 @@ import { getMongo } from "@/lib/mongodb";
 import type { Role } from "@/lib/access";
 import type { ClientScope } from "@/lib/users";
 import { audit } from "@/lib/audit";
-import { cleanupSessionConnection } from "@/lib/meta/store";
 
 /* =====================================================================
    Sessions and role guards.
@@ -160,7 +159,6 @@ export async function getSessionByToken(token: string | undefined): Promise<Sess
     if (now > doc.exp.getTime() || (!graceActive && now - doc.lastSeen.getTime() > IDLE_MS)) {
       const idle = now <= doc.exp.getTime();
       await col.deleteOne({ _id: doc._id }).catch(() => {});
-      await cleanupSessionConnection(doc._id, idle ? "idle" : "expired").catch(() => {});
       if (idle) await audit({ action: "session_idle_timeout", role: doc.role, meta: { userId: doc.userId } }).catch(() => {});
       return null;
     }
@@ -222,7 +220,7 @@ export async function revokeAllSessions(subject: string) {
   if (!col) return;
   const rows = await col.find({ sub: normalise(subject) }, { projection: { _id: 1 } }).toArray();
   await col.deleteMany({ sub: normalise(subject) });
-  for (const row of rows) await cleanupSessionConnection(row._id, "logout").catch(() => {});
+
 }
 
 export async function revokeAllSessionsForUser(userId: string): Promise<void> {
@@ -230,7 +228,7 @@ export async function revokeAllSessionsForUser(userId: string): Promise<void> {
   if (!col) return;
   const rows = await col.find({ userId }, { projection: { _id: 1 } }).toArray();
   await col.deleteMany({ userId });
-  for (const row of rows) await cleanupSessionConnection(row._id, "logout").catch(() => {});
+
 }
 
 export async function listSessionsForUser(userId: string) {
@@ -243,7 +241,7 @@ export async function revokeSessionById(sessionId: string, userId: string): Prom
   const col = await sessions();
   if (!col) return false;
   const result = await col.deleteOne({ _id: sessionId, userId });
-  if (result.deletedCount) await cleanupSessionConnection(sessionId, "logout").catch(() => {});
+
   return result.deletedCount === 1;
 }
 

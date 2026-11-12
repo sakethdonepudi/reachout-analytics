@@ -1,11 +1,13 @@
 import Link from "next/link";
+import { after } from "next/server";
 import Navbar from "@/components/site/navbar";
 import OwnerDashboard from "@/components/meta/owner-dashboard";
 import { requirePageSession } from "@/lib/require-session";
-import { getConnectionBySid, getMetaDb } from "@/lib/meta/store";
+import { getMetaDb, getWorkspaceConnection } from "@/lib/meta/store";
 import { getSyncHealth } from "@/lib/meta/sync-health";
 import { listCases } from "@/lib/case-registry";
 import { listUsers } from "@/lib/users";
+import { maybeBackgroundSync } from "@/lib/meta/background";
 
 export const dynamic = "force-dynamic";
 
@@ -22,25 +24,25 @@ function relative(value: string | null | undefined): string {
 
 export default async function DashboardPage() {
   const session = await requirePageSession("/dashboard", ["owner"]);
+  after(() => maybeBackgroundSync());
   const db = await getMetaDb();
-  const connection = await getConnectionBySid(session.sid);
+  const connection = await getWorkspaceConnection();
   const [users, cases, health] = await Promise.all([
     listUsers(),
     listCases().catch(() => []),
-    db ? getSyncHealth(db, session.sid).catch(() => null) : null,
+    db ? getSyncHealth(db).catch(() => null) : null,
   ]);
-  const accountIds = connection ? connection.adAccounts.map((account) => account.id) : [];
   let liveCampaigns = 0;
   let pendingTags = 0;
   let allAccounts = 0;
   let ownAccounts = 0;
   if (db) {
-    if (accountIds.length) {
-      liveCampaigns = await db.collection("meta_campaigns").countDocuments({ accountId: { $in: accountIds }, effectiveStatus: "ACTIVE" }).catch(() => 0);
+    if (connection?.adAccounts.length) {
+      liveCampaigns = await db.collection("meta_campaigns").countDocuments({ accountId: { $in: connection.adAccounts.map((account) => account.id) }, effectiveStatus: "ACTIVE" }).catch(() => 0);
     }
     pendingTags = await db.collection("meta_campaign_tags").countDocuments({ confirmed: false }).catch(() => 0);
     allAccounts = await db.collection("meta_accounts").countDocuments({}).catch(() => 0);
-    ownAccounts = accountIds.length;
+    ownAccounts = connection?.adAccounts.length ?? 0;
   }
   const activeClients = users.filter((user) => user.role === "client" && user.status === "active").length;
   const activeOwners = users.filter((user) => user.role === "owner" && user.status === "active").length;
