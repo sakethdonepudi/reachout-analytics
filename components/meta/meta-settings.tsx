@@ -6,6 +6,7 @@ import { ArrowLeft, Check, Loader2, PlugZap, RefreshCw, ShieldCheck, Unplug } fr
 import Navbar from "@/components/site/navbar";
 import { useReauth } from "@/components/auth/reauth-provider";
 import { MetaTagging } from "@/components/meta/meta-tagging";
+import { SyncHealth } from "@/components/meta/sync-health";
 import { cn } from "@/lib/utils";
 
 type AdAccount = { id: string; accountId: string; name: string; status: number | null; currency: string | null };
@@ -233,6 +234,8 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
             )}
           </section>
 
+          <SyncHealth />
+
           {status.connected && !status.reconnectRequired && (
             <section className="mt-6 rounded-3xl border border-border bg-card p-6">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -262,7 +265,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
             </section>
           )}
 
-          <section className="mt-6 rounded-3xl border border-border bg-card p-6">
+          <section id="tagging" className="mt-6 scroll-mt-24 rounded-3xl border border-border bg-card p-6">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent-brass-strong)]">Tagging</p>
             <h2 className="mt-2 font-display text-xl font-semibold">Campaign tags</h2>
             <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Naming rules suggest a state and party. Confirm the suggestions or edit them inline. Clients only see confirmed tags.</p>

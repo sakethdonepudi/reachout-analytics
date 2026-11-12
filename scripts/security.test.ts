@@ -6,7 +6,7 @@ import { canAccess, roleHome, rolesForPath, safeNextPath } from "@/lib/access";
 import { csrfCheck } from "@/lib/csrf";
 import { verifyPkce, createPkce } from "@/lib/oauth-pkce";
 import { signPayload, verifyPayload } from "@/lib/signed-cookie";
-import { redact, maskEmail } from "@/lib/redact";
+import { redact, redactText, maskEmail } from "@/lib/redact";
 import { publicClientSummary } from "@/lib/meta/public";
 import { META_SCOPES, metaConfigured, metaRedirect, setMetaStateCookie } from "@/lib/meta/oauth";
 import { encryptToken, tryDecryptToken } from "@/lib/meta/crypto";
@@ -115,6 +115,9 @@ ok("authorization removed", !redacted.includes("Bearer abc"));
 ok("password removed", !redacted.includes("hunter2"));
 ok("email masked", redacted.includes(maskEmail("person@example.com")) && !redacted.includes("person@example.com"));
 ok("safe value kept", redacted.includes("visible"));
+const errorText = redactText("Meta failed for person@example.com token=abc123 Authorization: Bearer xyz");
+ok("embedded email masked in error text", errorText.includes(maskEmail("person@example.com")) && !errorText.includes("person@example.com"));
+ok("embedded token masked in error text", !errorText.includes("abc123") && !errorText.includes("Bearer xyz"));
 
 console.log("\n8. Client-safe Meta summary");
 const summary = publicClientSummary({

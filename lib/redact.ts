@@ -27,6 +27,19 @@ export function redact(value: unknown, depth = 0): unknown {
   return "[unserialisable]";
 }
 
+const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+const SECRET_PAIR_PATTERN = /\b(access_token|refresh_token|token|secret|password|api[_-]?key|authorization)\s*[:=]\s*[^\s,;]+/gi;
+const BEARER_PATTERN = /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi;
+
+/** Redact free-form error text: embedded emails, key/value secrets and bearers. */
+export function redactText(value: unknown): string {
+  let text = value == null ? "" : String(value);
+  text = text.replace(EMAIL_PATTERN, (email) => maskEmail(email));
+  text = text.replace(BEARER_PATTERN, "Bearer [redacted]");
+  text = text.replace(SECRET_PAIR_PATTERN, (_match, key) => `${key}=[redacted]`);
+  return text.length > 500 ? `${text.slice(0, 500)}…` : text;
+}
+
 export function safeLog(label: string, value: unknown) {
   // Server logs only. Never pass raw request bodies or headers here.
   console.error(label, JSON.stringify(redact(value)));

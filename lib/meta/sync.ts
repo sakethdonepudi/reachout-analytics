@@ -4,6 +4,7 @@ import { connectionExpiresAt, isConnectionExpired, minorToPaise, toPaise } from 
 import { expireConnection, getConnectionDoc, getMetaDb, markSynced } from "@/lib/meta/store";
 import { applyTagRules } from "@/lib/meta/tags";
 import { syncNotifications } from "@/lib/meta/notifications";
+import { finalizeSyncRun, type SyncTrigger } from "@/lib/meta/sync-health";
 
 type MetaRow = Record<string, unknown>;
 type UpsertDoc = { _id: string } & Record<string, unknown>;
@@ -280,7 +281,8 @@ async function syncRanges(db: Db, accountId: string): Promise<number> {
 }
 
 /** Sync selected ad accounts. First sync backfills 90 days; later runs use 7. */
-export async function syncMeta(options: { backfill?: boolean } = {}): Promise<SyncResult> {
+export async function syncMeta(options: { backfill?: boolean; trigger?: SyncTrigger } = {}): Promise<SyncResult> {
+  const trigger: SyncTrigger = options.trigger ?? "manual";
   const db = await getMetaDb();
   if (!db) return { ok: false, skipped: "database" };
   const doc = await getConnectionDoc();
@@ -309,7 +311,7 @@ export async function syncMeta(options: { backfill?: boolean } = {}): Promise<Sy
 
   try {
     await db.collection<{ _id: string } & Record<string, unknown>>("meta_sync_runs").insertOne({
-      _id: runId, startedAt, status: "running", backfill, counts: {}, error: null,
+      _id: runId, startedAt, status: "running", trigger, backfill, days, counts: {}, error: null,
     });
 
     for (const account of accounts) {
@@ -322,25 +324,40 @@ export async function syncMeta(options: { backfill?: boolean } = {}): Promise<Sy
       counts.meta_insights_range = (counts.meta_insights_range ?? 0) + await syncRanges(db, account.id);
     }
 
-    counts.meta_campaign_tags = await applyTagRules(db).catch(() => 0);
-    counts.meta_notifications = await syncNotifications(db).catch(() => 0);
-    await db.collection<{ _id: string } & Record<string, unknown>>("meta_sync_runs").updateOne(
-      { _id: runId },
-      { $set: { finishedAt: new Date(), status: "success", counts } },
-    );
+    let partial = false;
+    try {
+      counts.meta_campaign_tags = await applyTagRules(db);
+    } catch {
+      partial = true;
+      counts.meta_campaign_tags = 0;
+    }
+    try {
+      counts.meta_notifications = await syncNotifications(db);
+    } catch {
+      partial = true;
+      counts.meta_notifications = 0;
+    }
+    const finishedAt = new Date();
+    await finalizeSyncRun(db, runId, {
+      trigger, status: "success", outcome: partial ? "partial" : "ok", error: null,
+      counts, days, backfill, startedAt, finishedAt,
+    });
     await markSynced(untilDate.toISOString());
     return { ok: true, runId, counts };
   } catch (error) {
     if (error instanceof MetaConnectionExpiredError) {
-      await db.collection<{ _id: string } & Record<string, unknown>>("meta_sync_runs").updateOne({ _id: runId }, { $set: { finishedAt: new Date(), status: "expired", error: "connection-expired" } });
+      const finishedAt = new Date();
+      await finalizeSyncRun(db, runId, { trigger, status: "expired", outcome: "failed", error: "connection-expired", counts, days, backfill, startedAt, finishedAt });
       return { ok: false, skipped: "expired", runId };
     }
     if (error instanceof MetaReconnectError) {
-      await db.collection<{ _id: string } & Record<string, unknown>>("meta_sync_runs").updateOne({ _id: runId }, { $set: { finishedAt: new Date(), status: "reconnect", error: "reconnect-required" } });
+      const finishedAt = new Date();
+      await finalizeSyncRun(db, runId, { trigger, status: "reconnect", outcome: "failed", error: "reconnect-required", counts, days, backfill, startedAt, finishedAt });
       return { ok: false, skipped: "reconnect", runId };
     }
     const message = error instanceof Error ? error.message : "Sync failed";
-    await db.collection<{ _id: string } & Record<string, unknown>>("meta_sync_runs").updateOne({ _id: runId }, { $set: { finishedAt: new Date(), status: "failed", error: message } });
+    const finishedAt = new Date();
+    await finalizeSyncRun(db, runId, { trigger, status: "failed", outcome: "failed", error: message, counts, days, backfill, startedAt, finishedAt });
     return { ok: false, error: message, runId };
   } finally {
     await releaseLock(db);

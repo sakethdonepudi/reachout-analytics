@@ -28,6 +28,6 @@ export async function GET(req: NextRequest) {
     return Response.json({ ok: true, skipped: status.expired ? "expired" : "not-connected" }, { headers: { "Cache-Control": "no-store" } });
   }
 
-  const result = await syncMeta();
+  const result = await syncMeta({ trigger: "cron" });
   return Response.json(result, { status: result.ok ? 200 : 503, headers: { "Cache-Control": "no-store" } });
 }
