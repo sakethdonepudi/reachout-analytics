@@ -83,6 +83,9 @@ try {
     return /(localStorage|sessionStorage|indexedDB)[^\n]{0,160}(token|secret|password|totp|spend|payment|amount|budget)/i.test(text);
   });
   report(riskyStorage.length === 0, "no sensitive browser storage", riskyStorage.slice(0, 5).join(", "));
+  const legacy = /(ADMIN_PASSWORD|CLIENT_PASSWORD|TURNSTILE_ENABLED|roleForPassword|ownerPasswordMatches)/;
+  const legacyHits = sourceFiles.filter((file) => legacy.test(readFileSync(file, "utf8")));
+  report(legacyHits.length === 0, "no legacy env references", legacyHits.slice(0, 5).join(", "));
   const security = readFileSync("lib/security.ts", "utf8");
   const headerChecks = [
     ["HSTS", security.includes("max-age=63072000") && security.includes("includeSubDomains")],
@@ -135,6 +138,7 @@ try {
     { name: "10866/8866", test: (t) => /10866[\s\S]{0,200}8866|8866[\s\S]{0,200}10866/.test(t) },
     { name: "357118741", test: (t) => t.includes("357118741") },
     { name: "Axis My India", test: (t) => t.includes("Axis My India") },
+    { name: "common-password list", test: (t) => t.includes("reachout-common-passwords-10k") },
     { name: "amount_spent", test: (t) => t.includes("amount_spent") },
     { name: "spend_cap", test: (t) => t.includes("spend_cap") },
     { name: "funding_source", test: (t) => t.includes("funding_source") },

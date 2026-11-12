@@ -1,6 +1,7 @@
 /* Account, TOTP and scope tests. Run: npx tsx --conditions react-server scripts/accounts.test.ts */
 
-import { checkPassword, passwordStrength } from "@/lib/password-policy";
+import { checkPassword } from "@/lib/password-policy.server";
+import { passwordStrength } from "@/lib/password-policy";
 import { generateTotpSecret, totpCode, totpStep, verifyTotp, normaliseRecoveryCode } from "@/lib/totp";
 import { safeNextPath } from "@/lib/access";
 import { scopeAllowsCase } from "@/lib/users";
