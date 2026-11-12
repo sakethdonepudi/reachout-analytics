@@ -107,7 +107,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
           </p>
 
           {idle && step === "password" && (
-            <p role="status" className="mt-4 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-raised)] px-3 py-2 text-[12.5px] text-[var(--text-muted)]">Signed out after 3 minutes of inactivity.</p>
+            <p role="status" className="mt-4 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-raised)] px-3 py-2 text-[12.5px] text-[var(--text-muted)]">Signed out after 10 minutes of inactivity.</p>
           )}
 
           {error && (

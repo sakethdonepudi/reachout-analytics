@@ -13,20 +13,20 @@ export function buildCsp(nonce: string, options: { turnstile?: boolean } = {}): 
     ...(turnstile ? ["https://challenges.cloudflare.com"] : []),
     ...(dev ? ["'unsafe-eval'"] : []),
   ].join(" ");
-  const frames = ["https://www.facebook.com", ...(turnstile ? ["https://challenges.cloudflare.com"] : [])].join(" ");
+  const frames = (turnstile ? ["https://challenges.cloudflare.com"] : []).join(" ");
   return [
     "default-src 'self'",
     `script-src ${script}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https://*.fbcdn.net https://*.cdninstagram.com https://www.facebook.com",
+    "img-src 'self' data:",
     "font-src 'self' data:",
     `connect-src 'self'${turnstile ? " https://challenges.cloudflare.com" : ""}`,
-    "media-src 'self' https://*.fbcdn.net",
+    "media-src 'self'",
     `frame-src ${frames}`,
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'none'",
-    "form-action 'self' https://www.facebook.com",
+    "form-action 'self'",
     "object-src 'none'",
     "upgrade-insecure-requests",
   ].join("; ");

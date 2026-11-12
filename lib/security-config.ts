@@ -2,17 +2,7 @@ const REQUIRED = [
   "ADMIN_SESSION_SECRET",
   "MONGODB_URI",
   "TOKEN_ENCRYPTION_KEY",
-  "CRON_SECRET",
 ] as const;
-
-/** Meta is optional: without it the site still starts and Meta Ads is disabled. */
-export function metaConfigWarning(): string | null {
-  const missing: string[] = [];
-  if (!process.env.META_APP_ID) missing.push("META_APP_ID");
-  if (!process.env.META_APP_SECRET) missing.push("META_APP_SECRET");
-  if (!missing.length) return null;
-  return `Meta Ads is disabled: ${missing.join(" and ")} not configured.`;
-}
 
 export function turnstileConfigProblems(): string[] {
   const required = process.env.NODE_ENV === "production" || Boolean(process.env.TURNSTILE_SECRET_KEY || process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);

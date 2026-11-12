@@ -4,8 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useRouter } from "next/navigation";
 import { Dialog } from "@/components/ui/dialog";
 
-const IDLE_MS = 3 * 60 * 1000;
-const WARN_MS = 30 * 1000;
+const IDLE_MS = 10 * 60 * 1000;
+const WARN_MS = 60 * 1000;
 const HEARTBEAT_MS = 60 * 1000;
 const THROTTLE_MS = 5 * 1000;
 
@@ -17,7 +17,7 @@ export function useIdle() { return useContext(IdleContext); }
 export default function IdleProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [warn, setWarn] = useState(false);
-  const [remaining, setRemaining] = useState(30);
+  const [remaining, setRemaining] = useState(60);
   const [remainingMs, setRemainingMs] = useState(IDLE_MS);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const lastActivity = useRef(Date.now());
@@ -109,7 +109,7 @@ export default function IdleProvider({ children }: { children: ReactNode }) {
       <Dialog
       open={warn}
       onClose={() => touch()}
-      title="You'll be signed out in 30s"
+      title="You'll be signed out in 60s"
       description="No activity was detected. Continue working to stay signed in."
     >
       <div className="space-y-4">

@@ -6,7 +6,6 @@ import { TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_FULL, TN_SEAT_GROUP
 import type { TnExitPollView, TnOpinionPollView, TnSocial } from "@/lib/tamil-nadu/view-data";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
-import { LiveCampaigns } from "@/components/meta/live-campaigns";
 import { cn } from "@/lib/utils";
 
 export type TnTab = "change" | "share" | "seats";
@@ -76,48 +75,27 @@ const segButton = (active: boolean) => cn(
 );
 
 function SocialMediaPanel({ compact, social }: { compact: boolean; social: TnSocial }) {
+  if (!social.available) return <p className="mt-2 rounded-lg border border-border/70 px-2 py-2 text-[9px] text-muted-foreground">Social data not uploaded yet.</p>;
+  const kpis = [
+    ["Reach", social.totals.reach], ["Impressions", social.totals.impressions], [social.viewsLabel ?? "Views", social.totals.views],
+    ["Clicks", social.totals.clicks], ["Engagement", social.totals.engagements], ["Campaigns", social.totals.campaigns], ["Accounts", social.totals.accounts],
+  ] as const;
   return (
     <div className="mt-2">
-      <div className="overflow-x-auto rounded-lg border border-border/70">
-        <table className={cn("w-full table-fixed border-collapse", compact ? "min-w-[270px] text-[8px]" : "min-w-[300px] text-[8.5px]")}>
-          <caption className="sr-only">Tamil Nadu statewide Meta reach</caption>
-          <colgroup><col className="w-[20%]" /><col className="w-[20%]" /><col className="w-[20%]" /><col className="w-[22%]" /><col className="w-[18%]" /></colgroup>
-          <thead>
-            <tr className="border-b border-border/70 text-right text-[7px] uppercase tracking-wide text-muted-foreground">
-              <th scope="col" className="px-1 py-1.5 text-left font-semibold">Platform</th>
-              <th scope="col" className="px-1 py-1.5 font-semibold">Organic reach</th>
-              <th scope="col" className="px-1 py-1.5 font-semibold">Paid reach</th>
-              <th scope="col" className="px-1 py-1.5 font-semibold">Total reach</th>
-              <th scope="col" className="px-1 py-1.5 font-semibold">Followers</th>
-            </tr>
-          </thead>
-          <tbody>
-            {social.rows.map((row) => {
-              const total = row.platform === "Total";
-              return (
-                <tr key={row.platform} className={cn("border-t border-border/50", total && "bg-muted/15 font-semibold")}>
-                  <th scope="row" className={cn("px-1 text-left font-medium", compact ? "py-1" : "py-1.5")}>{row.platform}</th>
-                  <td className={cn("px-1 text-right tabular-nums", compact ? "py-1" : "py-1.5")}>{fmtNumber(row.organic)}</td>
-                  <td className={cn("px-1 text-right tabular-nums", compact ? "py-1" : "py-1.5")}>{fmtNumber(row.paid)}</td>
-                  <td className={cn("px-1 text-right tabular-nums", compact ? "py-1" : "py-1.5")}>{fmtNumber(row.total)}</td>
-                  <td className={cn("px-1 text-right tabular-nums", compact ? "py-1" : "py-1.5")}>{fmtNumber(row.followers)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
+      <div className="h-1 rounded" style={{ background: social.band }} />
+      <p className="mt-2 text-[9px] font-semibold">{social.label} · {social.range}</p>
+      <p className="text-[8px] text-muted-foreground">{social.note} · Data as of {social.asOf}</p>
+      <div className={cn("mt-2 grid gap-1", compact ? "grid-cols-3" : "grid-cols-4")}>
+        {kpis.map(([label, value]) => <div key={label} className="rounded border border-border/70 px-1.5 py-1"><p className="text-[7px] uppercase tracking-wide text-muted-foreground">{label}</p><p className="text-[10px] font-semibold tabular-nums">{fmtNumber(value)}</p></div>)}
+        {social.totals.spend != null && <div className="rounded border border-border/70 px-1.5 py-1"><p className="text-[7px] uppercase tracking-wide text-muted-foreground">Spend</p><p className="text-[10px] font-semibold tabular-nums">₹{fmtNumber(social.totals.spend)}</p></div>}
+      </div>
+      <div className="mt-2 overflow-x-auto rounded-lg border border-border/70">
+        <table className={cn("w-full border-collapse", compact ? "min-w-[330px] text-[8px]" : "min-w-[380px] text-[8.5px]")}>
+          <thead><tr className="border-b border-border/70 text-[7px] uppercase tracking-wide text-muted-foreground"><th className="px-1 py-1.5 text-left">Account</th><th className="px-1 py-1.5 text-right">Campaigns</th><th className="px-1 py-1.5 text-right">Reach</th><th className="px-1 py-1.5 text-right">Impr.</th><th className="px-1 py-1.5 text-right">{social.viewsLabel ?? "Views"}</th><th className="px-1 py-1.5 text-right">Clicks</th><th className="px-1 py-1.5 text-right">Engagement</th></tr></thead>
+          <tbody>{social.accounts.map((account) => { const sums = account.campaigns.reduce((acc, campaign) => ({ reach: acc.reach + campaign.reach, impressions: acc.impressions + campaign.impressions, views: acc.views + campaign.views, clicks: acc.clicks + campaign.clicks, engagements: acc.engagements + campaign.engagements }), { reach: 0, impressions: 0, views: 0, clicks: 0, engagements: 0 }); return <tr key={account.name} className="border-t border-border/50"><th className="px-1 py-1 text-left font-medium">{account.name}</th><td className="px-1 py-1 text-right tabular-nums">{account.campaigns.length}</td><td className="px-1 py-1 text-right tabular-nums">{fmtNumber(sums.reach)}</td><td className="px-1 py-1 text-right tabular-nums">{fmtNumber(sums.impressions)}</td><td className="px-1 py-1 text-right tabular-nums">{fmtNumber(sums.views)}</td><td className="px-1 py-1 text-right tabular-nums">{fmtNumber(sums.clicks)}</td><td className="px-1 py-1 text-right tabular-nums">{fmtNumber(sums.engagements)}</td></tr>; })}</tbody>
         </table>
       </div>
-
-      <div className="mt-2.5">
-        <div className="flex items-center justify-between text-[8.5px] font-semibold text-muted-foreground">
-          <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm bg-[#2fbf4a]" />Organic {social.organicPct}%</span>
-          <span className="inline-flex items-center gap-1"><span className="size-1.5 rounded-sm bg-saffron" />Paid {social.paidPct}%</span>
-        </div>
-        <div className="mt-1 flex h-2.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={`Meta reach split: ${social.organicPct}% organic and ${social.paidPct}% paid`}>
-          <span className="bg-[#2fbf4a]" style={{ width: `${social.organicPct}%` }} />
-          <span className="bg-saffron" style={{ width: `${social.paidPct}%` }} />
-        </div>
-      </div>
+      <p className="mt-1 text-[7.5px] text-muted-foreground">Reach is added up per campaign, so a person reached by two campaigns counts twice.</p>
     </div>
   );
 }
@@ -302,7 +280,6 @@ export default function TamilNaduRail({
       {view === "social" ? (
         <>
           <SocialMediaPanel compact={compact} social={social} />
-          <LiveCampaigns slug="tamil-nadu" owner={owner} compact />
         </>
       ) : (
         <>

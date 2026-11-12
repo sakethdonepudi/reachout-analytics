@@ -857,3 +857,36 @@ html.theme-transition *::after {
   .split-grip-rail,
   .split-grip-knob { transition: none !important; }
 }
+
+/* Plain analytical data views: flat surfaces, neutral borders, no decoration. */
+.analysis-shell {
+  --a-canvas: var(--surface-canvas);
+  --a-panel: var(--surface-panel);
+  --a-panel-2: var(--surface-raised);
+  --a-ink: var(--text-primary);
+  --a-muted: var(--text-muted);
+  --a-border: var(--border-hairline);
+  --a-shadow: none;
+  background: var(--surface-canvas);
+  box-shadow: none;
+}
+.dark .analysis-shell {
+  --a-canvas: #0c0f13;
+  --a-panel: #11151a;
+  --a-panel-2: #161b22;
+  --a-ink: #f1f3f5;
+  --a-muted: #a7b0bb;
+  --a-border: #2a313a;
+}
+.analysis-panel,
+.analysis-shell [class*="rounded-2xl"],
+section[aria-label="Tamil Nadu vote share"] {
+  background-image: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.analysis-panel { background: var(--a-panel); border: 1px solid var(--a-border); }
+section[aria-label="Tamil Nadu vote share"] { background: var(--surface-panel); border: 1px solid var(--border-hairline); }
+.analysis-shell table { font-variant-numeric: tabular-nums; }
+.analysis-shell thead th { position: sticky; top: 0; background: var(--a-panel); z-index: 1; }

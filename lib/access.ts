@@ -13,8 +13,7 @@ const RULES: Rule[] = [
   { prefixes: ["/case-studies", "/api/public/case-studies"], roles: ["owner", "client"] },
   { prefixes: ["/dashboard", "/account/users", "/api/account/users"], roles: ["owner"] },
   { prefixes: ["/account", "/api/account", "/api/auth/heartbeat"], roles: ["owner", "client"] },
-  { prefixes: ["/campaigns", "/api/meta/client"], roles: ["owner", "client"] },
-  { prefixes: ["/meta-ads", "/api/meta/owner", "/api/admin", "/api/data"], roles: ["owner"] },
+  { prefixes: ["/api/admin", "/api/data"], roles: ["owner"] },
 ];
 
 /** Returns the roles allowed at a path, or null for public routes. */
@@ -26,7 +25,6 @@ export function rolesForPath(pathname: string): Role[] | null {
   // their short-lived signed pending cookie themselves.
   if (path === "/account/password" || path === "/account/security/enroll") return null;
   if (path === "/api/account/password" || path === "/api/account/totp") return null;
-  if (path === "/api/meta/owner/connect/callback") return null;
   for (const rule of RULES) {
     if (rule.prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) return rule.roles;
   }

@@ -9,7 +9,7 @@ import { audit } from "@/lib/audit";
    Sessions and role guards.
 
    Sign-in is username + password, then TOTP for owner accounts. The client
-   timer is only UX; this module is the authoritative 3-minute idle limit.
+   timer is only UX; this module is the authoritative 10-minute idle limit.
    ===================================================================== */
 
 export type Session = {
@@ -26,7 +26,7 @@ export type Session = {
 };
 
 export const ABSOLUTE_MS = 12 * 60 * 60 * 1000;
-export const IDLE_MS = 3 * 60 * 1000;
+export const IDLE_MS = 10 * 60 * 1000;
 export const RECENT_MS = 5 * 60 * 1000;
 export const HEARTBEAT_MS = 60 * 1000;
 export const LEGACY_COOKIE = "ro_session";

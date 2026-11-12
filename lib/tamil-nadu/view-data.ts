@@ -2,8 +2,7 @@ import type { TnSeatGroup, TnShares } from "./model";
 
 /** Serializable data passed from the protected server page to the client dashboard. */
 
-export type TnSocialRow = { platform: string; organic: number; paid: number; total: number; followers: number };
-export type TnSocial = { window: string; rows: TnSocialRow[]; organicPct: number; paidPct: number };
+export type TnSocial = import("@/lib/ads-desk/client-dto").AdsSocialView;
 export type TnForecaster = { rank: number; forecaster: string; projectedSeats: number | null; differenceFromActual: number | null; winnerCall: string };
 
 export type TnExitPollView = {

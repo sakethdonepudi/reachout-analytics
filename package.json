@@ -10,16 +10,14 @@
     "test": "tsx scripts/security.test.ts",
     "test:security": "tsx --conditions react-server scripts/security.test.ts",
     "check:security": "node scripts/security-check.mjs",
-    "test:meta": "tsx scripts/meta-sync.test.ts",
     "test:tamil-nadu-consistency": "tsx --conditions react-server scripts/tamil-nadu-consistency.test.ts",
-    "test:meta-client": "tsx --conditions react-server scripts/meta-client-dto.test.ts",
     "test:accounts": "tsx --conditions react-server scripts/accounts.test.ts",
     "test:session": "tsx --conditions react-server scripts/session.test.ts",
-    "test:meta-callback": "tsx --conditions react-server scripts/meta-callback.test.ts",
-    "test:meta-workspace": "tsx --conditions react-server scripts/meta-workspace.test.ts"
+    "test:ads-desk": "tsx --conditions react-server scripts/ads-desk.test.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",
+    "acorn": "^8.19.0",
     "clsx": "^2.1.1",
     "d3-geo": "^3.1.1",
     "echarts": "^6.1.0",

@@ -14,7 +14,7 @@ type User = {
   clientScope: { caseStudies: string[]; states: string[]; parties: string[] };
 };
 type Meta = {
-  users: User[]; currentUserId: string; metaHolderUserId: string | null; metaHolderName: string | null;
+  users: User[]; currentUserId: string;
   cases: { slug: string; title: string; state: string; party: string }[];
   parties: string[]; states: string[];
 };
@@ -123,18 +123,6 @@ export default function UsersClient() {
           </ol>
         </Card>
       )}
-
-      <Card className="p-5">
-        <div className="flex items-center gap-2"><UserPlus className="size-4" /><h2 className="type-h3">Meta account holder</h2></div>
-        <p className="mt-1 text-[12px] text-[var(--text-muted)]">Only this owner can connect, reconnect, disconnect and grant Meta permissions. Changing it revokes the current connection.</p>
-        <label className="mt-3 block max-w-sm text-[10.5px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">Holder
-          <select value={data?.metaHolderUserId ?? ""} onChange={(event) => { if (event.target.value) void call(event.target.value, { action: "set-meta-holder" }, "PATCH"); }} className="mt-1 min-h-10 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-panel)] px-2 text-[12px] normal-case tracking-normal">
-            <option value="">Select an owner</option>
-            {(data?.users ?? []).filter((user) => user.role === "owner" && user.status === "active").map((user) => <option key={user._id} value={user._id}>{user.displayName} (@{user.username})</option>)}
-          </select>
-        </label>
-        <p className="mt-2 text-[11.5px] text-[var(--text-muted)]">Current: {data?.metaHolderName ?? "—"}</p>
-      </Card>
 
       <Card className="p-5">
         <div className="flex items-center gap-2"><UserPlus className="size-4" /><h2 className="type-h3">Create account</h2></div>

@@ -10,7 +10,6 @@ import type { TnEciActualView, TnExitPollView, TnForecaster, TnSocial } from "@/
 import type { OpinionPollView, TnTab, TnView } from "@/components/case-studies/tamil-nadu/tamil-nadu-rail";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
-import { LiveCampaigns } from "@/components/meta/live-campaigns";
 import AnalysisShell from "@/components/case-studies/shared/analysis-shell";
 import { cn } from "@/lib/utils";
 
@@ -625,7 +624,7 @@ export default function TamilNaduAnalysis({
       contentClassName="space-y-5"
     >
       {view === "social" ? (
-<div className="space-y-3"><SocialOverview social={social} /><section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="Live campaigns"><LiveCampaigns slug="tamil-nadu" owner={owner} /></section></div>
+<div className="space-y-3"><SocialOverview social={social} /></div>
       ) : (
         <>
           {/* ------------------------- polls overview ------------------------- */}
@@ -1094,68 +1093,34 @@ function SeriesLegend({ items }: { items: { label: string; opacity: number }[] }
  *  Social media view, kept as a readable table plus direct reach bars.
  * ------------------------------------------------------------------ */
 function SocialOverview({ social }: { social: TnSocial }) {
-  const rows = social.rows.filter((row) => row.platform !== "Total");
-  const total = social.rows.find((row) => row.platform === "Total");
-  const max = Math.max(1, ...rows.map((row) => row.total));
+  if (!social.available) return <section className="analysis-panel rounded-2xl p-4 sm:p-6"><p className="type-small text-[var(--a-muted)]">Social data not uploaded yet.</p></section>;
+  const kpis = [
+    ["Reach", social.totals.reach], ["Impressions", social.totals.impressions], [social.viewsLabel ?? "Views", social.totals.views],
+    ["Clicks", social.totals.clicks], ["Post engagement", social.totals.engagements], ["Campaigns", social.totals.campaigns], ["Accounts", social.totals.accounts],
+  ] as const;
   return (
     <section className="analysis-panel rounded-2xl p-4 sm:p-6" aria-label="Social media reach">
-      <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-brass)]">Social media</p>
-      <h3 className="mt-0.5 font-display text-[19px] font-semibold leading-tight text-[var(--a-ink)]">Tamil Nadu Meta reach</h3>
-      <p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">{social.window}</p>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)]">
-        <div className="overflow-x-auto rounded-xl border border-[var(--a-border)]">
-          <table className="w-full min-w-[440px] border-collapse text-[10.5px]">
-            <caption className="sr-only">Tamil Nadu statewide Meta reach</caption>
-            <thead>
-              <tr className="border-b border-[var(--a-border)] text-left text-[8.5px] uppercase tracking-wide text-[var(--a-muted)]">
-                <th className="px-2 py-2">Platform</th>
-                <th className="px-2 py-2 text-right">Organic reach</th>
-                <th className="px-2 py-2 text-right">Paid reach</th>
-                <th className="px-2 py-2 text-right">Total reach</th>
-                <th className="px-2 py-2 text-right">Followers</th>
-              </tr>
-            </thead>
-            <tbody>
-              {social.rows.map((row) => (
-                <tr key={row.platform} className={cn("border-t border-[var(--a-border)]/70", row.platform === "Total" && "bg-[var(--a-panel-2)] font-semibold")}>
-                  <th scope="row" className="px-2 py-2 text-left font-medium">{row.platform}</th>
-                  <td className="px-2 py-2 text-right tabular-nums">{row.organic.toLocaleString("en-US")}</td>
-                  <td className="px-2 py-2 text-right tabular-nums">{row.paid.toLocaleString("en-US")}</td>
-                  <td className="px-2 py-2 text-right tabular-nums">{row.total.toLocaleString("en-US")}</td>
-                  <td className="px-2 py-2 text-right tabular-nums">{row.followers.toLocaleString("en-US")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="rounded-xl border border-[var(--a-border)] bg-[var(--a-panel-2)] p-3">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--a-muted)]">Reach by platform</p>
-          <div className="mt-3 space-y-3">
-            {rows.map((row) => (
-              <div key={row.platform}>
-                <div className="flex items-baseline justify-between gap-2 text-[10px]">
-                  <span className="font-semibold text-[var(--a-ink)]">{row.platform}</span>
-                  <span className="tabular-nums text-[var(--a-muted)]">{row.total.toLocaleString("en-US")}</span>
-                </div>
-                <div className="mt-1 flex h-2.5 overflow-hidden rounded-full bg-[var(--a-border)]/40">
-                  <span className="bg-[#2fbf4a]" style={{ width: `${(row.organic / max) * 100}%` }} />
-                  <span className="bg-saffron" style={{ width: `${(row.paid / max) * 100}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 flex items-center justify-between text-[10px] font-semibold">
-            <span className="inline-flex items-center gap-1 text-[var(--a-muted)]"><span className="size-1.5 rounded-sm bg-[#2fbf4a]" />Organic {social.organicPct}%</span>
-            <span className="inline-flex items-center gap-1 text-[var(--a-muted)]"><span className="size-1.5 rounded-sm bg-saffron" />Paid {social.paidPct}%</span>
-          </div>
-          <div className="mt-1 flex h-3 overflow-hidden rounded-full bg-[var(--a-border)]/40" role="img" aria-label={`Meta reach split: ${social.organicPct}% organic and ${social.paidPct}% paid`}>
-            <span className="bg-[#2fbf4a]" style={{ width: `${social.organicPct}%` }} />
-            <span className="bg-saffron" style={{ width: `${social.paidPct}%` }} />
-          </div>
-          {total && <p className="mt-3 text-[10px] text-[var(--a-muted)]">Total reach <b className="tabular-nums text-[var(--a-ink)]">{total.total.toLocaleString("en-US")}</b> · {total.followers.toLocaleString("en-US")} followers</p>}
-        </div>
+      <div className="h-1 rounded" style={{ background: social.band }} />
+      <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-muted)]">Social media</p>
+      <h3 className="mt-0.5 font-display text-[19px] font-semibold text-[var(--a-ink)]">{social.label}</h3>
+      <p className="mt-1 text-[10.5px] text-[var(--a-muted)]">{social.range} · {social.note} · Data as of {social.asOf}</p>
+      <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        {kpis.map(([label, value]) => <div key={label} className="rounded border border-[var(--a-border)] px-3 py-2"><p className="text-[9px] uppercase tracking-[0.1em] text-[var(--a-muted)]">{label}</p><p className="mt-1 text-[15px] font-semibold tabular-nums">{value.toLocaleString("en-IN")}</p></div>)}
+        {social.totals.spend != null && <div className="rounded border border-[var(--a-border)] px-3 py-2"><p className="text-[9px] uppercase tracking-[0.1em] text-[var(--a-muted)]">Spend</p><p className="mt-1 text-[15px] font-semibold tabular-nums">₹{social.totals.spend.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</p></div>}
+      </div>
+      <p className="mt-2 text-[10.5px] text-[var(--a-muted)]">Reach is added up per campaign, so a person reached by two campaigns counts twice.</p>
+      <div className="mt-4 space-y-2">
+        {social.accounts.map((account) => (
+          <details key={account.name} className="rounded border border-[var(--a-border)]">
+            <summary className="flex cursor-pointer flex-wrap items-center gap-3 px-3 py-2 text-[12px] font-semibold">{account.name}<span className="text-[10px] font-normal text-[var(--a-muted)]">{account.campaigns.length} campaigns</span></summary>
+            <div className="overflow-x-auto border-t border-[var(--a-border)]">
+              <table className="w-full min-w-[720px] border-collapse text-left text-[10.5px]">
+                <thead><tr className="text-[8.5px] uppercase tracking-wide text-[var(--a-muted)]">{["Campaign", "Delivery", "Start", "End", "Reach", "Impressions", "Views", "Clicks", "Engagement", "Results"].map((label) => <th key={label} className="px-2 py-1.5">{label}</th>)}{social.totals.spend != null && <><th className="px-2 py-1.5 text-right">Cost per result</th><th className="px-2 py-1.5 text-right">Spend</th></>}</tr></thead>
+                <tbody>{account.campaigns.map((campaign) => <tr key={campaign.name} className="border-t border-[var(--a-border)]/60"><td className="px-2 py-1.5">{campaign.name}</td><td className="px-2 py-1.5">{campaign.delivery}</td><td className="px-2 py-1.5">{campaign.start || "—"}</td><td className="px-2 py-1.5">{campaign.end || "—"}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.reach.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.impressions.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.views.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.clicks.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.engagements.toLocaleString("en-IN")}</td><td className="px-2 py-1.5">{campaign.results == null ? "—" : `${campaign.results.toLocaleString("en-IN")} ${campaign.resultLabel ?? ""}`}</td>{social.totals.spend != null && <><td className="px-2 py-1.5 text-right tabular-nums">{campaign.costPerResult == null ? "—" : `₹${campaign.costPerResult.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.spend == null ? "—" : `₹${campaign.spend.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}</td></>}</tr>)}</tbody>
+              </table>
+            </div>
+          </details>
+        ))}
       </div>
     </section>
   );

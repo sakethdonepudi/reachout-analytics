@@ -4,13 +4,12 @@ import { audit } from "@/lib/audit";
 import { requireRecentAuth, revokeAllSessionsForUser } from "@/lib/auth";
 import { requireCsrf } from "@/lib/csrf";
 import { countActiveOwners, deleteUser, disableTotp, getUser, setTemporaryPassword, updateUser } from "@/lib/users";
-import { getMetaHolder, revokeWorkspaceConnection, setMetaHolderUserId } from "@/lib/meta/store";
 
 export const runtime = "nodejs";
 const headers = { "Cache-Control": "private, no-store", Vary: "Cookie" };
 
 const Patch = z.object({
-  action: z.enum(["update", "reset-password", "reset-2fa", "end-sessions", "set-meta-holder"]),
+  action: z.enum(["update", "reset-password", "reset-2fa", "end-sessions"]),
   displayName: z.string().min(2).max(80).optional(),
   organisation: z.string().max(120).nullable().optional(),
   role: z.enum(["owner", "client"]).optional(),
@@ -41,15 +40,6 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
   if (!parsed.success) return Response.json({ ok: false, error: "Invalid request" }, { status: 400, headers });
   const self = auth.session.userId === id;
   const action = parsed.data.action;
-
-  if (action === "set-meta-holder") {
-    if (target.role !== "owner" || target.status !== "active") {
-      return Response.json({ ok: false, error: "The Meta account holder must be an active owner." }, { status: 400, headers });
-    }
-    await setMetaHolderUserId(id);
-    await audit({ action: "meta_settings", role: "owner", meta: { metaHolderUserId: id } });
-    return Response.json({ ok: true }, { headers });
-  }
 
   if (action === "end-sessions") {
     await revokeAllSessionsForUser(id);
@@ -96,8 +86,6 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
   });
   if (!updated) return Response.json({ ok: false, error: "Nothing to update." }, { status: 400, headers });
   if (disabling) await revokeAllSessionsForUser(id);
-  const holder = await getMetaHolder();
-  if (holder?._id === id && (disabling || demoting)) await revokeWorkspaceConnection("holder-changed");
   await audit({
     action: disabling ? "user_disabled" : "user_updated",
     role: "owner",
@@ -119,8 +107,6 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     return Response.json({ ok: false, error: "At least one active owner with 2FA is required." }, { status: 400, headers });
   }
   await revokeAllSessionsForUser(id);
-  const holder = await getMetaHolder();
-  if (holder?._id === id) await revokeWorkspaceConnection("holder-changed");
   await deleteUser(id);
   await audit({ action: "user_deleted", role: "owner", meta: { targetUserId: id } });
   return Response.json({ ok: true }, { headers });

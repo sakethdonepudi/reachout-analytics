@@ -40,7 +40,7 @@ export default function SessionsClient() {
       <div>
         <p className="type-micro text-[var(--accent-brass-strong)]">Account</p>
         <h1 className="font-display text-[clamp(28px,4vw,44px)] font-semibold tracking-[-0.03em]">Sessions</h1>
-        <p className="mt-2 text-[13.5px] text-[var(--text-muted)]">Every session ends automatically after 3 minutes without activity.</p>
+        <p className="mt-2 text-[13.5px] text-[var(--text-muted)]">Every session ends automatically after 10 minutes without activity.</p>
       </div>
       {error && <p role="alert" className="rounded-[var(--radius-control)] border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-2 text-[12.5px] text-[var(--danger)]">{error}</p>}
       <Card className="overflow-hidden">

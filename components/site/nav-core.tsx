@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Bell, ChevronDown, Lock, LogOut, Menu, Settings, Shield, Users } from "lucide-react";
+import { ChevronDown, Lock, LogOut, Menu, Settings, Shield, Users } from "lucide-react";
 import ThemeToggle from "@/components/site/theme-toggle";
 import { Logo } from "@/components/site/brand";
 import { Sheet } from "@/components/ui/sheet";
@@ -11,7 +11,6 @@ import { useIdle } from "@/components/auth/idle-provider";
 import { cn } from "@/lib/utils";
 
 type CaseItem = { slug: string; title: string; state: string; year: number; draft: boolean };
-type MetaState = { connected: boolean; name: string | null; holderName?: string | null; isHolder?: boolean; expiresAt: string | null } | null;
 
 export type NavCoreProps = {
   variant: "public" | "client" | "owner";
@@ -22,7 +21,6 @@ export type NavCoreProps = {
   lastLoginAt?: string | null;
   lastLoginDevice?: string | null;
   cases?: CaseItem[];
-  meta?: MetaState;
 };
 
 const glass = "nav-glass pointer-events-auto";
@@ -94,7 +92,7 @@ function Dropdown({ label, items, footer, active, align = "left" }: {
   );
 }
 
-export default function NavCore({ variant, displayName, username, organisation, signInAt, lastLoginAt, lastLoginDevice, cases = [], meta }: NavCoreProps) {
+export default function NavCore({ variant, displayName, username, organisation, signInAt, lastLoginAt, lastLoginDevice, cases = [] }: NavCoreProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { remainingMs } = useIdle();
@@ -124,13 +122,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
     return acc;
   }, {});
   const caseItems = Object.entries(grouped).flatMap(([state, rows]) => rows.map((row) => ({ href: `/case-studies/${row.slug}`, label: row.title, hint: `${state} · ${row.year}${row.draft ? " · Draft" : ""}` })));
-  const metaItems = [
-    { href: "/meta-ads", label: "Overview" },
-    { href: "/meta-ads#campaigns", label: "Campaigns" },
-    { href: "/meta-ads/settings#tagging", label: "Tagging" },
-    { href: "/meta-ads/settings#sync-health", label: "Sync health" },
-    { href: "/meta-ads/settings", label: "Settings" },
-  ];
+
 
   return (
     <>
@@ -158,7 +150,6 @@ export default function NavCore({ variant, displayName, username, organisation, 
               <>
                 <Link href="/dashboard" className={cn(linkClass, pathname === "/dashboard" && "site-group-inset text-[var(--h-ink)]")}>Dashboard</Link>
                 <Dropdown label="Case Studies" items={caseItems} footer={{ href: "/dashboard/case-studies", label: "Case studies dashboard", icon: <Settings className="size-3.5" /> }} active={pathname?.startsWith("/case-studies") || pathname === "/dashboard/case-studies"} />
-                <Dropdown label="Meta Ads" items={metaItems} active={pathname?.startsWith("/meta-ads")} />
               </>
             )}
           </nav>
@@ -168,13 +159,6 @@ export default function NavCore({ variant, displayName, username, organisation, 
               <Link href="/login" className="hidden h-9 items-center rounded-full bg-[var(--h-ink)] px-4 text-[12px] font-semibold text-[var(--h-surface)] md:inline-flex">Login</Link>
             ) : (
               <>
-                {variant === "owner" && (
-                  <Link href="/meta-ads/settings" className="hidden lg:inline-flex h-9 max-w-[220px] items-center gap-1.5 rounded-full border border-[var(--h-border)]/25 px-3 text-[10.5px] font-semibold text-[var(--h-muted)]">
-                    <span className={cn("size-1.5 rounded-full", meta?.connected ? "bg-[var(--success)]" : "bg-[var(--warning)]")} />
-                    <span className="truncate">{meta?.connected ? `${meta.isHolder ? `Connected as ${meta.name ?? "Meta user"}` : `Connected by ${meta.holderName ?? "Venkat"}`} · ${timeLeft(meta.expiresAt)}` : meta?.isHolder ? "Connect Meta Ads" : "Meta not connected"}</span>
-                  </Link>
-                )}
-                {variant === "owner" && <Link href="/meta-ads" aria-label="Notifications" className="relative hidden size-9 place-items-center rounded-full text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] sm:grid"><Bell className="size-4" /></Link>}
                 <div ref={accountRef} className="relative hidden md:block">
                   <button type="button" onClick={() => setAccountOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountOpen} aria-label="Account menu" className={cn("inline-flex h-9 items-center gap-2 rounded-full px-2 text-[12px] font-semibold text-[var(--h-ink)] hover:bg-[var(--h-surface-inset)]", accountOpen && "site-group-inset")}>
                     <span className="grid size-7 place-items-center rounded-full bg-[var(--h-ink)] text-[10px] font-bold text-[var(--h-surface)]">{initials(displayName ?? "User")}</span>
@@ -248,7 +232,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
             <>
               <MobileLink href="/dashboard">Dashboard</MobileLink>
               <details className="rounded-xl"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-[14px] font-semibold">Case Studies<ChevronDown className="size-4" /></summary><div className="pl-3">{caseItems.map((item) => <MobileLink key={item.href} href={item.href}>{item.label}</MobileLink>)}<MobileLink href="/dashboard/case-studies"><Settings className="size-4" /> Case studies dashboard</MobileLink></div></details>
-              <details className="rounded-xl"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-[14px] font-semibold">Meta Ads<ChevronDown className="size-4" /></summary><div className="pl-3">{metaItems.map((item) => <MobileLink key={item.href + item.label} href={item.href}>{item.label}</MobileLink>)}</div></details>
+
               <MobileLink href="/account/users">Users</MobileLink>
               <MobileLink href="/account/sessions">Sessions</MobileLink>
               <MobileLink href="/account/security">Security</MobileLink>

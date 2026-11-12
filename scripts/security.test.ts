@@ -7,13 +7,9 @@ import { csrfCheck } from "@/lib/csrf";
 import { verifyPkce, createPkce } from "@/lib/oauth-pkce";
 import { signPayload, verifyPayload } from "@/lib/signed-cookie";
 import { redact, redactText, maskEmail } from "@/lib/redact";
-import { publicClientSummary } from "@/lib/meta/public";
-import { META_SCOPES, metaConfigured, metaRedirect, setMetaStateCookie } from "@/lib/meta/oauth";
-import { encryptToken, tryDecryptToken } from "@/lib/meta/crypto";
-import { publicStatus, type MetaConnectionDoc } from "@/lib/meta/store";
 import { RECENT_MS, sessionIsRecent, type Session } from "@/lib/auth";
 import { buildCsp, PROTECTED_HEADERS } from "@/lib/security";
-import { metaConfigWarning, secretProblems, turnstileConfigProblems } from "@/lib/security-config";
+import { secretProblems, turnstileConfigProblems } from "@/lib/security-config";
 import { turnstileConfigured } from "@/lib/turnstile";
 import { passwordsAreEqual } from "@/lib/passwords";
 import { beginLoginAttempt, loginLockRemaining, loginRateLimitMessage, recordLoginFailure, recordLoginSuccess, resetLoginGuards } from "@/lib/login-guard";
@@ -43,8 +39,7 @@ console.log("\n2. Route-by-role matrix");
 eq("case studies owner", canAccess("owner", "/case-studies"), true);
 eq("case studies client", canAccess("client", "/case-studies"), true);
 eq("campaigns client", canAccess("client", "/campaigns"), true);
-eq("meta owner owner", canAccess("owner", "/meta-ads/settings"), true);
-eq("meta owner client", canAccess("client", "/meta-ads/settings"), false);
+eq("meta paths redirect outside access control", rolesForPath("/meta-ads/settings"), null);
 eq("case-studies manager client", canAccess("client", "/dashboard/case-studies"), false);
 eq("admin legacy redirects before access", rolesForPath("/admin"), null);
 eq("data client", canAccess("client", "/api/data/summary"), false);
@@ -116,18 +111,6 @@ const errorText = redactText("Meta failed for person@example.com token=abc123 Au
 ok("embedded email masked in error text", errorText.includes(maskEmail("person@example.com")) && !errorText.includes("person@example.com"));
 ok("embedded token masked in error text", !errorText.includes("abc123") && !errorText.includes("Bearer xyz"));
 
-console.log("\n8. Client-safe Meta summary");
-const summary = publicClientSummary({
-  connected: true, accountName: "ReachOut", metaUserName: "ReachOut", holderUserId: "u1", holderName: "Venkat", isHolder: true, status: "active", declinedScopes: [], permissions: [], tokenExpiresAt: null, lastSyncAt: null,
-  connectedAt: null, adAccounts: [{ id: "act_1", accountId: "1", name: "Account", status: 1, currency: "INR" }],
-  pages: [{ id: "p1", name: "Page" }], enabledAdAccounts: ["act_1"], expiresSoon: false,
-  expiresAt: null, expired: false, reconnectRequired: false, keyVersion: "v1",
-});
-const summaryText = JSON.stringify(summary).toLowerCase();
-ok("no cost field", !/(cost|spend|budget|amount)/.test(summaryText));
-ok("no token field", !summaryText.includes("token"));
-ok("connected account only", summary.accountName === "ReachOut" && summary.adAccounts[0].name === "Account");
-
 console.log("\n9. Security headers and CSP");
 const cspOff = buildCsp("abc123");
 ok("default-src self", cspOff.includes("default-src 'self'"));
@@ -163,8 +146,6 @@ eq("no CASE_STUDY_DEV_BYPASS", bypassHits, []);
 console.log("\n11. Startup configuration");
 const startupEnv = {
   ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET,
-  META_APP_ID: process.env.META_APP_ID,
-  META_APP_SECRET: process.env.META_APP_SECRET,
   TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
 };
@@ -173,21 +154,7 @@ try {
   setEnv("ADMIN_SESSION_SECRET", "x".repeat(32));
   setEnv("MONGODB_URI", "mongodb://example.invalid/reachout");
   setEnv("TOKEN_ENCRYPTION_KEY", Buffer.alloc(32).toString("base64"));
-  setEnv("CRON_SECRET", "cron-test-value");
   eq("minimal required env passes startup", secretProblems(), []);
-
-  setEnv("META_APP_ID", undefined);
-  setEnv("META_APP_SECRET", undefined);
-  setEnv("ADMIN_SESSION_SECRET", startupEnv.ADMIN_SESSION_SECRET ?? "x".repeat(32));
-  const metaProblems = secretProblems().filter((p) => p.startsWith("META_APP_ID") || p.startsWith("META_APP_SECRET"));
-  eq("missing Meta does not block startup", metaProblems, []);
-  ok("missing Meta disables Meta OAuth", metaConfigured() === false);
-  const warning = metaConfigWarning();
-  ok("missing Meta warning names both vars", !!warning && warning.includes("META_APP_ID") && warning.includes("META_APP_SECRET"));
-  setEnv("META_APP_ID", "test-app-id");
-  setEnv("META_APP_SECRET", "test-app-secret");
-  ok("configured Meta enables Meta OAuth", metaConfigured() === true);
-  eq("configured Meta has no warning", metaConfigWarning(), null);
 
   setEnv("TURNSTILE_SECRET_KEY", undefined);
   setEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", undefined);
@@ -197,54 +164,6 @@ try {
 } finally {
   for (const [key, value] of Object.entries(startupEnv)) setEnv(key, value);
 }
-
-console.log("\n12. Meta status failure safety");
-eq("missing connection is not connected", publicStatus(null, null).connected, false);
-eq("missing connection needs no reconnect", publicStatus(null, null).reconnectRequired, false);
-eq("malformed connection is not connected", publicStatus({ _id: "owner" } as MetaConnectionDoc, null).connected, false);
-
-const tokenKey = process.env.TOKEN_ENCRYPTION_KEY;
-try {
-  setEnv("TOKEN_ENCRYPTION_KEY", Buffer.alloc(32, 1).toString("base64"));
-  const record = encryptToken("test-meta-token");
-  const doc: MetaConnectionDoc = {
-    _id: "workspace", holderUserId: "u1", metaUserId: "1", metaUserName: "Test User", ownerEmail: "owner", token: record, tokenExpiresAt: null, declinedScopes: [], grantedAssets: [], status: "active", lastCheckAt: null,
-    scopes: [], account: { id: "1", name: "Test Account" }, adAccounts: [], pages: [],
-    enabledAdAccounts: [], connectedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), lastSyncAt: null,
-  };
-  const healthy = publicStatus(doc, null);
-  eq("valid token is connected", healthy.connected, true);
-  eq("valid token needs no reconnect", healthy.reconnectRequired, false);
-
-  setEnv("TOKEN_ENCRYPTION_KEY", Buffer.alloc(32, 2).toString("base64"));
-  const broken = publicStatus(doc, null);
-  eq("changed key keeps connection visible", broken.connected, true);
-  eq("changed key asks for reconnect", broken.reconnectRequired, true);
-  eq("tampered token does not throw", tryDecryptToken({ ...record, tag: "AAAA" }).ok, false);
-} finally {
-  setEnv("TOKEN_ENCRYPTION_KEY", tokenKey);
-}
-
-console.log("\n13. Meta redirect headers");
-const redirectSecret = process.env.ADMIN_SESSION_SECRET;
-try {
-  setEnv("ADMIN_SESSION_SECRET", "x".repeat(32));
-  const redirectRes = metaRedirect("https://www.facebook.com/v21.0/dialog/oauth?client_id=test");
-  setMetaStateCookie(redirectRes, { state: "state-test", verifier: "verifier-test", next: "/meta-ads/settings" });
-  eq("meta redirect location", redirectRes.headers.get("location"), "https://www.facebook.com/v21.0/dialog/oauth?client_id=test");
-  eq("meta redirect cache", redirectRes.headers.get("cache-control"), "private, no-store");
-  ok("meta redirect accepts the state cookie", (redirectRes.headers.get("set-cookie") ?? "").includes("ro_meta_state"));
-} finally {
-  setEnv("ADMIN_SESSION_SECRET", redirectSecret);
-}
-
-console.log("\n14. Meta scopes");
-eq("meta scopes exactly match the approved app scopes", META_SCOPES, [
-  "ads_read",
-  "business_management",
-  "pages_read_engagement",
-  "pages_show_list",
-]);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exitCode = 1;

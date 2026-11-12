@@ -58,6 +58,10 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get(isProduction ? PROD_COOKIE : DEV_COOKIE)?.value
     ?? request.cookies.get(DEV_COOKIE)?.value;
   const session = await sessionFromCookie(token, process.env.ADMIN_SESSION_SECRET || "");
+  if (pathname === "/campaigns" || pathname.startsWith("/meta-ads")) {
+    const destination = session?.role === "owner" ? "/dashboard" : session?.role === "client" ? "/case-studies" : "/login";
+    return applyCommon(NextResponse.redirect(new URL(destination, request.url)), nonce, false, turnstilePage);
+  }
   const roles = rolesForPath(pathname);
   const protectedPath = roles !== null;
 

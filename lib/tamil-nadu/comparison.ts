@@ -149,21 +149,3 @@ export const ECI_ACTUAL = {
   note: "Alliances: AIADMK+ = ADMK + BJP + PMK + AMMK; DMK+ = DMK + INC + VCK + CPI + CPI(M) + IUML + DMDK. TVK, NTK, NOTA and Others stay separate. Total valid votes = 49,324,121.",
 };
 
-export type SocialRow = {
-  platform: string;
-  organic: number;
-  paid: number;
-  total: number;
-  followers: number;
-};
-
-export const TN_SOCIAL = {
-  window: "Meta reach · 23 Mar–22 Apr 2026",
-  rows: [
-    { platform: "Facebook", organic: 147369734, paid: 209749007, total: 357118741, followers: 246173 },
-    { platform: "Instagram", organic: 41971328, paid: 106878129, total: 148849457, followers: 90188 },
-    { platform: "Total", organic: 189341062, paid: 316627136, total: 505968198, followers: 336361 },
-  ] as SocialRow[],
-  organicPct: 37.4,
-  paidPct: 62.6,
-};

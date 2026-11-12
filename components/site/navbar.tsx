@@ -3,7 +3,6 @@ import { COOKIE, LEGACY_COOKIE, getSessionByToken } from "@/lib/auth";
 import { getUser } from "@/lib/users";
 import { scopedCases } from "@/lib/session-scope";
 import { listCases } from "@/lib/case-registry";
-import { getMetaStatus } from "@/lib/meta/store";
 import { caseBySlug } from "@/lib/cases";
 import PublicNavbar from "./public-navbar";
 import ClientNavbar from "./client-navbar";
@@ -37,7 +36,6 @@ export default async function Navbar() {
       year: bySlug.get(item.slug)?.electionYear ?? yearFor(item.slug),
       draft: (bySlug.get(item.slug)?.status ?? "draft") !== "published",
     }));
-    const status = await getMetaStatus(session.userId);
     return (
       <OwnerNavbar
         displayName={displayName}
@@ -46,7 +44,6 @@ export default async function Navbar() {
         lastLoginAt={lastLoginAt}
         lastLoginDevice={user?.lastLoginDevice ?? null}
         cases={cases}
-        meta={{ connected: status.connected, name: status.metaUserName, holderName: status.holderName, isHolder: status.isHolder, expiresAt: status.expiresAt }}
       />
     );
   }

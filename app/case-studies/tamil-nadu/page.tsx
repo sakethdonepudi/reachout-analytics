@@ -5,7 +5,9 @@ import TamilNaduDashboard from "@/components/case-studies/tamil-nadu/tamil-nadu-
 import { requirePageSession } from "@/lib/require-session";
 import { caseAllowed } from "@/lib/session-scope";
 import { redirect } from "next/navigation";
-import { AMI_EXIT_POLL, ECI_ACTUAL, TN_OPINION_POLL, TN_SOCIAL } from "@/lib/tamil-nadu/comparison";
+import { AMI_EXIT_POLL, ECI_ACTUAL, TN_OPINION_POLL } from "@/lib/tamil-nadu/comparison";
+import { getActiveVersion } from "@/lib/ads-desk/store";
+import { buildAdsSocial } from "@/lib/ads-desk/client-dto";
 import { TVK_ACTUAL_SEATS, TVK_FORECASTERS } from "@/lib/tamil-nadu/forecasters";
 import type { TnCaseData } from "@/lib/tamil-nadu/view-data";
 
@@ -25,11 +27,12 @@ export const dynamic = "force-dynamic";
 
 export default async function TamilNaduCaseStudyPage() {
   const session = await requirePageSession("/case-studies/tamil-nadu");
+  const active = await getActiveVersion();
   const caseData: TnCaseData = {
     exitPoll: AMI_EXIT_POLL,
     opinionPoll: TN_OPINION_POLL,
     actual: ECI_ACTUAL,
-    social: TN_SOCIAL,
+    social: buildAdsSocial(active?.data ?? null, "tn2026", session.role === "owner"),
     forecasters: TVK_FORECASTERS,
     forecastActualSeats: TVK_ACTUAL_SEATS,
   };
