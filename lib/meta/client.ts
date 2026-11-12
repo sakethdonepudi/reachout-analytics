@@ -1,6 +1,6 @@
 import { tryDecryptToken } from "@/lib/meta/crypto";
 import { connectionExpiresAt, isConnectionExpired, isRateLimited, retryDelayMs, META_GRAPH_VERSION } from "@/lib/meta/insights";
-import { expireConnection, getConnectionDoc } from "@/lib/meta/store";
+import { expireConnection, type MetaConnectionDoc } from "@/lib/meta/store";
 import { revokeMetaToken } from "@/lib/meta/oauth";
 
 const GRAPH = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
@@ -23,15 +23,14 @@ export class MetaConnectionExpiredError extends Error {
 }
 
 /** Decrypt only inside this module, at call time. Never return the token. */
-async function accessToken(): Promise<string> {
-  const doc = await getConnectionDoc();
-  if (doc?.token) {
-    const expiresAt = doc.expiresAt ?? (doc.connectedAt ? connectionExpiresAt(doc.connectedAt) : null);
+async function accessToken(connection?: MetaConnectionDoc | null): Promise<string> {
+  if (connection?.token) {
+    const expiresAt = connection.expiresAt ?? (connection.connectedAt ? connectionExpiresAt(connection.connectedAt) : null);
     if (isConnectionExpired(expiresAt)) {
-      await expireConnection(doc);
+      await expireConnection(connection);
       throw new MetaConnectionExpiredError();
     }
-    const result = tryDecryptToken(doc.token);
+    const result = tryDecryptToken(connection.token);
     if (result.ok) return result.token;
     throw new MetaReconnectError();
   }
@@ -51,8 +50,8 @@ function usageIsHigh(header: string | null): boolean {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export async function graphGet<T = unknown>(path: string, params: Record<string, string> = {}, attempt = 0): Promise<T> {
-  const token = await accessToken();
+export async function graphGet<T = unknown>(path: string, params: Record<string, string> = {}, connection?: MetaConnectionDoc | null, attempt = 0): Promise<T> {
+  const token = await accessToken(connection);
   const url = new URL(`${GRAPH}${path.startsWith("/") ? path : `/${path}`}`);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
   const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
@@ -68,13 +67,13 @@ export async function graphGet<T = unknown>(path: string, params: Record<string,
       usage: response.headers.get("x-business-use-case-usage"),
     }, attempt);
     await sleep(delay);
-    return graphGet<T>(path, params, attempt + 1);
+    return graphGet<T>(path, params, connection, attempt + 1);
   }
   // Never include the token, URL or raw Graph body in the error.
   throw new Error(`Meta request failed (${response.status}${code ? ` code ${code}` : ""})`);
 }
 
-export async function graphPaged<T = unknown>(path: string, params: Record<string, string> = {}, limit = 200): Promise<T[]> {
+export async function graphPaged<T = unknown>(path: string, params: Record<string, string> = {}, limit = 200, connection?: MetaConnectionDoc | null): Promise<T[]> {
   const rows: T[] = [];
   let after: string | undefined;
   for (let page = 0; page < 200; page += 1) {
@@ -82,7 +81,7 @@ export async function graphPaged<T = unknown>(path: string, params: Record<strin
       ...params,
       limit: String(limit),
       ...(after ? { after } : {}),
-    });
+    }, connection);
     rows.push(...(data.data ?? []));
     const next = data.paging?.cursors?.after;
     if (!next || next === after || !data.paging?.next) break;
@@ -91,6 +90,6 @@ export async function graphPaged<T = unknown>(path: string, params: Record<strin
   return rows;
 }
 
-export async function revokeMetaPermissions(): Promise<void> {
-  await revokeMetaToken(await accessToken());
+export async function revokeMetaPermissions(connection?: MetaConnectionDoc | null): Promise<void> {
+  await revokeMetaToken(await accessToken(connection));
 }

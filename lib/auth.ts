@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getMongo } from "@/lib/mongodb";
 import type { Role } from "@/lib/access";
 import { audit } from "@/lib/audit";
+import { cleanupSessionConnection } from "@/lib/meta/store";
 
 /* =====================================================================
    Sessions and role guards.
@@ -123,6 +124,7 @@ export async function getSessionByToken(token: string | undefined): Promise<Sess
     const now = Date.now();
     if (now > doc.exp.getTime() || now - doc.lastSeen.getTime() > IDLE_MS) {
       await col.deleteOne({ _id: doc._id }).catch(() => {});
+      await cleanupSessionConnection(doc._id, now > doc.exp.getTime() ? "expired" : "idle").catch(() => {});
       return null;
     }
     if (now - doc.lastSeen.getTime() > 60_000) {
@@ -155,7 +157,10 @@ export async function revokeSession(token: string | undefined) {
 
 export async function revokeAllSessions(subject: string) {
   const col = await sessions();
-  if (col) await col.deleteMany({ sub: normalise(subject) });
+  if (!col) return;
+  const rows = await col.find({ sub: normalise(subject) }, { projection: { _id: 1 } }).toArray();
+  await col.deleteMany({ sub: normalise(subject) });
+  for (const row of rows) await cleanupSessionConnection(row._id, "logout").catch(() => {});
 }
 
 /** Refresh the recent-auth timestamp after a successful password re-check. */

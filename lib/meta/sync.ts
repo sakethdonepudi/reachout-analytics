@@ -1,7 +1,7 @@
 import type { Db } from "mongodb";
 import { graphGet, graphPaged, MetaConnectionExpiredError, MetaReconnectError } from "@/lib/meta/client";
 import { connectionExpiresAt, isConnectionExpired, minorToPaise, toPaise } from "@/lib/meta/insights";
-import { expireConnection, getConnectionDoc, getMetaDb, markSynced } from "@/lib/meta/store";
+import { getActiveConnections, getConnectionBySid, getMetaDb, markSynced, type MetaConnectionDoc } from "@/lib/meta/store";
 import { applyTagRules } from "@/lib/meta/tags";
 import { syncNotifications } from "@/lib/meta/notifications";
 import { finalizeSyncRun, type SyncTrigger } from "@/lib/meta/sync-health";
@@ -11,7 +11,7 @@ type UpsertDoc = { _id: string } & Record<string, unknown>;
 export type SyncResult = {
   ok: boolean;
   runId?: string;
-  skipped?: "not-connected" | "expired" | "reconnect" | "locked" | "database";
+  skipped?: "not-connected" | "expired" | "reconnect" | "locked" | "database" | "no-connections";
   error?: string;
   counts?: Record<string, number>;
 };
@@ -31,6 +31,10 @@ const RANGE_PRESETS = [
   { key: "month", preset: "this_month" },
   { key: "lifetime", preset: "maximum" },
 ] as const;
+
+function connectionExpiresAtOf(connection: MetaConnectionDoc): string | null {
+  return connection.connectedAt ? new Date(new Date(connection.connectedAt).getTime() + 12 * 60 * 60 * 1000).toISOString() : null;
+}
 
 const num = (value: unknown): number | null => {
   if (value == null || value === "") return null;
@@ -52,7 +56,7 @@ async function acquireLock(db: Db): Promise<boolean> {
   try {
     const now = new Date();
     const result = await db.collection<{ _id: string; lockedAt?: Date; expiresAt?: Date }>("meta_sync_lock").findOneAndUpdate(
-      { _id: "owner", $or: [{ expiresAt: { $lte: now } }, { expiresAt: { $exists: false } }] },
+      { _id: "sync", $or: [{ expiresAt: { $lte: now } }, { expiresAt: { $exists: false } }] },
       { $set: { lockedAt: now, expiresAt: new Date(now.getTime() + 15 * 60 * 1000) } },
       { upsert: true, returnDocument: "after" },
     );
@@ -63,26 +67,38 @@ async function acquireLock(db: Db): Promise<boolean> {
 }
 
 async function releaseLock(db: Db) {
-  await db.collection<{ _id: string }>("meta_sync_lock").deleteOne({ _id: "owner" }).catch(() => {});
+  await db.collection<{ _id: string }>("meta_sync_lock").deleteOne({ _id: "sync" }).catch(() => {});
 }
 
-async function upsertDocs(db: Db, collection: string, docs: UpsertDoc[]): Promise<number> {
+type SyncTag = { metaUserId: string; metaUserName: string };
+
+function tagOf(connection: MetaConnectionDoc): SyncTag {
+  return { metaUserId: connection.metaUserId, metaUserName: connection.metaUserName };
+}
+
+async function upsertDocs(db: Db, collection: string, docs: UpsertDoc[], tag?: SyncTag): Promise<number> {
   if (!docs.length) return 0;
   const col = db.collection<{ _id: string }>(collection);
   for (let index = 0; index < docs.length; index += 500) {
     const batch = docs.slice(index, index + 500);
     const ops = batch.map((doc) => ({
-      updateOne: { filter: { _id: doc._id }, update: { $set: doc }, upsert: true },
+      updateOne: {
+        filter: { _id: doc._id },
+        update: tag
+          ? { $set: { ...doc, metaUserId: tag.metaUserId, metaUserName: tag.metaUserName }, $addToSet: { metaUserIds: tag.metaUserId } }
+          : { $set: doc },
+        upsert: true,
+      },
     }));
     await col.bulkWrite(ops as never);
   }
   return docs.length;
 }
 
-async function syncAccount(db: Db, accountId: string): Promise<number> {
+async function syncAccount(db: Db, connection: MetaConnectionDoc, accountId: string): Promise<number> {
   const row = await graphGet<MetaRow>(`/${accountId}`, {
     fields: "name,account_status,disable_reason,currency,amount_spent,spend_cap,balance,funding_source_details",
-  });
+  }, connection);
   return upsertDocs(db, "meta_accounts", [{
     _id: accountId,
     accountId,
@@ -95,13 +111,13 @@ async function syncAccount(db: Db, accountId: string): Promise<number> {
     balance: minorToPaise(row.balance as string | number | undefined),
     fundingSource: row.funding_source_details ?? null,
     updatedAt: new Date().toISOString(),
-  }]);
+  }], tagOf(connection));
 }
 
-async function syncCampaigns(db: Db, accountId: string): Promise<number> {
+async function syncCampaigns(db: Db, connection: MetaConnectionDoc, accountId: string): Promise<number> {
   const rows = await graphPaged<MetaRow>(`/${accountId}/campaigns`, {
     fields: "id,name,objective,status,effective_status,start_time,stop_time,daily_budget,lifetime_budget",
-  });
+  }, 200, connection);
   return upsertDocs(db, "meta_campaigns", rows.map((row) => ({
     _id: String(row.id),
     accountId,
@@ -114,13 +130,13 @@ async function syncCampaigns(db: Db, accountId: string): Promise<number> {
     dailyBudget: minorToPaise(row.daily_budget as string | undefined),
     lifetimeBudget: minorToPaise(row.lifetime_budget as string | undefined),
     updatedAt: new Date().toISOString(),
-  })));
+  })), tagOf(connection));
 }
 
-async function syncAdsets(db: Db, accountId: string): Promise<number> {
+async function syncAdsets(db: Db, connection: MetaConnectionDoc, accountId: string): Promise<number> {
   const rows = await graphPaged<MetaRow>(`/${accountId}/adsets`, {
     fields: "id,campaign_id,name,status,effective_status,start_time,end_time,daily_budget,lifetime_budget",
-  });
+  }, 200, connection);
   return upsertDocs(db, "meta_adsets", rows.map((row) => ({
     _id: String(row.id),
     campaignId: String(row.campaign_id ?? ""),
@@ -133,13 +149,13 @@ async function syncAdsets(db: Db, accountId: string): Promise<number> {
     dailyBudget: minorToPaise(row.daily_budget as string | undefined),
     lifetimeBudget: minorToPaise(row.lifetime_budget as string | undefined),
     updatedAt: new Date().toISOString(),
-  })));
+  })), tagOf(connection));
 }
 
-async function syncAds(db: Db, accountId: string): Promise<number> {
+async function syncAds(db: Db, connection: MetaConnectionDoc, accountId: string): Promise<number> {
   const rows = await graphPaged<MetaRow>(`/${accountId}/ads`, {
     fields: "id,adset_id,campaign_id,name,status,effective_status,creative{id}",
-  });
+  }, 200, connection);
   return upsertDocs(db, "meta_ads", rows.map((row) => ({
     _id: String(row.id),
     adsetId: String(row.adset_id ?? ""),
@@ -150,13 +166,13 @@ async function syncAds(db: Db, accountId: string): Promise<number> {
     effectiveStatus: row.effective_status ? String(row.effective_status) : null,
     creativeId: row.creative && typeof row.creative === "object" ? String((row.creative as Record<string, unknown>).id ?? "") : null,
     updatedAt: new Date().toISOString(),
-  })));
+  })), tagOf(connection));
 }
 
-async function syncCreatives(db: Db, accountId: string): Promise<number> {
+async function syncCreatives(db: Db, connection: MetaConnectionDoc, accountId: string): Promise<number> {
   const rows = await graphPaged<MetaRow>(`/${accountId}/adcreatives`, {
     fields: "id,video_id,thumbnail_url,image_url,effective_object_story_id,effective_instagram_media_id,instagram_permalink_url,body,title",
-  });
+  }, 200, connection);
   return upsertDocs(db, "meta_creatives", rows.map((row) => ({
     _id: String(row.id),
     videoId: row.video_id ? String(row.video_id) : null,
@@ -168,7 +184,7 @@ async function syncCreatives(db: Db, accountId: string): Promise<number> {
     body: row.body ? String(row.body) : null,
     title: row.title ? String(row.title) : null,
     updatedAt: new Date().toISOString(),
-  })));
+  })), tagOf(connection));
 }
 
 function dailyDoc(accountId: string, level: "campaign" | "ad", row: MetaRow): UpsertDoc {
@@ -239,7 +255,7 @@ function rangeDoc(accountId: string, level: "account" | "campaign" | "ad", range
   };
 }
 
-async function syncDaily(db: Db, accountId: string, since: string, until: string): Promise<number> {
+async function syncDaily(db: Db, connection: MetaConnectionDoc, accountId: string, since: string, until: string): Promise<number> {
   let total = 0;
   for (const level of ["campaign", "ad"] as const) {
     const rows = await graphPaged<MetaRow>(`/${accountId}/insights`, {
@@ -248,13 +264,13 @@ async function syncDaily(db: Db, accountId: string, since: string, until: string
       time_range: JSON.stringify({ since, until }),
       time_increment: "1",
       breakdowns: "publisher_platform",
-    });
-    total += await upsertDocs(db, "meta_insights_daily", rows.map((row) => dailyDoc(accountId, level, row)));
+    }, 200, connection);
+    total += await upsertDocs(db, "meta_insights_daily", rows.map((row) => dailyDoc(accountId, level, row)), tagOf(connection));
   }
   return total;
 }
 
-async function syncRanges(db: Db, accountId: string): Promise<number> {
+async function syncRanges(db: Db, connection: MetaConnectionDoc, accountId: string): Promise<number> {
   let total = 0;
   for (const range of RANGE_PRESETS) {
     for (const level of ["account", "campaign", "ad"] as const) {
@@ -264,8 +280,8 @@ async function syncRanges(db: Db, accountId: string): Promise<number> {
         date_preset: range.preset,
         time_increment: "all_days",
         breakdowns: "publisher_platform",
-      });
-      total += await upsertDocs(db, "meta_insights_range", rows.map((row) => rangeDoc(accountId, level, range.key, row)));
+      }, 200, connection);
+      total += await upsertDocs(db, "meta_insights_range", rows.map((row) => rangeDoc(accountId, level, range.key, row)), tagOf(connection));
     }
     // A single account-level all_days row without a platform breakdown gives
     // the unique reach for the account. Reach is never summed from daily rows.
@@ -274,24 +290,26 @@ async function syncRanges(db: Db, accountId: string): Promise<number> {
       fields: INSIGHT_FIELDS,
       date_preset: range.preset,
       time_increment: "all_days",
-    });
-    total += await upsertDocs(db, "meta_insights_range", totals.map((row) => rangeDoc(accountId, "account", range.key, row)));
+    }, 200, connection);
+    total += await upsertDocs(db, "meta_insights_range", totals.map((row) => rangeDoc(accountId, "account", range.key, row)), tagOf(connection));
   }
   return total;
 }
 
-/** Sync selected ad accounts. First sync backfills 90 days; later runs use 7. */
-export async function syncMeta(options: { backfill?: boolean; trigger?: SyncTrigger } = {}): Promise<SyncResult> {
+/** Sync one owner session's connection, or every active connection for cron. */
+export async function syncMeta(options: { backfill?: boolean; trigger?: SyncTrigger; sid?: string } = {}): Promise<SyncResult> {
   const trigger: SyncTrigger = options.trigger ?? "manual";
   const db = await getMetaDb();
   if (!db) return { ok: false, skipped: "database" };
-  const doc = await getConnectionDoc();
-  if (!doc) return { ok: false, skipped: "not-connected" };
 
-  const expiresAt = doc.expiresAt ?? (doc.connectedAt ? connectionExpiresAt(doc.connectedAt) : null);
-  if (isConnectionExpired(expiresAt)) {
-    await expireConnection(doc);
-    return { ok: false, skipped: "expired" };
+  let connections: MetaConnectionDoc[];
+  if (options.sid) {
+    const doc = await getConnectionBySid(options.sid);
+    if (!doc) return { ok: false, skipped: "not-connected" };
+    connections = [doc];
+  } else {
+    connections = await getActiveConnections();
+    if (!connections.length) return { ok: false, skipped: "no-connections" };
   }
 
   if (!(await acquireLock(db))) return { ok: false, skipped: "locked" };
@@ -299,29 +317,47 @@ export async function syncMeta(options: { backfill?: boolean; trigger?: SyncTrig
   const runId = globalThis.crypto.randomUUID();
   const startedAt = new Date();
   const counts: Record<string, number> = {};
-  const backfill = options.backfill || !doc.lastSyncAt;
+  const backfill = options.backfill || connections.some((connection) => !connection.lastSyncAt);
   const days = backfill ? 90 : 7;
   const untilDate = new Date();
   const sinceDate = new Date(untilDate.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
   const until = untilDate.toISOString().slice(0, 10);
   const since = sinceDate.toISOString().slice(0, 10);
-  const accounts = doc.enabledAdAccounts.length
-    ? doc.adAccounts.filter((account) => doc.enabledAdAccounts.includes(account.id))
-    : doc.adAccounts;
+  const failures: string[] = [];
+  let succeeded = 0;
+  const connectionExpiresAt = connections
+    .map((connection) => connection.expiresAt ?? connectionExpiresAtOf(connection))
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1) ?? null;
 
   try {
     await db.collection<{ _id: string } & Record<string, unknown>>("meta_sync_runs").insertOne({
-      _id: runId, startedAt, status: "running", trigger, backfill, days, counts: {}, error: null,
+      _id: runId, startedAt, status: "running", trigger, backfill, days, connections: connections.length,
+      metaUserNames: connections.map((connection) => connection.metaUserName), counts: {}, error: null,
     });
 
-    for (const account of accounts) {
-      counts.meta_accounts = (counts.meta_accounts ?? 0) + await syncAccount(db, account.id);
-      counts.meta_campaigns = (counts.meta_campaigns ?? 0) + await syncCampaigns(db, account.id);
-      counts.meta_adsets = (counts.meta_adsets ?? 0) + await syncAdsets(db, account.id);
-      counts.meta_ads = (counts.meta_ads ?? 0) + await syncAds(db, account.id);
-      counts.meta_creatives = (counts.meta_creatives ?? 0) + await syncCreatives(db, account.id);
-      counts.meta_insights_daily = (counts.meta_insights_daily ?? 0) + await syncDaily(db, account.id, since, until);
-      counts.meta_insights_range = (counts.meta_insights_range ?? 0) + await syncRanges(db, account.id);
+    for (const connection of connections) {
+      const accounts = connection.enabledAdAccounts.length
+        ? connection.adAccounts.filter((account) => connection.enabledAdAccounts.includes(account.id))
+        : connection.adAccounts;
+      try {
+        for (const account of accounts) {
+          counts.meta_accounts = (counts.meta_accounts ?? 0) + await syncAccount(db, connection, account.id);
+          counts.meta_campaigns = (counts.meta_campaigns ?? 0) + await syncCampaigns(db, connection, account.id);
+          counts.meta_adsets = (counts.meta_adsets ?? 0) + await syncAdsets(db, connection, account.id);
+          counts.meta_ads = (counts.meta_ads ?? 0) + await syncAds(db, connection, account.id);
+          counts.meta_creatives = (counts.meta_creatives ?? 0) + await syncCreatives(db, connection, account.id);
+          counts.meta_insights_daily = (counts.meta_insights_daily ?? 0) + await syncDaily(db, connection, account.id, since, until);
+          counts.meta_insights_range = (counts.meta_insights_range ?? 0) + await syncRanges(db, connection, account.id);
+        }
+        await markSynced(connection._id, untilDate.toISOString());
+        succeeded += 1;
+      } catch (error) {
+        if (error instanceof MetaConnectionExpiredError) { failures.push("connection-expired"); continue; }
+        if (error instanceof MetaReconnectError) { failures.push("reconnect-required"); continue; }
+        failures.push(error instanceof Error ? error.message : "Sync failed");
+      }
     }
 
     let partial = false;
@@ -337,27 +373,21 @@ export async function syncMeta(options: { backfill?: boolean; trigger?: SyncTrig
       partial = true;
       counts.meta_notifications = 0;
     }
+
     const finishedAt = new Date();
+    const status = succeeded === 0 ? "failed" : failures.length ? "partial" : "success";
+    const outcome = succeeded === 0 ? "failed" : failures.length || partial ? "partial" : "ok";
+    const errorMessage = failures.length ? [...new Set(failures)].join("; ") : null;
     await finalizeSyncRun(db, runId, {
-      trigger, status: "success", outcome: partial ? "partial" : "ok", error: null,
-      counts, days, backfill, startedAt, finishedAt,
+      trigger, status, outcome, error: errorMessage,
+      counts, days, backfill, startedAt, finishedAt, connectionExpiresAt,
     });
-    await markSynced(untilDate.toISOString());
+    if (succeeded === 0) return { ok: false, error: errorMessage ?? "Sync failed", runId, counts };
     return { ok: true, runId, counts };
   } catch (error) {
-    if (error instanceof MetaConnectionExpiredError) {
-      const finishedAt = new Date();
-      await finalizeSyncRun(db, runId, { trigger, status: "expired", outcome: "failed", error: "connection-expired", counts, days, backfill, startedAt, finishedAt });
-      return { ok: false, skipped: "expired", runId };
-    }
-    if (error instanceof MetaReconnectError) {
-      const finishedAt = new Date();
-      await finalizeSyncRun(db, runId, { trigger, status: "reconnect", outcome: "failed", error: "reconnect-required", counts, days, backfill, startedAt, finishedAt });
-      return { ok: false, skipped: "reconnect", runId };
-    }
     const message = error instanceof Error ? error.message : "Sync failed";
     const finishedAt = new Date();
-    await finalizeSyncRun(db, runId, { trigger, status: "failed", outcome: "failed", error: message, counts, days, backfill, startedAt, finishedAt });
+    await finalizeSyncRun(db, runId, { trigger, status: "failed", outcome: "failed", error: message, counts, days, backfill, startedAt, finishedAt, connectionExpiresAt });
     return { ok: false, error: message, runId };
   } finally {
     await releaseLock(db);

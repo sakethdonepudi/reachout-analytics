@@ -33,6 +33,7 @@ type Health = {
     connectionExpiresAt: string | null;
   } | null;
   connectionExpiresAt: string | null;
+  metaUserName: string | null;
   serverTime: string;
 };
 
@@ -118,6 +119,7 @@ export function SyncHealth() {
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent-brass-strong)]">Sync health</p>
           <h2 className="mt-2 font-display text-xl font-semibold">Last sync run</h2>
           <p className="mt-1 text-[12px] text-muted-foreground">Owner-only operational summary. Stored for the last 30 runs.</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">Meta user: <span className="font-semibold text-foreground">{health?.metaUserName ?? "—"}</span></p>
         </div>
         <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border px-3 text-[11px] font-semibold text-muted-foreground">
           <Clock className="size-3.5" aria-hidden /> Connection {fmtRemaining(expiresAt, now)}

@@ -14,6 +14,7 @@ type Page = { id: string; name: string };
 type Status = {
   connected: boolean;
   accountName: string | null;
+  metaUserName: string | null;
   permissions: string[];
   tokenExpiresAt: string | null;
   lastSyncAt: string | null;
@@ -30,7 +31,7 @@ type Status = {
 type AuditRow = { at: string; action: string; email: string | null; role: string | null; ipHash?: string };
 
 const EMPTY: Status = {
-  connected: false, accountName: null, permissions: [], tokenExpiresAt: null, lastSyncAt: null,
+  connected: false, accountName: null, metaUserName: null, permissions: [], tokenExpiresAt: null, lastSyncAt: null,
   connectedAt: null, adAccounts: [], pages: [], enabledAdAccounts: [], expiresSoon: false,
   expiresAt: null, expired: false, reconnectRequired: false, keyVersion: null,
 };
@@ -202,7 +203,7 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
                     : status.reconnectRequired
                       ? "The stored Meta token can no longer be decrypted. Reconnect Meta to restore sync."
                       : status.connected
-                        ? `${status.enabledAdAccounts.length} ad account(s) enabled · key ${status.keyVersion ?? "—"}${status.expiresAt ? ` · ${expiryLabel(status.expiresAt)}` : ""}`
+                        ? `${status.metaUserName ? `Connected as ${status.metaUserName} · ` : ""}${status.enabledAdAccounts.length} ad account(s) enabled · key ${status.keyVersion ?? "—"}${status.expiresAt ? ` · ${expiryLabel(status.expiresAt)}` : ""}`
                         : "Authorise the ReachOut Meta app to start syncing."}
                 </p>
               </div>
@@ -223,6 +224,10 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
                 )}
               </div>
             </div>
+
+            <p className="mt-4 max-w-2xl text-[11.5px] leading-relaxed text-muted-foreground">
+              Facebook uses whichever account is signed in to this browser. To connect a different account, log out of facebook.com in this browser first, or use a private window.
+            </p>
 
             {status.connected && (
               <dl className="mt-6 grid gap-4 text-[12.5px] sm:grid-cols-2 lg:grid-cols-4">

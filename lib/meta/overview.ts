@@ -3,9 +3,20 @@ import { CASES } from "@/lib/cases";
 import { TN_COLOR, TN_LABEL, type TnGroup } from "@/lib/tamil-nadu/model";
 import { PARTY_COLOR, PARTY_LABEL, type Party } from "@/lib/telangana/constants";
 import type { MetaCampaignTag } from "@/lib/meta/tags";
+import type { MetaConnectionDoc } from "@/lib/meta/store";
 
 export type RangeKey = "today" | "yesterday" | "7d" | "30d" | "month" | "lifetime" | "custom";
-export type OverviewQuery = { range: RangeKey; from?: string; to?: string; state?: string; party?: string; platform?: string };
+export type OverviewQuery = {
+  range: RangeKey;
+  from?: string;
+  to?: string;
+  state?: string;
+  party?: string;
+  platform?: string;
+  /** null/undefined = every synced account; [] = no account is reachable. */
+  accountIds?: string[] | null;
+  connection?: MetaConnectionDoc | null;
+};
 export type Metrics = {
   spend: number;
   impressions: number;
@@ -35,6 +46,8 @@ export type AccountRow = {
   spendCap: number | null;
   balance: number | null;
   fundingSource: unknown;
+  metaUserName: string | null;
+  lastSyncedAt: string | null;
 };
 export type ExplorerAd = {
   id: string;
@@ -75,7 +88,7 @@ export type NotificationRow = {
   read: boolean;
 };
 export type OwnerOverview = {
-  connection: { connected: boolean; expired: boolean; lastSyncAt: string | null; expiresAt: string | null };
+  connection: { connected: boolean; expired: boolean; lastSyncAt: string | null; expiresAt: string | null; metaUserName: string | null };
   range: { key: RangeKey; since: string | null; until: string | null };
   totals: Metrics & { activeCampaigns: number; previous: Metrics | null; reachIsUnique: boolean };
   groups: GroupRow[];
@@ -233,18 +246,19 @@ function groupKey(state: string, party: string) {
 }
 
 export async function getOwnerOverview(db: Db, query: OverviewQuery): Promise<OwnerOverview> {
-  const [accounts, campaigns, adsets, ads, creatives, tags, rangeRows, dailyRows, connection, notifications] = await Promise.all([
-    db.collection<AccountDoc>("meta_accounts").find({}).toArray(),
-    db.collection<CampaignDoc>("meta_campaigns").find({}).toArray(),
-    db.collection<AdsetDoc>("meta_adsets").find({}).toArray(),
-    db.collection<AdDoc>("meta_ads").find({}).toArray(),
+  const scoped = query.accountIds ? { accountId: { $in: query.accountIds } } : {};
+  const [accounts, campaigns, adsets, ads, creatives, tags, rangeRows, dailyRows, notifications] = await Promise.all([
+    db.collection<AccountDoc>("meta_accounts").find(scoped).toArray(),
+    db.collection<CampaignDoc>("meta_campaigns").find(scoped).toArray(),
+    db.collection<AdsetDoc>("meta_adsets").find(scoped).toArray(),
+    db.collection<AdDoc>("meta_ads").find(scoped).toArray(),
     db.collection<CreativeDoc>("meta_creatives").find({}).toArray(),
     db.collection<MetaCampaignTag & { _id: string }>("meta_campaign_tags").find({}).toArray(),
-    db.collection<RangeDoc>("meta_insights_range").find({ rangeKey: query.range === "custom" ? "7d" : query.range }).toArray(),
-    db.collection<DailyDoc>("meta_insights_daily").find({}).toArray(),
-    db.collection<{ _id: string; lastSyncAt?: string | null; expiresAt?: string; connectedAt?: string }>("meta_connection").findOne({ _id: "owner" }),
+    db.collection<RangeDoc>("meta_insights_range").find({ ...scoped, rangeKey: query.range === "custom" ? "7d" : query.range }).toArray(),
+    db.collection<DailyDoc>("meta_insights_daily").find(scoped).toArray(),
     db.collection<Record<string, unknown> & { _id: string }>("meta_notifications").find({ read: false }).sort({ createdAt: -1 }).limit(20).toArray(),
   ]);
+  const connection = query.connection ?? null;
 
   const tagMap = new Map(tags.filter((tag) => tag.confirmed).map((tag) => [tag.campaignId, tag]));
   const campaignMap = new Map(campaigns.map((campaign) => [campaign._id, campaign]));
@@ -348,6 +362,8 @@ export async function getOwnerOverview(db: Db, query: OverviewQuery): Promise<Ow
     spendCap: account.spendCap ?? null,
     balance: account.balance ?? null,
     fundingSource: account.fundingSource ?? null,
+    metaUserName: account.metaUserName ?? null,
+    lastSyncedAt: account.updatedAt ?? null,
   }));
 
   const dailyMap = new Map<string, { date: string; spend: number; impressions: number; videoPlays: number; thruPlays: number }>();
@@ -451,6 +467,7 @@ export async function getOwnerOverview(db: Db, query: OverviewQuery): Promise<Ow
       expired,
       lastSyncAt: connection?.lastSyncAt ?? null,
       expiresAt,
+      metaUserName: connection?.metaUserName ?? null,
     },
     range: { key: query.range, since: window.since, until: window.until },
     totals: {
@@ -483,4 +500,5 @@ export async function getOwnerOverview(db: Db, query: OverviewQuery): Promise<Ow
 type AccountDoc = {
   _id: string; name?: string; currency?: string | null; status?: number | null; disableReason?: string | null;
   amountSpent?: number | null; spendCap?: number | null; balance?: number | null; fundingSource?: unknown;
+  metaUserName?: string; metaUserIds?: string[]; updatedAt?: string;
 };

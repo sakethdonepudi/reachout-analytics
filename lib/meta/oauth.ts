@@ -7,7 +7,7 @@ export const META_STATE_TTL = 10 * 60 * 1000;
 export const META_SCOPES = ["ads_read", "business_management", "pages_read_engagement", "pages_show_list"];
 const GRAPH = "https://graph.facebook.com/v21.0";
 
-export type MetaState = { state: string; verifier: string; next?: string | null };
+export type MetaState = { state: string; verifier: string; next?: string | null; sid?: string | null };
 
 export function metaConfigured(): boolean {
   return !!process.env.META_APP_ID && !!process.env.META_APP_SECRET && !!process.env.ADMIN_SESSION_SECRET;
@@ -56,6 +56,8 @@ export function metaAuthUrl(req: NextRequest, flow: ReturnType<typeof createMeta
   url.searchParams.set("scope", META_SCOPES.join(","));
   url.searchParams.set("code_challenge", flow.challenge);
   url.searchParams.set("code_challenge_method", "S256");
+  // Always ask Facebook for the password; never connect silently.
+  url.searchParams.set("auth_type", "reauthenticate");
   return url.toString();
 }
 

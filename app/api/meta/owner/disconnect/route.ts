@@ -1,9 +1,7 @@
 import type { NextRequest } from "next/server";
 import { requireRecentAuth } from "@/lib/auth";
 import { requireCsrf } from "@/lib/csrf";
-import { audit } from "@/lib/audit";
-import { deleteConnection, getConnectionDoc } from "@/lib/meta/store";
-import { revokeMetaPermissions } from "@/lib/meta/client";
+import { cleanupSessionConnection } from "@/lib/meta/store";
 
 export const runtime = "nodejs";
 
@@ -12,10 +10,6 @@ export async function POST(req: NextRequest) {
   if (csrf) return csrf;
   const auth = await requireRecentAuth(req);
   if ("deny" in auth) return auth.deny;
-  const doc = await getConnectionDoc();
-  if (!doc) return Response.json({ ok: true });
-  try { await revokeMetaPermissions(); } catch { /* ciphertext is still deleted below */ }
-  await deleteConnection();
-  await audit({ action: "meta_disconnect", email: auth.session.sub, role: "owner", ip: req.headers.get("x-forwarded-for")?.split(",")[0].trim() });
+  await cleanupSessionConnection(auth.session.sid, "logout");
   return Response.json({ ok: true });
 }

@@ -121,7 +121,7 @@ ok("embedded token masked in error text", !errorText.includes("abc123") && !erro
 
 console.log("\n8. Client-safe Meta summary");
 const summary = publicClientSummary({
-  connected: true, accountName: "ReachOut", permissions: [], tokenExpiresAt: null, lastSyncAt: null,
+  connected: true, accountName: "ReachOut", metaUserName: "ReachOut", permissions: [], tokenExpiresAt: null, lastSyncAt: null,
   connectedAt: null, adAccounts: [{ id: "act_1", accountId: "1", name: "Account", status: 1, currency: "INR" }],
   pages: [{ id: "p1", name: "Page" }], enabledAdAccounts: ["act_1"], expiresSoon: false,
   expiresAt: null, expired: false, reconnectRequired: false, keyVersion: "v1",
@@ -230,7 +230,7 @@ try {
   setEnv("TOKEN_ENCRYPTION_KEY", Buffer.alloc(32, 1).toString("base64"));
   const record = encryptToken("test-meta-token");
   const doc: MetaConnectionDoc = {
-    _id: "owner", ownerEmail: "owner", token: record, tokenExpiresAt: null,
+    _id: "conn_1", sid: "sid_1", metaUserId: "1", metaUserName: "Test User", ownerEmail: "owner", token: record, tokenExpiresAt: null,
     scopes: [], account: { id: "1", name: "Test Account" }, adAccounts: [], pages: [],
     enabledAdAccounts: [], connectedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), lastSyncAt: null,
   };

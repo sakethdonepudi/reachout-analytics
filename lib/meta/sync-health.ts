@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Db } from "mongodb";
 import { connectionExpiresAt } from "@/lib/meta/insights";
+import { getConnectionBySid } from "@/lib/meta/store";
 import { redactText } from "@/lib/redact";
 
 export type SyncTrigger = "cron" | "manual";
@@ -36,6 +37,7 @@ export type SyncHealthSnapshot = {
 export type SyncHealthView = {
   latest: SyncHealthSnapshot | null;
   connectionExpiresAt: string | null;
+  metaUserName: string | null;
   serverTime: string;
 };
 
@@ -132,13 +134,11 @@ export async function finalizeSyncRun(db: Db, runId: string, input: {
   backfill: boolean;
   startedAt: Date;
   finishedAt: Date;
+  connectionExpiresAt?: string | null;
 }): Promise<void> {
   try {
     const live = await liveHealth(db).catch(() => null);
-    const connection = await db.collection<{ _id: string; expiresAt?: string; connectedAt?: string }>("meta_connection")
-      .findOne({ _id: "owner" })
-      .catch(() => null);
-    const expiresAt = connection?.expiresAt ?? (connection?.connectedAt ? connectionExpiresAt(connection.connectedAt) : null);
+    const expiresAt = input.connectionExpiresAt ?? null;
     const counts = input.counts;
     const snapshot: SyncHealthSnapshot = {
       runId,
@@ -193,11 +193,11 @@ export async function finalizeSyncRun(db: Db, runId: string, input: {
 }
 
 /** Owner-only view: latest run plus live tagging, reach and connection state. */
-export async function getSyncHealth(db: Db): Promise<SyncHealthView> {
+export async function getSyncHealth(db: Db, sid?: string): Promise<SyncHealthView> {
   const [run, live, connection] = await Promise.all([
     db.collection<RunDoc>("meta_sync_runs").find({}).sort({ startedAt: -1 }).limit(1).next().catch(() => null),
     liveHealth(db).catch(() => null),
-    db.collection<{ _id: string; expiresAt?: string; connectedAt?: string }>("meta_connection").findOne({ _id: "owner" }).catch(() => null),
+    getConnectionBySid(sid).catch(() => null),
   ]);
   const expiresAt = connection?.expiresAt ?? (connection?.connectedAt ? connectionExpiresAt(connection.connectedAt) : null);
 
@@ -234,5 +234,10 @@ export async function getSyncHealth(db: Db): Promise<SyncHealthView> {
     };
   }
 
-  return { latest, connectionExpiresAt: expiresAt, serverTime: new Date().toISOString() };
+  return {
+    latest,
+    connectionExpiresAt: expiresAt,
+    metaUserName: connection?.metaUserName ?? (connection?.account?.name ?? null),
+    serverTime: new Date().toISOString(),
+  };
 }

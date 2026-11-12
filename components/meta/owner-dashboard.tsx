@@ -152,6 +152,7 @@ export default function OwnerDashboard() {
   const [selectedAd, setSelectedAd] = useState<{ adId: string; state: string } | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
   const query = useMemo(() => {
     const params = new URLSearchParams({ range: filter.range, platform: filter.platform });
@@ -159,8 +160,9 @@ export default function OwnerDashboard() {
     if (filter.to) params.set("to", filter.to);
     if (filter.state) params.set("state", filter.state);
     if (filter.party) params.set("party", filter.party);
+    if (showAll) params.set("all", "1");
     return params.toString();
-  }, [filter]);
+  }, [filter, showAll]);
 
   const load = useCallback(async () => {
     setError("");
@@ -318,7 +320,7 @@ export default function OwnerDashboard() {
   const connectionTone = overview.connection.expired ? "danger" : overview.connection.connected ? "success" : "warning";
   const expiresMinutes = overview.connection.expiresAt ? Math.max(0, Math.round((new Date(overview.connection.expiresAt).getTime() - Date.now()) / 60_000)) : null;
   const displayConnection = overview.connection.connected && !overview.connection.expired
-    ? `Connected · expires in ${Math.floor((expiresMinutes ?? 0) / 60)}h ${(expiresMinutes ?? 0) % 60}m`
+    ? `Connected as ${overview.connection.metaUserName ?? "Meta user"} · expires in ${Math.floor((expiresMinutes ?? 0) / 60)}h ${(expiresMinutes ?? 0) % 60}m`
     : connectionLabel;
 
   return (
@@ -353,9 +355,19 @@ export default function OwnerDashboard() {
         <button type="button" onClick={() => setFiltersOpen(true)} className="inline-flex min-h-10 items-center gap-1.5 rounded-[var(--radius-control)] border border-[var(--border-hairline)] px-3 text-[12px] font-semibold"><SlidersHorizontal className="size-3.5" /> Filters</button>
         <button type="button" onClick={() => void exportCsv()} disabled={busy === "export"} className="inline-flex min-h-10 items-center gap-1.5 rounded-[var(--radius-control)] border border-[var(--border-hairline)] px-3 text-[12px] font-semibold"><Download className="size-3.5" /> Export</button>
       </div>
-      <div className="hidden justify-end sm:flex">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <label className="inline-flex min-h-10 items-center gap-2 text-[12px] font-semibold text-[var(--text-muted)]">
+          <input type="checkbox" checked={showAll} onChange={(event) => setShowAll(event.target.checked)} className="size-4 accent-[var(--accent-brass)]" />
+          Show all synced accounts
+        </label>
         <button type="button" onClick={() => void exportCsv()} disabled={busy === "export"} className="inline-flex min-h-10 items-center gap-1.5 rounded-[var(--radius-control)] border border-[var(--border-hairline)] px-3 text-[12px] font-semibold hover:bg-[var(--surface-raised)] disabled:opacity-60">{busy === "export" ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />} Export</button>
       </div>
+
+      {showAll && (
+        <p className="rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-raised)] px-3 py-2 text-[12px] text-[var(--text-muted)]">
+          Showing all synced accounts. Data from other Meta users is read-only and labelled by source.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Spend" value={formatInr(totals.spend)} delta={delta(totals.spend, previous.spend) ?? undefined} hint="vs previous period" />
@@ -410,6 +422,11 @@ export default function OwnerDashboard() {
                   <p className="mt-2 text-[11.5px] text-[var(--text-muted)]">Spent {formatInr(account.amountSpent)} of {formatInr(account.spendCap)} cap</p>
                   {progress != null && <div className="mt-1 h-2 overflow-hidden rounded-full bg-[var(--surface-raised)]"><div className={cn("h-full rounded-full", progress >= 90 ? "bg-[var(--warning)]" : "bg-[var(--accent-brass)]")} style={{ width: `${progress}%` }} /></div>}
                   <p className="mt-1 text-[11px] text-[var(--text-muted)]">Balance {formatInr(account.balance)}</p>
+                  {showAll && (
+                    <p className="mt-1 text-[10.5px] text-[var(--text-muted)]">
+                      from {account.metaUserName ?? "unknown Meta user"}, last synced {account.lastSyncedAt ? new Date(account.lastSyncedAt).toLocaleString() : "—"}
+                    </p>
+                  )}
                 </div>
               );
             }) : <EmptyState title="No ad accounts have synced yet." />}

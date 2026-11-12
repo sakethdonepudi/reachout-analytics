@@ -28,10 +28,12 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const sid = auth.session.sid;
+  if (!sid) return redirect(req, "/meta-ads/settings?error=session");
   const code = req.nextUrl.searchParams.get("code") ?? "";
   const state = req.nextUrl.searchParams.get("state") ?? "";
   const stored = readMetaStateCookie(req);
-  if (!code || !state || !stored || stored.state !== state) {
+  if (!code || !state || !stored || stored.state !== state || (stored.sid && stored.sid !== sid)) {
     const res = redirect(req, "/meta-ads/settings?error=state");
     clearMetaStateCookie(res);
     return res;
@@ -40,7 +42,12 @@ export async function GET(req: NextRequest) {
   try {
     const token = await exchangeMetaCode(req, code, stored.verifier);
     const identity = await fetchMetaIdentity(token.token);
+    const connectedAt = new Date();
+    const expiresAt = new Date(Math.min(connectedAt.getTime() + 12 * 60 * 60 * 1000, auth.session.exp)).toISOString();
     await saveConnection({
+      sid,
+      metaUserId: identity.account.id,
+      metaUserName: identity.account.name,
       ownerEmail: auth.session.sub,
       token: encryptToken(token.token),
       tokenExpiresAt: token.expiresAt,
@@ -49,11 +56,12 @@ export async function GET(req: NextRequest) {
       adAccounts: identity.adAccounts,
       pages: identity.pages,
       enabledAdAccounts: identity.adAccounts.map((account) => account.id),
-      connectedAt: new Date().toISOString(),
+      connectedAt: connectedAt.toISOString(),
+      expiresAt,
       lastSyncAt: null,
     });
     await audit({ action: "meta_connect", email: auth.session.sub, role: "owner", ip, meta: { accountId: identity.account.id, adAccounts: identity.adAccounts.length } });
-    after(() => syncMeta());
+    after(() => syncMeta({ trigger: "manual", sid }));
     const destination = safeNextPath(stored.next ?? null, "owner") ?? "/meta-ads/settings";
     const res = redirect(req, `${destination}${destination.includes("?") ? "&" : "?"}connected=1`);
     clearMetaStateCookie(res);

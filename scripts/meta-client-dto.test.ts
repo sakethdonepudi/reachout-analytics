@@ -22,11 +22,11 @@ const metrics = {
 };
 
 const overview: OwnerOverview = {
-  connection: { connected: true, expired: false, lastSyncAt: "2026-11-11T10:00:00.000Z", expiresAt: "2026-11-11T22:00:00.000Z" },
+  connection: { connected: true, expired: false, lastSyncAt: "2026-11-11T10:00:00.000Z", expiresAt: "2026-11-11T22:00:00.000Z", metaUserName: "Owner" },
   range: { key: "7d", since: "2026-11-05", until: "2026-11-11" },
   totals: { ...metrics, activeCampaigns: 3, previous: metrics, reachIsUnique: true },
   groups: [],
-  accounts: [{ id: "act_1", name: "Account", currency: "INR", status: 1, disableReason: null, amountSpent: 900000, spendCap: 1000000, balance: 100000, fundingSource: null }],
+  accounts: [{ id: "act_1", name: "Account", currency: "INR", status: 1, disableReason: null, amountSpent: 900000, spendCap: 1000000, balance: 100000, fundingSource: null, metaUserName: "Owner", lastSyncedAt: "2026-11-11T10:00:00.000Z" }],
   daily: [{ date: "2026-11-11", spend: 100000, impressions: 20000, videoPlays: 4000, thruPlays: 900 }],
   platforms: [{ platform: "facebook", spend: 100000, impressions: 20000 }],
   campaigns: [

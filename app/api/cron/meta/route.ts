@@ -1,6 +1,5 @@
 import type { NextRequest } from "next/server";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { getMetaStatus } from "@/lib/meta/store";
 import { syncMeta } from "@/lib/meta/sync";
 
 export const runtime = "nodejs";
@@ -23,11 +22,9 @@ export async function GET(req: NextRequest) {
     return Response.json({ ok: false, error: "Not authenticated" }, { status: 401 });
   }
 
-  const status = await getMetaStatus();
-  if (!status.connected) {
-    return Response.json({ ok: true, skipped: status.expired ? "expired" : "not-connected" }, { headers: { "Cache-Control": "no-store" } });
-  }
-
   const result = await syncMeta({ trigger: "cron" });
+  if (result.skipped === "no-connections") {
+    return Response.json({ ok: true, skipped: "no-connections" }, { headers: { "Cache-Control": "no-store" } });
+  }
   return Response.json(result, { status: result.ok ? 200 : 503, headers: { "Cache-Control": "no-store" } });
 }

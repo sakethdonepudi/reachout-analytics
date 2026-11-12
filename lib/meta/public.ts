@@ -1,7 +1,10 @@
 import type { PublicMetaStatus } from "@/lib/meta/store";
 
 /** Client-safe connection summary. Never include cost, spend, budget or token data. */
-export function publicClientSummary(status: PublicMetaStatus) {
+export function publicClientSummary(status: PublicMetaStatus | null) {
+  if (!status) {
+    return { connected: false, accountName: null, adAccounts: [], pages: [], lastSyncAt: null };
+  }
   return {
     connected: status.connected,
     accountName: status.accountName,

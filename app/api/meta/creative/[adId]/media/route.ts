@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { graphGet } from "@/lib/meta/client";
 import { getCreativeView } from "@/lib/meta/creative";
-import { getMetaDb } from "@/lib/meta/store";
+import { getAnyActiveConnection, getConnectionBySid, getMetaDb } from "@/lib/meta/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -27,9 +27,12 @@ export async function GET(req: NextRequest, context: { params: Promise<{ adId: s
   const videoId = view?.creative?.videoId;
   if (!view || !videoId) return new Response("Media not found", { status: 404 });
 
+  const connection = (isOwner ? await getConnectionBySid(auth.session.sid) : null) ?? await getAnyActiveConnection();
+  if (!connection) return new Response("Media unavailable", { status: 503 });
+
   let source: string | undefined;
   try {
-    const data = await graphGet<{ source?: string }>(`/${encodeURIComponent(videoId)}`, { fields: "source" });
+    const data = await graphGet<{ source?: string }>(`/${encodeURIComponent(videoId)}`, { fields: "source" }, connection);
     source = data.source;
   } catch {
     return new Response("Media unavailable", { status: 502 });
