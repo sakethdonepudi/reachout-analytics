@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /* =====================================================================
    Apache ECharts wrapper — client-only and lazy.
@@ -24,7 +24,8 @@ type Props = {
 };
 
 export default function EChart({ option, height, ariaLabel, reduced, onEvents, className, replaceSeries }: Props) {
-  const hostRef = useRef<HTMLDivElement>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const setHost = useCallback((node: HTMLDivElement | null) => { hostRef.current = node; }, []);
   const chartRef = useRef<{ setOption: (o: unknown, opts?: unknown) => void; resize: () => void; dispose: () => void; on: (n: string, f: (p: unknown) => void) => void; off: (n: string) => void; dispatchAction: (a: unknown) => void } | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -87,7 +88,7 @@ export default function EChart({ option, height, ariaLabel, reduced, onEvents, c
   return (
     <div className={className} role="img" aria-label={ariaLabel}>
       <div className="relative" style={{ height }}>
-        <div ref={hostRef} className="absolute inset-0" />
+        <div ref={setHost} className="absolute inset-0" />
         {!ready && <div className="absolute inset-0 grid place-items-center text-[11px] text-muted-foreground">Loading chart…</div>}
       </div>
     </div>

@@ -16,7 +16,7 @@ import type { MapTheme } from "./tamil-nadu-map";
 
 const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
   ssr: false,
-  loading: () => <div className="grid h-full place-items-center text-sm text-muted-foreground">Loading Tamil Nadu…</div>,
+  loading: () => <div className="grid h-full min-h-[420px] w-full place-items-center rounded-[10px] border border-[var(--border-hairline)] bg-[var(--surface-panel)] text-[12px] text-muted-foreground">Loading map...</div>,
 });
 const TamilNaduAnalysis = dynamic(() => import("./tamil-nadu-analysis"), {
   ssr: false,
@@ -91,15 +91,6 @@ function SearchSelect({ label, value, options, placeholder, onChange, disabled =
 
 export default function TamilNaduDashboard({ caseData, owner = false }: { caseData: TnCaseData; owner?: boolean }) {
   const theme = "light" as const;
-  const mapHostRef = useRef<HTMLDivElement>(null);
-  const [mapVisible, setMapVisible] = useState(false);
-  useEffect(() => {
-    const host = mapHostRef.current;
-    if (!host) return;
-    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setMapVisible(true); observer.disconnect(); } }, { rootMargin: "200px" });
-    observer.observe(host);
-    return () => observer.disconnect();
-  }, []);
   const opinionPoll = caseData.opinionPoll;
   const [data, setData] = useState<TnAggregates | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -227,8 +218,8 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
           )}
           map={(
             <div className="flex h-full min-h-0 flex-col">
-              <div ref={mapHostRef} className="relative min-h-0 flex-1">
-                {mapVisible ? <TamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} theme={(theme === "light" ? "light" : "dark") as MapTheme} fitKey={fitKey} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={resetToState} /> : <div className="h-full w-full rounded-[10px] border border-[var(--border-hairline)] bg-[var(--surface-panel)]" role="img" aria-label="Map loading" />}
+              <div className="relative min-h-0 flex-1">
+                <TamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} theme={(theme === "light" ? "light" : "dark") as MapTheme} fitKey={fitKey} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={resetToState} />
                 {(district || currentAc) && (
                   <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 lg:left-3 lg:top-3">
                     <button type="button" onClick={resetToState} className="inline-flex items-center gap-1 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold hover:border-saffron/50"><ArrowLeft className="size-3" /> Tamil Nadu</button>

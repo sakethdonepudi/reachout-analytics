@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /* =====================================================================
    Chart motion primitives.
@@ -31,6 +31,7 @@ export function useEnterOnce(id: string) {
   const already = useRef(seen.has(id)).current;
   const [entered, setEntered] = useState(already);
   const ref = useRef<HTMLDivElement | null>(null);
+  const setRef = useCallback((node: HTMLDivElement | null) => { ref.current = node; }, []);
 
   useEffect(() => {
     if (entered) return;
@@ -49,7 +50,7 @@ export function useEnterOnce(id: string) {
     return () => io.disconnect();
   }, [entered, id]);
 
-  return { ref, entered, already };
+  return { ref: setRef, entered, already };
 }
 
 const easeOut = (p: number) => 1 - Math.pow(1 - p, 3);
@@ -117,6 +118,7 @@ export const clampP = (v: number) => Math.max(0, Math.min(1, v));
 /** Measured content width so SVG charts keep a fixed height at any width. */
 export function useMeasuredWidth(fallback = 660) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const setRef = useCallback((node: HTMLDivElement | null) => { ref.current = node; }, []);
   const [width, setWidth] = useState(fallback);
   useEffect(() => {
     const el = ref.current;
@@ -128,5 +130,5 @@ export function useMeasuredWidth(fallback = 660) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  return { ref, width };
+  return { ref: setRef, width };
 }
