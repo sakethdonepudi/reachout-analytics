@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import RouteTransition from "@/components/site/route-transition";
 import CsrfFetch from "@/components/site/csrf-fetch";
 import { ReauthProvider } from "@/components/auth/reauth-provider";
 import IdleProvider from "@/components/auth/idle-provider";
@@ -17,7 +16,6 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body>
         <CsrfFetch />
         <ReauthProvider><IdleProvider>{children}</IdleProvider></ReauthProvider>
-        <RouteTransition />
       </body>
     </html>
   );
