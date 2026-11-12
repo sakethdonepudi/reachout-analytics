@@ -238,7 +238,14 @@ export function publicStatus(doc: MetaConnectionDoc | null, holder: UserDoc | nu
 export async function getMetaStatus(viewerUserId?: string): Promise<PublicMetaStatus> {
   try {
     const [doc, holder] = await Promise.all([getWorkspaceConnection(), getMetaHolder()]);
-    if (!doc) return disconnectedStatus();
+    if (!doc) {
+      return {
+        ...disconnectedStatus(),
+        holderUserId: holder?._id ?? null,
+        holderName: holder?.displayName ?? null,
+        isHolder: Boolean(viewerUserId && holder?._id === viewerUserId),
+      };
+    }
     if (doc.status === "active" && doc.expiresAt && isConnectionExpired(doc.expiresAt)) {
       await markWorkspaceConnection("expired", "connection-expired");
       return publicStatus(await getWorkspaceConnection(), holder, viewerUserId);
