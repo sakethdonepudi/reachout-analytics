@@ -20,21 +20,17 @@ export function StatTile({ label, value, delta, hint, className }: {
     : typeof value === "number"
       ? new Intl.NumberFormat("en-IN").format(value)
       : value;
-  const deltaTone = delta?.direction === "up"
-    ? "text-[var(--success)]"
-    : delta?.direction === "down"
-      ? "text-[var(--danger)]"
-      : "text-[var(--text-muted)]";
+  const noteTone = delta?.direction === "up" ? "good" : delta?.direction === "down" ? "bad" : "";
   return (
-    <Card className={cn("p-4", className)}>
-      <p className="type-micro text-[var(--text-muted)]">{label}</p>
-      <p className="num mt-2 font-display text-[clamp(1.4rem,2.2vw,2rem)] font-semibold leading-none text-[var(--text-primary)]">{display}</p>
+    <div className={cn("report-stat", className)}>
+      <p className="report-stat-label">{label}</p>
+      <p className="report-stat-value">{display}</p>
       {(delta || hint) && (
-        <p className={cn("mt-2 flex flex-wrap items-center gap-2 text-[11px]", deltaTone)}>
+        <p className={cn("report-stat-note", noteTone)}>
           {delta && <span className="num font-semibold">{delta.value}{delta.label ? ` ${delta.label}` : ""}</span>}
-          {hint && <span className="text-[var(--text-muted)]">{hint}</span>}
+          {hint && <span>{delta ? " · " : ""}{hint}</span>}
         </p>
       )}
-    </Card>
+    </div>
   );
 }

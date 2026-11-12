@@ -31,7 +31,7 @@ export function SegmentedControl({ items, value, onChange, ariaLabel, className 
   }
 
   return (
-    <div role="group" aria-label={ariaLabel} className={cn("inline-flex rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-raised)] p-0.5", className)}>
+    <div role="group" aria-label={ariaLabel} className={cn("report-tabs", className)}>
       {items.map((item, index) => {
         const active = value === item.id;
         return (
@@ -42,10 +42,7 @@ export function SegmentedControl({ items, value, onChange, ariaLabel, className 
             aria-pressed={active}
             onClick={() => onChange(item.id)}
             onKeyDown={(event) => onKeyDown(event, index)}
-            className={cn(
-              "min-h-10 rounded-[calc(var(--radius-control)-3px)] px-3 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]",
-              active ? "bg-[var(--surface-panel)] text-[var(--text-primary)] shadow-[var(--shadow-soft)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]",
-            )}
+            className="report-tab focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--r-teal)]"
           >
             {item.label}
           </button>

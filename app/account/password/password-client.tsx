@@ -54,7 +54,7 @@ export default function PasswordClient({ first, turnstileEnabled, nonce }: { fir
           </div>
           <Field label="Confirm new password" type="password" value={form.confirm} onChange={(value) => setForm((current) => ({ ...current, confirm: value }))} autoComplete="new-password" />
           {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="password" /></div>}
-          <button type="submit" disabled={busy || (turnstileEnabled && !token)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
+          <button type="submit" disabled={busy || (turnstileEnabled && !token)} className="report-btn w-full disabled:opacity-60">
             {busy && <Loader2 className="size-4 animate-spin" />} Save password
           </button>
         </form>

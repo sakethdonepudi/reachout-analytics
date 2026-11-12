@@ -340,7 +340,7 @@ export default function TelanganaDashboard() {
                     {legendItems.map((item) => (
                       <span key={item.key} className="flex min-w-0 items-center gap-1.5">
                         <span className="h-2.5 w-5 shrink-0 rounded-[2px] ring-1 ring-inset ring-black/15"
-                          style={{ background: item.split ? `linear-gradient(90deg, ${PARTY_COLOR.BRS} 0 50%, ${PARTY_COLOR.Congress} 50% 100%)` : item.key === "none" ? NO_DATA_COLOR : `linear-gradient(90deg, ${shadeHex(item.colour, 0.2)} 0%, ${item.colour} 50%, ${shadeHex(item.colour, 0.7)} 100%)` }} />
+                          data-party-bar="true" style={{ background: item.split ? `linear-gradient(90deg, ${PARTY_COLOR.BRS} 0 50%, ${PARTY_COLOR.Congress} 50% 100%)` : item.key === "none" ? NO_DATA_COLOR : `linear-gradient(90deg, ${shadeHex(item.colour, 0.2)} 0%, ${item.colour} 50%, ${shadeHex(item.colour, 0.7)} 100%)` }} />
                         <span className="truncate">{item.label}</span>
                       </span>
                     ))}

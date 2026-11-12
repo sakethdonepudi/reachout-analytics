@@ -22,13 +22,11 @@ export type NavCoreProps = {
   cases?: CaseItem[];
 };
 
-const glass = "nav-glass pointer-events-auto";
-
 function idleLabel(ms: number): string {
   const seconds = Math.max(0, Math.round(ms / 1000));
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
-const linkClass = "inline-flex h-9 items-center rounded-full px-3 text-[12.5px] font-semibold text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45";
+const linkClass = "site-nav-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--r-teal)]/45";
 
 function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
@@ -73,18 +71,18 @@ function Dropdown({ label, items, footer, active, align = "left" }: {
 
   return (
     <div ref={root} className="relative" onMouseEnter={hoverOpen} onMouseLeave={hoverClose}>
-      <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setOpen((value) => !value); } }} className={cn(linkClass, "gap-1", (active || open) && "site-group-inset text-[var(--h-ink)]")}>
+      <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setOpen((value) => !value); } }} className={cn(linkClass, "gap-1", (active || open) && "bg-[var(--r-hl)] text-[var(--r-navy)]")}>
         {label}<ChevronDown className={cn("size-3 transition-transform", open && "rotate-180")} aria-hidden />
       </button>
       {open && (
-        <div role="menu" className={cn("site-group absolute top-[calc(100%+8px)] z-50 w-64 rounded-2xl p-1.5 text-[var(--h-ink)]", align === "right" ? "right-0" : "left-0")}>
+        <div role="menu" className={cn("site-nav-menu top-[calc(100%+8px)]", align === "right" ? "right-0" : "left-0")}>
           {items.map((item) => (
-            <Link key={item.href + item.label} href={item.href} role="menuitem" onClick={() => setOpen(false)} className={cn("flex min-h-10 items-start gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium transition-colors hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45", item.active && "site-group-inset")}>
+            <Link key={item.href + item.label} href={item.href} role="menuitem" onClick={() => setOpen(false)} className={cn("flex min-h-10 items-start gap-2 rounded-md px-3 py-2 text-[12.5px] font-medium hover:bg-[var(--r-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--r-teal)]/45", item.active && "bg-[var(--r-hl)]")}>
               {item.icon}
-              <span className="min-w-0"><span className="block">{item.label}</span>{item.hint && <span className="mt-0.5 block text-[10px] font-normal text-[var(--h-muted)]">{item.hint}</span>}</span>
+              <span className="min-w-0"><span className="block">{item.label}</span>{item.hint && <span className="mt-0.5 block text-[10px] font-normal text-[var(--r-muted)]">{item.hint}</span>}</span>
             </Link>
           ))}
-          {footer && <><div className="my-1 h-px bg-[var(--h-border)]/20" /><Link href={footer.href} role="menuitem" onClick={() => setOpen(false)} className="flex min-h-10 items-center gap-2 rounded-xl px-3 text-[11.5px] font-semibold text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">{footer.icon}{footer.label}</Link></>}
+          {footer && <><div className="my-1 h-px bg-[var(--h-border)]/20" /><Link href={footer.href} role="menuitem" onClick={() => setOpen(false)} className="flex min-h-10 items-center gap-2 rounded-md px-3 text-[11.5px] font-semibold text-[var(--r-muted)] hover:bg-[var(--r-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--r-teal)]/45">{footer.icon}{footer.label}</Link></>}
         </div>
       )}
     </div>
@@ -125,9 +123,9 @@ export default function NavCore({ variant, displayName, username, organisation, 
 
   return (
     <>
-      <header className="site-header pointer-events-none fixed inset-x-0 top-0 z-50 px-3 pt-2 sm:px-4">
-        <div className={cn("site-group pointer-events-auto mx-auto flex h-[52px] w-full max-w-[1240px] items-center gap-2 rounded-full px-3 sm:h-[56px] sm:px-4", glass)}>
-          <Logo href={home} className="h-[26px] w-[116px] sm:h-[28px] sm:w-[126px]" />
+      <header className="site-nav">
+        <div className="site-nav-inner">
+          <Logo href={home} className="h-[24px] w-[108px]" />
           <nav className="ml-2 hidden items-center gap-0.5 md:flex" aria-label="Primary">
             {variant === "public" && (
               <>
@@ -147,28 +145,28 @@ export default function NavCore({ variant, displayName, username, organisation, 
             )}
             {variant === "owner" && (
               <>
-                <Link href="/dashboard" className={cn(linkClass, pathname === "/dashboard" && "site-group-inset text-[var(--h-ink)]")}>Dashboard</Link>
+                <Link href="/dashboard" data-active={pathname === "/dashboard"} className={linkClass}>Dashboard</Link>
                 <Dropdown label="Case Studies" items={caseItems} footer={{ href: "/dashboard/case-studies", label: "Case studies dashboard", icon: <Settings className="size-3.5" /> }} active={pathname?.startsWith("/case-studies") || pathname === "/dashboard/case-studies"} />
               </>
             )}
           </nav>
           <div className="ml-auto flex items-center gap-1">
             {variant === "public" ? (
-              <Link href="/login" className="hidden h-9 items-center rounded-full bg-[var(--h-ink)] px-4 text-[12px] font-semibold text-[var(--h-surface)] md:inline-flex">Login</Link>
+              <Link href="/login" className="hidden h-9 items-center rounded-md bg-[var(--r-navy)] px-4 text-[12px] font-semibold text-white md:inline-flex">Login</Link>
             ) : (
               <>
                 <div ref={accountRef} className="relative hidden md:block">
-                  <button type="button" onClick={() => setAccountOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountOpen} aria-label="Account menu" className={cn("inline-flex h-9 items-center gap-2 rounded-full px-2 text-[12px] font-semibold text-[var(--h-ink)] hover:bg-[var(--h-surface-inset)]", accountOpen && "site-group-inset")}>
-                    <span className="grid size-7 place-items-center rounded-full bg-[var(--h-ink)] text-[10px] font-bold text-[var(--h-surface)]">{initials(displayName ?? "User")}</span>
+                  <button type="button" onClick={() => setAccountOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountOpen} aria-label="Account menu" className={cn("inline-flex h-9 items-center gap-2 rounded-md px-2 text-[12px] font-semibold text-[var(--r-ink)] hover:bg-[var(--r-bg)]", accountOpen && "bg-[var(--r-hl)]")}>
+                    <span className="grid size-7 place-items-center rounded-full bg-[var(--r-navy)] text-[10px] font-bold text-white">{initials(displayName ?? "User")}</span>
                     <span className="hidden max-w-[110px] truncate lg:block">{variant === "client" ? displayName : "Account"}</span>
-                    <span className="hidden text-[9.5px] font-normal tabular-nums text-[var(--h-muted)] xl:inline">{idleLabel(remainingMs)}</span>
-                    <ChevronDown className="size-3 text-[var(--h-muted)]" />
+                    <span className="hidden text-[9.5px] font-normal tabular-nums text-[var(--r-muted)] xl:inline">{idleLabel(remainingMs)}</span>
+                    <ChevronDown className="size-3 text-[var(--r-muted)]" />
                   </button>
                   {accountOpen && (
-                    <div role="menu" className="site-group absolute right-0 top-[calc(100%+8px)] w-72 rounded-2xl p-2 text-[var(--h-ink)]">
+                    <div role="menu" className="site-nav-menu right-0 top-[calc(100%+8px)] w-72 p-2 text-[var(--r-ink)]">
                       {variant === "client" ? (
-                        <div className="px-2 pb-2 pt-1 text-[11px] text-[var(--h-muted)]">
-                          <p className="text-[13px] font-semibold text-[var(--h-ink)]">{displayName}</p>
+                        <div className="px-2 pb-2 pt-1 text-[11px] text-[var(--r-muted)]">
+                          <p className="text-[13px] font-semibold text-[var(--r-ink)]">{displayName}</p>
                           <p>{organisation ?? "Client"}</p>
                           <p>@{username}</p>
                           <p className="mt-1">Signed in {signInAt ?? "—"}</p>
@@ -176,8 +174,8 @@ export default function NavCore({ variant, displayName, username, organisation, 
                           <p className="tabular-nums">Signs out in {idleLabel(remainingMs)}</p>
                         </div>
                       ) : (
-                        <div className="px-2 pb-2 pt-1 text-[11px] text-[var(--h-muted)]">
-                          <p className="text-[13px] font-semibold text-[var(--h-ink)]">{displayName}</p>
+                        <div className="px-2 pb-2 pt-1 text-[11px] text-[var(--r-muted)]">
+                          <p className="text-[13px] font-semibold text-[var(--r-ink)]">{displayName}</p>
                           <p>Last sign-in {lastLoginAt ?? "—"}{lastLoginDevice ? ` · ${lastLoginDevice}` : ""}</p>
                           <p className="tabular-nums">Signs out in {idleLabel(remainingMs)}</p>
                         </div>
@@ -195,13 +193,13 @@ export default function NavCore({ variant, displayName, username, organisation, 
                           <MenuLink href="/account/security" icon={<Shield className="size-3.5" />}>Security</MenuLink>
                         </>
                       )}
-                      <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-left text-[12px] font-medium text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)]"><LogOut className="size-3.5" /> Sign out</button>
+                      <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-10 w-full items-center gap-2 rounded-md px-3 text-left text-[12px] font-medium text-[var(--r-muted)] hover:bg-[var(--r-bg)]"><LogOut className="size-3.5" /> Sign out</button>
                     </div>
                   )}
                 </div>
               </>
             )}
-            <button type="button" aria-label="Open menu" onClick={() => setMenuOpen(true)} className="grid size-10 place-items-center rounded-full text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] md:hidden"><Menu className="size-5" /></button>
+            <button type="button" aria-label="Open menu" onClick={() => setMenuOpen(true)} className="grid size-10 place-items-center rounded-full text-[var(--r-muted)] hover:bg-[var(--r-bg)] md:hidden"><Menu className="size-5" /></button>
           </div>
         </div>
       </header>
@@ -222,20 +220,20 @@ export default function NavCore({ variant, displayName, username, organisation, 
           {variant === "client" && (
             <>
               <MobileLink href="/">Home</MobileLink>
-              <details className="rounded-xl"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-[14px] font-semibold">Case Studies<ChevronDown className="size-4" /></summary><div className="pl-3">{caseItems.map((item) => <MobileLink key={item.href} href={item.href}>{item.label}<span className="block text-[10px] font-normal text-[var(--h-muted)]">{item.hint}</span></MobileLink>)}</div></details>
+              <details className="rounded-md"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-3 text-[14px] font-semibold">Case Studies<ChevronDown className="size-4" /></summary><div className="pl-3">{caseItems.map((item) => <MobileLink key={item.href} href={item.href}>{item.label}<span className="block text-[10px] font-normal text-[var(--r-muted)]">{item.hint}</span></MobileLink>)}</div></details>
             </>
           )}
           {variant === "owner" && (
             <>
               <MobileLink href="/dashboard">Dashboard</MobileLink>
-              <details className="rounded-xl"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-[14px] font-semibold">Case Studies<ChevronDown className="size-4" /></summary><div className="pl-3">{caseItems.map((item) => <MobileLink key={item.href} href={item.href}>{item.label}</MobileLink>)}<MobileLink href="/dashboard/case-studies"><Settings className="size-4" /> Case studies dashboard</MobileLink></div></details>
+              <details className="rounded-md"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-3 text-[14px] font-semibold">Case Studies<ChevronDown className="size-4" /></summary><div className="pl-3">{caseItems.map((item) => <MobileLink key={item.href} href={item.href}>{item.label}</MobileLink>)}<MobileLink href="/dashboard/case-studies"><Settings className="size-4" /> Case studies dashboard</MobileLink></div></details>
 
               <MobileLink href="/account/users">Users</MobileLink>
               <MobileLink href="/account/sessions">Sessions</MobileLink>
               <MobileLink href="/account/security">Security</MobileLink>
             </>
           )}
-          {variant !== "public" && <button type="button" onClick={() => void signOut()} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-[14px] font-medium text-[var(--h-muted)]"><LogOut className="size-4" /> Sign out</button>}
+          {variant !== "public" && <button type="button" onClick={() => void signOut()} className="flex min-h-11 w-full items-center gap-2 rounded-md px-3 text-left text-[14px] font-medium text-[var(--r-muted)]"><LogOut className="size-4" /> Sign out</button>}
         </div>
       </Sheet>
     </>
@@ -243,9 +241,9 @@ export default function NavCore({ variant, displayName, username, organisation, 
 }
 
 function MenuLink({ href, children, icon }: { href: string; children: React.ReactNode; icon?: React.ReactNode }) {
-  return <Link href={href} role="menuitem" className="flex min-h-10 items-center gap-2 rounded-xl px-3 text-[12px] font-medium text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)]">{icon}{children}</Link>;
+  return <Link href={href} role="menuitem" className="flex min-h-10 items-center gap-2 rounded-md px-3 text-[12px] font-medium text-[var(--r-muted)] hover:bg-[var(--r-bg)]">{icon}{children}</Link>;
 }
 
 function MobileLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return <Link href={href} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold text-[var(--h-muted)]">{children}</Link>;
+  return <Link href={href} className="flex min-h-11 items-center gap-2 rounded-md px-3 text-[14px] font-semibold text-[var(--r-muted)]">{children}</Link>;
 }

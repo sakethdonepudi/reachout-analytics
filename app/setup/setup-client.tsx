@@ -46,8 +46,8 @@ export default function SetupClient({ turnstileEnabled, nonce }: { turnstileEnab
       <div className="absolute right-5 top-5"></div>
       <div className="w-full max-w-md">
         <div className="mb-7 flex justify-center"><Logo /></div>
-        <div className="rounded-[var(--radius-panel)] border border-[var(--border-hairline)] bg-[var(--surface-panel)] p-7 shadow-[var(--shadow-soft)]">
-          <p className="type-micro text-[var(--accent-brass)]">One-time setup</p>
+        <div className="report-card p-7">
+          <p className="type-micro text-[var(--r-teal-d)]">One-time setup</p>
           <h1 className="type-h1 mt-2">Create the first owner</h1>
           <p className="type-small mt-2 text-[var(--text-muted)]">This page stops working after the first owner exists.</p>
           {error && <p role="alert" className="mt-4 rounded-[var(--radius-control)] border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-2 text-[12.5px] text-[var(--danger)]">{error}</p>}
@@ -64,7 +64,7 @@ export default function SetupClient({ turnstileEnabled, nonce }: { turnstileEnab
             </div>
             <Field label="Confirm password" type="password" value={form.confirm} onChange={(value) => set("confirm", value)} autoComplete="new-password" />
             {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="setup" /></div>}
-            <button type="submit" disabled={busy || (turnstileEnabled && !token)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
+            <button type="submit" disabled={busy || (turnstileEnabled && !token)} className="report-btn w-full disabled:opacity-60">
               {busy && <Loader2 className="size-4 animate-spin" />} Create owner
             </button>
           </form>

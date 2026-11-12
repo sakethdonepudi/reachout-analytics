@@ -2,7 +2,6 @@
 
 import { Suspense, useCallback, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/brand";
@@ -86,18 +85,11 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
   }
 
   return (
-    <main className="relative grid min-h-[100svh] place-items-center overflow-hidden bg-[var(--surface-canvas)] px-5 py-14 text-[var(--text-primary)]">
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <Image src="/images/hero/slide-1-1672.webp" alt="" fill priority sizes="100vw" className="object-cover object-[72%_50%] opacity-30" />
-        <div className="absolute inset-0 bg-[var(--surface-canvas)]/78" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--surface-canvas)]/20 to-[var(--surface-canvas)]" />
-      </div>
-      <div className="absolute right-5 top-5 z-10"></div>
-
+    <main className="grid min-h-[100svh] place-items-center bg-[var(--r-bg)] px-5 py-14 text-[var(--r-ink)]">
       <div className="relative w-full max-w-sm">
         <div className="mb-7 flex justify-center"><Logo /></div>
-        <div className="rounded-[var(--radius-panel)] border border-[var(--border-hairline)] bg-[var(--surface-panel)]/95 p-7 shadow-[var(--shadow-soft)] backdrop-blur-xl">
-          <p className="type-micro text-[var(--accent-brass)]">Secure access</p>
+        <div className="report-card p-7">
+          <p className="type-micro text-[var(--r-teal-d)]">Secure access</p>
           <h1 className="type-h1 mt-2">{step === "totp" ? "Enter your code" : "Sign in"}</h1>
           <p className="type-small mt-2 text-[var(--text-muted)]">
             {step === "totp" ? `Open your authenticator app for ${username}.` : "Use your workspace username and password."}
@@ -130,7 +122,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
               </label>
               {capsLock && <p className="text-[11.5px] text-[var(--warning)]">Caps Lock is on.</p>}
               {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="login" /></div>}
-              <button type="submit" disabled={loading || (turnstileEnabled && !token)} className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
+              <button type="submit" disabled={loading || (turnstileEnabled && !token)} className="report-btn w-full disabled:opacity-60">
                 {loading && <Loader2 className="size-4 animate-spin" />} Continue
               </button>
             </form>
@@ -152,14 +144,14 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
                 </label>
               )}
               {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="totp" /></div>}
-              <button type="submit" disabled={loading || (turnstileEnabled && !token) || (!recovery && digits.join("").length !== 6)} className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
+              <button type="submit" disabled={loading || (turnstileEnabled && !token) || (!recovery && digits.join("").length !== 6)} className="report-btn w-full disabled:opacity-60">
                 {loading && <Loader2 className="size-4 animate-spin" />} Verify
               </button>
-              <button type="button" onClick={() => { setRecovery((value) => !value); setError(""); }} className="w-full text-center text-[12px] font-semibold text-[var(--accent-brass-strong)] underline decoration-dotted underline-offset-4">
+              <button type="button" onClick={() => { setRecovery((value) => !value); setError(""); }} className="w-full text-center text-[12px] font-semibold text-[var(--r-teal-d)] underline decoration-dotted underline-offset-4">
                 {recovery ? "Use an authenticator code" : "Use a recovery code"}
               </button>
               <button type="button" onClick={() => { setStep("password"); setError(""); setRecovery(false); }} className="w-full text-center text-[12px] text-[var(--text-muted)]">Back to password</button>
-              {/timed out/i.test(error) && <a href="/login" className="block text-center text-[12px] font-semibold text-[var(--accent-brass-strong)] underline decoration-dotted underline-offset-4">Sign in again</a>}
+              {/timed out/i.test(error) && <a href="/login" className="block text-center text-[12px] font-semibold text-[var(--r-teal-d)] underline decoration-dotted underline-offset-4">Sign in again</a>}
             </form>
           )}
 
