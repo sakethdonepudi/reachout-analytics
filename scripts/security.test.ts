@@ -36,7 +36,7 @@ for (const evil of ["//evil.com", "/\\evil.com", "https://evil.com", "/%2F%2Fevi
   eq(`reject ${JSON.stringify(evil)}`, safeNextPath(evil, "owner"), null);
 }
 eq("accept deep case-study path", safeNextPath("/case-studies/tamil-nadu?year=2026", "client"), "/case-studies/tamil-nadu?year=2026");
-eq("reject owner path for client", safeNextPath("/admin", "client"), null);
+eq("reject owner path for client", safeNextPath("/dashboard", "client"), null);
 eq("reject api path", safeNextPath("/api/data/summary", "owner"), null);
 
 console.log("\n2. Route-by-role matrix");
@@ -45,7 +45,8 @@ eq("case studies client", canAccess("client", "/case-studies"), true);
 eq("campaigns client", canAccess("client", "/campaigns"), true);
 eq("meta owner owner", canAccess("owner", "/meta-ads/settings"), true);
 eq("meta owner client", canAccess("client", "/meta-ads/settings"), false);
-eq("admin client", canAccess("client", "/admin"), false);
+eq("case-studies manager client", canAccess("client", "/dashboard/case-studies"), false);
+eq("admin legacy redirects before access", rolesForPath("/admin"), null);
 eq("data client", canAccess("client", "/api/data/summary"), false);
 eq("template public", rolesForPath("/api/data/template"), null);
 eq("home public", rolesForPath("/"), null);
