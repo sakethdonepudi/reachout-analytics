@@ -57,7 +57,7 @@ function installGraphStub() {
   if (!clientUser.ok) throw new Error(clientUser.error);
   const sid = "sid-owner-callback";
   const exp = new Date(Date.now() + 60 * 60 * 1000);
-  await db.collection("sessions").insertOne({ _id: sid, sub: owner.user._id, userId: owner.user._id, role: "owner", createdAt: new Date(), lastSeen: new Date(Date.now() - 5 * 60 * 1000), exp, authTime: new Date(), graceUntil: new Date(Date.now() + 10 * 60 * 1000) });
+  await db.collection("sessions").insertOne({ _id: sid, sub: owner.user._id, userId: owner.user._id, role: "owner", createdAt: new Date(), lastSeen: new Date(Date.now() - 5 * 60 * 1000), exp, authTime: new Date(), graceUntil: new Date(Date.now() + 10 * 60 * 1000) } as never);
   const payload = { state: stateValue, verifier, sid, userId: owner.user._id, next: "/meta-ads/settings" };
   const cookie = stateCookie(payload);
 
@@ -65,17 +65,17 @@ function installGraphStub() {
   const restore = installGraphStub();
   const first = await callback(cookie);
   restore();
-  ok("returns 200 HTML, not 401 JSON", first.status === 200 && first.headers.get("content-type")?.includes("text/html"), String(first.status));
+  ok("returns 200 HTML, not 401 JSON", first.status === 200 && Boolean(first.headers.get("content-type")?.includes("text/html")), String(first.status));
   ok("bounce targets connected", first.body.includes("connected=1") && first.body.includes('http-equiv="refresh"'));
   ok("bounce has a plain link", first.body.includes("<a href="));
   ok("bounce has no inline script", !/<script/i.test(first.body));
   ok("cache and referrer headers", first.headers.get("cache-control")?.includes("no-store") === true && first.headers.get("referrer-policy") === "no-referrer");
-  const stored = await db.collection("meta_connection").findOne({ sid });
-  ok("connection stored without a session cookie", Boolean(stored) && stored?.userId === owner.user._id && stored?.metaUserName === "Meta User", JSON.stringify(stored ?? null).slice(0, 160));
+  const stored = await db.collection("meta_connection").findOne({ sid } as never);
+  ok("connection stored without a session cookie", Boolean(stored) && Boolean(stored?.userId === owner.user._id && stored?.metaUserName === "Meta User"), JSON.stringify(stored ?? null).slice(0, 160));
   ok("state cookie cleared", first.headers.get("set-cookie")?.includes("ro_meta_state=;") === true);
 
   console.log("\n2. Replay and invalid states");
-  await db.collection("sessions").updateOne({ _id: sid }, { $set: { lastSeen: new Date(), graceUntil: new Date(Date.now() + 60_000) } });
+  await db.collection("sessions").updateOne({ _id: sid } as never, { $set: { lastSeen: new Date(), graceUntil: new Date(Date.now() + 60_000) } });
   const replay = await callback(cookie);
   ok("replayed state fails", replay.body.includes("error=state") && !replay.body.includes("connected=1"));
   await db.collection("meta_connection").deleteMany({});
