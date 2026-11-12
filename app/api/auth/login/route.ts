@@ -6,6 +6,7 @@ import { roleHome, safeNextPath } from "@/lib/access";
 import { beginLoginAttempt, loginRateLimitResponse, recordLoginFailure, recordLoginSuccess } from "@/lib/login-guard";
 import { findUserByUsername, recordFailedLogin, touchLogin, verifyPasswordHash } from "@/lib/users";
 import { setPendingCookie } from "@/lib/pending-auth";
+import { alertNewDevice } from "@/lib/sign-in-alerts";
 import { turnstileConfigured, turnstileRequired, verifyTurnstile } from "@/lib/turnstile";
 
 export const runtime = "nodejs";
@@ -97,6 +98,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return Response.json({ ok: false, error: "Session store unavailable" }, { status: 503, headers });
   }
+  await alertNewDevice(user, req).catch(() => {});
   await audit({ action: "login_success", role: user.role, ip, meta: { userId: user._id } });
   const response = Response.json({ ok: true, redirect: next ?? roleHome(user.role) }, { headers });
   setSessionCookie(response, token);

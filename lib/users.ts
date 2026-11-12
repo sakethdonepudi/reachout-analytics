@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { hash, verify } from "@node-rs/argon2";
 import type { Collection } from "mongodb";
 import { getMongo } from "@/lib/mongodb";
-import { checkPassword } from "@/lib/password-policy";
+import { checkPassword } from "@/lib/password-policy.server";
 import type { SealedSecret } from "@/lib/secure-box";
 import type { Role } from "@/lib/access";
 import type { CaseRecord } from "@/lib/case-registry";
@@ -38,6 +38,7 @@ export type UserDoc = {
   createdAt: Date;
   lastLoginAt: Date | null;
   lastLoginDevice: string | null;
+  knownDevices?: string[];
 };
 
 export type PublicUser = Omit<UserDoc, "passwordHash" | "totpSecret" | "recoveryCodes" | "lastTotpStep">;
@@ -155,6 +156,7 @@ export async function createUser(input: {
     createdAt: now,
     lastLoginAt: null,
     lastLoginDevice: null,
+    knownDevices: [],
   };
   await col.insertOne(user);
   return { ok: true, user };
@@ -249,6 +251,12 @@ export async function clearFailedLogins(id: string): Promise<void> {
   const col = await collection();
   if (!col) return;
   await col.updateOne({ _id: id }, { $set: { failedLogins: 0, lockedUntil: null } });
+}
+
+export async function addKnownDevice(id: string, fingerprint: string): Promise<void> {
+  const col = await collection();
+  if (!col) return;
+  await col.updateOne({ _id: id }, { $addToSet: { knownDevices: fingerprint } });
 }
 
 export async function touchLogin(id: string, device: string): Promise<void> {

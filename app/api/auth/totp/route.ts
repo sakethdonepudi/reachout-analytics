@@ -9,6 +9,7 @@ import { clearPendingCookie, readPending } from "@/lib/pending-auth";
 import { openSecret } from "@/lib/secure-box";
 import { normaliseRecoveryCode, verifyTotp } from "@/lib/totp";
 import { turnstileConfigured, turnstileRequired, verifyTurnstile } from "@/lib/turnstile";
+import { alertNewDevice } from "@/lib/sign-in-alerts";
 
 export const runtime = "nodejs";
 
@@ -104,6 +105,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return Response.json({ ok: false, error: "Session store unavailable" }, { status: 503, headers });
   }
+  await alertNewDevice(user, req).catch(() => {});
   await audit({ action: usedRecovery ? "recovery_code_used" : "login_success", role: user.role, ip, meta: { userId: user._id } });
   const response = Response.json({ ok: true, redirect: safeNextPath(pending.next ?? null, user.role) ?? roleHome(user.role) }, { headers });
   clearPendingCookie(response);
