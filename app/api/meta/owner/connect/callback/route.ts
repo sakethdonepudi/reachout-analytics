@@ -1,64 +1,54 @@
 import { after, type NextRequest } from "next/server";
-import { requireRole } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
-import { clearMetaStateCookie, exchangeMetaCode, fetchMetaIdentity, metaConfigured, metaRedirect, readMetaStateCookie } from "@/lib/meta/oauth";
+import { clearSessionGrace, getSessionRecord } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
+import { clearMetaStateCookie, exchangeMetaCode, fetchMetaIdentity, metaConfigured, readMetaStateCookie } from "@/lib/meta/oauth";
 import { encryptToken } from "@/lib/meta/crypto";
 import { saveConnection } from "@/lib/meta/store";
 import { syncMeta } from "@/lib/meta/sync";
 import { safeNextPath } from "@/lib/access";
+import { getUser } from "@/lib/users";
+import { bounceResponse, callbackDestination, consumeConnectState, validateConnectState, type CallbackFailure } from "@/lib/meta/connect-callback";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-function redirect(req: NextRequest, path: string) {
-  return metaRedirect(new URL(path, req.nextUrl.origin));
+function fail(req: NextRequest, code: CallbackFailure, ip: string, email?: string | null): Response {
+  void audit({ action: "meta_connect", role: "owner", email, ip, meta: { ok: false, code } }).catch(() => {});
+  const res = bounceResponse(callbackDestination(code));
+  clearMetaStateCookie(res);
+  return res;
 }
 
 export async function GET(req: NextRequest) {
-  const auth = await requireRole(req, ["owner"]).catch(() => ({ deny: null }) as never);
-  const storedState = readMetaStateCookie(req);
-  // The session cookie is SameSite=Strict, so Facebook's cross-site redirect
-  // does not send it. The signed, short-lived state cookie carries the same
-  // session identity and is verified before it is used.
-  const sid = "session" in auth ? auth.session.sid : storedState?.sid ?? null;
-  const userId = "session" in auth ? auth.session.userId : storedState?.userId ?? null;
-  const ownerSubject = "session" in auth ? auth.session.sub : null;
-  if ((!("session" in auth) && (!sid || !userId)) || ("deny" in auth && auth.deny)) {
-    if ("deny" in auth && auth.deny) return auth.deny;
-    return Response.json({ ok: false, error: "Not authenticated" }, { status: 401 });
-  }
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
-  const limit = rateLimit(`meta-callback:${ip}`, 20, 10 * 60 * 1000);
-  if (!limit.ok) return rateLimitResponse(limit.retryAfter);
-  if (!metaConfigured()) {
-    return Response.json(
-      { ok: false, error: "Meta app not configured" },
-      { status: 503, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } },
-    );
+  const stored = readMetaStateCookie(req);
+  const state = req.nextUrl.searchParams.get("state") ?? "";
+  const code = req.nextUrl.searchParams.get("code") ?? "";
+  const session = stored?.sid ? await getSessionRecord(stored.sid) : null;
+  const user = stored?.userId ? await getUser(stored.userId) : null;
+  const check = validateConnectState({ stored, state, session, user });
+  if (!check.ok) return fail(req, check.code, ip, user?.username ?? null);
+
+  if (!(await consumeConnectState(check.identity.sid + ":" + state))) {
+    return fail(req, "state", ip, check.identity.ownerEmail);
   }
 
-  if (!sid) return redirect(req, "/meta-ads/settings?error=session");
-  const code = req.nextUrl.searchParams.get("code") ?? "";
-  const state = req.nextUrl.searchParams.get("state") ?? "";
-  const stored = storedState;
-  if (!code || !state || !stored || stored.state !== state || (stored.sid && stored.sid !== sid)) {
-    const res = redirect(req, "/meta-ads/settings?error=state");
-    clearMetaStateCookie(res);
-    return res;
-  }
+  const limit = rateLimit(`meta-callback:${ip}`, 20, 10 * 60 * 1000);
+  if (!limit.ok) return fail(req, "connect", ip, check.identity.ownerEmail);
+  if (!metaConfigured() || !code) return fail(req, "connect", ip, check.identity.ownerEmail);
 
   try {
-    const token = await exchangeMetaCode(req, code, stored.verifier);
+    const token = await exchangeMetaCode(req, code, stored!.verifier);
     const identity = await fetchMetaIdentity(token.token);
     const connectedAt = new Date();
-    const expiresAt = new Date(Math.min(connectedAt.getTime() + 12 * 60 * 60 * 1000, "session" in auth ? auth.session.exp : Date.now() + 12 * 60 * 60 * 1000)).toISOString();
+    const expiresAt = new Date(Math.min(connectedAt.getTime() + 12 * 60 * 60 * 1000, check.identity.sessionExp)).toISOString();
     await saveConnection({
-      sid,
-      userId: userId ?? sid,
+      sid: check.identity.sid,
+      userId: check.identity.userId,
       metaUserId: identity.account.id,
       metaUserName: identity.account.name,
-      ownerEmail: ownerSubject ?? "owner",
+      ownerEmail: check.identity.ownerEmail,
       token: encryptToken(token.token),
       tokenExpiresAt: token.expiresAt,
       scopes: identity.scopes,
@@ -70,16 +60,15 @@ export async function GET(req: NextRequest) {
       expiresAt,
       lastSyncAt: null,
     });
-    await audit({ action: "meta_connect", email: ownerSubject, role: "owner", ip, meta: { accountId: identity.account.id, adAccounts: identity.adAccounts.length } });
-    after(() => syncMeta({ trigger: "manual", sid }));
-    const destination = safeNextPath(stored.next ?? null, "owner") ?? "/meta-ads/settings";
-    const res = redirect(req, `${destination}${destination.includes("?") ? "&" : "?"}connected=1`);
+    await audit({ action: "meta_connect", email: check.identity.ownerEmail, role: "owner", ip, meta: { accountId: identity.account.id, adAccounts: identity.adAccounts.length } });
+    try { after(() => syncMeta({ trigger: "manual", sid: check.identity.sid })); } catch { /* not inside a request context in tests */ }
+    await clearSessionGrace(check.identity.sid);
+    const destination = safeNextPath(stored!.next ?? null, "owner") ?? callbackDestination(null);
+    const res = bounceResponse(destination.includes("?") ? `${destination}&connected=1` : `${destination}?connected=1`);
     clearMetaStateCookie(res);
     return res;
   } catch {
-    await audit({ action: "meta_connect", email: ownerSubject, role: "owner", ip, meta: { ok: false } });
-    const res = redirect(req, "/meta-ads/settings?error=connect");
-    clearMetaStateCookie(res);
-    return res;
+    await clearSessionGrace(check.identity.sid);
+    return fail(req, "connect", ip, check.identity.ownerEmail);
   }
 }

@@ -59,6 +59,7 @@ type SessionDoc = {
   lastSeen: Date;
   exp: Date;
   authTime?: Date;
+  graceUntil?: Date;
 };
 
 async function sessions() {
@@ -155,7 +156,8 @@ export async function getSessionByToken(token: string | undefined): Promise<Sess
     const doc = await col.findOne({ _id: signed.sid ?? "" });
     if (!doc) return null;
     const now = Date.now();
-    if (now > doc.exp.getTime() || now - doc.lastSeen.getTime() > IDLE_MS) {
+    const graceActive = Boolean(doc.graceUntil && doc.graceUntil.getTime() > now);
+    if (now > doc.exp.getTime() || (!graceActive && now - doc.lastSeen.getTime() > IDLE_MS)) {
       const idle = now <= doc.exp.getTime();
       await col.deleteOne({ _id: doc._id }).catch(() => {});
       await cleanupSessionConnection(doc._id, idle ? "idle" : "expired").catch(() => {});
@@ -177,6 +179,31 @@ export async function getSessionByToken(token: string | undefined): Promise<Sess
   } catch {
     return null;
   }
+}
+
+export type SessionRecord = {
+  _id: string; userId?: string; role: Role; exp: Date; lastSeen: Date; graceUntil?: Date; authTime?: Date;
+};
+
+/** Raw session record for the OAuth callback, which cannot rely on the Strict cookie. */
+export async function getSessionRecord(sid: string): Promise<SessionRecord | null> {
+  const col = await sessions();
+  if (!col) return null;
+  return col.findOne({ _id: sid }) as Promise<SessionRecord | null>;
+}
+
+export async function grantSessionGrace(sid: string | undefined, ms: number): Promise<boolean> {
+  if (!sid) return false;
+  const col = await sessions();
+  if (!col) return false;
+  const result = await col.updateOne({ _id: sid }, { $set: { graceUntil: new Date(Date.now() + ms) } });
+  return result.matchedCount > 0;
+}
+
+export async function clearSessionGrace(sid: string | undefined): Promise<void> {
+  if (!sid) return;
+  const col = await sessions();
+  if (col) await col.updateOne({ _id: sid }, { $unset: { graceUntil: 1 } });
 }
 
 export async function getSession(req: NextRequest): Promise<Session | null> {
@@ -235,7 +262,7 @@ export async function heartbeat(sid: string | undefined): Promise<boolean> {
   if (!sid) return false;
   const col = await sessions();
   if (!col) return false;
-  const result = await col.updateOne({ _id: sid, exp: { $gt: new Date() } }, { $set: { lastSeen: new Date() } });
+  const result = await col.updateOne({ _id: sid, exp: { $gt: new Date() } }, { $set: { lastSeen: new Date() }, $unset: { graceUntil: 1 } });
   return result.matchedCount > 0;
 }
 

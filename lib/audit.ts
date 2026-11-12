@@ -9,7 +9,7 @@ export type AuditAction =
   | "login_success" | "login_failed" | "login_denied" | "reauth" | "logout" | "logout_all"
   | "role_denied" | "meta_connect" | "meta_disconnect" | "meta_connection_expired" | "meta_settings"
   | "export" | "csrf_rejected" | "totp_failed" | "recovery_code_used" | "session_idle_timeout"
-  | "owner_bootstrap" | "user_created" | "user_updated" | "user_disabled" | "user_deleted"
+  | "owner_bootstrap" | "meta_connect_start" | "user_created" | "user_updated" | "user_disabled" | "user_deleted"
   | "password_reset" | "totp_reset" | "sign_out_everywhere" | "scope_changed";
 
 export async function audit(input: {

@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { requireRecentAuth } from "@/lib/auth";
+import { grantSessionGrace, requireRecentAuth } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 import { safeNextPath } from "@/lib/access";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { createMetaFlow, metaAuthUrl, metaConfigured, metaRedirect, setMetaStateCookie } from "@/lib/meta/oauth";
@@ -20,6 +21,8 @@ export async function GET(req: NextRequest) {
   if (!metaConfigured()) return Response.json({ ok: false, error: "Meta is not configured" }, { status: 503 });
 
   const next = safeNextPath(req.nextUrl.searchParams.get("next"), "owner") ?? "/meta-ads/settings";
+  await grantSessionGrace(auth.session.sid, 10 * 60 * 1000).catch(() => {});
+  await audit({ action: "meta_connect_start", role: "owner", ip, meta: { graceMinutes: 10 } }).catch(() => {});
   const flow = createMetaFlow();
   const response = metaRedirect(metaAuthUrl(req, flow));
   setMetaStateCookie(response, { state: flow.state, verifier: flow.verifier, next, sid: auth.session.sid ?? null, userId: auth.session.userId ?? null });
