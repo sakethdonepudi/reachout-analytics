@@ -231,9 +231,9 @@
   --color-saffron-2: var(--saffron-2);
   --color-india-green: var(--india-green);
   --color-navy: var(--navy);
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Inter Tight", "Inter", ui-sans-serif, sans-serif;
-  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter-tight), var(--font-inter), ui-sans-serif, sans-serif;
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
 }
 
 html { scroll-behavior: smooth; }
@@ -715,6 +715,33 @@ html.theme-transition *::after {
   border: 1px solid var(--h-border);
   box-shadow: var(--h-shadow);
 }
+/* Floating glass navbar: warm ivory in light, smoked glass in dark. */
+.nav-glass {
+  background: color-mix(in srgb, var(--h-surface-top) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--h-border) 55%, transparent);
+  box-shadow: 0 18px 46px -28px rgba(22, 18, 12, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(18px) saturate(1.45);
+  -webkit-backdrop-filter: blur(18px) saturate(1.45);
+}
+.dark .nav-glass {
+  --h-surface: #121922;
+  --h-surface-top: #18212c;
+  --h-surface-inset: rgba(255, 255, 255, 0.08);
+  --h-ink: #f3f5f7;
+  --h-muted: rgba(243, 245, 247, 0.68);
+  --h-border: rgba(255, 255, 255, 0.16);
+  --h-brass: #ffb866;
+  --h-brass-strong: #ffd09a;
+  --h-shadow: 0 22px 58px -30px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, #111821 72%, transparent);
+  border-color: rgba(255, 255, 255, 0.10);
+  box-shadow: 0 24px 60px -32px rgba(0, 0, 0, 0.92), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .nav-glass { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--h-surface-top); }
+  .dark .nav-glass { background: #121922; }
+}
+
 .site-group-inset {
   background: var(--h-surface-inset);
   box-shadow: inset 0 2px 4px rgba(28, 26, 22, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.55);

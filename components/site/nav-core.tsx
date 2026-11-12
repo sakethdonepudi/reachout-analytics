@@ -7,6 +7,7 @@ import { Bell, ChevronDown, Lock, LogOut, Menu, Settings, Shield, Users } from "
 import ThemeToggle from "@/components/site/theme-toggle";
 import { Logo } from "@/components/site/brand";
 import { Sheet } from "@/components/ui/sheet";
+import { useIdle } from "@/components/auth/idle-provider";
 import { cn } from "@/lib/utils";
 
 type CaseItem = { slug: string; title: string; state: string; year: number; draft: boolean };
@@ -24,7 +25,12 @@ export type NavCoreProps = {
   meta?: MetaState;
 };
 
-const glass = "site-group pointer-events-auto";
+const glass = "nav-glass pointer-events-auto";
+
+function idleLabel(ms: number): string {
+  const seconds = Math.max(0, Math.round(ms / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
 const linkClass = "inline-flex h-9 items-center rounded-full px-3 text-[12.5px] font-semibold text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45";
 
 function initials(name: string): string {
@@ -89,6 +95,7 @@ function Dropdown({ label, items, footer, active, align = "left" }: {
 export default function NavCore({ variant, displayName, username, organisation, signInAt, lastLoginAt, lastLoginDevice, cases = [], meta }: NavCoreProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { remainingMs } = useIdle();
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
@@ -148,7 +155,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
             {variant === "owner" && (
               <>
                 <Link href="/dashboard" className={cn(linkClass, pathname === "/dashboard" && "site-group-inset text-[var(--h-ink)]")}>Dashboard</Link>
-                <Dropdown label="Case Studies" items={caseItems} footer={{ href: "/admin", label: "Case studies dashboard", icon: <Settings className="size-3.5" /> }} active={pathname?.startsWith("/case-studies") || pathname === "/admin"} />
+                <Dropdown label="Case Studies" items={caseItems} footer={{ href: "/dashboard/case-studies", label: "Case studies dashboard", icon: <Settings className="size-3.5" /> }} active={pathname?.startsWith("/case-studies") || pathname === "/dashboard/case-studies"} />
                 <Dropdown label="Meta Ads" items={metaItems} active={pathname?.startsWith("/meta-ads")} />
               </>
             )}
@@ -170,6 +177,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
                   <button type="button" onClick={() => setAccountOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountOpen} aria-label="Account menu" className={cn("inline-flex h-9 items-center gap-2 rounded-full px-2 text-[12px] font-semibold text-[var(--h-ink)] hover:bg-[var(--h-surface-inset)]", accountOpen && "site-group-inset")}>
                     <span className="grid size-7 place-items-center rounded-full bg-[var(--h-ink)] text-[10px] font-bold text-[var(--h-surface)]">{initials(displayName ?? "User")}</span>
                     <span className="hidden max-w-[110px] truncate lg:block">{variant === "client" ? displayName : "Account"}</span>
+                    <span className="hidden text-[9.5px] font-normal tabular-nums text-[var(--h-muted)] xl:inline">{idleLabel(remainingMs)}</span>
                     <ChevronDown className="size-3 text-[var(--h-muted)]" />
                   </button>
                   {accountOpen && (
@@ -181,12 +189,13 @@ export default function NavCore({ variant, displayName, username, organisation, 
                           <p>@{username}</p>
                           <p className="mt-1">Signed in {signInAt ?? "—"}</p>
                           <p>Last sign-in {lastLoginAt ?? "—"}{lastLoginDevice ? ` · ${lastLoginDevice}` : ""}</p>
-                          <p>Session idles after 3 minutes</p>
+                          <p className="tabular-nums">Signs out in {idleLabel(remainingMs)}</p>
                         </div>
                       ) : (
                         <div className="px-2 pb-2 pt-1 text-[11px] text-[var(--h-muted)]">
                           <p className="text-[13px] font-semibold text-[var(--h-ink)]">{displayName}</p>
                           <p>Last sign-in {lastLoginAt ?? "—"}{lastLoginDevice ? ` · ${lastLoginDevice}` : ""}</p>
+                          <p className="tabular-nums">Signs out in {idleLabel(remainingMs)}</p>
                         </div>
                       )}
                       {variant === "owner" && (
@@ -236,7 +245,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
           {variant === "owner" && (
             <>
               <MobileLink href="/dashboard">Dashboard</MobileLink>
-              <details className="rounded-xl"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-[14px] font-semibold">Case Studies<ChevronDown className="size-4" /></summary><div className="pl-3">{caseItems.map((item) => <MobileLink key={item.href} href={item.href}>{item.label}</MobileLink>)}<MobileLink href="/admin"><Settings className="size-4" /> Case studies dashboard</MobileLink></div></details>
+              <details className="rounded-xl"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-[14px] font-semibold">Case Studies<ChevronDown className="size-4" /></summary><div className="pl-3">{caseItems.map((item) => <MobileLink key={item.href} href={item.href}>{item.label}</MobileLink>)}<MobileLink href="/dashboard/case-studies"><Settings className="size-4" /> Case studies dashboard</MobileLink></div></details>
               <details className="rounded-xl"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-[14px] font-semibold">Meta Ads<ChevronDown className="size-4" /></summary><div className="pl-3">{metaItems.map((item) => <MobileLink key={item.href + item.label} href={item.href}>{item.label}</MobileLink>)}</div></details>
               <MobileLink href="/account/users">Users</MobileLink>
               <MobileLink href="/account/sessions">Sessions</MobileLink>

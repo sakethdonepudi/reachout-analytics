@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import { headers } from "next/headers";
 import "./globals.css";
 import RouteTransition from "@/components/site/route-transition";
@@ -6,6 +7,38 @@ import ThemeProvider, { ThemeScript } from "@/components/theme-provider";
 import CsrfFetch from "@/components/site/csrf-fetch";
 import { ReauthProvider } from "@/components/auth/reauth-provider";
 import IdleProvider from "@/components/auth/idle-provider";
+
+const inter = localFont({
+  src: [
+    { path: "./fonts/inter-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/inter-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/inter-latin-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/inter-latin-700-normal.woff2", weight: "700", style: "normal" },
+  ],
+  variable: "--font-inter",
+  display: "swap",
+  fallback: ["ui-sans-serif", "system-ui", "sans-serif"],
+});
+const interTight = localFont({
+  src: [
+    { path: "./fonts/inter-tight-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/inter-tight-latin-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/inter-tight-latin-700-normal.woff2", weight: "700", style: "normal" },
+    { path: "./fonts/inter-tight-latin-800-normal.woff2", weight: "800", style: "normal" },
+  ],
+  variable: "--font-inter-tight",
+  display: "swap",
+  fallback: ["ui-sans-serif", "system-ui", "sans-serif"],
+});
+const instrumentSerif = localFont({
+  src: [
+    { path: "./fonts/instrument-serif-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/instrument-serif-latin-400-italic.woff2", weight: "400", style: "italic" },
+  ],
+  variable: "--font-instrument-serif",
+  display: "swap",
+  fallback: ["ui-serif", "Georgia", "serif"],
+});
 
 export const metadata: Metadata = {
   title: "ReachOut Analytics — Winning Elections with Data",
@@ -16,21 +49,14 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${interTight.variable} ${instrumentSerif.variable}`}>
       <head>
         <ThemeScript nonce={nonce} />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap"
-        />
       </head>
       <body>
         <ThemeProvider>
           <CsrfFetch />
-          <ReauthProvider><IdleProvider />{children}</ReauthProvider>
+          <ReauthProvider><IdleProvider>{children}</IdleProvider></ReauthProvider>
           <RouteTransition />
         </ThemeProvider>
       </body>

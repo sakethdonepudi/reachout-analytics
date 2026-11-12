@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog } from "@/components/ui/dialog";
 
@@ -9,10 +9,17 @@ const WARN_MS = 30 * 1000;
 const HEARTBEAT_MS = 60 * 1000;
 const THROTTLE_MS = 5 * 1000;
 
-export default function IdleProvider() {
+type IdleState = { remainingMs: number; signedIn: boolean };
+const IdleContext = createContext<IdleState>({ remainingMs: IDLE_MS, signedIn: false });
+
+export function useIdle() { return useContext(IdleContext); }
+
+export default function IdleProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [warn, setWarn] = useState(false);
   const [remaining, setRemaining] = useState(30);
+  const [remainingMs, setRemainingMs] = useState(IDLE_MS);
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const lastActivity = useRef(Date.now());
   const lastHeartbeat = useRef(0);
   const lastSignal = useRef(0);
@@ -46,7 +53,7 @@ export default function IdleProvider() {
   useEffect(() => {
     let cancelled = false;
     void fetch("/api/auth/session", { cache: "no-store" })
-      .then((response) => { if (response.ok) signedIn.current = true; })
+      .then((response) => { if (response.ok) { signedIn.current = true; setIsSignedIn(true); } })
       .catch(() => {});
     if (typeof window !== "undefined" && "BroadcastChannel" in window) {
       channel.current = new BroadcastChannel("ro-idle");
@@ -77,6 +84,8 @@ export default function IdleProvider() {
       if (cancelled || loggingOut.current || !signedIn.current) return;
       if (document.visibilityState !== "visible") return;
       const idle = Date.now() - lastActivity.current;
+      const left = Math.max(0, IDLE_MS - idle);
+      setRemainingMs(left);
       if (idle >= IDLE_MS) { signOut(); return; }
       if (idle >= IDLE_MS - WARN_MS) {
         setWarn(true);
@@ -95,7 +104,9 @@ export default function IdleProvider() {
   }, [signOut, touch]);
 
   return (
-    <Dialog
+    <IdleContext.Provider value={{ remainingMs: isSignedIn ? remainingMs : IDLE_MS, signedIn: isSignedIn }}>
+      {children}
+      <Dialog
       open={warn}
       onClose={() => touch()}
       title="You'll be signed out in 30s"
@@ -106,6 +117,7 @@ export default function IdleProvider() {
         <button type="button" onClick={() => touch()} className="min-h-11 w-full rounded-[var(--radius-control)] bg-[var(--accent-brass)] text-[13px] font-semibold text-[var(--text-on-brass)]">Stay signed in</button>
         <button type="button" onClick={() => signOut()} className="min-h-10 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] text-[12.5px] font-semibold text-[var(--text-muted)]">Sign out now</button>
       </div>
-    </Dialog>
+      </Dialog>
+    </IdleContext.Provider>
   );
 }
