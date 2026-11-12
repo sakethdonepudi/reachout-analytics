@@ -4,6 +4,7 @@ import { pinAggregates, assumedPinDetails, isConfigured } from "@/lib/poll-store
 import { coordinatesForPin, candidatePinsForDistrict, referenceDistrictNames, pointInDistrict } from "@/lib/pin";
 import { PIN_COORDINATE_COVERAGE } from "@/lib/data/tamil-nadu-pin-coordinates";
 import { requireRole } from "@/lib/auth";
+import { denyCase } from "@/lib/session-scope";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const auth = await requireRole(req, ["owner", "client"]);
   if ("deny" in auth) return auth.deny;
   const { slug } = await params;
+  const denied = denyCase(auth.session, slug);
+  if (denied) return denied;
   const rec = await getCase(slug);
   if (!rec) return Response.json({ ok: false, error: "Unknown case study" }, { status: 404 });
   if (!rec.published) return Response.json({ ok: true, published: false, pins: [], usablePins: 0 });

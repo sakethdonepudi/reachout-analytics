@@ -3,6 +3,7 @@ import aggregates from "@/lib/data/tamil-nadu/aggregates.json";
 import type { TnAggregates } from "@/lib/tamil-nadu/model";
 import { getPublishedSnapshot } from "@/lib/tamil-nadu/snapshot-store";
 import { requireRole } from "@/lib/auth";
+import { denyCase } from "@/lib/session-scope";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,6 +11,8 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   const auth = await requireRole(req, ["owner", "client"]);
   if ("deny" in auth) return auth.deny;
+  const denied = denyCase(auth.session, "tamil-nadu");
+  if (denied) return denied;
   // Prefer the last approved snapshot; fall back to the build-verified bundle.
   const published = await getPublishedSnapshot();
   const current = aggregates as TnAggregates;

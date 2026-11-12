@@ -3,6 +3,8 @@ import Navbar from "@/components/site/navbar";
 import CompanyExperience from "@/components/site/company-marquee";
 import TelanganaDashboard from "@/components/case-studies/telangana/telangana-dashboard";
 import { requirePageSession } from "@/lib/require-session";
+import { caseAllowed } from "@/lib/session-scope";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Telangana — ReachOut's Election Intelligence",
@@ -19,7 +21,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function TelanganaCaseStudyPage() {
-  await requirePageSession("/case-studies/telangana");
+  const session = await requirePageSession("/case-studies/telangana");
+  if (!caseAllowed(session, "telangana")) redirect("/no-access");
 
   return (
     <>

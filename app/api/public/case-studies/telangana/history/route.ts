@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { requireRole } from "@/lib/auth";
+import { denyCase } from "@/lib/session-scope";
 import { HISTORY } from "@/lib/telangana/history";
 
 export const runtime = "nodejs";
@@ -8,6 +9,8 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   const auth = await requireRole(req, ["owner", "client"]);
   if ("deny" in auth) return auth.deny;
+  const denied = denyCase(auth.session, "telangana");
+  if (denied) return denied;
   const history = {
     version: HISTORY.version,
     cutoff: HISTORY.cutoff,

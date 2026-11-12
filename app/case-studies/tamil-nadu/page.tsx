@@ -3,6 +3,8 @@ import Navbar from "@/components/site/navbar";
 import CompanyExperience from "@/components/site/company-marquee";
 import TamilNaduDashboard from "@/components/case-studies/tamil-nadu/tamil-nadu-dashboard";
 import { requirePageSession } from "@/lib/require-session";
+import { caseAllowed } from "@/lib/session-scope";
+import { redirect } from "next/navigation";
 import { AMI_EXIT_POLL, ECI_ACTUAL, TN_OPINION_POLL, TN_SOCIAL } from "@/lib/tamil-nadu/comparison";
 import { TVK_ACTUAL_SEATS, TVK_FORECASTERS } from "@/lib/tamil-nadu/forecasters";
 import type { TnCaseData } from "@/lib/tamil-nadu/view-data";

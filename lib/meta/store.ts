@@ -21,6 +21,7 @@ export type MetaPage = { id: string; name: string };
 export type MetaConnectionDoc = {
   _id: string;
   sid: string;
+  userId: string;
   metaUserId: string;
   metaUserName: string;
   ownerEmail: string;
@@ -36,7 +37,8 @@ export type MetaConnectionDoc = {
   lastSyncAt: string | null;
 };
 
-export type MetaConnectionInput = Omit<MetaConnectionDoc, "_id" | "expiresAt" | "metaUserId" | "metaUserName"> & {
+export type MetaConnectionInput = Omit<MetaConnectionDoc, "_id" | "expiresAt" | "userId" | "metaUserId" | "metaUserName"> & {
+  userId: string;
   metaUserId: string;
   metaUserName: string;
   expiresAt?: string;

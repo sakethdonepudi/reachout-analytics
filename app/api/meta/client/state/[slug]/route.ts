@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { requireRole } from "@/lib/auth";
+import { denyCase } from "@/lib/session-scope";
 import { getMetaDb } from "@/lib/meta/store";
 import { getClientState } from "@/lib/meta/client-dto";
 import { toRangeKey } from "@/lib/meta/overview";
@@ -12,6 +13,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ slug: s
   const db = await getMetaDb();
   if (!db) return Response.json({ ok: false, error: "Database not configured" }, { status: 503 });
   const { slug } = await context.params;
+  const denied = denyCase(auth.session, slug);
+  if (denied) return denied;
   const params = new URL(req.url).searchParams;
   const state = await getClientState(db, slug, {
     range: toRangeKey(params.get("range")),

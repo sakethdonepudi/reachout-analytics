@@ -7,7 +7,7 @@ export const META_STATE_TTL = 10 * 60 * 1000;
 export const META_SCOPES = ["ads_read", "business_management", "pages_read_engagement", "pages_show_list"];
 const GRAPH = "https://graph.facebook.com/v21.0";
 
-export type MetaState = { state: string; verifier: string; next?: string | null; sid?: string | null };
+export type MetaState = { state: string; verifier: string; next?: string | null; sid?: string | null; userId?: string | null };
 
 export function metaConfigured(): boolean {
   return !!process.env.META_APP_ID && !!process.env.META_APP_SECRET && !!process.env.ADMIN_SESSION_SECRET;

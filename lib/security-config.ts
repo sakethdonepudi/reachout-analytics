@@ -1,6 +1,4 @@
 const REQUIRED = [
-  "ADMIN_PASSWORD",
-  "CLIENT_PASSWORD",
   "ADMIN_SESSION_SECRET",
   "MONGODB_URI",
   "TOKEN_ENCRYPTION_KEY",
@@ -17,10 +15,11 @@ export function metaConfigWarning(): string | null {
 }
 
 export function turnstileConfigProblems(): string[] {
-  if (process.env.TURNSTILE_ENABLED !== "true") return [];
+  const required = process.env.NODE_ENV === "production" || Boolean(process.env.TURNSTILE_SECRET_KEY || process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+  if (!required) return [];
   const problems: string[] = [];
   for (const key of ["TURNSTILE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY"] as const) {
-    if (!process.env[key]) problems.push(`${key} is required when TURNSTILE_ENABLED=true`);
+    if (!process.env[key]) problems.push(`${key} is required`);
   }
   return problems;
 }
@@ -40,11 +39,6 @@ export function secretProblems(): string[] {
     } catch {
       problems.push("TOKEN_ENCRYPTION_KEY is not valid base64");
     }
-  }
-  const ownerPassword = process.env.ADMIN_PASSWORD;
-  const clientPassword = process.env.CLIENT_PASSWORD;
-  if (ownerPassword && clientPassword && ownerPassword === clientPassword) {
-    problems.push("ADMIN_PASSWORD and CLIENT_PASSWORD must be different");
   }
   problems.push(...turnstileConfigProblems());
   return problems;

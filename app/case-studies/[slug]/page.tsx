@@ -6,6 +6,8 @@ import CompanyExperience from "@/components/site/company-marquee";
 import { PartyIdentity, PartyMark } from "@/components/site/party-mark";
 import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl } from "@/lib/cases";
 import { requirePageSession } from "@/lib/require-session";
+import { caseAllowed } from "@/lib/session-scope";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +44,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function CaseStudyPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  await requirePageSession(`/case-studies/${slug}`);
+  const session = await requirePageSession(`/case-studies/${slug}`);
+  if (!caseAllowed(session, slug)) redirect("/no-access");
   const c = caseBySlug(slug);
   const upcoming = UPCOMING.find((u) => u.slug === slug);
   if (!c && !upcoming) notFound();

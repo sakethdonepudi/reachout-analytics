@@ -15,5 +15,6 @@ export async function POST(req: NextRequest) {
   await audit({ action: "logout", email: session?.sub, role: session?.role, ip: req.headers.get("x-forwarded-for")?.split(",")[0].trim() });
   const res = Response.json({ ok: true });
   clearSessionCookie(res);
+  res.headers.set("Clear-Site-Data", '"cache", "cookies", "storage"');
   return res;
 }

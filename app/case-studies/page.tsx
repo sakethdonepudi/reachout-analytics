@@ -5,6 +5,7 @@ import Navbar from "@/components/site/navbar";
 import { CASES, caseUrl } from "@/lib/cases";
 import { PartyMark } from "@/components/site/party-mark";
 import { requirePageSession } from "@/lib/require-session";
+import { scopedCases } from "@/lib/session-scope";
 
 export const metadata: Metadata = {
   title: "Case Studies — ReachOut Analytics",
@@ -14,7 +15,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function CaseStudiesIndex() {
-  await requirePageSession("/case-studies");
+  const session = await requirePageSession("/case-studies");
+  const visible = scopedCases(session);
 
   return (
     <>
@@ -28,7 +30,7 @@ export default async function CaseStudiesIndex() {
           </p>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {CASES.map((c) => {
+            {visible.map((c) => {
               return (
                 <Link key={c.slug} href={caseUrl(c.slug)} className="glass group flex flex-col rounded-3xl p-5 transition-transform duration-300 hover:-translate-y-1">
                   <div className="flex items-center justify-between gap-3">

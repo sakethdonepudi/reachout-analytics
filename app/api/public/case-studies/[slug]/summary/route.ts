@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { getCase } from "@/lib/case-registry";
 import { summary, partyShares, isConfigured } from "@/lib/poll-store";
 import { requireRole } from "@/lib/auth";
+import { denyCase } from "@/lib/session-scope";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const auth = await requireRole(req, ["owner", "client"]);
   if ("deny" in auth) return auth.deny;
   const { slug } = await params;
+  const denied = denyCase(auth.session, slug);
+  if (denied) return denied;
   try {
     const record = await getCase(slug);
     if (!record) return Response.json({ ok: false, error: "Unknown case study" }, { status: 404 });

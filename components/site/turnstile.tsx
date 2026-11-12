@@ -24,11 +24,13 @@ export default function Turnstile({
   theme = "light",
   resetNonce = 0,
   nonce,
+  action = "login",
 }: {
   onVerify: (token: string) => void;
   theme?: "light" | "dark";
   resetNonce?: number;
   nonce?: string;
+  action?: "login" | "totp" | "setup" | "password";
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
@@ -45,6 +47,7 @@ export default function Turnstile({
         widgetId.current = window.turnstile.render(ref.current, {
           sitekey: SITE_KEY,
           theme,
+          action,
           callback: (t: string) => { setStatus("ready"); verify(t); },
           "expired-callback": () => verify(""),
           "error-callback": () => { setStatus("error"); verify(""); },
@@ -72,7 +75,7 @@ export default function Turnstile({
       try { if (window.turnstile && widgetId.current) window.turnstile.remove(widgetId.current); } catch { /* ignore */ }
       widgetId.current = null;
     };
-  }, [attempt, theme, verify]);
+  }, [attempt, theme, verify, action]);
 
   useEffect(() => {
     if (!resetNonce) return;

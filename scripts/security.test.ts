@@ -14,8 +14,8 @@ import { publicStatus, type MetaConnectionDoc } from "@/lib/meta/store";
 import { RECENT_MS, sessionIsRecent, type Session } from "@/lib/auth";
 import { buildCsp, PROTECTED_HEADERS } from "@/lib/security";
 import { metaConfigWarning, secretProblems, turnstileConfigProblems } from "@/lib/security-config";
-import { turnstileEnabled } from "@/lib/turnstile";
-import { passwordsAreEqual, roleForPassword } from "@/lib/passwords";
+import { turnstileConfigured } from "@/lib/turnstile";
+import { passwordsAreEqual } from "@/lib/passwords";
 import { beginLoginAttempt, loginLockRemaining, loginRateLimitMessage, recordLoginFailure, recordLoginSuccess, resetLoginGuards } from "@/lib/login-guard";
 
 let pass = 0, fail = 0;
@@ -49,14 +49,10 @@ eq("admin client", canAccess("client", "/admin"), false);
 eq("data client", canAccess("client", "/api/data/summary"), false);
 eq("template public", rolesForPath("/api/data/template"), null);
 eq("home public", rolesForPath("/"), null);
-eq("owner home", roleHome("owner"), "/meta-ads");
+eq("owner home", roleHome("owner"), "/dashboard");
 eq("client home", roleHome("client"), "/case-studies");
 
 console.log("\n3. Password login");
-eq("owner password", roleForPassword("owner-pass", "owner-pass", "client-pass"), "owner");
-eq("client password", roleForPassword("client-pass", "owner-pass", "client-pass"), "client");
-eq("wrong password", roleForPassword("wrong", "owner-pass", "client-pass"), null);
-eq("empty password", roleForPassword("", "owner-pass", "client-pass"), null);
 eq("equal passwords detected", passwordsAreEqual("same-pass", "same-pass"), true);
 eq("different passwords", passwordsAreEqual("owner-pass", "client-pass"), false);
 
@@ -142,17 +138,9 @@ ok("no Google in form-action", !cspOff.includes("accounts.google.com"));
 eq("protected cache control", PROTECTED_HEADERS["Cache-Control"], "private, no-store, max-age=0");
 eq("protected vary", PROTECTED_HEADERS.Vary, "Cookie");
 
-const turnstileSaved = process.env.TURNSTILE_ENABLED;
-try {
-  setEnv("TURNSTILE_ENABLED", undefined);
-  ok("Turnstile off by default", turnstileEnabled() === false);
-  ok("Turnstile off removes Cloudflare from CSP", !buildCsp("abc123").includes("challenges.cloudflare.com"));
-  setEnv("TURNSTILE_ENABLED", "true");
-  ok("Turnstile enabled when requested", turnstileEnabled() === true);
-  ok("Turnstile enabled adds Cloudflare to CSP", buildCsp("abc123").includes("challenges.cloudflare.com"));
-} finally {
-  setEnv("TURNSTILE_ENABLED", turnstileSaved);
-}
+ok("Turnstile is not configured without keys", turnstileConfigured() === false);
+ok("auth pages can opt in to Cloudflare in CSP", buildCsp("abc123", { turnstile: true }).includes("challenges.cloudflare.com"));
+ok("non-auth pages omit Cloudflare from CSP", !buildCsp("abc123").includes("challenges.cloudflare.com"));
 
 console.log("\n10. No dev auth bypass in shipping code");
 function filesUnder(dir: string): string[] {
@@ -173,8 +161,6 @@ eq("no CASE_STUDY_DEV_BYPASS", bypassHits, []);
 
 console.log("\n11. Startup configuration");
 const startupEnv = {
-  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
-  CLIENT_PASSWORD: process.env.CLIENT_PASSWORD,
   ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET,
   META_APP_ID: process.env.META_APP_ID,
   META_APP_SECRET: process.env.META_APP_SECRET,
@@ -183,12 +169,6 @@ const startupEnv = {
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
 };
 try {
-  setEnv("ADMIN_PASSWORD", "owner-shared");
-  setEnv("CLIENT_PASSWORD", "owner-shared");
-  ok("equal passwords refuse startup", secretProblems().includes("ADMIN_PASSWORD and CLIENT_PASSWORD must be different"));
-  setEnv("ADMIN_PASSWORD", "owner-only");
-  setEnv("CLIENT_PASSWORD", "client-only");
-  ok("different passwords pass startup", !secretProblems().includes("ADMIN_PASSWORD and CLIENT_PASSWORD must be different"));
 
   setEnv("ADMIN_SESSION_SECRET", "x".repeat(32));
   setEnv("MONGODB_URI", "mongodb://example.invalid/reachout");
@@ -210,12 +190,11 @@ try {
   ok("configured Meta enables Meta OAuth", metaConfigured() === true);
   eq("configured Meta has no warning", metaConfigWarning(), null);
 
-  setEnv("TURNSTILE_ENABLED", "true");
   setEnv("TURNSTILE_SECRET_KEY", undefined);
   setEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", undefined);
-  ok("enabled Turnstile requires both keys", turnstileConfigProblems().length === 2);
-  setEnv("TURNSTILE_ENABLED", undefined);
-  eq("disabled Turnstile needs no keys", turnstileConfigProblems(), []);
+  eq("Turnstile needs no keys when fully disabled", turnstileConfigProblems(), []);
+  setEnv("TURNSTILE_SECRET_KEY", "test-secret");
+  ok("a half-configured Turnstile requires the site key", turnstileConfigProblems().includes("NEXT_PUBLIC_TURNSTILE_SITE_KEY is required"));
 } finally {
   for (const [key, value] of Object.entries(startupEnv)) setEnv(key, value);
 }
@@ -230,7 +209,7 @@ try {
   setEnv("TOKEN_ENCRYPTION_KEY", Buffer.alloc(32, 1).toString("base64"));
   const record = encryptToken("test-meta-token");
   const doc: MetaConnectionDoc = {
-    _id: "conn_1", sid: "sid_1", metaUserId: "1", metaUserName: "Test User", ownerEmail: "owner", token: record, tokenExpiresAt: null,
+    _id: "conn_1", sid: "sid_1", userId: "u1", metaUserId: "1", metaUserName: "Test User", ownerEmail: "owner", token: record, tokenExpiresAt: null,
     scopes: [], account: { id: "1", name: "Test Account" }, adAccounts: [], pages: [],
     enabledAdAccounts: [], connectedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), lastSyncAt: null,
   };

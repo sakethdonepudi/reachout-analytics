@@ -72,6 +72,34 @@ report(hits.length === 0, "no tracked secrets found", hits.slice(0, 8).join(", "
 console.log("• gitleaks optional — built-in tracked-file secret scan used");
 
 
+// 6b. Storage and header policy.
+try {
+  const sourceFiles = [];
+  for (const root of ["app", "components", "lib"]) {
+    for (const file of walkSource(root)) if (/\.(ts|tsx)$/.test(file)) sourceFiles.push(file);
+  }
+  const riskyStorage = sourceFiles.filter((file) => {
+    const text = readFileSync(file, "utf8");
+    return /(localStorage|sessionStorage|indexedDB)[^\n]{0,160}(token|secret|password|totp|spend|payment|amount|budget)/i.test(text);
+  });
+  report(riskyStorage.length === 0, "no sensitive browser storage", riskyStorage.slice(0, 5).join(", "));
+  const security = readFileSync("lib/security.ts", "utf8");
+  const headerChecks = [
+    ["HSTS", security.includes("max-age=63072000") && security.includes("includeSubDomains")],
+    ["no-referrer", security.includes('"Referrer-Policy": "no-referrer"')],
+    ["nosniff", security.includes('"X-Content-Type-Options": "nosniff"')],
+    ["COOP/CORP", security.includes('"Cross-Origin-Opener-Policy": "same-origin"') && security.includes('"Cross-Origin-Resource-Policy": "same-origin"')],
+    ["permissions usb", security.includes("usb=()")],
+    ["CSP frame-ancestors", security.includes("frame-ancestors 'none'")],
+    ["CSP object-src", security.includes("object-src 'none'")],
+    ["CSP base-uri", security.includes("base-uri 'none'")],
+    ["CSP upgrade", security.includes("upgrade-insecure-requests")],
+  ];
+  for (const [name, ok] of headerChecks) report(ok, `header policy: ${name}`);
+} catch (error) {
+  report(false, "storage and header policy", error instanceof Error ? error.message : String(error));
+}
+
 // 7. Static-chunk leak scan (run after `npm run build`).
 import { readdirSync, statSync } from "node:fs";
 function walk(dir) {
@@ -84,6 +112,17 @@ function walk(dir) {
   }
   return out;
 }
+function walkSource(dir) {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    const path = `${dir}/${name}`;
+    const stat = statSync(path);
+    if (stat.isDirectory()) out.push(...walkSource(path));
+    else out.push(path);
+  }
+  return out;
+}
+
 try {
   const files = walk(".next/static");
   const patterns = [

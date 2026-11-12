@@ -22,6 +22,6 @@ export async function GET(req: NextRequest) {
   const next = safeNextPath(req.nextUrl.searchParams.get("next"), "owner") ?? "/meta-ads/settings";
   const flow = createMetaFlow();
   const response = metaRedirect(metaAuthUrl(req, flow));
-  setMetaStateCookie(response, { state: flow.state, verifier: flow.verifier, next, sid: auth.session.sid ?? null });
+  setMetaStateCookie(response, { state: flow.state, verifier: flow.verifier, next, sid: auth.session.sid ?? null, userId: auth.session.userId ?? null });
   return response;
 }

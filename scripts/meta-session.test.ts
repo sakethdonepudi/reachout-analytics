@@ -17,7 +17,7 @@ const future = new Date(now + 12 * 60 * 60 * 1000).toISOString();
 
 function connection(sid: string, userId: string, userName: string, accountId: string) {
   return {
-    sid, metaUserId: userId, metaUserName: userName, ownerEmail: "owner@example.com",
+    sid, userId: userId, metaUserId: userId, metaUserName: userName, ownerEmail: "owner@example.com",
     token, tokenExpiresAt: null, scopes: [], account: { id: userId, name: userName },
     adAccounts: [{ id: accountId, accountId, name: `Account ${accountId}`, status: 1, currency: "INR" }],
     pages: [], enabledAdAccounts: [accountId], connectedAt: new Date(now).toISOString(),
