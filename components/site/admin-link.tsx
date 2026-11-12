@@ -21,7 +21,7 @@ export default function AdminLink({ className, icon = false }: { className?: str
   const authed = state === "auth";
   return (
     <Link
-      href={authed ? "/admin" : "/login"}
+      href={authed ? "/dashboard/case-studies" : "/login"}
       aria-label={authed ? "Admin dashboard" : "Admin login"}
       className={cn("inline-flex items-center gap-1.5 transition-colors", className)}
     >

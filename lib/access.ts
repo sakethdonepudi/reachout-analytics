@@ -14,7 +14,7 @@ const RULES: Rule[] = [
   { prefixes: ["/dashboard", "/account/users", "/api/account/users"], roles: ["owner"] },
   { prefixes: ["/account", "/api/account", "/api/auth/heartbeat"], roles: ["owner", "client"] },
   { prefixes: ["/campaigns", "/api/meta/client"], roles: ["owner", "client"] },
-  { prefixes: ["/meta-ads", "/api/meta/owner", "/admin", "/api/admin", "/api/data"], roles: ["owner"] },
+  { prefixes: ["/meta-ads", "/api/meta/owner", "/api/admin", "/api/data"], roles: ["owner"] },
 ];
 
 /** Returns the roles allowed at a path, or null for public routes. */

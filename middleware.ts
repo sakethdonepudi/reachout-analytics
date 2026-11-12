@@ -49,6 +49,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const turnstilePage = pathname === "/login" || pathname === "/setup" || pathname.startsWith("/account/security") || pathname.startsWith("/account/password");
   const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    const target = request.nextUrl.clone();
+    target.pathname = pathname.replace(/^\/admin/, "/dashboard/case-studies");
+    return applyCommon(NextResponse.redirect(target, 301), nonce, false, turnstilePage);
+  }
   const isProduction = process.env.NODE_ENV === "production";
   const token = request.cookies.get(isProduction ? PROD_COOKIE : DEV_COOKIE)?.value
     ?? request.cookies.get(DEV_COOKIE)?.value;

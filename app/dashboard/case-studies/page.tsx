@@ -302,8 +302,8 @@ export default function AdminPortal() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3">
-          <div className="flex items-center gap-4"><Logo /><span className="hidden text-[12px] text-muted-foreground sm:block">Admin</span></div>
+        <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-5 py-3">
+          <div className="flex items-center gap-4"><Logo href="/dashboard" /><div className="hidden sm:block"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--accent-brass-strong)]">Owner tools</p><p className="text-[12.5px] font-semibold">Case studies dashboard</p></div></div>
           <div className="flex items-center gap-2">
             <label className="hidden items-center gap-2 text-[12.5px] text-muted-foreground sm:flex">
               Case study
@@ -311,14 +311,14 @@ export default function AdminPortal() {
                 {cases.map((cs) => <option key={cs.id} value={cs.id}>{cs.title} · {cs.electionYear}</option>)}
               </select>
             </label>
-            <Link href="/" className="rounded-full border border-border px-3 py-1.5 text-[12.5px] text-muted-foreground hover:text-foreground">Site</Link>
+            <Link href="/dashboard" className="rounded-full border border-[var(--border-hairline)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)]">Dashboard</Link>
             <ThemeToggle className="size-9" />
             <button onClick={logout} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12.5px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60"><LogOut className="size-3.5" /> Sign out</button>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-7xl gap-6 px-5 py-6">
+      <div className="mx-auto flex max-w-[1280px] gap-6 px-5 py-6">
         {/* section nav */}
         <nav className="hidden w-52 shrink-0 flex-col gap-1 lg:flex" aria-label="Admin sections">
           {SECTIONS.map(({ id, label, Icon }) => (

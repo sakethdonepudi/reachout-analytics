@@ -86,7 +86,7 @@ export default async function DashboardPage() {
           <section className="mt-8" aria-label="Case studies">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="font-display text-xl font-semibold">Case studies</h2>
-              <Link href="/admin" className="text-[11.5px] font-semibold text-[var(--accent-brass-strong)]">Case studies dashboard</Link>
+              <Link href="/dashboard/case-studies" className="text-[11.5px] font-semibold text-[var(--accent-brass-strong)]">Case studies dashboard</Link>
             </div>
             <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
               {cases.map((record) => (
