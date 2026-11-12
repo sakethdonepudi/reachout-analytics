@@ -164,7 +164,6 @@ const startupEnv = {
   ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET,
   META_APP_ID: process.env.META_APP_ID,
   META_APP_SECRET: process.env.META_APP_SECRET,
-  TURNSTILE_ENABLED: process.env.TURNSTILE_ENABLED,
   TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
 };
@@ -174,7 +173,6 @@ try {
   setEnv("MONGODB_URI", "mongodb://example.invalid/reachout");
   setEnv("TOKEN_ENCRYPTION_KEY", Buffer.alloc(32).toString("base64"));
   setEnv("CRON_SECRET", "cron-test-value");
-  setEnv("TURNSTILE_ENABLED", undefined);
   eq("minimal required env passes startup", secretProblems(), []);
 
   setEnv("META_APP_ID", undefined);

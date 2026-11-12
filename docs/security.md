@@ -2,20 +2,20 @@
 
 ## Roles and access
 
-- `owner` — case studies, campaigns, `/meta-ads`, `/api/meta/owner/**`, `/admin`, `/api/admin/**`, `/api/data/**`.
-- `client` — case studies, campaigns, `/api/meta/client/**`.
+- `owner` — case studies, campaigns, `/dashboard`, `/dashboard/case-studies`, `/meta-ads`, `/api/meta/owner/**`, `/api/admin/**`, `/api/data/**`.
+- `client` — only the case studies in their scope, plus `/api/public/case-studies/**` for those cases.
 - `/api/data/template` is the only blank template exception and stays public.
-- Wrong-role API requests return `403`; page requests redirect to the role home (`/meta-ads` or `/campaigns`).
-- Sign-in is password-only. The owner password maps to `owner`; the client password maps to `client`. No email allowlist is used.
-- Sensitive owner actions (Meta connect/disconnect, party-map changes, CSV/Excel exports) require a password re-check within 15 minutes (`authTime`). `POST /api/auth/reauth` refreshes that timestamp.
+- Wrong-role API requests return `403`; page requests redirect to the role home (`/dashboard` or `/case-studies`). Out-of-scope client cases redirect to `/no-access`.
+- Sign-in is username and password, followed by a TOTP or recovery code. Owners must enroll an authenticator; clients can be required to. Passwords are argon2id and must be at least 12 characters.
+- Sensitive owner actions require a fresh password and authenticator check within 5 minutes (`authTime`). `POST /api/auth/reauth` refreshes that timestamp.
 
 ## Sessions
 
-- Password login with a constant-time comparison against `ADMIN_PASSWORD` and `CLIENT_PASSWORD`.
-- 5 login attempts per 15 minutes per IP, plus a 15-minute lockout after 10 failures.
+- Accounts and hashes live in the `users` collection. The shared-password login path has been removed.
+- 5 login attempts per 15 minutes per IP, plus a per-account lockout after 5 failures.
 - Session cookie is `__Host-ro_session` in production and `ro_session` in development.
-- 12-hour absolute lifetime, 2-hour idle timeout, server-side session record in MongoDB `sessions`, session id rotated at every sign-in.
-- Logout revokes the session record. “Sign out of all devices” deletes every session for the subject (`owner` or `client`).
+- 12-hour absolute lifetime, 3-minute idle timeout, session id rotated at every sign-in. Only the CSRF-protected heartbeat extends the idle timer; polling does not.
+- Logout and idle expiry delete the session document, delete that session's Meta connection and revoke the Meta token.
 
 ## CSRF
 
@@ -32,23 +32,20 @@ The middleware issues the CSRF cookie; `components/site/csrf-fetch.tsx` adds the
 - HSTS, `nosniff`, strict referrer policy, restrictive permissions policy, `frame-ancestors 'none'`, `object-src 'none'`.
 - Protected pages/APIs send `Cache-Control: private, no-store` and `Vary: Cookie`.
 - Source maps are disabled in production.
-- Turnstile is off by default. When `TURNSTILE_ENABLED` is not `true`, the login page does not load the widget, the server does not call Cloudflare, and the CSP does not allow `challenges.cloudflare.com`.
+- Turnstile is mandatory in production, verifies action, hostname and single use, and fails closed if the keys are missing. Only auth pages allow `challenges.cloudflare.com` in the CSP.
 
 ## Secrets
 
 Required in production:
 
-- `ADMIN_PASSWORD`, `CLIENT_PASSWORD` (must be different)
-- `ADMIN_SESSION_SECRET` (at least 32 characters)
 - `MONGODB_URI`
+- `ADMIN_SESSION_SECRET` (at least 32 characters)
 - `TOKEN_ENCRYPTION_KEY` (32 bytes, base64; e.g. `openssl rand -base64 32`)
 - `CRON_SECRET`
+- `META_APP_ID`, `META_APP_SECRET`
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`
 
-Optional:
-
-- `META_APP_ID`, `META_APP_SECRET` — without them the site starts normally, `/meta-ads/settings` shows “Meta app not configured”, and `/api/meta/owner/connect/*` returns `503`.
-- `TURNSTILE_ENABLED=true`, `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` — all three are needed together when Turnstile is enabled.
-- `MONGODB_DB`, `NEXT_PUBLIC_SITE_URL`, `META_REDIRECT_URI`, `MAX_UPLOAD_MB`, `TOKEN_KEY_VERSION`, `META_SYSTEM_USER_TOKEN`.
+Optional: `MONGODB_DB`, `NEXT_PUBLIC_SITE_URL`, `META_REDIRECT_URI`, `MAX_UPLOAD_MB`, `TOKEN_KEY_VERSION`, `META_SYSTEM_USER_TOKEN`, and `SETUP_TOKEN` only until the first owner exists.
 
 `instrumentation.ts` fails production startup if required values are missing or invalid, and logs one Meta warning when Meta is unconfigured.
 
@@ -77,7 +74,7 @@ Create a dedicated MongoDB user for the app:
 
 - Enable Deployment Protection for preview deployments so preview URLs are not public.
 - Keep production secrets scoped to Production only.
-- Do not deploy until `ADMIN_PASSWORD`, `CLIENT_PASSWORD`, `ADMIN_SESSION_SECRET`, `MONGODB_URI`, `TOKEN_ENCRYPTION_KEY` and `CRON_SECRET` are set; otherwise the startup check blocks the deployment.
+- Do not deploy until the eight production variables above are set; otherwise the startup check blocks the deployment.
 
 ## Residual audit findings
 

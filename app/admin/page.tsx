@@ -780,7 +780,7 @@ export default function AdminPortal() {
                 </div>
                 <div className="rounded-xl border border-border bg-card/60 p-4">
                   <p className="font-semibold">Environment</p>
-                  <p className="mt-1 text-muted-foreground">Secrets are server-side only (ADMIN_PASSWORD, CLIENT_PASSWORD, ADMIN_SESSION_SECRET, MONGODB_URI, TOKEN_ENCRYPTION_KEY, CRON_SECRET). They are never exposed to the browser. Uploads and exports are admin-only.</p>
+                  <p className="mt-1 text-muted-foreground">Secrets are server-side only (MONGODB_URI, ADMIN_SESSION_SECRET, TOKEN_ENCRYPTION_KEY, CRON_SECRET, META_APP_ID, META_APP_SECRET, NEXT_PUBLIC_TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY). They are never exposed to the browser. Uploads and exports are owner-only.</p>
                 </div>
               </div>
             </div>
