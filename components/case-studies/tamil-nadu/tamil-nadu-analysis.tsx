@@ -7,6 +7,7 @@ import {
   type TnAggregates, type TnGroup, type TnSeatGroup, type TnShares, type TnYear,
 } from "@/lib/tamil-nadu/model";
 import type { TnEciActualView, TnExitPollView, TnForecaster, TnSocial } from "@/lib/tamil-nadu/view-data";
+import SocialPanel from "@/components/ads-desk/social-panel";
 import type { OpinionPollView, TnTab, TnView } from "@/components/case-studies/tamil-nadu/tamil-nadu-rail";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
@@ -118,8 +119,6 @@ export default function TamilNaduAnalysis({
   const [narrow, setNarrow] = useState(false);
   const [scope, setScope] = useState(initialScope);
   const [view, setView] = useState<TnView>(initialView);
-  const [socialIndex, setSocialIndex] = useState(0);
-  const socialView = socialRegions?.[socialIndex] ?? social;
   const [chartMode, setChartMode] = useState<TnTab>(initialTab);
   const [visibleSeries, setVisibleSeries] = useState<string[]>(initialScope.startsWith("a:") || initialScope.startsWith("d:") ? ["survey", "baseline"] : opinionPoll.available ? ["exit", "opinion", "actual"] : ["exit", "actual"]);
   const [baselineYear, setBaselineYear] = useState<TnYear>(defaultBaseline);
@@ -595,7 +594,7 @@ export default function TamilNaduAnalysis({
   ];
 
   const headerTabs = (
-    <div className="inline-flex items-center gap-0.5 rounded-full border border-[var(--a-border)] bg-[var(--a-panel-2)] p-0.5" role="tablist" aria-label="Analysis content">
+    <div className="report-tabs" role="tablist" aria-label="Analysis content">
       {(["polls", "social"] as const).map((id) => (
         <button
           key={id}
@@ -603,10 +602,7 @@ export default function TamilNaduAnalysis({
           role="tab"
           aria-selected={view === id}
           onClick={() => setView(id)}
-          className={cn(
-            "min-h-10 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--a-brass)]/40 sm:min-h-7",
-            view === id ? "bg-[var(--a-ink)] text-[var(--a-canvas)] shadow-sm" : "text-[var(--a-muted)] hover:text-[var(--a-ink)]",
-          )}
+          className="report-tab"
         >
           {id === "polls" ? "Polls" : "Social Media"}
         </button>
@@ -627,7 +623,7 @@ export default function TamilNaduAnalysis({
       contentClassName="space-y-5"
     >
       {view === "social" ? (
-<div className="space-y-3">{socialRegions && socialRegions.length > 1 && <div className="flex flex-wrap gap-1">{socialRegions.map((region, index) => <button key={region.label} type="button" onClick={() => setSocialIndex(index)} className={cn("min-h-8 rounded border px-2 text-[10px] font-semibold", socialIndex === index ? "border-[var(--a-ink)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)]")}>{region.label}</button>)}</div>}<SocialOverview social={socialView} /></div>
+<div className="space-y-3"><SocialPanel regions={socialRegions ?? [social]} /></div>
       ) : (
         <>
           {/* ------------------------- polls overview ------------------------- */}
@@ -1095,47 +1091,3 @@ function SeriesLegend({ items }: { items: { label: string; opacity: number }[] }
 /* ------------------------------------------------------------------ *
  *  Social media view, kept as a readable table plus direct reach bars.
  * ------------------------------------------------------------------ */
-function SocialOverview({ social }: { social: TnSocial }) {
-  if (!social.available) return <section className="analysis-panel rounded-2xl p-4 sm:p-6"><p className="type-small text-[var(--a-muted)]">Social data not uploaded yet.</p></section>;
-  const kpis = [
-    ["Reach", social.totals.reach], ["Impressions", social.totals.impressions], [social.viewsLabel ?? "Views", social.totals.views],
-    ["Clicks", social.totals.clicks], ["Post engagement", social.totals.engagements], ["Campaigns", social.totals.campaigns], ["Accounts", social.totals.accounts],
-  ] as const;
-  return (
-    <section className="analysis-panel rounded-2xl p-4 sm:p-6" aria-label="Social media reach">
-      <div className="h-1 rounded" style={{ background: social.band }} />
-      <p className="mt-3 text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-muted)]">Social media</p>
-      <h3 className="mt-0.5 font-display text-[19px] font-semibold text-[var(--a-ink)]">{social.label}</h3>
-      <p className="mt-1 text-[10.5px] text-[var(--a-muted)]">{social.range} · {social.note} · Data as of {social.asOf}</p>
-      <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
-        {kpis.map(([label, value]) => <div key={label} className="rounded border border-[var(--a-border)] px-3 py-2"><p className="text-[9px] uppercase tracking-[0.1em] text-[var(--a-muted)]">{label}</p><p className="mt-1 text-[15px] font-semibold tabular-nums">{value.toLocaleString("en-IN")}</p></div>)}
-        {social.totals.spend != null && <div className="rounded border border-[var(--a-border)] px-3 py-2"><p className="text-[9px] uppercase tracking-[0.1em] text-[var(--a-muted)]">Spend</p><p className="mt-1 text-[15px] font-semibold tabular-nums">₹{social.totals.spend.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</p></div>}
-      </div>
-      <p className="mt-2 text-[10.5px] text-[var(--a-muted)]">Reach is added up per campaign, so a person reached by two campaigns counts twice.</p>
-      <div className="mt-4 space-y-2">
-        {social.accounts.map((account) => (
-          <div key={account.name} className="rounded border border-[var(--a-border)]">
-            <div className="flex flex-wrap items-center gap-3 px-3 py-2 text-[12px] font-semibold">
-              {social.totals.spend != null && account.href ? <a href={account.href} target="_blank" rel="noopener noreferrer" className="underline">{account.name}</a> : account.name}
-              <span className="text-[10px] font-normal text-[var(--a-muted)]">{account.campaigns.length} campaigns</span>
-              {social.totals.spend != null && <span className="flex flex-wrap gap-2 text-[10px] font-normal">
-                {account.billingHref && <a href={account.billingHref} target="_blank" rel="noopener noreferrer" className="underline">Billing</a>}
-                {account.allAdsetsHref && <a href={account.allAdsetsHref} target="_blank" rel="noopener noreferrer" className="underline">All ad sets</a>}
-                {account.allAdsHref && <a href={account.allAdsHref} target="_blank" rel="noopener noreferrer" className="underline">All ads</a>}
-              </span>}
-            </div>
-            <details className="border-t border-[var(--a-border)]">
-              <summary className="cursor-pointer px-3 py-1.5 text-[10px] font-semibold text-[var(--a-muted)]">Campaigns</summary>
-              <div className="overflow-x-auto border-t border-[var(--a-border)]">
-                <table className="w-full min-w-[720px] border-collapse text-left text-[10.5px]">
-                  <thead><tr className="text-[8.5px] uppercase tracking-wide text-[var(--a-muted)]">{["Campaign", "Delivery", "Start", "End", "Reach", "Impressions", "Views", "Clicks", "Engagement", ...(social.totals.spend != null ? ["Ad sets", "Ads"] : []), "Results"].map((label) => <th key={label} className="px-2 py-1.5">{label}</th>)}{social.totals.spend != null && <><th className="px-2 py-1.5 text-right">Cost per result</th><th className="px-2 py-1.5 text-right">Spend</th></>}</tr></thead>
-                  <tbody>{account.campaigns.map((campaign) => <tr key={campaign.name} className="border-t border-[var(--a-border)]/60"><td className="px-2 py-1.5">{social.totals.spend != null && campaign.href ? <a href={campaign.href} target="_blank" rel="noopener noreferrer" className="underline">{campaign.name}</a> : campaign.name}</td><td className="px-2 py-1.5">{campaign.delivery}</td><td className="px-2 py-1.5">{campaign.start || "—"}</td><td className="px-2 py-1.5">{campaign.end || "—"}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.reach.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.impressions.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.views.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.clicks.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.engagements.toLocaleString("en-IN")}</td>{social.totals.spend != null && <><td className="px-2 py-1.5 text-right tabular-nums">{campaign.adsets == null ? "–" : campaign.adsetsHref ? <a href={campaign.adsetsHref} target="_blank" rel="noopener noreferrer" className="underline">{campaign.adsets.toLocaleString("en-IN")}</a> : campaign.adsets.toLocaleString("en-IN")}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.ads == null ? "–" : campaign.adsHref ? <a href={campaign.adsHref} target="_blank" rel="noopener noreferrer" className="underline">{campaign.ads.toLocaleString("en-IN")}</a> : campaign.ads.toLocaleString("en-IN")}</td></>}<td className="px-2 py-1.5">{campaign.results == null ? "—" : `${campaign.results.toLocaleString("en-IN")} ${campaign.resultLabel ?? ""}`}</td>{social.totals.spend != null && <><td className="px-2 py-1.5 text-right tabular-nums">{campaign.costPerResult == null ? "—" : `₹${campaign.costPerResult.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}</td><td className="px-2 py-1.5 text-right tabular-nums">{campaign.spend == null ? "—" : `₹${campaign.spend.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}</td></>}</tr>)}</tbody>
-                </table>
-              </div>
-            </details>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
