@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   const auth = await requireRole(req, ["owner", "client"]);
   if ("deny" in auth) return auth.deny;
-  const denied = denyCase(auth.session, "tamil-nadu");
+  const denied = await denyCase(auth.session, "tamil-nadu");
   if (denied) return denied;
   // Prefer the last approved snapshot; fall back to the build-verified bundle.
   const published = await getPublishedSnapshot();

@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const auth = await requireRole(req, ["owner", "client"]);
   if ("deny" in auth) return auth.deny;
   const { slug } = await params;
-  const denied = denyCase(auth.session, slug);
+  const denied = await denyCase(auth.session, slug);
   if (denied) return denied;
   try {
     const record = await getCase(slug);

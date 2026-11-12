@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
 
 export default async function TelanganaCaseStudyPage() {
   const session = await requirePageSession("/case-studies/telangana");
-  if (!caseAllowed(session, "telangana")) redirect("/no-access");
+  if (!(await caseAllowed(session, "telangana"))) redirect("/no-access");
   const social = await socialForCase("telangana", session.role === "owner");
 
   return (

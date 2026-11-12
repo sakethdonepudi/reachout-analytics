@@ -17,7 +17,7 @@ function ok(name: string, condition: boolean, detail = "") {
   const db = client.db(process.env.MONGODB_DB || "reachout");
   const sessions = db.collection("sessions");
   await sessions.deleteMany({});
-  const identity = { userId: "user-test", role: "owner" as const, displayName: "Test Owner", scope: { caseStudies: [], states: [], parties: [] } };
+  const identity = { userId: "user-test", role: "owner" as const, displayName: "Test Owner" };
 
   console.log("\n1. Idle timeout is authoritative");
   const token = await createSession(identity);

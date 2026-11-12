@@ -40,6 +40,11 @@ export function roleHome(role: Role): string {
   return ROLE_HOME[role];
 }
 
+/** Clients may open published case studies; drafts stay owner-only. */
+export function canOpenCase(role: Role, published: boolean): boolean {
+  return role === "owner" || published;
+}
+
 /**
  * Validate a post-login return path.
  *

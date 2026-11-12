@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
 
   if (pending) {
     const token = await createSession(
-      { userId: user._id, role: user.role, displayName: user.displayName, scope: user.clientScope },
+      { userId: user._id, role: user.role, displayName: user.displayName },
       { device: req.headers.get("user-agent")?.slice(0, 200) ?? undefined },
     );
     const response = Response.json({ ok: true, recoveryCodes: codes, redirect: safeNextPath(next ?? null, user.role) ?? (user.role === "owner" ? "/dashboard" : "/") }, { headers });

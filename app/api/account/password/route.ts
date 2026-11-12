@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       return response;
     }
     const fresh = (await getUser(user._id))!;
-    const token = await createSession({ userId: fresh._id, role: fresh.role, displayName: fresh.displayName, scope: fresh.clientScope }, { device: req.headers.get("user-agent")?.slice(0, 200) ?? undefined, ip });
+    const token = await createSession({ userId: fresh._id, role: fresh.role, displayName: fresh.displayName }, { device: req.headers.get("user-agent")?.slice(0, 200) ?? undefined, ip });
     const response = Response.json({ ok: true, redirect: safeNextPath(pending.next ?? null, fresh.role) ?? (fresh.role === "owner" ? "/dashboard" : "/") }, { headers });
     setSessionCookie(response, token);
     clearPendingCookie(response);

@@ -1,23 +1,27 @@
 import "server-only";
 
-import { CASES, caseBySlug } from "@/lib/cases";
+import { CASES, type CaseStudy } from "@/lib/cases";
+import { listCases } from "@/lib/case-registry";
 import type { Session } from "@/lib/auth";
-import { scopeAllowsCase } from "@/lib/users";
-import type { CaseStudy } from "@/lib/cases";
+import { canOpenCase } from "@/lib/access";
 
-export function caseAllowed(session: Session, slug: string): boolean {
-  if (session.role === "owner") return true;
-  const record = caseBySlug(slug);
-  if (!record) return false;
-  return scopeAllowsCase(session.role, session.scope, record);
+/** Published case slugs. Owners see every case; clients only published ones. */
+async function publishedSlugs(): Promise<Set<string>> {
+  const registry = await listCases().catch(() => []);
+  return new Set(registry.filter((row) => row.published).map((row) => row.slug));
 }
 
-export function scopedCases(session: Session): CaseStudy[] {
+export async function caseAllowed(session: Session, slug: string): Promise<boolean> {
+  return canOpenCase(session.role, (await publishedSlugs()).has(slug));
+}
+
+export async function visibleCases(session: Session): Promise<CaseStudy[]> {
   if (session.role === "owner") return CASES;
-  return CASES.filter((record) => scopeAllowsCase(session.role, session.scope, record));
+  const published = await publishedSlugs();
+  return CASES.filter((record) => published.has(record.slug));
 }
 
-export function denyCase(session: Session, slug: string): Response | null {
-  if (caseAllowed(session, slug)) return null;
+export async function denyCase(session: Session, slug: string): Promise<Response | null> {
+  if (await caseAllowed(session, slug)) return null;
   return Response.json({ ok: false, error: "Forbidden" }, { status: 403, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
 }

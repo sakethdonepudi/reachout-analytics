@@ -3,8 +3,6 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { requireRecentAuth, revokeAllSessionsForUser } from "@/lib/auth";
 import { requireCsrf } from "@/lib/csrf";
-import { CASES } from "@/lib/cases";
-import { PARTIES } from "@/lib/parties";
 import { countActiveOwners, createUser, deleteUser, disableTotp, getUser, listUsers, setTemporaryPassword, updateUser } from "@/lib/users";
 
 export const runtime = "nodejs";
@@ -17,11 +15,6 @@ const Create = z.object({
   role: z.enum(["owner", "client"], { message: "Choose owner or client." }),
   password: z.string().min(12, "Temporary password must be at least 12 characters.").max(256, "Temporary password must be 256 characters or fewer."),
   totpRequired: z.boolean().optional(),
-  clientScope: z.object({
-    caseStudies: z.array(z.string().max(80)).max(50),
-    states: z.array(z.string().max(80)).max(20),
-    parties: z.array(z.string().max(40)).max(20),
-  }).optional(),
 });
 
 function fieldErrors(issues: { path: PropertyKey[]; message: string }[]): Record<string, string> {
@@ -40,9 +33,6 @@ export async function GET(req: NextRequest) {
     ok: true,
     users: await listUsers(),
     currentUserId: auth.session.userId,
-    cases: CASES.map((item) => ({ slug: item.slug, title: item.title, state: item.stateName, party: item.party })),
-    parties: Object.values(PARTIES).map((party) => party.name),
-    states: [...new Set(CASES.map((item) => item.stateName))].sort(),
   }, { headers });
 }
 

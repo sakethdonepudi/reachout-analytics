@@ -5,7 +5,7 @@ import Navbar from "@/components/site/navbar";
 import { CASES, caseUrl } from "@/lib/cases";
 import { PartyMark } from "@/components/site/party-mark";
 import { requirePageSession } from "@/lib/require-session";
-import { scopedCases } from "@/lib/session-scope";
+import { visibleCases } from "@/lib/session-scope";
 
 export const metadata: Metadata = {
   title: "Case Studies — ReachOut Analytics",
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CaseStudiesIndex() {
   const session = await requirePageSession("/case-studies");
-  const visible = scopedCases(session);
+  const visible = await visibleCases(session);
 
   return (
     <>

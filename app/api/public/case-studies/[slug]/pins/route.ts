@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const auth = await requireRole(req, ["owner", "client"]);
   if ("deny" in auth) return auth.deny;
   const { slug } = await params;
-  const denied = denyCase(auth.session, slug);
+  const denied = await denyCase(auth.session, slug);
   if (denied) return denied;
   const rec = await getCase(slug);
   if (!rec) return Response.json({ ok: false, error: "Unknown case study" }, { status: 404 });

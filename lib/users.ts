@@ -7,14 +7,12 @@ import { getMongo } from "@/lib/mongodb";
 import { checkPassword } from "@/lib/password-policy.server";
 import type { SealedSecret } from "@/lib/secure-box";
 import type { Role } from "@/lib/access";
-import type { CaseRecord } from "@/lib/case-registry";
 
 const DB = process.env.MONGODB_DB || "reachout";
 const ARGON = { memoryCost: 19_456, timeCost: 2, parallelism: 1 } as const;
 const MAX_FAILED = 5;
 const LOCK_MS = 15 * 60 * 1000;
 
-export type ClientScope = { caseStudies: string[]; states: string[]; parties: string[] };
 export type UserStatus = "active" | "disabled";
 
 export type UserDoc = {
@@ -29,7 +27,6 @@ export type UserDoc = {
   totpRequired: boolean;
   recoveryCodes: string[];
   lastTotpStep: number | null;
-  clientScope: ClientScope;
   status: UserStatus;
   mustChangePassword: boolean;
   failedLogins: number;
@@ -117,7 +114,6 @@ export async function createUser(input: {
   role: Role;
   password: string;
   totpRequired?: boolean;
-  clientScope?: Partial<ClientScope>;
   createdBy: string | null;
 }): Promise<{ ok: true; user: UserDoc } | { ok: false; error: string }> {
   const username = normaliseUsername(input.username);
@@ -143,11 +139,6 @@ export async function createUser(input: {
     totpRequired: input.role === "owner" ? true : Boolean(input.totpRequired),
     recoveryCodes: [],
     lastTotpStep: null,
-    clientScope: {
-      caseStudies: [...new Set(input.clientScope?.caseStudies ?? [])],
-      states: [...new Set(input.clientScope?.states ?? [])],
-      parties: [...new Set(input.clientScope?.parties ?? [])],
-    },
     status: "active",
     mustChangePassword: true,
     failedLogins: 0,
@@ -163,11 +154,11 @@ export async function createUser(input: {
 }
 
 export async function updateUser(id: string, patch: Partial<Pick<UserDoc,
-  "displayName" | "organisation" | "role" | "status" | "totpRequired" | "clientScope">>): Promise<PublicUser | null> {
+  "displayName" | "organisation" | "role" | "status" | "totpRequired">>): Promise<PublicUser | null> {
   const col = await collection();
   if (!col) return null;
   const set: Record<string, unknown> = {};
-  for (const key of ["displayName", "organisation", "role", "status", "totpRequired", "clientScope"] as const) {
+  for (const key of ["displayName", "organisation", "role", "status", "totpRequired"] as const) {
     if (patch[key] !== undefined) set[key] = patch[key];
   }
   if (patch.role === "owner") set.totpRequired = true;
@@ -269,10 +260,11 @@ export function needsEnrollment(user: Pick<UserDoc, "role" | "totpRequired" | "t
   return (user.role === "owner" || user.totpRequired) && !user.totpEnabled;
 }
 
-export function scopeAllowsCase(role: Role, scope: ClientScope | null | undefined, record: Pick<CaseRecord, "slug" | "state" | "title"> & { party?: string }): boolean {
-  if (role === "owner") return true;
-  if (!scope) return false;
-  const { caseStudies = [], states = [], parties = [] } = scope;
-  if (!caseStudies.length && !states.length && !parties.length) return false;
-  return caseStudies.includes(record.slug) || states.includes(record.state) || (record.party ? parties.includes(record.party) : false);
+
+/** Remove the retired client scope field. Returns the number of changed clients. */
+export async function migrateClientScopes(): Promise<number> {
+  const col = await collection();
+  if (!col) return 0;
+  const result = await col.updateMany({ role: "client", clientScope: { $exists: true } }, { $unset: { clientScope: "" } });
+  return result.modifiedCount;
 }

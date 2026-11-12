@@ -2,7 +2,6 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { getMongo } from "@/lib/mongodb";
 import type { Role } from "@/lib/access";
-import type { ClientScope } from "@/lib/users";
 import { audit } from "@/lib/audit";
 
 /* =====================================================================
@@ -22,7 +21,6 @@ export type Session = {
   sid?: string;
   userId?: string;
   displayName?: string;
-  scope?: ClientScope;
 };
 
 export const ABSOLUTE_MS = 12 * 60 * 60 * 1000;
@@ -51,7 +49,6 @@ type SessionDoc = {
   role: Role;
   userId?: string;
   displayName?: string;
-  scope?: ClientScope;
   device?: string;
   ip?: string;
   createdAt: Date;
@@ -115,7 +112,6 @@ export type SessionIdentity = {
   userId: string;
   role: Role;
   displayName: string;
-  scope: ClientScope;
 };
 
 /** Create a fresh session id (rotation happens on every sign-in). */
@@ -132,7 +128,6 @@ export async function createSession(identity: SessionIdentity, meta: { device?: 
     role: identity.role,
     userId: identity.userId,
     displayName: identity.displayName,
-    scope: identity.scope,
     device: meta.device?.slice(0, 200),
     ip: meta.ip,
     createdAt: new Date(now),
@@ -142,7 +137,7 @@ export async function createSession(identity: SessionIdentity, meta: { device?: 
   });
   return signSession({
     sub: subject, role: identity.role, exp, iat: now, lastSeen: now, authTime: now, sid,
-    userId: identity.userId, displayName: identity.displayName, scope: identity.scope,
+    userId: identity.userId, displayName: identity.displayName,
   });
 }
 
@@ -172,7 +167,6 @@ export async function getSessionByToken(token: string | undefined): Promise<Sess
       sid: doc._id,
       userId: doc.userId,
       displayName: doc.displayName,
-      scope: doc.scope,
     };
   } catch {
     return null;

@@ -15,11 +15,6 @@ const Patch = z.object({
   role: z.enum(["owner", "client"]).optional(),
   status: z.enum(["active", "disabled"]).optional(),
   totpRequired: z.boolean().optional(),
-  clientScope: z.object({
-    caseStudies: z.array(z.string().max(80)).max(50),
-    states: z.array(z.string().max(80)).max(20),
-    parties: z.array(z.string().max(40)).max(20),
-  }).optional(),
   password: z.string().min(12).max(256).optional(),
 });
 
@@ -82,14 +77,13 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     role: parsed.data.role,
     status: parsed.data.status,
     totpRequired: parsed.data.totpRequired,
-    clientScope: parsed.data.clientScope,
   });
   if (!updated) return Response.json({ ok: false, error: "Nothing to update." }, { status: 400, headers });
   if (disabling) await revokeAllSessionsForUser(id);
   await audit({
     action: disabling ? "user_disabled" : "user_updated",
     role: "owner",
-    meta: { targetUserId: id, role: updated.role, status: updated.status, scope: parsed.data.clientScope },
+    meta: { targetUserId: id, role: updated.role, status: updated.status },
   });
   return Response.json({ ok: true, user: updated }, { headers });
 }

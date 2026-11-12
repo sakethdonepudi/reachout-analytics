@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
   let token: string;
   try {
     token = await createSession(
-      { userId: user._id, role: user.role, displayName: user.displayName, scope: user.clientScope },
+      { userId: user._id, role: user.role, displayName: user.displayName },
       { device: deviceFrom(req), ip },
     );
   } catch {

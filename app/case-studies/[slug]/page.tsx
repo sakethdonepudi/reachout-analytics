@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function CaseStudyPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const session = await requirePageSession(`/case-studies/${slug}`);
-  if (!caseAllowed(session, slug)) redirect("/no-access");
+  if (!(await caseAllowed(session, slug))) redirect("/no-access");
   const social = await socialForCase(slug, session.role === "owner");
   const c = caseBySlug(slug);
   const upcoming = UPCOMING.find((u) => u.slug === slug);

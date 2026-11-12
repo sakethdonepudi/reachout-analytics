@@ -4,7 +4,8 @@ import { checkPassword } from "@/lib/password-policy.server";
 import { passwordStrength } from "@/lib/password-policy";
 import { generateTotpSecret, totpCode, totpStep, verifyTotp, normaliseRecoveryCode } from "@/lib/totp";
 import { safeNextPath } from "@/lib/access";
-import { needsEnrollment, scopeAllowsCase } from "@/lib/users";
+import { needsEnrollment } from "@/lib/users";
+import { canOpenCase } from "@/lib/access";
 import { pendingTtlMs } from "@/lib/pending-auth";
 import { signPayload, verifyPayload } from "@/lib/signed-cookie";
 import { buildCsp } from "@/lib/security";
@@ -55,14 +56,10 @@ ok("login loop rejected", safeNextPath("/login?next=/dashboard", "owner") === nu
 ok("out-of-role path rejected", safeNextPath("/dashboard", "client") === null);
 ok("client case path accepted", safeNextPath("/case-studies/tamil-nadu", "client") === "/case-studies/tamil-nadu");
 
-console.log("\n4. Client scope");
-const scope = { caseStudies: ["tamil-nadu"], states: [], parties: [] };
-ok("scoped case allowed", scopeAllowsCase("client", scope, { slug: "tamil-nadu", state: "Tamil Nadu", title: "Tamil Nadu" }));
-ok("other case denied", !scopeAllowsCase("client", scope, { slug: "telangana", state: "Telangana", title: "Telangana" }));
-ok("empty scope denies", !scopeAllowsCase("client", { caseStudies: [], states: [], parties: [] }, { slug: "tamil-nadu", state: "Tamil Nadu", title: "Tamil Nadu" }));
-ok("owner bypasses scope", scopeAllowsCase("owner", null, { slug: "telangana", state: "Telangana", title: "Telangana" }));
-ok("state scope allows", scopeAllowsCase("client", { caseStudies: [], states: ["Telangana"], parties: [] }, { slug: "telangana", state: "Telangana", title: "Telangana" }));
-ok("party scope allows", scopeAllowsCase("client", { caseStudies: [], states: [], parties: ["TVK"] }, { slug: "unknown", state: "Tamil Nadu", title: "X", party: "TVK" }));
+console.log("\n4. Published case access");
+ok("client opens a published case", canOpenCase("client", true));
+ok("client cannot open a draft", !canOpenCase("client", false));
+ok("owner opens drafts", canOpenCase("owner", false));
 
 console.log("\n5. Turnstile and CSP");
 ok("Turnstile is opt-in locally without keys", !turnstileConfigured() && !turnstileRequired());

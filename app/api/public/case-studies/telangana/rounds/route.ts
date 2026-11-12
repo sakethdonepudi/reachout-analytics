@@ -28,7 +28,7 @@ const SCOPES = rounds.scopes as unknown as Record<string, Scope>;
 export async function GET(req: NextRequest) {
   const auth = await requireRole(req, ["owner", "client"]);
   if ("deny" in auth) return auth.deny;
-  const denied = denyCase(auth.session, "telangana");
+  const denied = await denyCase(auth.session, "telangana");
   if (denied) return denied;
   const scope = req.nextUrl.searchParams.get("scope") ?? "state";
   if (!/^(state|d:[^/]+|a:\d+)$/.test(scope)) {

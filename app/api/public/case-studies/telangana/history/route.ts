@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   const auth = await requireRole(req, ["owner", "client"]);
   if ("deny" in auth) return auth.deny;
-  const denied = denyCase(auth.session, "telangana");
+  const denied = await denyCase(auth.session, "telangana");
   if (denied) return denied;
   const history = {
     version: HISTORY.version,
