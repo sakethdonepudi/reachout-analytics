@@ -14,6 +14,11 @@ type Status = {
   connected: boolean;
   accountName: string | null;
   metaUserName: string | null;
+  holderUserId: string | null;
+  holderName: string | null;
+  isHolder: boolean;
+  status: "active" | "expired" | "revoked" | null;
+  declinedScopes: string[];
   permissions: string[];
   tokenExpiresAt: string | null;
   lastSyncAt: string | null;
@@ -30,7 +35,7 @@ type Status = {
 type AuditRow = { at: string; action: string; email: string | null; role: string | null; ipHash?: string };
 
 const EMPTY: Status = {
-  connected: false, accountName: null, metaUserName: null, permissions: [], tokenExpiresAt: null, lastSyncAt: null,
+  connected: false, accountName: null, metaUserName: null, holderUserId: null, holderName: null, isHolder: false, status: null, declinedScopes: [], permissions: [], tokenExpiresAt: null, lastSyncAt: null,
   connectedAt: null, adAccounts: [], pages: [], enabledAdAccounts: [], expiresSoon: false,
   expiresAt: null, expired: false, reconnectRequired: false, keyVersion: null,
 };
@@ -43,6 +48,8 @@ function fmt(value: string | null) {
 
 function expiryLabel(value: string): string {
   const minutes = Math.max(0, Math.round((new Date(value).getTime() - Date.now()) / 60_000));
+  const days = Math.floor(minutes / 1440);
+  if (days > 0) return `expires in ${days} day${days === 1 ? "" : "s"}`;
   const hours = Math.floor(minutes / 60);
   return `expires in ${hours}h ${minutes % 60}m`;
 }
@@ -85,7 +92,19 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("connected")) setMessage("Meta connected. Choose the ad accounts to sync.");
-    if (params.get("error")) setError("Meta connection could not be completed. Please try again.");
+    const errorCode = params.get("error");
+    if (errorCode) {
+      const reason = params.get("reason") ?? "";
+      if (errorCode === "state") setError("This connect attempt is no longer valid. Start again.");
+      else if (errorCode === "session") setError("Your session could not be verified. Sign in and try again.");
+      else if (errorCode === "expired") setError("The connect attempt expired. Start again.");
+      else if (errorCode === "facebook") {
+        if (reason === "access_denied") setError("You cancelled or declined permissions.");
+        else if (reason === "app_role") setError("This Facebook profile isn't added to the ReachOut Meta app. Ask the app admin to add you under App roles.");
+        else if (reason === "redirect") setError("Redirect URL not allowed in the Meta app settings.");
+        else setError(`Facebook error ${reason.replace(/_/g, " ")}`);
+      } else setError("Meta connection could not be completed. Please try again.");
+    }
     void load();
   }, [load]);
 
@@ -196,17 +215,17 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent-brass-strong)]">Connection</p>
                 <h2 className="mt-2 font-display text-2xl font-semibold">{loading ? "Loading…" : status.expired || status.reconnectRequired ? "Reconnect Meta" : status.connected ? status.accountName ?? "Meta connected" : "Not connected"}</h2>
                 <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-                  {status.expired
-                    ? "The 12-hour Meta connection has expired. Reconnect Meta to restore sync."
+                  {status.expired || status.status === "expired" || status.status === "revoked"
+                    ? "The Meta connection is no longer active. The account holder must reconnect."
                     : status.reconnectRequired
-                      ? "The stored Meta token can no longer be decrypted. Reconnect Meta to restore sync."
+                      ? "The stored Meta token can no longer be decrypted. The account holder must reconnect."
                       : status.connected
-                        ? `${status.metaUserName ? `Connected as ${status.metaUserName} · ` : ""}${status.enabledAdAccounts.length} ad account(s) enabled · key ${status.keyVersion ?? "—"}${status.expiresAt ? ` · ${expiryLabel(status.expiresAt)}` : ""}`
-                        : "Authorise the ReachOut Meta app to start syncing."}
+                        ? `${status.isHolder ? `Connected as ${status.metaUserName ?? "Meta user"}` : `Connected by ${status.holderName ?? "the Meta account holder"}`} · ${status.enabledAdAccounts.length} ad account(s) enabled${status.expiresAt ? ` · ${expiryLabel(status.expiresAt)}` : ""}`
+                        : "The Meta account holder has not connected an account yet."}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {!recent ? (
+                {status.isHolder && (!recent ? (
                   <button type="button" onClick={() => void reauthNow()} disabled={!metaConfigured} className="inline-flex items-center gap-2 rounded-xl bg-saffron px-4 py-2.5 text-sm font-semibold text-[#241203] disabled:cursor-not-allowed disabled:opacity-50">
                     <ShieldCheck className="size-4" /> Re-authenticate
                   </button>
@@ -214,8 +233,8 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
                   <button type="button" onClick={() => window.location.assign("/api/meta/owner/connect/start")} disabled={!metaConfigured} className="inline-flex items-center gap-2 rounded-xl bg-saffron px-4 py-2.5 text-sm font-semibold text-[#241203] disabled:cursor-not-allowed disabled:opacity-50">
                     <PlugZap className="size-4" /> {status.connected || status.expired || status.reconnectRequired ? "Reconnect Meta" : "Connect Meta Ads"}
                   </button>
-                )}
-                {status.connected && (
+                ))}
+                {status.isHolder && status.connected && (
                   <button type="button" onClick={() => void disconnect()} disabled={busy === "disconnect"} className="inline-flex items-center gap-2 rounded-xl border border-rose-500/40 px-4 py-2.5 text-sm font-semibold text-rose-600 disabled:opacity-60 dark:text-rose-400">
                     {busy === "disconnect" ? <Loader2 className="size-4 animate-spin" /> : <Unplug className="size-4" />} Disconnect
                   </button>
@@ -224,8 +243,20 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
             </div>
 
             <p className="mt-4 max-w-2xl text-[11.5px] leading-relaxed text-muted-foreground">
-              Facebook uses whichever account is signed in to this browser. To connect a different account, log out of facebook.com in this browser first, or use a private window.
+              Facebook connects whichever profile is logged in on this browser. Choose all the businesses, ad accounts and Pages you want ReachOut to read.
             </p>
+            {status.isHolder && !status.connected && (
+              <p className="mt-2 text-[11.5px] text-muted-foreground">To use a different profile, log out of facebook.com in this browser first, or use a private window.</p>
+            )}
+            {status.isHolder && status.declinedScopes.length > 0 && (
+              <div className="mt-4 rounded-xl border border-[var(--warning)]/40 bg-[var(--warning-bg)] p-3 text-[12px]">
+                <p className="font-semibold">Declined permissions: {status.declinedScopes.join(", ")}</p>
+                <a href="/api/meta/owner/connect/start?rerequest=1" className="mt-2 inline-flex min-h-9 items-center rounded-full border border-current px-3 text-[11px] font-bold uppercase tracking-[0.08em]">Grant again</a>
+              </div>
+            )}
+            {status.isHolder && (
+              <a href="https://www.facebook.com/settings?tab=business_tools" target="_blank" rel="noreferrer" className="mt-3 inline-flex text-[12px] font-semibold text-[var(--accent-brass-strong)] underline decoration-dotted underline-offset-4">Manage what ReachOut can access</a>
+            )}
 
             {status.connected && (
               <dl className="mt-6 grid gap-4 text-[12.5px] sm:grid-cols-2 lg:grid-cols-4">

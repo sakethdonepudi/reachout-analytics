@@ -102,6 +102,16 @@ export function bounceResponse(destination: string): Response {
   });
 }
 
+export function facebookFailureReason(params: URLSearchParams): string {
+  const code = params.get("error_code") ?? "";
+  const reason = params.get("error_reason") ?? "";
+  const description = params.get("error_description") ?? "";
+  if (reason === "user_denied" || code === "200") return "access_denied";
+  if (/redirect/i.test(description) || /redirect/i.test(reason)) return "redirect";
+  if (/app[^.]*not available|not available for this user|not added to|app role|developer/i.test(description)) return "app_role";
+  return code ? `code_${code.replace(/[^0-9]/g, "").slice(0, 6) || "unknown"}` : "facebook";
+}
+
 export function callbackDestination(code: CallbackFailure | null): string {
   return code ? `/meta-ads/settings?error=${code}` : "/meta-ads/settings?connected=1";
 }

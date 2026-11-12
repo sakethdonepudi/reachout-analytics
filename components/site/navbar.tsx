@@ -37,7 +37,7 @@ export default async function Navbar() {
       year: bySlug.get(item.slug)?.electionYear ?? yearFor(item.slug),
       draft: (bySlug.get(item.slug)?.status ?? "draft") !== "published",
     }));
-    const status = await getMetaStatus(session.sid);
+    const status = await getMetaStatus(session.userId);
     return (
       <OwnerNavbar
         displayName={displayName}
@@ -46,7 +46,7 @@ export default async function Navbar() {
         lastLoginAt={lastLoginAt}
         lastLoginDevice={user?.lastLoginDevice ?? null}
         cases={cases}
-        meta={{ connected: status.connected, name: status.metaUserName, expiresAt: status.expiresAt }}
+        meta={{ connected: status.connected, name: status.metaUserName, holderName: status.holderName, isHolder: status.isHolder, expiresAt: status.expiresAt }}
       />
     );
   }

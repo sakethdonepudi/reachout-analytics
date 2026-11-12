@@ -1,7 +1,7 @@
 /** Pure Meta sync helpers, safe to test without MongoDB or the Graph API. */
 
-export const META_CONNECTION_TTL_MS = 12 * 60 * 60 * 1000;
-export const META_GRAPH_VERSION = "v21.0";
+export const META_CONNECTION_TTL_MS = 60 * 24 * 60 * 60 * 1000;
+export const META_GRAPH_VERSION = "v27.0";
 export const META_RATE_LIMIT_CODES = new Set([4, 17, 32, 613]);
 
 /** Convert a Graph monetary string/number in major units to integer paise. */

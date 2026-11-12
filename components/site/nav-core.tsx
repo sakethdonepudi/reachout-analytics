@@ -11,7 +11,7 @@ import { useIdle } from "@/components/auth/idle-provider";
 import { cn } from "@/lib/utils";
 
 type CaseItem = { slug: string; title: string; state: string; year: number; draft: boolean };
-type MetaState = { connected: boolean; name: string | null; expiresAt: string | null } | null;
+type MetaState = { connected: boolean; name: string | null; holderName?: string | null; isHolder?: boolean; expiresAt: string | null } | null;
 
 export type NavCoreProps = {
   variant: "public" | "client" | "owner";
@@ -40,6 +40,8 @@ function initials(name: string): string {
 function timeLeft(expiresAt: string | null): string {
   if (!expiresAt) return "—";
   const minutes = Math.max(0, Math.round((new Date(expiresAt).getTime() - Date.now()) / 60_000));
+  const days = Math.floor(minutes / 1440);
+  if (days > 0) return `${days}d`;
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
 
@@ -169,7 +171,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
                 {variant === "owner" && (
                   <Link href="/meta-ads/settings" className="hidden lg:inline-flex h-9 max-w-[220px] items-center gap-1.5 rounded-full border border-[var(--h-border)]/25 px-3 text-[10.5px] font-semibold text-[var(--h-muted)]">
                     <span className={cn("size-1.5 rounded-full", meta?.connected ? "bg-[var(--success)]" : "bg-[var(--warning)]")} />
-                    <span className="truncate">{meta?.connected ? `Connected as ${meta.name ?? "Meta user"} · ${timeLeft(meta.expiresAt)}` : "Connect Meta Ads"}</span>
+                    <span className="truncate">{meta?.connected ? `${meta.isHolder ? `Connected as ${meta.name ?? "Meta user"}` : `Connected by ${meta.holderName ?? "Venkat"}`} · ${timeLeft(meta.expiresAt)}` : meta?.isHolder ? "Connect Meta Ads" : "Meta not connected"}</span>
                   </Link>
                 )}
                 {variant === "owner" && <Link href="/meta-ads" aria-label="Notifications" className="relative hidden size-9 place-items-center rounded-full text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] sm:grid"><Bell className="size-4" /></Link>}

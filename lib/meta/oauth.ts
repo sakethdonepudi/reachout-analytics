@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { signPayload, verifyPayload } from "@/lib/signed-cookie";
+import { META_GRAPH_VERSION } from "@/lib/meta/insights";
 import { createPkce, createOAuthState } from "@/lib/oauth-pkce";
 
 export const META_STATE_COOKIE = "ro_meta_state";
 export const META_STATE_TTL = 10 * 60 * 1000;
 export const META_SCOPES = ["ads_read", "business_management", "pages_read_engagement", "pages_show_list"];
-const GRAPH = "https://graph.facebook.com/v21.0";
+const GRAPH = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 
 export type MetaState = { state: string; verifier: string; next?: string | null; sid?: string | null; userId?: string | null };
 
@@ -47,8 +48,8 @@ export function createMetaFlow() {
   return { ...pkce, state };
 }
 
-export function metaAuthUrl(req: NextRequest, flow: ReturnType<typeof createMetaFlow>): string {
-  const url = new URL("https://www.facebook.com/v21.0/dialog/oauth");
+export function metaAuthUrl(req: NextRequest, flow: ReturnType<typeof createMetaFlow>, options: { rerequest?: boolean } = {}): string {
+  const url = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
   url.searchParams.set("client_id", process.env.META_APP_ID ?? "");
   url.searchParams.set("redirect_uri", metaRedirectUri(req));
   url.searchParams.set("state", flow.state);
@@ -56,8 +57,7 @@ export function metaAuthUrl(req: NextRequest, flow: ReturnType<typeof createMeta
   url.searchParams.set("scope", META_SCOPES.join(","));
   url.searchParams.set("code_challenge", flow.challenge);
   url.searchParams.set("code_challenge_method", "S256");
-  // Always ask Facebook for the password; never connect silently.
-  url.searchParams.set("auth_type", "reauthenticate");
+  if (options.rerequest) url.searchParams.set("auth_type", "rerequest");
   return url.toString();
 }
 
