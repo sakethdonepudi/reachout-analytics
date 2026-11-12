@@ -57,15 +57,33 @@ async function readRegionSummaries(versionId: string): Promise<AdsRegionSummary[
   return database.collection<AdsRegionSummary>("ads_region_summaries").find({ versionId }).toArray();
 }
 
-const cachedRegionSummaries = unstable_cache(readRegionSummaries, ["ads-region-summaries"], { tags: ["ads"] });
+const cachedRegionSummaries = unstable_cache(async (versionId: string) => {
+  const rows = await readRegionSummaries(versionId);
+  return rows.length ? rows : null;
+}, ["ads-region-summaries"], { tags: ["ads"] });
 
-/** Per-region summary documents. Never reads ads_versions.data. */
+/** Per-region summary documents. Empty results are never served from cache. */
 export async function getRegionSummaries(versionId: string): Promise<AdsRegionSummary[]> {
   try {
-    return await cachedRegionSummaries(versionId);
+    const rows = await cachedRegionSummaries(versionId);
+    if (rows?.length) return rows;
   } catch {
-    return readRegionSummaries(versionId);
+    // fall through to an uncached read
   }
+  return readRegionSummaries(versionId);
+}
+
+async function buildActiveSummaries(versionId: string): Promise<AdsRegionSummary[]> {
+  const database = await db();
+  if (!database) return [];
+  const active = await database.collection<AdsVersion>("ads_versions").findOne({ _id: versionId });
+  if (!active) return [];
+  const summaries = buildRegionSummaries(active.data, versionId);
+  if (summaries.length) {
+    await database.collection("ads_region_summaries").deleteMany({ versionId });
+    await database.collection("ads_region_summaries").insertMany(summaries);
+  }
+  return summaries;
 }
 
 export async function getActiveRegionSummaries(): Promise<AdsRegionSummary[]> {
@@ -74,9 +92,10 @@ export async function getActiveRegionSummaries(): Promise<AdsRegionSummary[]> {
   const summaries = await getRegionSummaries(versionId);
   if (summaries.length) return summaries;
   // One-time backfill after a deploy of an active version published before
-  // summaries existed. Subsequent reads and publishes use summaries only.
-  const built = await backfillActiveSummaries();
-  return built > 0 ? getRegionSummaries(versionId) : [];
+  // summaries existed. Return the Mongo rows directly; never read the empty cache again.
+  const built = await buildActiveSummaries(versionId);
+  if (!built.length) console.warn("Ads summaries are missing for the active version.");
+  return built;
 }
 
 function invalidateAdsCache(): void {
@@ -144,8 +163,18 @@ export async function backfillActiveSummaries(): Promise<number> {
   if (!active) return 0;
   const existing = await database.collection("ads_region_summaries").countDocuments({ versionId: active._id });
   if (existing > 0) return 0;
-  const summaries = buildRegionSummaries(active.data, active._id);
-  if (summaries.length) await database.collection("ads_region_summaries").insertMany(summaries);
+  const summaries = await buildActiveSummaries(active._id);
+  return summaries.length;
+}
+
+/** Owner-triggered rebuild. Revalidates the ads cache outside render. */
+export async function rebuildActiveSummaries(): Promise<number> {
+  const database = await db();
+  if (!database) return 0;
+  await ensureIndexes(database);
+  const active = await database.collection<AdsVersion>("ads_versions").findOne({ status: "active" }, { sort: { uploadedAt: -1 } });
+  if (!active) return 0;
+  const summaries = await buildActiveSummaries(active._id);
   invalidateAdsCache();
   return summaries.length;
 }

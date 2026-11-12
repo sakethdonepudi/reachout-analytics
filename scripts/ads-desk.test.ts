@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { MongoClient } from "mongodb";
 import { parseAdsDeskHtml } from "@/lib/ads-desk/parse";
 import { buildAdsSocial } from "@/lib/ads-desk/client-dto";
-import { getRegionSummaries, publishVersion, saveDraft } from "@/lib/ads-desk/store";
+import { getActiveRegionSummaries, getRegionSummaries, publishVersion, saveDraft } from "@/lib/ads-desk/store";
 import { getRegionMap, socialForCase, setRegionMapping, DEFAULT_REGION_MAP } from "@/lib/ads-desk/mapping";
 import { adsManagerAdsets, adsManagerAds, adsManagerCampaigns, adsManagerForCampaign, billing, pageLink, validMetaId } from "@/lib/ads-desk/links";
 import { withOwnerLinks } from "@/lib/ads-desk/owner-view";
@@ -91,6 +91,11 @@ ok("data pages have no decorative classes", dataPages.every((file) => !/radial-g
     await publishVersion(versionId);
     try { await saveDraft(parsed, "small.html", "tester"); ok("duplicate sha rejected against active", false); }
     catch (error) { ok("duplicate sha rejected against active", error instanceof Error && /already the active version/.test(error.message)); }
+    await db.collection("ads_region_summaries").deleteMany({ versionId });
+    const firstSummaries = await getActiveRegionSummaries();
+    const secondSummaries = await getActiveRegionSummaries();
+    ok("first summary read backfills", firstSummaries.length === 1 && firstSummaries[0].regionKey === "tn2026");
+    ok("second summary read reuses the same result", secondSummaries.length === 1 && secondSummaries[0].accounts[0].impressions === firstSummaries[0].accounts[0].impressions);
     console.log("\n3b. Report formatting");
 ok("Indian units", indianUnits(1_933_867_599) === "193.4 Cr" && indianUnits(30_862_233) === "3.1 Cr" && indianUnits(247_000) === "2.5 L");
 ok("percent formatting", percent(16.666) === "16.7%" && percent(20) === "20.0%");
@@ -107,6 +112,7 @@ console.log("\n4. Region mapping");
     await setRegionMapping("tn2026", "tamil-nadu", "tester");
     const clientSocial = await socialForCase("tamil-nadu", false);
     ok("client social has no cost/ids", !/spend|costperresult|₹|test business|123456789012345|120240000000001|adsmanager|billing_hub|act=/i.test(JSON.stringify(clientSocial)));
+    ok("client summary keeps account metrics", clientSocial[0]?.accounts[0]?.impressions === 450 && clientSocial[0]?.accounts[0]?.campaignCount === 2);
     const ownerSocial = await socialForCase("tamil-nadu", true);
     ok("owner social has spend and links", ownerSocial[0]?.totals.spend === 150.75 && /adsmanager\.facebook\.com/.test(JSON.stringify(ownerSocial)) && /billing_hub/.test(JSON.stringify(ownerSocial)));
     const version = await db.collection("ads_versions").findOne({ status: "active" });

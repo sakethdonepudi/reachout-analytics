@@ -58,16 +58,16 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
     if (!region) return [];
     return region.accounts.map((account) => {
       const campaigns = account.campaigns;
-      const impressions = campaigns.reduce((sum, item) => sum + item.impressions, 0);
-      const reach = campaigns.reduce((sum, item) => sum + item.reach, 0);
-      const engagements = campaigns.reduce((sum, item) => sum + item.engagements, 0);
-      const clicks = campaigns.reduce((sum, item) => sum + item.clicks, 0);
-      const spend = campaigns.reduce((sum, item) => sum + (item.spend ?? 0), 0);
-      const results = campaigns.reduce((sum, item) => sum + (item.results ?? 0), 0);
+      const impressions = account.impressions ?? campaigns.reduce((sum, item) => sum + item.impressions, 0);
+      const reach = account.reach ?? campaigns.reduce((sum, item) => sum + item.reach, 0);
+      const engagements = account.engagements ?? campaigns.reduce((sum, item) => sum + item.engagements, 0);
+      const clicks = account.clicks ?? campaigns.reduce((sum, item) => sum + item.clicks, 0);
+      const spend = account.spend ?? campaigns.reduce((sum, item) => sum + (item.spend ?? 0), 0);
+      const results = account.results ?? campaigns.reduce((sum, item) => sum + (item.results ?? 0), 0);
       return {
         name: account.name, campaigns, href: account.href, billingHref: account.billingHref,
         allAdsetsHref: account.allAdsetsHref, allAdsHref: account.allAdsHref,
-        campaignCount: campaigns.length, impressions, reach, engagements, clicks, spend, results,
+        campaignCount: account.campaignCount ?? campaigns.length, impressions, reach, engagements, clicks, spend, results,
       };
     });
   }, [region]);

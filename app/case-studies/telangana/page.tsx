@@ -4,6 +4,7 @@ import TelanganaDashboard from "@/components/case-studies/telangana/telangana-da
 import { requirePageSession } from "@/lib/require-session";
 import { caseAllowed } from "@/lib/session-scope";
 import SocialPanel from "@/components/ads-desk/social-panel";
+import CaseStudyTabs from "@/components/ads-desk/case-study-tabs";
 import { socialForCase } from "@/lib/ads-desk/mapping";
 import { redirect } from "next/navigation";
 
@@ -29,8 +30,9 @@ export default async function TelanganaCaseStudyPage() {
   return (
     <>
       <Navbar />
-      <TelanganaDashboard />
-      <section className="mx-auto max-w-6xl px-6 py-12 sm:px-10"><SocialPanel regions={social} /></section>
+      <CaseStudyTabs social={<main className="min-h-screen bg-background pt-16 text-foreground"><div className="mx-auto max-w-6xl px-6 pb-24 sm:px-10"><SocialPanel regions={social} /></div></main>}>
+        <TelanganaDashboard />
+      </CaseStudyTabs>
     </>
   );
 }

@@ -15,6 +15,13 @@ export type AdsSocialCampaign = {
 };
 export type AdsSocialAccount = {
   name: string;
+  campaignCount?: number;
+  impressions?: number;
+  reach?: number;
+  clicks?: number;
+  engagements?: number;
+  spend?: number;
+  results?: number;
   href?: string | null; billingHref?: string | null; allAdsetsHref?: string | null; allAdsHref?: string | null;
   campaigns: AdsSocialCampaign[];
 };
@@ -96,7 +103,14 @@ export function buildAdsSocialFromSummary(summary: AdsRegionSummary, includeCost
     },
     accounts: summary.accounts.map((account) => ({
       name: account.name,
+      campaignCount: account.campaigns,
+      impressions: account.impressions,
+      reach: account.reach,
+      clicks: account.clicks,
+      engagements: account.engagements,
+      results: account.results,
       ...(includeCost ? {
+        spend: account.spend,
         href: adsManagerCampaigns(account.id),
         billingHref: billing(account.id),
         allAdsetsHref: adsManagerAdsets(account.id),

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Loader2, Upload } from "lucide-react";
+import { Download, Loader2, RefreshCw, Upload } from "lucide-react";
 import { useReauth } from "@/components/auth/reauth-provider";
 import type { AdsParse, AdsAccount } from "@/lib/ads-desk/parse";
 import OpenMenu from "@/components/ads-desk/open-menu";
@@ -27,6 +27,7 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
   const [preview, setPreview] = useState<Preview | null>(null);
   const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
+  const [rebuilding, setRebuilding] = useState(false);
   const [allExpanded, setAllExpanded] = useState(false);
   const [allQuery, setAllQuery] = useState("");
 
@@ -93,6 +94,21 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
     } catch { setMessage("Publish failed."); } finally { setBusy(""); }
   }
 
+  async function rebuildSummaries(retry = false) {
+    setRebuilding(true); setMessage("");
+    try {
+      const response = await fetch("/api/ads/summaries", { method: "POST" });
+      const payload = await response.json().catch(() => ({}));
+      if (response.status === 403 && payload.code === "reauth_required" && !retry) {
+        if (await requestReauth()) return rebuildSummaries(true);
+      }
+      if (!response.ok) { setMessage(payload.error ?? "Could not rebuild summaries."); return; }
+      setMessage(`Rebuilt summaries for ${payload.regions ?? 0} regions.`);
+      router.refresh();
+    } catch { setMessage("Could not rebuild summaries."); }
+    finally { setRebuilding(false); }
+  }
+
   async function rollback(versionId: string) {
     if (!window.confirm("Make this version active?")) return;
     setBusy(versionId);
@@ -126,10 +142,15 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
       <section className="report-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><h2 className="text-[15px] font-semibold text-[var(--r-navy)]">Ads data</h2><p className="text-[12px] text-[var(--r-muted)]">{data ? `Data as of ${data.asOf}, ${data.takenAt}` : "No active upload yet."}</p></div>
-          <label className={cn("report-btn-secondary cursor-pointer", busy === "upload" && "opacity-60")}>
-            {busy === "upload" ? <Loader2 className="size-3.5" /> : <Upload className="size-3.5" />} Choose HTML
-            <input type="file" accept=".html,text/html" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); }} />
-          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => void rebuildSummaries()} disabled={rebuilding} className="report-btn-secondary disabled:opacity-60">
+              {rebuilding ? <Loader2 className="size-3.5" /> : <RefreshCw className="size-3.5" />} Rebuild social summaries
+            </button>
+            <label className={cn("report-btn-secondary cursor-pointer", busy === "upload" && "opacity-60")}>
+              {busy === "upload" ? <Loader2 className="size-3.5" /> : <Upload className="size-3.5" />} Choose HTML
+              <input type="file" accept=".html,text/html" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); }} />
+            </label>
+          </div>
         </div>
         <div
           role="button" tabIndex={0}
