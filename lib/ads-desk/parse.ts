@@ -142,7 +142,11 @@ export function parseAdsDeskHtml(html: string): AdsParse {
     const region = parsed.data;
     const accounts: AdsAccount[] = Object.entries(region.accounts).map(([accountId, account]) => {
       const rows = region.camps[accountId] ?? [];
-      const campaigns: AdsCampaign[] = rows.map((row) => {
+      const campaigns: AdsCampaign[] = rows.map((row, index) => {
+        const numeric = ["spend", "reach", "impressions", "views", "clicks", "engagements"];
+        for (let offset = 0; offset < numeric.length; offset += 1) {
+          if (!Number.isFinite(Number(row[5 + offset]))) throw new Error(`${key}.camps row ${index + 1}: ${numeric[offset]} is not a number`);
+        }
         const result = region.res[row[0] as string] as unknown[] | undefined;
         return {
           id: String(row[0] ?? ""), name: String(row[1] ?? ""), delivery: DELIVERY[String(row[2] ?? "")] ?? "Unknown",

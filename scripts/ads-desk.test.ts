@@ -5,6 +5,7 @@ import { MongoClient } from "mongodb";
 import { parseAdsDeskHtml } from "@/lib/ads-desk/parse";
 import { buildAdsSocial } from "@/lib/ads-desk/client-dto";
 import { publishVersion, saveDraft } from "@/lib/ads-desk/store";
+import { getRegionMap, socialForCase, setRegionMapping, DEFAULT_REGION_MAP } from "@/lib/ads-desk/mapping";
 
 let pass = 0, fail = 0;
 function ok(name: string, condition: boolean, detail = "") {
@@ -64,6 +65,19 @@ ok("owner sees spend and cost", owner.totals.spend === 150.75 && owner.accounts[
     await publishVersion(versionId);
     try { await saveDraft(parsed, "small.html", "tester"); ok("duplicate sha rejected against active", false); }
     catch (error) { ok("duplicate sha rejected against active", error instanceof Error && /already the active version/.test(error.message)); }
+    console.log("\n4. Region mapping");
+    const map = await getRegionMap();
+    ok("default mapping seeded", map.tn2026 === "tamil-nadu" && map.ka2028 === "karnataka-2023");
+    ok("defaults cover every fixture region", Object.keys(DEFAULT_REGION_MAP).every((key) => Boolean(map[key])));
+    await setRegionMapping("tn2026", "telangana", "tester");
+    const changed = await getRegionMap();
+    ok("one region maps to one case study", changed.tn2026 === "telangana");
+    ok("case can have several regions", (await socialForCase("telangana", false)).length >= 1);
+    await setRegionMapping("tn2026", "tamil-nadu", "tester");
+    const clientSocial = await socialForCase("tamil-nadu", false);
+    ok("client social has no cost/ids", !/spend|costperresult|₹|test business|"100"/i.test(JSON.stringify(clientSocial)));
+    const ownerSocial = await socialForCase("tamil-nadu", true);
+    ok("owner social has spend", ownerSocial[0]?.totals.spend === 150.75);
     await mongo.close();
   }
   console.log(`\n${pass} passed, ${fail} failed`);

@@ -7,13 +7,13 @@ import { useReauth } from "@/components/auth/reauth-provider";
 import type { AdsParse, AdsAccount, AdsCampaign } from "@/lib/ads-desk/parse";
 import { cn } from "@/lib/utils";
 
-type Version = { _id: string; uploadedAt: string; fileName: string; status: string; takenAt: string };
+type Version = { _id: string; uploadedAt: string; uploadedBy?: string; sha256?: string; fileName: string; status: string; takenAt: string };
 type Preview = { versionId: string; regions: { key: string; label: string; totals: AdsParse["regions"][number]["totals"] }[]; takenAt: string };
 
 const money = (value: number) => `₹${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value)}`;
 const count = (value: number) => new Intl.NumberFormat("en-IN").format(value);
 
-export default function AdsDesk({ data, versions, defaultRegion }: { data: AdsParse | null; versions: Version[]; defaultRegion: string }) {
+export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }: { data: AdsParse | null; versions: Version[]; defaultRegion: string; unmapped?: string[] }) {
   const router = useRouter();
   const { requestReauth } = useReauth();
   const [tab, setTab] = useState<string>(data && defaultRegion && data.regions.some((r) => r.key === defaultRegion) ? defaultRegion : data?.regions[0]?.key ?? "all");
@@ -24,6 +24,8 @@ export default function AdsDesk({ data, versions, defaultRegion }: { data: AdsPa
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [chartMode, setChartMode] = useState<"bars" | "lines">("bars");
 
   const region = data?.regions.find((item) => item.key === tab) ?? null;
   const accounts = useMemo(() => {
@@ -50,7 +52,7 @@ export default function AdsDesk({ data, versions, defaultRegion }: { data: AdsPa
   }
 
   async function upload(file: File) {
-    setBusy("upload"); setMessage(""); setPreview(null);
+    setBusy("upload"); setMessage("Parsing…"); setPreview(null);
     const form = new FormData(); form.append("file", file);
     try {
       const response = await fetch("/api/ads/upload", { method: "POST", body: form });
@@ -105,15 +107,27 @@ export default function AdsDesk({ data, versions, defaultRegion }: { data: AdsPa
             <input type="file" accept=".html,text/html" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); }} />
           </label>
         </div>
+        <div
+          role="button" tabIndex={0}
+          onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files?.[0]; if (file) void upload(file); }}
+          onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") event.currentTarget.querySelector("input")?.click(); }}
+          className={cn("mt-3 rounded border border-dashed px-4 py-6 text-center text-[12px] text-[var(--text-muted)]", dragging ? "border-[var(--accent-brass)] bg-[var(--accent-brass-soft)]" : "border-[var(--border-hairline)]")}
+        >
+          Drop the Reachout Ads Desk HTML here, or use Choose HTML. Maximum 15 MB.
+          <input type="file" accept=".html,text/html" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); }} />
+        </div>
+        {unmapped.length > 0 && <p role="status" className="mt-2 rounded border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-2 py-1 text-[11.5px] text-[var(--warning)]">Unmapped regions: {unmapped.join(", ")}. Map them in the case-studies dashboard.</p>}
         {message && <p role="status" className="mt-2 text-[12px] text-[var(--text-muted)]">{message}</p>}
         {preview && (
           <div className="mt-3 rounded border border-[var(--accent-brass)]/40 p-3">
             <p className="text-[12px] font-semibold">Preview · {preview.takenAt}</p>
-            <ul className="mt-2 space-y-1 text-[11.5px]">{preview.regions.map((item) => <li key={item.key}>{item.label}: {item.totals.accounts} accounts · {item.totals.campaigns} campaigns · {money(item.totals.spend)}</li>)}</ul>
+            <ul className="mt-2 space-y-1 text-[11.5px]">{preview.regions.map((item) => { const old = data?.regions.find((region) => region.key === item.key)?.totals; const delta = old ? item.totals.spend - old.spend : null; return <li key={item.key}>{item.label}: {item.totals.accounts} accounts · {item.totals.campaigns} campaigns · {money(item.totals.spend)}{delta == null ? "" : ` (${delta >= 0 ? "+" : ""}${money(delta)} vs active)`}</li>; })}</ul>
             <button type="button" onClick={() => void publish(preview.versionId)} disabled={Boolean(busy)} className="mt-3 min-h-9 rounded bg-[var(--accent-brass)] px-3 text-[12px] font-semibold text-[var(--text-on-brass)] disabled:opacity-50">Publish</button>
           </div>
         )}
-        {versions.length > 0 && <div className="mt-3 flex flex-wrap gap-2 text-[11px]">{versions.slice(0, 6).map((version) => <span key={version._id} className="rounded border border-[var(--border-hairline)] px-2 py-1">{version.status} · {version.fileName}{version.status !== "active" && <button type="button" onClick={() => void rollback(version._id)} disabled={Boolean(busy)} className="ml-2 underline">Roll back</button>}</span>)}</div>}
+        {versions.length > 0 && <div className="mt-3 space-y-1 text-[11px]">{versions.slice(0, 6).map((version) => <div key={version._id} className="flex flex-wrap items-center gap-2 rounded border border-[var(--border-hairline)] px-2 py-1"><span className="font-semibold">{version.status}</span><span>{version.takenAt}</span><span>by {version.uploadedBy ?? "owner"}</span><span>{new Date(version.uploadedAt).toLocaleString()}</span><span className="font-mono">{version.sha256?.slice(0, 8) ?? "—"}</span>{version.status !== "active" && <button type="button" onClick={() => void rollback(version._id)} disabled={Boolean(busy)} className="ml-auto underline">Roll back</button>}</div>)}</div>}
       </section>
 
       {!data ? (
@@ -122,7 +136,7 @@ export default function AdsDesk({ data, versions, defaultRegion }: { data: AdsPa
         <>
           <div className="flex flex-wrap gap-1 border-b border-[var(--border-hairline)]">
             {data.regions.map((item) => (
-              <button key={item.key} type="button" onClick={() => { setTab(item.key); setOpenAccount(null); }} style={tab === item.key ? { borderBottomColor: item.colors.band } : undefined} className={cn("min-h-10 border-b-2 border-transparent px-3 text-[12px] font-semibold", tab === item.key ? "text-foreground" : "text-[var(--text-muted)]")}>{item.label}</button>
+              <button key={item.key} type="button" onClick={() => { setTab(item.key); setOpenAccount(null); }} style={tab === item.key ? { borderBottomColor: item.colors.band } : undefined} className={cn("min-h-10 border-b-2 border-transparent px-3 text-[12px] font-semibold", tab === item.key ? "text-foreground" : "text-[var(--text-muted)]")}>{item.label}{unmapped.includes(item.key) && <span className="ml-1 rounded border border-[var(--warning)]/50 px-1 text-[8px] uppercase text-[var(--warning)]">Unmapped</span>}</button>
             ))}
             <button type="button" onClick={() => setTab("all")} className={cn("min-h-10 border-b-2 border-transparent px-3 text-[12px] font-semibold", tab === "all" ? "border-[var(--accent-brass)] text-foreground" : "text-[var(--text-muted)]")}>All accounts (last 30 days)</button>
             <button type="button" onClick={() => setTab("pages")} className={cn("min-h-10 border-b-2 border-transparent px-3 text-[12px] font-semibold", tab === "pages" ? "border-[var(--accent-brass)] text-foreground" : "text-[var(--text-muted)]")}>Pages</button>
@@ -164,14 +178,43 @@ export default function AdsDesk({ data, versions, defaultRegion }: { data: AdsPa
             </>
           )}
 
-          {tab === "all" && (
+          {tab === "all" && (() => {
+            const days = data.snap.days;
+            const accountsWithDaily = data.snap.accounts.filter((account) => data.snap.daily[account.id]?.length);
+            const totals = days.map((_day, index) => accountsWithDaily.reduce((sum, account) => sum + (data.snap.daily[account.id]?.[index] ?? 0), 0));
+            const max = Math.max(1, ...totals);
+            return (
+            <>
+            <div className="rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)] p-4">
+              <div className="flex items-center justify-between gap-2"><h3 className="text-[13px] font-semibold">Daily spend</h3><select value={chartMode} onChange={(event) => setChartMode(event.target.value as "bars" | "lines")} className="min-h-8 rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)] px-2 text-[11px]"><option value="bars">Stacked bars</option><option value="lines">Lines</option></select></div>
+              {chartMode === "bars" ? (
+                <div className="mt-3 flex h-48 items-end gap-1 border-b border-l border-[var(--border-hairline)] pl-1">
+                  {days.map((day, index) => <div key={day} className="flex flex-1 flex-col justify-end gap-px" title={`${day} · total ₹${totals[index].toFixed(2)}`}>
+                    {accountsWithDaily.map((account) => { const value = data.snap.daily[account.id]?.[index] ?? 0; return <div key={account.id} title={`${day} · ${account.name} · ₹${value.toFixed(2)}`} style={{ height: `${(value / max) * 100}%`, background: "var(--accent-brass)", opacity: 0.75 }} />; })}
+                    <span className="mt-1 truncate text-center text-[8px] text-[var(--text-muted)]">{index === days.length - 1 ? "today so far" : day.slice(5)}</span>
+                  </div>)}
+                </div>
+              ) : (
+                <svg viewBox="0 0 100 40" className="mt-3 h-48 w-full overflow-visible" role="img" aria-label="Daily spend lines">
+                  {[0, 10, 20, 30, 40].map((y) => <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="var(--border-hairline)" strokeWidth="0.2" />)}
+                  {accountsWithDaily.map((account, accountIndex) => { const points = days.map((_day, index) => `${(index / Math.max(1, days.length - 1)) * 100},${40 - ((data.snap.daily[account.id]?.[index] ?? 0) / max) * 38}`).join(" "); return <polyline key={account.id} points={points} fill="none" stroke="var(--accent-brass)" strokeOpacity={0.35 + (accountIndex % 5) * 0.1} strokeWidth="0.7" />; })}
+                  <polyline points={days.map((_day, index) => `${(index / Math.max(1, days.length - 1)) * 100},${40 - (totals[index] / max) * 38}`).join(" ")} fill="none" stroke="var(--text-primary)" strokeWidth="1" />
+                </svg>
+              )}
+              <div className="mt-1 flex justify-between text-[9px] text-[var(--text-muted)]"><span>{days[0]}</span><span>Total ₹{totals.reduce((sum, value) => sum + value, 0).toFixed(2)}</span><span>{days[days.length - 1]} · today so far</span></div>
+            </div>
+            <div className="overflow-x-auto rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)]">
+              <table className="w-full min-w-[420px] border-collapse text-left text-[11px]"><thead className="bg-[var(--surface-raised)] text-[9px] uppercase tracking-[0.08em] text-[var(--text-muted)]"><tr><th className="px-2 py-2">Account</th><th className="px-2 py-2 text-right">{days.length}-day total</th></tr></thead><tbody>{accountsWithDaily.map((account) => <tr key={account.id} className="border-t border-[var(--border-hairline)]/60"><td className="px-2 py-1.5">{account.name}</td><td className="px-2 py-1.5 text-right tabular-nums">{money(data.snap.daily[account.id].reduce((sum, value) => sum + value, 0))}</td></tr>)}</tbody></table>
+            </div>
             <div className="overflow-x-auto rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)]">
               <table className="w-full min-w-[900px] border-collapse text-left text-[11.5px]">
                 <thead className="bg-[var(--surface-raised)] text-[9.5px] uppercase tracking-[0.08em] text-[var(--text-muted)]"><tr>{["Account", "Status", "Payment", "Spend", "Reach", "Impressions", "Views", "Clicks", "Engagement", "Owner links"].map((label) => <th key={label} className="px-2 py-2">{label}</th>)}</tr></thead>
                 <tbody>{data.snap.accounts.map((account) => <tr key={account.id} className="border-t border-[var(--border-hairline)]/60"><td className="px-2 py-2 font-medium">{account.name}</td><td className="px-2 py-2">{account.status}</td><td className="px-2 py-2">{account.hasPayment ? "Yes" : "No"}</td>{account.stats.map((value, index) => <td key={index} className="px-2 py-2 text-right tabular-nums">{index === 0 ? money(value) : count(value)}</td>)}<td className="px-2 py-2"><div className="flex gap-2"><a href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${account.id}`} target="_blank" rel="noreferrer" className="underline">Ads Manager</a><a href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${account.id}&business_id=`} target="_blank" rel="noreferrer" className="underline">Billing</a></div></td></tr>)}</tbody>
               </table>
             </div>
-          )}
+            </>
+            );
+          })()}
 
           {tab === "pages" && (
             <div className="overflow-x-auto rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)]">

@@ -55,7 +55,7 @@ export async function alertNewDevice(user: UserDoc, req: Request): Promise<boole
       ipPrefix: ip,
       signInAt: at,
     };
-    await client.db(process.env.MONGODB_DB || "reachout").collection<{ _id: string }>("meta_notifications").insertOne(notification);
+    await client.db(process.env.MONGODB_DB || "reachout").collection<{ _id: string }>("owner_notifications").insertOne(notification);
   })().catch(() => {});
   return true;
 }

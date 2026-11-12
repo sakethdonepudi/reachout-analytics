@@ -9,6 +9,7 @@ import { useReauth } from "@/components/auth/reauth-provider";
 import ThemeToggle from "@/components/site/theme-toggle";
 import AboutEditor from "@/components/admin/about-editor";
 import TelanganaAdmin from "@/components/admin/telangana-admin";
+import MappingEditor from "@/components/ads-desk/mapping-editor";
 import { cn } from "@/lib/utils";
 import type { Row as PollRow } from "@/lib/poll-data";
 
@@ -335,6 +336,8 @@ export default function AdminPortal() {
 
         <main className="min-w-0 flex-1">
           {/* mobile section selector */}
+          <MappingEditor cases={cases.map((record) => ({ id: record.id, slug: record.slug, title: record.title }))} />
+
           <div className="mb-4 flex flex-wrap gap-2 lg:hidden">
             {SECTIONS.map(({ id, label }) => (
               <button key={id} onClick={() => setSection(id)} className={cn("rounded-full border px-3 py-1.5 text-[12.5px]", section === id ? "border-saffron/60 bg-saffron/10 text-foreground" : "border-border text-muted-foreground")}>{label}</button>

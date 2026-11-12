@@ -664,7 +664,7 @@ export default function TamilNaduAnalysis({
                   {chartMode === "seats" ? (
                     [{ label: "Estimated", opacity: 0.55 }, { label: "Actual 2026", opacity: 1 }].map((item) => (
                       <div key={item.label} className="flex items-center gap-1.5 rounded-lg border border-[var(--a-border)] px-2 py-1.5 text-[10px] font-medium text-[var(--a-ink)]">
-                        <span className="h-2 w-4 rounded-sm" style={{ background: "linear-gradient(90deg, #EAB308, #16A34A, #DC2626, #7C3AED, #64748B)", opacity: item.opacity }} />
+                        <span className="h-2 w-4 rounded-sm" style={{ background: "#64748b", opacity: item.opacity }} />
                         {item.label}
                       </div>
                     ))
@@ -683,7 +683,7 @@ export default function TamilNaduAnalysis({
                           )}
                         >
                           <span className="inline-flex items-center gap-1.5">
-                            <span className="h-2 w-4 rounded-sm" style={{ background: "linear-gradient(90deg, #EAB308, #16A34A, #DC2626, #7C3AED, #64748B)", opacity: series.opacity }} />
+                            <span className="h-2 w-4 rounded-sm" style={{ background: "#64748b", opacity: series.opacity }} />
                             {series.label}
                           </span>
                           <span className="text-[8px] uppercase tracking-wide">{active ? "On" : "Off"}</span>
@@ -1081,7 +1081,7 @@ function SeriesLegend({ items }: { items: { label: string; opacity: number }[] }
     <div className="mb-2 flex flex-wrap gap-x-3 gap-y-1 px-1 text-[9.5px] text-[var(--a-muted)]">
       {items.map((item) => (
         <span key={item.label} className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-6 rounded-sm" style={{ background: "linear-gradient(90deg, #EAB308, #16A34A, #DC2626, #7C3AED, #64748B)", opacity: item.opacity }} />
+          <span className="h-2 w-6 rounded-sm" style={{ background: "#64748b", opacity: item.opacity }} />
           {item.label}
         </span>
       ))}

@@ -2,12 +2,13 @@ import Navbar from "@/components/site/navbar";
 import AdsDesk from "@/components/ads-desk/ads-desk";
 import { requirePageSession } from "@/lib/require-session";
 import { getActiveVersion, listVersions } from "@/lib/ads-desk/store";
+import { unmappedRegions } from "@/lib/ads-desk/mapping";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   await requirePageSession("/dashboard", ["owner"]);
-  const [active, versions] = await Promise.all([getActiveVersion(), listVersions(12)]);
+  const [active, versions, unmapped] = await Promise.all([getActiveVersion(), listVersions(12), unmappedRegions()]);
   return (
     <>
       <Navbar />
@@ -20,7 +21,7 @@ export default async function DashboardPage() {
             </div>
             <a href="/dashboard/case-studies" className="text-[12px] font-semibold text-[var(--accent-brass-strong)]">Case studies dashboard</a>
           </div>
-          <div className="mt-5"><AdsDesk data={active?.data ?? null} versions={versions.map((version) => ({ _id: version._id, uploadedAt: version.uploadedAt, fileName: version.fileName, status: version.status, takenAt: version.takenAt }))} defaultRegion="tn2026" /></div>
+          <div className="mt-5"><AdsDesk data={active?.data ?? null} versions={versions.map((version) => ({ _id: version._id, uploadedAt: version.uploadedAt, uploadedBy: version.uploadedBy, sha256: version.sha256, fileName: version.fileName, status: version.status, takenAt: version.takenAt }))} defaultRegion="tn2026" unmapped={unmapped} /></div>
         </div>
       </main>
     </>

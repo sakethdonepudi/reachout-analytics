@@ -168,7 +168,7 @@ export default function TelanganaRail({
   };
 
   return (
-    <section aria-label="Telangana comparison" className="rounded-2xl border border-border bg-card/95 p-3 shadow-[0_18px_50px_-30px_rgba(15,20,30,0.55)] backdrop-blur-xl">
+    <section aria-label="Telangana comparison" className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--surface-panel)] p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="font-display text-lg font-semibold leading-tight">Telangana comparison</h2>

@@ -6,6 +6,8 @@ import CompanyExperience from "@/components/site/company-marquee";
 import { PartyIdentity, PartyMark } from "@/components/site/party-mark";
 import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl } from "@/lib/cases";
 import { requirePageSession } from "@/lib/require-session";
+import SocialPanel from "@/components/ads-desk/social-panel";
+import { socialForCase } from "@/lib/ads-desk/mapping";
 import { caseAllowed } from "@/lib/session-scope";
 import { redirect } from "next/navigation";
 
@@ -46,6 +48,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
   const { slug } = await params;
   const session = await requirePageSession(`/case-studies/${slug}`);
   if (!caseAllowed(session, slug)) redirect("/no-access");
+  const social = await socialForCase(slug, session.role === "owner");
   const c = caseBySlug(slug);
   const upcoming = UPCOMING.find((u) => u.slug === slug);
   if (!c && !upcoming) notFound();
@@ -115,6 +118,8 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
               </div>
             </>
           )}
+
+          <section className="mt-16"><SocialPanel regions={social} /></section>
 
           <CompanyExperience className="mt-20 border-t border-border" />
 
