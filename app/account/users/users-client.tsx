@@ -28,6 +28,7 @@ export default function UsersClient() {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const response = await fetch("/api/account/users", { cache: "no-store" });
@@ -44,7 +45,7 @@ export default function UsersClient() {
   useEffect(() => { void load(); }, [load]);
 
   async function call(id: string | null, body: Record<string, unknown>, method: "POST" | "PATCH" | "DELETE", retry = false): Promise<boolean> {
-    setBusy(id ?? "create"); setError(""); setMessage("");
+    setBusy(id ?? "create"); setError(""); setMessage(""); setFieldErrors({});
     try {
       const url = id ? `/api/account/users/${id}` : "/api/account/users";
       const response = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -52,7 +53,7 @@ export default function UsersClient() {
       if (response.status === 403 && payload.code === "reauth_required" && !retry) {
         if (await requestReauth()) return call(id, body, method, true);
       }
-      if (!response.ok) { setError(typeof payload.error === "string" ? payload.error : "Request failed."); return false; }
+      if (!response.ok) { setFieldErrors((payload.fieldErrors as Record<string, string>) ?? {}); setError(typeof payload.error === "string" ? payload.error : "Request failed."); return false; }
       await load();
       return true;
     } catch { setError("Request failed."); return false; }
@@ -108,15 +109,15 @@ export default function UsersClient() {
       <Card className="p-5">
         <div className="flex items-center gap-2"><UserPlus className="size-4" /><h2 className="type-h3">Create account</h2></div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Username" value={form.username} onChange={(value) => setForm({ ...form, username: value })} />
-          <Field label="Display name" value={form.displayName} onChange={(value) => setForm({ ...form, displayName: value })} />
+          <Field label="Username" value={form.username} onChange={(value) => setForm({ ...form, username: value })} error={fieldErrors.username} hint="3-32 characters: a-z, 0-9, dot, underscore or hyphen." />
+          <Field label="Display name" value={form.displayName} onChange={(value) => setForm({ ...form, displayName: value })} error={fieldErrors.displayName} />
           <Field label="Organisation (clients)" value={form.organisation} onChange={(value) => setForm({ ...form, organisation: value })} />
           <label className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">Role
             <select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value as "owner" | "client" })} className="mt-1 min-h-10 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-panel)] px-2 text-[12px]">
               <option value="client">Client</option><option value="owner">Owner</option>
             </select>
           </label>
-          <Field label="Temporary password" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} />
+          <Field label="Temporary password" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} error={fieldErrors.password} hint="At least 12 characters." />
           <label className="mt-5 flex items-center gap-2 text-[12px] font-semibold"><input type="checkbox" checked={form.role === "owner" || form.totpRequired} disabled={form.role === "owner"} onChange={(event) => setForm({ ...form, totpRequired: event.target.checked })} className="size-4 accent-[var(--accent-brass)]" /> Require 2FA</label>
         </div>
 
@@ -168,10 +169,11 @@ export default function UsersClient() {
   );
 }
 
-function Field({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
+function Field({ label, value, onChange, type = "text", error, hint }: { label: string; value: string; onChange: (value: string) => void; type?: string; error?: string; hint?: string }) {
   return (
     <label className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">{label}
-      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 min-h-10 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-panel)] px-2 text-[12px] normal-case tracking-normal" />
+      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} aria-invalid={Boolean(error)} className={`mt-1 min-h-10 w-full rounded-[var(--radius-control)] border bg-[var(--surface-panel)] px-2 text-[12px] normal-case tracking-normal ${error ? "border-[var(--danger)]" : "border-[var(--border-hairline)]"}`} />
+      {error ? <span className="mt-1 block text-[10.5px] font-medium normal-case tracking-normal text-[var(--danger)]">{error}</span> : hint ? <span className="mt-1 block text-[10.5px] font-normal normal-case tracking-normal text-[var(--text-muted)]">{hint}</span> : null}
     </label>
   );
 }

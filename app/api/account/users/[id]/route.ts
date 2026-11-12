@@ -48,9 +48,11 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
   }
 
   if (action === "reset-password") {
-    if (!parsed.data.password) return Response.json({ ok: false, error: "A temporary password is required." }, { status: 400, headers });
+    if (!parsed.data.password || parsed.data.password.length < 12) {
+      return Response.json({ ok: false, error: "Temporary password must be at least 12 characters.", fieldErrors: { password: "Temporary password must be at least 12 characters." } }, { status: 400, headers });
+    }
     const result = await setTemporaryPassword(id, parsed.data.password, target.username);
-    if (!result.ok) return Response.json({ ok: false, error: result.error }, { status: 400, headers });
+    if (!result.ok) return Response.json({ ok: false, error: result.error, fieldErrors: { password: result.error ?? "Invalid password." } }, { status: 400, headers });
     await revokeAllSessionsForUser(id);
     await audit({ action: "password_reset", role: "owner", meta: { targetUserId: id } });
     return Response.json({ ok: true }, { headers });
