@@ -32,7 +32,7 @@ const overview: OwnerOverview = {
   campaigns: [
     {
       id: "c_1", name: "TN_TVK_Reels", status: "ACTIVE", state: "tamil-nadu", stateLabel: "Tamil Nadu",
-      party: "TVK", partyLabel: "TVK", color: "#e0a800", metrics,
+      party: "TVK", partyLabel: "TVK", color: "#e0a800", metaUserName: "Owner", lastSyncedAt: "2026-11-11T10:00:00.000Z", metrics,
       adsets: [
         {
           id: "as_1", name: "Ad set", status: "ACTIVE", metrics,

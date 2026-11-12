@@ -456,7 +456,7 @@ export default function OwnerDashboard() {
                     if (!expanded.has(partyKey)) continue;
                     for (const campaign of party.campaigns) {
                       const campaignKey = `campaign:${campaign.id}`;
-                      stateRows.push(<ExplorerRow key={`${partyKey}:${campaign.id}`} level={2} label={campaign.name} status={campaign.status} metrics={campaign.metrics} expandable expanded={expanded.has(campaignKey)} onToggle={() => toggle(campaignKey)} />);
+                      stateRows.push(<ExplorerRow key={`${partyKey}:${campaign.id}`} level={2} label={showAll && campaign.metaUserName ? `${campaign.name} · from ${campaign.metaUserName}` : campaign.name} status={campaign.status} metrics={campaign.metrics} expandable expanded={expanded.has(campaignKey)} onToggle={() => toggle(campaignKey)} />);
                       if (!expanded.has(campaignKey)) continue;
                       for (const adset of campaign.adsets) {
                         const adsetKey = `adset:${adset.id}`;

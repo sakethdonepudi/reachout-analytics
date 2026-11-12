@@ -75,6 +75,8 @@ export type ExplorerCampaign = {
   party: string;
   partyLabel: string;
   color: string;
+  metaUserName: string | null;
+  lastSyncedAt: string | null;
   metrics: Metrics;
   adsets: ExplorerAdset[];
 };
@@ -134,7 +136,7 @@ type DailyDoc = {
   videoPlays?: number;
   thruPlays?: number;
 };
-type CampaignDoc = { _id: string; name?: string; accountId?: string; status?: string; effectiveStatus?: string };
+type CampaignDoc = { _id: string; name?: string; accountId?: string; status?: string; effectiveStatus?: string; metaUserName?: string; updatedAt?: string };
 type AdsetDoc = { _id: string; campaignId?: string; name?: string; status?: string; effectiveStatus?: string };
 type AdDoc = { _id: string; campaignId?: string; adsetId?: string; name?: string; status?: string; effectiveStatus?: string; creativeId?: string | null };
 type CreativeDoc = {
@@ -452,6 +454,8 @@ export async function getOwnerOverview(db: Db, query: OverviewQuery): Promise<Ow
       party,
       partyLabel: party === "unassigned" ? "Unassigned" : meta.partyLabel,
       color: party === "unassigned" ? "#64748b" : meta.color,
+      metaUserName: campaign.metaUserName ?? null,
+      lastSyncedAt: campaign.updatedAt ?? null,
       metrics: campaignStats,
       adsets: campaignAdsets,
     };

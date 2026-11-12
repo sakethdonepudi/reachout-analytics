@@ -1,7 +1,7 @@
 import type { Db } from "mongodb";
 import { graphGet, graphPaged, MetaConnectionExpiredError, MetaReconnectError } from "@/lib/meta/client";
 import { connectionExpiresAt, isConnectionExpired, minorToPaise, toPaise } from "@/lib/meta/insights";
-import { getActiveConnections, getConnectionBySid, getMetaDb, markSynced, type MetaConnectionDoc } from "@/lib/meta/store";
+import { expireConnection, getActiveConnections, getConnectionBySid, getMetaDb, markSynced, type MetaConnectionDoc } from "@/lib/meta/store";
 import { applyTagRules } from "@/lib/meta/tags";
 import { syncNotifications } from "@/lib/meta/notifications";
 import { finalizeSyncRun, type SyncTrigger } from "@/lib/meta/sync-health";
@@ -306,6 +306,11 @@ export async function syncMeta(options: { backfill?: boolean; trigger?: SyncTrig
   if (options.sid) {
     const doc = await getConnectionBySid(options.sid);
     if (!doc) return { ok: false, skipped: "not-connected" };
+    const expiresAt = doc.expiresAt ?? (doc.connectedAt ? connectionExpiresAt(doc.connectedAt) : null);
+    if (isConnectionExpired(expiresAt)) {
+      await expireConnection(doc);
+      return { ok: false, skipped: "expired" };
+    }
     connections = [doc];
   } else {
     connections = await getActiveConnections();
@@ -325,7 +330,7 @@ export async function syncMeta(options: { backfill?: boolean; trigger?: SyncTrig
   const since = sinceDate.toISOString().slice(0, 10);
   const failures: string[] = [];
   let succeeded = 0;
-  const connectionExpiresAt = connections
+  const runConnectionExpiresAt = connections
     .map((connection) => connection.expiresAt ?? connectionExpiresAtOf(connection))
     .filter((value): value is string => Boolean(value))
     .sort()
@@ -380,14 +385,14 @@ export async function syncMeta(options: { backfill?: boolean; trigger?: SyncTrig
     const errorMessage = failures.length ? [...new Set(failures)].join("; ") : null;
     await finalizeSyncRun(db, runId, {
       trigger, status, outcome, error: errorMessage,
-      counts, days, backfill, startedAt, finishedAt, connectionExpiresAt,
+      counts, days, backfill, startedAt, finishedAt, connectionExpiresAt: runConnectionExpiresAt,
     });
     if (succeeded === 0) return { ok: false, error: errorMessage ?? "Sync failed", runId, counts };
     return { ok: true, runId, counts };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Sync failed";
     const finishedAt = new Date();
-    await finalizeSyncRun(db, runId, { trigger, status: "failed", outcome: "failed", error: message, counts, days, backfill, startedAt, finishedAt, connectionExpiresAt });
+    await finalizeSyncRun(db, runId, { trigger, status: "failed", outcome: "failed", error: message, counts, days, backfill, startedAt, finishedAt, connectionExpiresAt: runConnectionExpiresAt });
     return { ok: false, error: message, runId };
   } finally {
     await releaseLock(db);
