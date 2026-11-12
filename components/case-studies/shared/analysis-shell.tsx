@@ -92,7 +92,7 @@ export default function AnalysisShell({
         aria-labelledby={headingId}
         className="analysis-enter flex h-[100svh] w-full flex-col overflow-hidden"
       >
-        <header className="analysis-header sticky top-0 z-30 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-[var(--a-border)] bg-[color-mix(in_srgb,var(--a-canvas)_92%,transparent)] px-4 py-2.5 backdrop-blur-xl sm:px-6 lg:px-10">
+        <header className="analysis-header sticky top-0 z-30 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-[var(--a-border)] bg-[var(--a-canvas)] px-4 py-2.5 sm:px-6 lg:px-10">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               {eyebrow && <span className="hidden text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--a-brass)] sm:inline">{eyebrow}</span>}

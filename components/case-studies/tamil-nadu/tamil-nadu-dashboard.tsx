@@ -21,7 +21,7 @@ const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
 });
 const TamilNaduAnalysis = dynamic(() => import("./tamil-nadu-analysis"), {
   ssr: false,
-  loading: () => <div className="fixed inset-0 z-[140] grid place-items-center bg-background/80 text-sm text-muted-foreground backdrop-blur-sm">Opening analysis…</div>,
+  loading: () => <div className="fixed inset-0 z-[140] grid place-items-center bg-background text-sm text-muted-foreground">Opening analysis…</div>,
 });
 
 type Option = { value: string; label: string; hint?: string };
@@ -53,7 +53,7 @@ function SearchSelect({ label, value, options, placeholder, onChange, disabled =
     <div ref={root} className="relative">
       <span className={LABEL}>{label}</span>
       <button type="button" aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => setOpen((v) => !v)}
-        className="mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-card/80 px-2.5 py-2 text-left text-[12px] backdrop-blur transition-colors hover:border-saffron/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 disabled:cursor-not-allowed disabled:opacity-55">
+        className="mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-[var(--surface-panel)] px-2.5 py-2 text-left text-[12px] transition-colors hover:border-saffron/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 disabled:cursor-not-allowed disabled:opacity-55">
         <span className="truncate">{selected?.label ?? placeholder}</span>
         <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
@@ -184,7 +184,6 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_18%_8%,rgba(245,138,36,0.055),transparent_60%)]" aria-hidden />
       <section className="relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-24 sm:pt-28 lg:flex lg:h-[100svh] lg:min-h-[760px] lg:flex-col lg:overflow-hidden lg:px-6 lg:pt-20">
         <h1 className="sr-only">Tamil Nadu election intelligence</h1>
 
@@ -201,7 +200,7 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
           className="lg:flex-1"
           controls={(
             <div className="relative z-30 lg:min-h-0">
-              <Link href="/case-studies" className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-[12.5px] text-muted-foreground backdrop-blur-xl transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+              <Link href="/case-studies" className="inline-flex items-center gap-2 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
                 <ArrowLeft className="size-3.5" /> Back to Case Studies
               </Link>
               <PartyIdentity party="AIADMK" state="Tamil Nadu" size="sm" className="mt-4" />
@@ -224,8 +223,8 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
                 <TamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} theme={(theme === "light" ? "light" : "dark") as MapTheme} fitKey={fitKey} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={resetToState} />
                 {(district || currentAc) && (
                   <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 lg:left-3 lg:top-3">
-                    <button type="button" onClick={resetToState} className="inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:border-saffron/50"><ArrowLeft className="size-3" /> Tamil Nadu</button>
-                    <button type="button" onClick={resetToState} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur hover:border-saffron/50"><RotateCcw className="size-3" /> Reset</button>
+                    <button type="button" onClick={resetToState} className="inline-flex items-center gap-1 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold hover:border-saffron/50"><ArrowLeft className="size-3" /> Tamil Nadu</button>
+                    <button type="button" onClick={resetToState} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold hover:border-saffron/50"><RotateCcw className="size-3" /> Reset</button>
                   </div>
                 )}
               </div>
@@ -237,7 +236,7 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
             </div>
           )}
           panel={(panelWidth) => (
-            <TamilNaduRail scope={scope} tab={tab} onTab={setTab} onExpand={openAnalysis} theme={theme === "light" ? "light" : "dark"} selectedYear={year} isStatewide={isStatewide} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} social={caseData.social} actualShares={caseData.actual.shares} view={view} onView={setView} panelWidth={panelWidth} owner={owner} />
+            <TamilNaduRail scope={scope} tab={tab} onTab={setTab} onExpand={openAnalysis} theme={theme === "light" ? "light" : "dark"} selectedYear={year} isStatewide={isStatewide} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} social={caseData.social} socialRegions={caseData.socialRegions} actualShares={caseData.actual.shares} view={view} onView={setView} panelWidth={panelWidth} owner={owner} />
           )}
         />
       </section>
@@ -245,7 +244,7 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
 
       {chartOpen && (
         <TamilNaduAnalysis open={chartOpen} onClose={closeAnalysis} data={data} theme={theme === "light" ? "light" : "dark"}
-          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} onSelectAc={selectAc} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} eciActual={caseData.actual} social={caseData.social} forecasters={caseData.forecasters} forecastActualSeats={caseData.forecastActualSeats} initialView={view} initialTab={tab} owner={owner} />
+          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} onSelectAc={selectAc} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} eciActual={caseData.actual} social={caseData.social} socialRegions={caseData.socialRegions} forecasters={caseData.forecasters} forecastActualSeats={caseData.forecastActualSeats} initialView={view} initialTab={tab} owner={owner} />
       )}
     </div>
   );

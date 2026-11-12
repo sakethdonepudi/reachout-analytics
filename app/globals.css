@@ -20,7 +20,7 @@
   --fg: #20242b;
   --card: #ffffff;
   --elevated: #ffffff;
-  --muted: #626b78;
+  --muted: #565e69;
   --border: #dde1e6;
   --accent: #f58a24;
 
@@ -88,7 +88,7 @@
   --surface-panel: #ffffff;
   --surface-raised: #ffffff;
   --text-primary: #20242b;
-  --text-muted: #626b78;
+  --text-muted: #565e69;
   --accent-brass: #8f4d05;
   --accent-brass-strong: #6f3a00;
   --text-on-brass: #ffffff;
@@ -704,7 +704,7 @@ html.theme-transition *::after {
   --h-surface-top: #fbf7ee;
   --h-surface-inset: #ece3d2;
   --h-ink: #1c1a16;
-  --h-muted: rgba(28, 26, 22, 0.60);
+  --h-muted: rgba(28, 26, 22, 0.70);
   --h-border: rgba(24, 21, 18, 0.72);
   --h-brass: #a67c3e;
   --h-brass-strong: #b98c47;

@@ -7,6 +7,7 @@ import { PartyIdentity, PartyMark } from "@/components/site/party-mark";
 import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl } from "@/lib/cases";
 import { requirePageSession } from "@/lib/require-session";
 import SocialPanel from "@/components/ads-desk/social-panel";
+import CaseStudyTabs from "@/components/ads-desk/case-study-tabs";
 import { socialForCase } from "@/lib/ads-desk/mapping";
 import { caseAllowed } from "@/lib/session-scope";
 import { redirect } from "next/navigation";
@@ -59,6 +60,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
   return (
     <>
       <Navbar />
+      <CaseStudyTabs social={<main className="min-h-screen bg-background pt-12 text-foreground"><div className="mx-auto max-w-6xl px-6 pb-24 sm:px-10"><SocialPanel regions={social} /></div></main>}>
       <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_75%_10%,rgba(245,138,36,0.08),transparent_60%)]" aria-hidden />
 
@@ -133,6 +135,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
           )}
         </div>
       </main>
+      </CaseStudyTabs>
     </>
   );
 }

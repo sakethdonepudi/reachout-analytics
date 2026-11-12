@@ -92,7 +92,7 @@ const groupSum = (shares: TnShares | null | undefined, group: AnalysisGroup) => 
 const SERIES_OPACITY = { exit: 0.42, opinion: 0.72, actual: 1, survey: 0.58, baseline: 0.34 };
 
 export default function TamilNaduAnalysis({
-  open, onClose, data, theme, initialScope, defaultBaseline, opinionPoll, exitPoll, eciActual, social, forecasters, forecastActualSeats, initialView, initialTab, owner = false,
+  open, onClose, data, theme, initialScope, defaultBaseline, opinionPoll, exitPoll, eciActual, social, socialRegions, forecasters, forecastActualSeats, initialView, initialTab, owner = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -106,6 +106,7 @@ export default function TamilNaduAnalysis({
   exitPoll: TnExitPollView;
   eciActual: TnEciActualView;
   social: TnSocial;
+  socialRegions?: TnSocial[];
   forecasters: TnForecaster[];
   forecastActualSeats: number;
   initialView: TnView;
@@ -117,6 +118,8 @@ export default function TamilNaduAnalysis({
   const [narrow, setNarrow] = useState(false);
   const [scope, setScope] = useState(initialScope);
   const [view, setView] = useState<TnView>(initialView);
+  const [socialIndex, setSocialIndex] = useState(0);
+  const socialView = socialRegions?.[socialIndex] ?? social;
   const [chartMode, setChartMode] = useState<TnTab>(initialTab);
   const [visibleSeries, setVisibleSeries] = useState<string[]>(initialScope.startsWith("a:") || initialScope.startsWith("d:") ? ["survey", "baseline"] : opinionPoll.available ? ["exit", "opinion", "actual"] : ["exit", "actual"]);
   const [baselineYear, setBaselineYear] = useState<TnYear>(defaultBaseline);
@@ -624,7 +627,7 @@ export default function TamilNaduAnalysis({
       contentClassName="space-y-5"
     >
       {view === "social" ? (
-<div className="space-y-3"><SocialOverview social={social} /></div>
+<div className="space-y-3">{socialRegions && socialRegions.length > 1 && <div className="flex flex-wrap gap-1">{socialRegions.map((region, index) => <button key={region.label} type="button" onClick={() => setSocialIndex(index)} className={cn("min-h-8 rounded border px-2 text-[10px] font-semibold", socialIndex === index ? "border-[var(--a-ink)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)]")}>{region.label}</button>)}</div>}<SocialOverview social={socialView} /></div>
       ) : (
         <>
           {/* ------------------------- polls overview ------------------------- */}

@@ -25,7 +25,7 @@ const TelanganaMap = dynamic(() => import("./telangana-map"), {
 });
 const TelanganaAnalysis = dynamic(() => import("./telangana-analysis"), {
   ssr: false,
-  loading: () => <div className="fixed inset-0 z-[140] grid place-items-center bg-background/80 text-sm text-muted-foreground backdrop-blur-sm">Opening analysis…</div>,
+  loading: () => <div className="fixed inset-0 z-[140] grid place-items-center bg-background text-sm text-muted-foreground">Opening analysis…</div>,
 });
 
 type Tab = "change" | "share" | "seats";
@@ -76,7 +76,7 @@ function SearchSelect({
       <span className={LABEL}>{label}</span>
       <button type="button" disabled={disabled} aria-haspopup="listbox" aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={cn("mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-card/80 px-2.5 py-2 text-left text-[12px] backdrop-blur transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
+        className={cn("mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-[var(--surface-panel)] px-2.5 py-2 text-left text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
           disabled ? "cursor-not-allowed opacity-50" : "hover:border-saffron/40")}>
         <span className="truncate">{selected?.label ?? placeholder}</span>
         <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
@@ -292,7 +292,6 @@ export default function TelanganaDashboard() {
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_18%_8%,rgba(229,0,125,0.055),transparent_60%)]" aria-hidden />
 
       <section className="relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-24 sm:pt-28 lg:flex lg:h-[100svh] lg:min-h-[760px] lg:flex-col lg:overflow-hidden lg:px-6 lg:pt-20">
         <CaseStudySplit
@@ -309,7 +308,7 @@ export default function TelanganaDashboard() {
           controls={(
             <div className="relative z-30 lg:min-h-0">
               <Link href="/case-studies"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-[12.5px] text-muted-foreground backdrop-blur-xl transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
                 <ArrowLeft className="size-3.5" /> Back to Case Studies
               </Link>
 
@@ -359,11 +358,11 @@ export default function TelanganaDashboard() {
               {(district || currentAc) && (
                 <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5">
                   <button type="button" onClick={reset}
-                    className="inline-flex items-center gap-1 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
                     <ArrowLeft className="size-3" /> Telangana
                   </button>
                   <button type="button" onClick={reset}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
                     <RotateCcw className="size-3" /> Reset
                   </button>
                 </div>

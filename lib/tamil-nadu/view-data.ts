@@ -50,6 +50,7 @@ export type TnCaseData = {
   opinionPoll: TnOpinionPollView;
   actual: TnEciActualView;
   social: TnSocial;
+  socialRegions?: TnSocial[];
   forecasters: TnForecaster[];
   forecastActualSeats: number;
 };

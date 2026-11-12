@@ -70,6 +70,7 @@ ok("owner sees spend and cost", owner.totals.spend === 150.75 && owner.accounts[
     ok("default mapping seeded", map.tn2026 === "tamil-nadu" && map.ka2028 === "karnataka-2023");
     ok("defaults cover every fixture region", Object.keys(DEFAULT_REGION_MAP).every((key) => Boolean(map[key])));
     await setRegionMapping("tn2026", "telangana", "tester");
+    ok("mapping change removes the old case data immediately", (await socialForCase("tamil-nadu", false)).length === 0);
     const changed = await getRegionMap();
     ok("one region maps to one case study", changed.tn2026 === "telangana");
     ok("case can have several regions", (await socialForCase("telangana", false)).length >= 1);

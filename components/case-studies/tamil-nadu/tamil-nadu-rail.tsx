@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Maximize2 } from "lucide-react";
 import { TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_FULL, TN_SEAT_GROUPS, tnPct, type TnGroup, type TnSeatGroup, type TnShares, type TnYear } from "@/lib/tamil-nadu/model";
 import type { TnExitPollView, TnOpinionPollView, TnSocial } from "@/lib/tamil-nadu/view-data";
@@ -125,14 +125,16 @@ function DisplayPartyCell({ group, compact }: { group: DisplayGroup; compact: bo
 
 export default function TamilNaduRail({
   scope, tab, onTab, onExpand, theme, selectedYear, isStatewide, opinionPoll, exitPoll, social, actualShares,
-  view, onView, panelWidth = 500, owner = false,
+  view, onView, panelWidth = 500, owner = false, socialRegions,
 }: {
   scope: TnScopeResult; tab: TnTab; onTab: (t: TnTab) => void; onExpand: () => void;
   theme: "light" | "dark"; selectedYear: TnYear | "2026"; isStatewide: boolean;
-  opinionPoll: OpinionPollView; exitPoll: TnExitPollView; social: TnSocial; actualShares: TnShares | null;
+  opinionPoll: OpinionPollView; exitPoll: TnExitPollView; social: TnSocial; socialRegions?: TnSocial[]; actualShares: TnShares | null;
   view: TnView; onView: (view: TnView) => void; panelWidth?: number; owner?: boolean;
 }) {
   const reduced = usePrefersReducedMotion();
+  const [socialIndex, setSocialIndex] = useState(0);
+  const socialView = socialRegions?.[socialIndex] ?? social;
   const p = palette(theme);
   const compact = panelWidth < 430;
   const roomy = panelWidth >= 540;
@@ -279,7 +281,8 @@ export default function TamilNaduRail({
 
       {view === "social" ? (
         <>
-          <SocialMediaPanel compact={compact} social={social} />
+          {socialRegions && socialRegions.length > 1 && <div className="mt-2 flex flex-wrap gap-1">{socialRegions.map((region, index) => <button key={region.label} type="button" onClick={() => setSocialIndex(index)} className={cn("min-h-7 rounded border px-2 text-[9px] font-semibold", socialIndex === index ? "border-foreground text-foreground" : "border-border text-muted-foreground")}>{region.label}</button>)}</div>}
+          <SocialMediaPanel compact={compact} social={socialView} />
         </>
       ) : (
         <>

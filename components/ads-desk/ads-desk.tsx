@@ -26,6 +26,7 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
   const [preview, setPreview] = useState<Preview | null>(null);
   const [dragging, setDragging] = useState(false);
   const [chartMode, setChartMode] = useState<"bars" | "lines">("bars");
+  const [progress, setProgress] = useState<number | null>(null);
 
   const region = data?.regions.find((item) => item.key === tab) ?? null;
   const accounts = useMemo(() => {
@@ -52,15 +53,31 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
   }
 
   async function upload(file: File) {
-    setBusy("upload"); setMessage("Parsing…"); setPreview(null);
+    setBusy("upload"); setMessage("Uploading 0%"); setPreview(null); setProgress(0);
     const form = new FormData(); form.append("file", file);
-    try {
-      const response = await fetch("/api/ads/upload", { method: "POST", body: form });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) { setMessage(payload.error ?? "Upload failed."); return; }
-      setPreview({ versionId: payload.versionId, regions: payload.preview.regions, takenAt: payload.preview.takenAt });
-      setMessage("Parsed successfully. Review the preview, then publish.");
-    } catch { setMessage("Upload failed."); } finally { setBusy(""); }
+    const csrf = document.cookie.split("; ").find((item) => item.startsWith("ro_csrf="))?.split("=")[1] ?? "";
+    await new Promise<void>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/ads/upload");
+      xhr.setRequestHeader("x-csrf-token", decodeURIComponent(csrf));
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        const pct = Math.round((event.loaded / event.total) * 100);
+        setProgress(pct); setMessage(`Uploading ${pct}%`);
+      };
+      xhr.onload = () => {
+        setMessage("Parsing…");
+        try {
+          const payload = JSON.parse(xhr.responseText || "{}");
+          if (xhr.status < 200 || xhr.status >= 300) { setMessage(payload.error ?? "Upload failed."); return; }
+          setPreview({ versionId: payload.versionId, regions: payload.preview.regions, takenAt: payload.preview.takenAt });
+          setMessage("Parsed successfully. Review the preview, then publish.");
+        } catch { setMessage("Upload failed."); }
+      };
+      xhr.onerror = () => setMessage("Upload failed.");
+      xhr.onloadend = () => { setBusy(""); setProgress(null); resolve(); };
+      xhr.send(form);
+    });
   }
 
   async function publish(versionId: string, retry = false) {
@@ -158,7 +175,7 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
 
               <div className="flex flex-wrap items-center gap-2">
                 <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search campaigns" className="min-h-9 min-w-[220px] rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)] px-2 text-[12px]" />
-                <select value={delivery} onChange={(event) => setDelivery(event.target.value)} className="min-h-9 rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)] px-2 text-[12px]"><option value="all">All delivery</option>{Object.values(["Delivering", "Stopped by account spend limit", "Off", "Completed", "Ad set switched off", "Started today"]).map((value) => <option key={value} value={value}>{value}</option>)}</select>
+                <select aria-label="Delivery filter" value={delivery} onChange={(event) => setDelivery(event.target.value)} className="min-h-9 rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)] px-2 text-[12px]"><option value="all">All delivery</option>{Object.values(["Delivering", "Stopped by account spend limit", "Off", "Completed", "Ad set switched off", "Started today"]).map((value) => <option key={value} value={value}>{value}</option>)}</select>
                 <button type="button" onClick={exportCsv} className="min-h-9 rounded border border-[var(--border-hairline)] px-3 text-[12px] font-semibold">Export CSV</button>
               </div>
 
@@ -186,7 +203,7 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
             return (
             <>
             <div className="rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)] p-4">
-              <div className="flex items-center justify-between gap-2"><h3 className="text-[13px] font-semibold">Daily spend</h3><select value={chartMode} onChange={(event) => setChartMode(event.target.value as "bars" | "lines")} className="min-h-8 rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)] px-2 text-[11px]"><option value="bars">Stacked bars</option><option value="lines">Lines</option></select></div>
+              <div className="flex items-center justify-between gap-2"><h3 className="text-[13px] font-semibold">Daily spend</h3><select aria-label="Chart type" value={chartMode} onChange={(event) => setChartMode(event.target.value as "bars" | "lines")} className="min-h-8 rounded border border-[var(--border-hairline)] bg-[var(--surface-panel)] px-2 text-[11px]"><option value="bars">Stacked bars</option><option value="lines">Lines</option></select></div>
               {chartMode === "bars" ? (
                 <div className="mt-3 flex h-48 items-end gap-1 border-b border-l border-[var(--border-hairline)] pl-1">
                   {days.map((day, index) => <div key={day} className="flex flex-1 flex-col justify-end gap-px" title={`${day} · total ₹${totals[index].toFixed(2)}`}>
