@@ -83,7 +83,13 @@ try {
     return /(localStorage|sessionStorage|indexedDB)[^\n]{0,160}(token|secret|password|totp|spend|payment|amount|budget)/i.test(text);
   });
   report(riskyStorage.length === 0, "no sensitive browser storage", riskyStorage.slice(0, 5).join(", "));
-  const legacy = /(ADMIN_PASSWORD|CLIENT_PASSWORD|TURNSTILE_ENABLED|roleForPassword|ownerPasswordMatches)/;
+  const legacy = new RegExp([
+    ["ADMIN", "PASSWORD"].join("_"),
+    ["CLIENT", "PASSWORD"].join("_"),
+    ["TURNSTILE", "ENABLED"].join("_"),
+    "roleFor" + "Password",
+    "ownerPassword" + "Matches",
+  ].join("|"));
   const legacyHits = sourceFiles.filter((file) => legacy.test(readFileSync(file, "utf8")));
   report(legacyHits.length === 0, "no legacy env references", legacyHits.slice(0, 5).join(", "));
   const security = readFileSync("lib/security.ts", "utf8");
