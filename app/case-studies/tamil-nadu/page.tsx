@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/site/navbar";
-import CompanyExperience from "@/components/site/company-marquee";
 import TamilNaduDashboard from "@/components/case-studies/tamil-nadu/tamil-nadu-dashboard";
 import { requirePageSession } from "@/lib/require-session";
 import { redirect } from "next/navigation";
@@ -41,7 +40,6 @@ export default async function TamilNaduCaseStudyPage() {
     <>
       <Navbar />
       <TamilNaduDashboard caseData={caseData} owner={session.role === "owner"} />
-      <CompanyExperience />
     </>
   );
 }

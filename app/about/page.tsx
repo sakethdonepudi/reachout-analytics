@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
-import Navbar from "@/components/site/navbar";
+import Navbar from "@/components/site/public-navbar-static";
 import { Logo } from "@/components/site/brand";
 import AboutStory from "@/components/site/about/story";
 import AboutPractices from "@/components/site/about/practices";
 import AboutWork from "@/components/site/about/work";
 import { CONTACT } from "@/lib/cases";
-import { getAbout } from "@/lib/about-content";
+import { getAboutCached } from "@/lib/about-content";
 
 // Content is stored in MongoDB and can be updated from the admin portal.
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
 
 export const metadata: Metadata = {
   title: "About Us — ReachOut Analytics",
@@ -31,7 +31,7 @@ function Headline({ text }: { text: string }) {
 }
 
 export default async function AboutPage() {
-  const c = await getAbout();
+  const c = await getAboutCached();
 
   return (
     <>

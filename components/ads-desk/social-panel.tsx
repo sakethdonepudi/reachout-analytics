@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { AdsSocialCampaign } from "@/lib/ads-desk/client-dto";
 import { Download } from "lucide-react";
 import type { AdsSocialView } from "@/lib/ads-desk/client-dto";
 import { Dialog } from "@/components/ui/dialog";
@@ -46,6 +47,11 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
   const [sort, setSort] = useState<{ key: keyof AccountRow; asc: boolean }>({ key: "impressions", asc: false });
   const [openAccount, setOpenAccount] = useState<AccountRow | null>(null);
   const [allCampaigns, setAllCampaigns] = useState(false);
+  const [remoteCampaigns, setRemoteCampaigns] = useState<AdsSocialCampaign[]>([]);
+  const [remoteTotal, setRemoteTotal] = useState(0);
+  const [remotePage, setRemotePage] = useState(1);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+  const [campaignError, setCampaignError] = useState("");
 
   const region = regions[Math.min(active, regions.length - 1)];
   const rows = useMemo(() => {
@@ -110,8 +116,33 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
     URL.revokeObjectURL(url);
   }
 
-  const campaignRows = openAccount ? [...openAccount.campaigns].sort((a, b) => b.impressions - a.impressions) : [];
-  const shownCampaigns = allCampaigns ? campaignRows : campaignRows.slice(0, 20);
+  async function loadCampaigns(account: AccountRow, page: number) {
+    if (!region.key || account.campaigns.length) return;
+    setLoadingCampaigns(true);
+    setCampaignError("");
+    try {
+      const response = await fetch(`/api/ads/campaigns?region=${encodeURIComponent(region.key)}&account=${encodeURIComponent(account.name)}&page=${page}`, { cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) { setCampaignError(typeof payload.error === "string" ? payload.error : "Could not load campaigns."); return; }
+      setRemoteCampaigns((previous) => page === 1 ? payload.campaigns : [...previous, ...payload.campaigns]);
+      setRemoteTotal(Number(payload.total ?? 0));
+      setRemotePage(page);
+    } catch { setCampaignError("Could not load campaigns."); }
+    finally { setLoadingCampaigns(false); }
+  }
+
+  function openAccountDrawer(row: AccountRow) {
+    setOpenAccount(row); setAllCampaigns(false); setRemoteCampaigns([]); setRemoteTotal(0); setRemotePage(1);
+    void loadCampaigns(row, 1);
+  }
+
+  const campaignRows = openAccount
+    ? (openAccount.campaigns.length ? [...openAccount.campaigns] : remoteCampaigns).sort((a, b) => b.impressions - a.impressions)
+    : [];
+  const shownCampaigns = openAccount?.campaigns.length && !allCampaigns ? campaignRows.slice(0, 20) : campaignRows;
+  const hasMoreCampaigns = openAccount
+    ? (openAccount.campaigns.length ? campaignRows.length > 20 : remoteCampaigns.length < remoteTotal)
+    : false;
 
   return (
     <section className={cn("report-card p-4 sm:p-5", compact && "text-[12px]")} aria-label="Social media" style={{ borderLeft: `3px solid ${region.band}` }}>
@@ -190,7 +221,7 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
           <tbody>
             {tableRows.map((row) => (
               <tr key={row.name} className="hover:bg-[var(--r-bg)]">
-                <td className="px-2 py-2"><button type="button" onClick={() => { setOpenAccount(row); setAllCampaigns(false); }} className="text-left font-semibold text-[var(--r-navy)] underline-offset-2 hover:underline">{row.name}</button></td>
+                <td className="px-2 py-2"><button type="button" onClick={() => openAccountDrawer(row)} className="text-left font-semibold text-[var(--r-navy)] underline-offset-2 hover:underline">{row.name}</button></td>
                 <td className="px-2 py-2 text-right tabular-nums">{number(row.campaignCount)}</td>
                 <td className="px-2 py-2 text-right tabular-nums" title={exactNumber(row.impressions)}>{indianUnits(row.impressions)}</td>
                 <td className="px-2 py-2 text-right tabular-nums">{percent(rate(row.impressions, totalImpressions))}</td>
@@ -232,7 +263,10 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
                 </tbody>
               </table>
             </div>
-            {campaignRows.length > 20 && <button type="button" onClick={() => setAllCampaigns((value) => !value)} className="mt-3 rounded-md border border-[var(--r-line)] px-2 py-1 text-[11.5px] font-semibold text-[var(--r-navy)]">{allCampaigns ? "Show top 20" : `Show all ${number(campaignRows.length)} campaigns`}</button>}
+            {campaignError && <p role="alert" className="mt-2 text-[11.5px] text-[var(--r-coral)]">{campaignError}</p>}
+            {loadingCampaigns && <p className="mt-2 text-[11.5px] text-[var(--r-muted)]">Loading campaigns...</p>}
+            {hasMoreCampaigns && <button type="button" onClick={() => { if (openAccount?.campaigns.length) setAllCampaigns((value) => !value); else if (openAccount) void loadCampaigns(openAccount, remotePage + 1); }} className="mt-3 rounded-md border border-[var(--r-line)] px-2 py-1 text-[11.5px] font-semibold text-[var(--r-navy)]">{openAccount?.campaigns.length && allCampaigns ? "Show top 20" : `Show all ${number(openAccount?.campaigns.length ? campaignRows.length : remoteTotal)} campaigns`}</button>}
+            {openAccount?.campaigns.length === 0 && remoteCampaigns.length > 0 && remoteCampaigns.length >= remoteTotal && <p className="mt-2 text-[10.5px] text-[var(--r-muted)]">{number(remoteTotal)} campaigns loaded.</p>}
           </>
         )}
       </Dialog>

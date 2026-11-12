@@ -126,6 +126,15 @@ export default function TelanganaDashboard() {
   const [acNo, setAcNo] = useState<number | null>(null);
   const [year, setYear] = useState<ElectionYear>("2028");
   const [tab, setTab] = useState<Tab>("share");
+  const mapHostRef = useRef<HTMLDivElement>(null);
+  const [mapVisible, setMapVisible] = useState(false);
+  useEffect(() => {
+    const host = mapHostRef.current;
+    if (!host) return;
+    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setMapVisible(true); observer.disconnect(); } }, { rootMargin: "200px" });
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
   const [fitKey, setFitKey] = useState(0);
   const [chartOpen, setChartOpen] = useState(false);
   const expandFocus = useRef<HTMLElement | null>(null);
@@ -350,10 +359,10 @@ export default function TelanganaDashboard() {
             </div>
           )}
           map={(
-            <div className="relative h-full min-h-0">
-              <TelanganaMap acs={acs} district={district} ac={acNo} year={year}
+            <div ref={mapHostRef} className="relative h-full min-h-0">
+              {mapVisible ? <TelanganaMap acs={acs} district={district} ac={acNo} year={year}
                 theme={(theme === "light" ? "light" : "dark") as MapTheme} fitKey={fitKey}
-                onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={reset} />
+                onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={reset} /> : <div className="h-full w-full rounded-[10px] border border-[var(--border-hairline)] bg-[var(--surface-panel)]" role="img" aria-label="Map loading" />}
               {(district || currentAc) && (
                 <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5">
                   <button type="button" onClick={reset}

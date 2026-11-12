@@ -5,7 +5,7 @@ import {
   ArrowRight, ArrowUpRight, BookOpenCheck, CheckCircle2, CircleCheck, FileText,
   FlaskConical, Globe2, GraduationCap, PenLine, ScrollText, Sparkles,
 } from "lucide-react";
-import Navbar from "@/components/site/navbar";
+import Navbar from "@/components/site/public-navbar-static";
 import { Logo } from "@/components/site/brand";
 import Reveal from "@/components/site/reveal";
 import ServicesEnquiry from "@/components/site/services-enquiry";

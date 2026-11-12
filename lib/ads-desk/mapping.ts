@@ -2,8 +2,8 @@ import "server-only";
 
 import { getMongo } from "@/lib/mongodb";
 import { caseBySlug } from "@/lib/cases";
-import { getActiveVersion } from "@/lib/ads-desk/store";
-import { buildAdsSocial, type AdsSocialView } from "@/lib/ads-desk/client-dto";
+import { getActiveRegionSummaries } from "@/lib/ads-desk/store";
+import { buildAdsSocialFromSummary, type AdsSocialView } from "@/lib/ads-desk/client-dto";
 
 export const DEFAULT_REGION_MAP: Record<string, string> = {
   tn2026: "tamil-nadu",
@@ -42,18 +42,19 @@ export async function setRegionMapping(regionKey: string, caseSlug: string | nul
 }
 
 export async function socialForCase(slug: string, includeCost: boolean): Promise<AdsSocialView[]> {
-  const [active, map] = await Promise.all([getActiveVersion(), getRegionMap()]);
-  if (!active) return [];
+  const [summaries, map] = await Promise.all([getActiveRegionSummaries(), getRegionMap()]);
+  if (!summaries.length) return [];
   const keys = Object.entries(map).filter(([, value]) => value === slug).map(([key]) => key);
   return keys.map((key) => {
-    const view = buildAdsSocial(active.data, key, includeCost);
-    if (key === "ka2028" && view.available) return { ...view, label: "Karnataka 2026-28" };
+    const summary = summaries.find((item) => item.regionKey === key);
+    if (!summary) return null;
+    const view = buildAdsSocialFromSummary(summary, includeCost);
+    if (key === "ka2028") return { ...view, label: "Karnataka 2026-28" };
     return view;
-  }).filter((view) => view.available);
+  }).filter((view): view is AdsSocialView => Boolean(view));
 }
 
 export async function unmappedRegions(): Promise<string[]> {
-  const [active, map] = await Promise.all([getActiveVersion(), getRegionMap()]);
-  if (!active) return [];
-  return active.data.regionKeys.filter((key) => !map[key]);
+  const [summaries, map] = await Promise.all([getActiveRegionSummaries(), getRegionMap()]);
+  return summaries.map((item) => item.regionKey).filter((key) => !map[key]);
 }

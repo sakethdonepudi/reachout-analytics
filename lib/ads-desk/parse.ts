@@ -5,7 +5,7 @@ import { parseExpressionAt } from "acorn";
 import { z } from "zod";
 
 export const DELIVERY: Record<string, string> = {
-  a: "Delivering", l: "Stopped by account spend limit", o: "Off", c: "Completed",
+  a: "Delivering", l: "Stopped by account limit", o: "Off", c: "Completed",
   i: "Ad set switched off", n: "Started today",
 };
 

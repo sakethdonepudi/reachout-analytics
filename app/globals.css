@@ -167,8 +167,6 @@ body {
 *[class*="grain"],
 *[class*="shimmer"] { filter: none !important; }
 
-a { color: inherit; }
-
 ::selection {
   background: var(--r-hl);
   color: var(--r-ink);
@@ -348,11 +346,11 @@ a { color: inherit; }
 }
 .report-btn:hover { background: var(--r-navy-d); }
 .report-btn-secondary {
-  background: var(--r-teal);
-  border: 1px solid var(--r-teal);
+  background: var(--r-teal-d);
+  border: 1px solid var(--r-teal-d);
   color: #ffffff;
 }
-.report-btn-secondary:hover { background: var(--r-teal-d); }
+.report-btn-secondary:hover { background: var(--r-navy); border-color: var(--r-navy); }
 
 .report-link {
   color: var(--r-teal-d);

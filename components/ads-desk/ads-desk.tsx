@@ -190,7 +190,7 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search campaigns" aria-label="Search campaigns" className="min-h-9 min-w-[220px] rounded-md border border-[var(--r-line)] bg-white px-2 text-[12px]" />
-                <select aria-label="Delivery filter" value={delivery} onChange={(event) => setDelivery(event.target.value)} className="min-h-9 rounded-md border border-[var(--r-line)] bg-white px-2 text-[12px]"><option value="all">All delivery</option>{["Delivering", "Stopped by account spend limit", "Off", "Completed", "Ad set switched off", "Started today"].map((value) => <option key={value} value={value}>{value}</option>)}</select>
+                <select aria-label="Delivery filter" value={delivery} onChange={(event) => setDelivery(event.target.value)} className="min-h-9 rounded-md border border-[var(--r-line)] bg-white px-2 text-[12px]"><option value="all">All delivery</option>{["Delivering", "Stopped by account limit", "Off", "Completed", "Ad set switched off", "Started today"].map((value) => <option key={value} value={value}>{value}</option>)}</select>
               </div>
 
               <div className="mt-2 overflow-x-auto rounded-[10px] border border-[var(--r-line)]">

@@ -121,7 +121,7 @@ export default function UsersClient() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Username" value={form.username} onChange={(value) => setForm({ ...form, username: value })} error={fieldErrors.username} hint="3-32 characters: a-z, 0-9, dot, underscore or hyphen." />
           <Field label="Display name" value={form.displayName} onChange={(value) => setForm({ ...form, displayName: value })} error={fieldErrors.displayName} />
-          <Field label="Organisation (clients)" value={form.organisation} onChange={(value) => setForm({ ...form, organisation: value })} />
+          <Field label="Organisation" value={form.organisation} onChange={(value) => setForm({ ...form, organisation: value })} />
           <label className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">Role
             <select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value as "owner" | "client" })} className="mt-1 min-h-10 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-panel)] px-2 text-[12px]">
               <option value="client">Client</option><option value="owner">Owner</option>

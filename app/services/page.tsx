@@ -7,7 +7,7 @@ import {
   LineChart, MapPinned, Network, Radar, ScanSearch, ShieldCheck, Sparkles, Target,
   TrendingUp, UsersRound,
 } from "lucide-react";
-import Navbar from "@/components/site/navbar";
+import Navbar from "@/components/site/public-navbar-static";
 import { Logo } from "@/components/site/brand";
 import Reveal from "@/components/site/reveal";
 import ServicesEnquiry from "@/components/site/services-enquiry";

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/site/navbar";
-import CompanyExperience from "@/components/site/company-marquee";
 import TelanganaDashboard from "@/components/case-studies/telangana/telangana-dashboard";
 import { requirePageSession } from "@/lib/require-session";
 import { caseAllowed } from "@/lib/session-scope";
@@ -32,7 +31,6 @@ export default async function TelanganaCaseStudyPage() {
       <Navbar />
       <TelanganaDashboard />
       <section className="mx-auto max-w-6xl px-6 py-12 sm:px-10"><SocialPanel regions={social} /></section>
-      <CompanyExperience />
     </>
   );
 }

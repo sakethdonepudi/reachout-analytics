@@ -1,4 +1,5 @@
 import { getMongo } from "@/lib/mongodb";
+import { unstable_cache, revalidateTag } from "next/cache";
 
 /* =====================================================================
    Editable About page content. Defaults reproduce the supplied copy;
@@ -79,6 +80,8 @@ export async function getAbout(): Promise<AboutContent> {
   }
 }
 
+export const getAboutCached = unstable_cache(getAbout, ["about-content"], { tags: ["about"] });
+
 export async function saveAbout(patch: Partial<AboutContent>): Promise<AboutContent> {
   const p = getMongo();
   if (!p) throw new Error("Database not configured");
@@ -88,5 +91,6 @@ export async function saveAbout(patch: Partial<AboutContent>): Promise<AboutCont
     { $set: { ...patch, version: ABOUT_DEFAULT.version } as unknown as Record<string, unknown> },
     { upsert: true },
   );
+  try { revalidateTag("about"); } catch { /* outside a request context */ }
   return getAbout();
 }

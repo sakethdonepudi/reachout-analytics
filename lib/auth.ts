@@ -116,6 +116,11 @@ export type SessionIdentity = {
 
 /** Create a fresh session id (rotation happens on every sign-in). */
 export async function createSession(identity: SessionIdentity, meta: { device?: string; ip?: string } = {}): Promise<string> {
+  try {
+    const { migrateClientScopes } = await import("@/lib/users");
+    const removed = await migrateClientScopes();
+    if (removed > 0) console.log(`clientScope migration removed ${removed} retired fields.`);
+  } catch { /* migration is best effort */ }
   const sid = randomBytes(24).toString("base64url");
   const now = Date.now();
   const exp = now + ABSOLUTE_MS;

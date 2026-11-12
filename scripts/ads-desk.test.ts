@@ -4,10 +4,11 @@ import { readFileSync } from "node:fs";
 import { MongoClient } from "mongodb";
 import { parseAdsDeskHtml } from "@/lib/ads-desk/parse";
 import { buildAdsSocial } from "@/lib/ads-desk/client-dto";
-import { publishVersion, saveDraft } from "@/lib/ads-desk/store";
+import { getRegionSummaries, publishVersion, saveDraft } from "@/lib/ads-desk/store";
 import { getRegionMap, socialForCase, setRegionMapping, DEFAULT_REGION_MAP } from "@/lib/ads-desk/mapping";
 import { adsManagerAdsets, adsManagerAds, adsManagerCampaigns, adsManagerForCampaign, billing, pageLink, validMetaId } from "@/lib/ads-desk/links";
 import { withOwnerLinks } from "@/lib/ads-desk/owner-view";
+import { indianUnits, percent } from "@/lib/ads-desk/format";
 
 let pass = 0, fail = 0;
 function ok(name: string, condition: boolean, detail = "") {
@@ -90,7 +91,11 @@ ok("data pages have no decorative classes", dataPages.every((file) => !/radial-g
     await publishVersion(versionId);
     try { await saveDraft(parsed, "small.html", "tester"); ok("duplicate sha rejected against active", false); }
     catch (error) { ok("duplicate sha rejected against active", error instanceof Error && /already the active version/.test(error.message)); }
-    console.log("\n4. Region mapping");
+    console.log("\n3b. Report formatting");
+ok("Indian units", indianUnits(1_933_867_599) === "193.4 Cr" && indianUnits(30_862_233) === "3.1 Cr" && indianUnits(247_000) === "2.5 L");
+ok("percent formatting", percent(16.666) === "16.7%" && percent(20) === "20.0%");
+
+console.log("\n4. Region mapping");
     const map = await getRegionMap();
     ok("default mapping seeded", map.tn2026 === "tamil-nadu" && map.ka2028 === "karnataka-2023");
     ok("defaults cover every fixture region", Object.keys(DEFAULT_REGION_MAP).every((key) => Boolean(map[key])));
@@ -104,6 +109,20 @@ ok("data pages have no decorative classes", dataPages.every((file) => !/radial-g
     ok("client social has no cost/ids", !/spend|costperresult|₹|test business|123456789012345|120240000000001|adsmanager|billing_hub|act=/i.test(JSON.stringify(clientSocial)));
     const ownerSocial = await socialForCase("tamil-nadu", true);
     ok("owner social has spend and links", ownerSocial[0]?.totals.spend === 150.75 && /adsmanager\.facebook\.com/.test(JSON.stringify(ownerSocial)) && /billing_hub/.test(JSON.stringify(ownerSocial)));
+    const version = await db.collection("ads_versions").findOne({ status: "active" });
+    const summaries = version ? await getRegionSummaries(String(version._id)) : [];
+    ok("publish writes region summaries", summaries.length === 1 && summaries[0].regionKey === "tn2026" && summaries[0].accounts[0].impressions === 450);
+    ok("summary derived rates", percent(summaries[0].rates.ctr) === "16.7%" && percent(summaries[0].rates.engagementRate) === "20.0%");
+    if (version) {
+      const original = version.data;
+      await db.collection("ads_versions").updateOne({ _id: version._id }, { $unset: { data: "" } });
+      const withoutData = await socialForCase("tamil-nadu", false);
+      ok("social reads summaries without ads_versions.data", withoutData.length === 1 && withoutData[0].totals.impressions === 450);
+      await db.collection("ads_versions").updateOne({ _id: version._id }, { $set: { data: original } });
+      await publishVersion(String(version._id));
+      const rebuilt = await getRegionSummaries(String(version._id));
+      ok("rollback rebuilds summaries", rebuilt.length === 1 && rebuilt[0].accounts[0].campaigns === 2);
+    }
     await mongo.close();
   }
   console.log(`\n${pass} passed, ${fail} failed`);

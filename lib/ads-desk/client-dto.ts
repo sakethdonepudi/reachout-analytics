@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { AdsParse, AdsRegion } from "@/lib/ads-desk/parse";
+import type { AdsRegionSummary } from "@/lib/ads-desk/summary";
 import {
   adsManagerAds, adsManagerAdsets, adsManagerCampaigns, adsManagerForCampaign, billing,
 } from "@/lib/ads-desk/links";
@@ -18,14 +19,14 @@ export type AdsSocialAccount = {
   campaigns: AdsSocialCampaign[];
 };
 export type AdsSocialView = {
-  available: boolean; label: string; range: string; note: string; asOf: string; viewsLabel: string | null;
+  available: boolean; key: string; label: string; range: string; note: string; asOf: string; viewsLabel: string | null;
   band: string; bandSoft: string;
   totals: { accounts: number; campaigns: number; reach: number; impressions: number; views: number; clicks: number; engagements: number; spend?: number };
   accounts: AdsSocialAccount[];
 };
 
 const EMPTY: AdsSocialView = {
-  available: false, label: "", range: "", note: "", asOf: "", viewsLabel: null, band: "", bandSoft: "",
+  available: false, key: "", label: "", range: "", note: "", asOf: "", viewsLabel: null, band: "", bandSoft: "",
   totals: { accounts: 0, campaigns: 0, reach: 0, impressions: 0, views: 0, clicks: 0, engagements: 0 },
   accounts: [],
 };
@@ -36,6 +37,7 @@ export function buildAdsSocial(version: AdsParse | AdsRegion | null, regionKey: 
   if (!region) return EMPTY;
   return {
     available: true,
+    key: region.key,
     label: region.label, range: region.range,
     note: includeCost || !/spend|cost|budget|payment|billing|cpm/i.test(region.note) ? region.note : "Election campaign delivery overview.",
     asOf: region.asOf, viewsLabel: region.viewsLabel,
@@ -67,6 +69,40 @@ export function buildAdsSocial(version: AdsParse | AdsRegion | null, regionKey: 
           adsHref: campaign.ads == null ? null : adsManagerAds(account.id, campaign.id),
         } : {}),
       })),
+    })),
+  };
+}
+
+export function buildAdsSocialFromSummary(summary: AdsRegionSummary, includeCost: boolean): AdsSocialView {
+  return {
+    available: true,
+    key: summary.regionKey,
+    label: summary.label,
+    range: summary.range,
+    note: includeCost || !/spend|cost|budget|payment|billing|cpm/i.test(summary.note) ? summary.note : "Election campaign delivery overview.",
+    asOf: summary.asOf,
+    viewsLabel: summary.viewsLabel,
+    band: summary.band,
+    bandSoft: summary.bandSoft,
+    totals: {
+      accounts: summary.totals.accounts,
+      campaigns: summary.totals.campaigns,
+      reach: summary.totals.reach,
+      impressions: summary.totals.impressions,
+      views: summary.totals.views,
+      clicks: summary.totals.clicks,
+      engagements: summary.totals.engagements,
+      ...(includeCost ? { spend: summary.totals.spend } : {}),
+    },
+    accounts: summary.accounts.map((account) => ({
+      name: account.name,
+      ...(includeCost ? {
+        href: adsManagerCampaigns(account.id),
+        billingHref: billing(account.id),
+        allAdsetsHref: adsManagerAdsets(account.id),
+        allAdsHref: adsManagerAds(account.id),
+      } : {}),
+      campaigns: [],
     })),
   };
 }

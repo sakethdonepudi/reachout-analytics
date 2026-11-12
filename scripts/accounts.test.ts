@@ -10,6 +10,7 @@ import { pendingTtlMs } from "@/lib/pending-auth";
 import { signPayload, verifyPayload } from "@/lib/signed-cookie";
 import { buildCsp } from "@/lib/security";
 import { turnstileConfigured, turnstileRequired } from "@/lib/turnstile";
+import { readFileSync } from "node:fs";
 
 let pass = 0, fail = 0;
 function ok(name: string, condition: boolean, detail = "") {
@@ -60,6 +61,11 @@ console.log("\n4. Published case access");
 ok("client opens a published case", canOpenCase("client", true));
 ok("client cannot open a draft", !canOpenCase("client", false));
 ok("owner opens drafts", canOpenCase("owner", false));
+
+console.log("\n4b. Simple client form");
+const usersForm = readFileSync("app/account/users/users-client.tsx", "utf8");
+ok("user form has no scope fields", !/clientScope|Case studies|States|Parties/.test(usersForm));
+ok("user form keeps the required fields", ["Username", "Display name", "Organisation", "Temporary password", "Require 2FA"].every((label) => usersForm.includes(label)));
 
 console.log("\n5. Turnstile and CSP");
 ok("Turnstile is opt-in locally without keys", !turnstileConfigured() && !turnstileRequired());

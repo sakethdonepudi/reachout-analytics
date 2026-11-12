@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import Navbar from "@/components/site/navbar";
-import CompanyExperience from "@/components/site/company-marquee";
 import { PartyIdentity, PartyMark } from "@/components/site/party-mark";
 import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl } from "@/lib/cases";
 import { requirePageSession } from "@/lib/require-session";
@@ -123,7 +122,6 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
 
           <section className="mt-16"><SocialPanel regions={social} /></section>
 
-          <CompanyExperience className="mt-20 border-t border-border" />
 
           {c && (
             <div className="mt-16 flex items-center justify-end border-t border-border pt-10">
