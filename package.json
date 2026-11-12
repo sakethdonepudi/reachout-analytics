@@ -13,9 +13,12 @@
     "test:meta": "tsx scripts/meta-sync.test.ts",
     "test:tamil-nadu-consistency": "tsx --conditions react-server scripts/tamil-nadu-consistency.test.ts",
     "test:meta-client": "tsx --conditions react-server scripts/meta-client-dto.test.ts",
-    "test:meta-session": "tsx --conditions react-server scripts/meta-session.test.ts"
+    "test:meta-session": "tsx --conditions react-server scripts/meta-session.test.ts",
+    "test:accounts": "tsx --conditions react-server scripts/accounts.test.ts",
+    "test:session": "tsx --conditions react-server scripts/session.test.ts"
   },
   "dependencies": {
+    "@node-rs/argon2": "^2.2.2",
     "clsx": "^2.1.1",
     "d3-geo": "^3.1.1",
     "echarts": "^6.1.0",
@@ -23,6 +26,7 @@
     "mongodb": "^7.7.0",
     "motion": "^13.4.2",
     "next": "^15.5.29",
+    "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "server-only": "^0.0.1",
@@ -38,6 +42,7 @@
     "@types/d3-geo": "^3.1.1",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^24",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.186.0",

@@ -3,7 +3,7 @@
 export type Role = "owner" | "client";
 
 export const ROLE_HOME: Record<Role, string> = {
-  owner: "/meta-ads",
+  owner: "/dashboard",
   client: "/case-studies",
 };
 
@@ -11,6 +11,8 @@ type Rule = { prefixes: string[]; roles: Role[] };
 
 const RULES: Rule[] = [
   { prefixes: ["/case-studies", "/api/public/case-studies"], roles: ["owner", "client"] },
+  { prefixes: ["/dashboard", "/account/users", "/api/account/users"], roles: ["owner"] },
+  { prefixes: ["/account", "/api/account", "/api/auth/heartbeat"], roles: ["owner", "client"] },
   { prefixes: ["/campaigns", "/api/meta/client"], roles: ["owner", "client"] },
   { prefixes: ["/meta-ads", "/api/meta/owner", "/admin", "/api/admin", "/api/data"], roles: ["owner"] },
 ];
@@ -20,6 +22,11 @@ export function rolesForPath(pathname: string): Role[] | null {
   const path = pathname.split("?")[0].split("#")[0];
   // The blank template is the explicit exception under /api/data.
   if (path === "/api/data/template") return null;
+  // Pending first-login flows have no session yet; the pages and routes check
+  // their short-lived signed pending cookie themselves.
+  if (path === "/account/password" || path === "/account/security/enroll") return null;
+  if (path === "/api/account/password" || path === "/api/account/totp") return null;
+  if (path === "/api/meta/owner/connect/callback") return null;
   for (const rule of RULES) {
     if (rule.prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) return rule.roles;
   }

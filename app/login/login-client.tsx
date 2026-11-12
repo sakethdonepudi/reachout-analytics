@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense, useCallback, useState, type FormEvent } from "react";
+import { Suspense, useCallback, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { Logo } from "@/components/site/navbar";
+import { Logo } from "@/components/site/brand";
 import ThemeToggle from "@/components/site/theme-toggle";
 import Turnstile from "@/components/site/turnstile";
 import { useTheme } from "@/components/theme-provider";
@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; nonce?: string }) {
   const { theme } = useTheme();
   const search = useSearchParams();
+  const [step, setStep] = useState<"password" | "totp">("password");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
@@ -22,8 +24,13 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
   const [loading, setLoading] = useState(false);
   const [shake, setShake] = useState(0);
   const [resetNonce, setResetNonce] = useState(0);
+  const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
+  const [recovery, setRecovery] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const inputs = useRef<Array<HTMLInputElement | null>>([]);
   const onVerify = useCallback((value: string) => setToken(value), []);
   const next = search.get("next") ?? "";
+  const idle = search.get("reason") === "idle";
 
   function updateCapsLock(event: React.KeyboardEvent<HTMLInputElement>) {
     setCapsLock(event.getModifierState("CapsLock"));
@@ -31,65 +38,77 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (turnstileEnabled && !token) {
-      setError("Complete the CAPTCHA to continue.");
-      return;
-    }
-    setLoading(true);
-    setError("");
+    if (turnstileEnabled && !token) { setError("Complete the CAPTCHA to continue."); return; }
+    setLoading(true); setError("");
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, next, turnstileToken: token }),
+        body: JSON.stringify({ username, password, next, turnstileToken: token }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && typeof data.redirect === "string") {
-        window.location.assign(data.redirect);
-        return;
-      }
-      setError(
-        res.status === 401
-          ? "Incorrect password"
-          : typeof data.error === "string"
-            ? data.error
-            : "Sign-in failed. Please try again.",
-      );
-      setShake((value) => value + 1);
-      setPassword("");
+      if (res.ok && typeof data.redirect === "string") { window.location.assign(data.redirect); return; }
+      if (res.ok && data.step === "totp") { setStep("totp"); setToken(""); setResetNonce((value) => value + 1); return; }
+      setError(res.status === 401 ? "Incorrect username or password" : typeof data.error === "string" ? data.error : "Sign-in failed. Please try again.");
+      setShake((value) => value + 1); setPassword("");
       if (turnstileEnabled) setResetNonce((value) => value + 1);
-    } catch {
-      setError("Sign-in failed. Please try again.");
-      setShake((value) => value + 1);
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError("Sign-in failed. Please try again."); setShake((value) => value + 1); }
+    finally { setLoading(false); }
+  }
+
+  function setDigit(index: number, value: string) {
+    const char = value.replace(/\D/g, "").slice(-1);
+    setDigits((current) => current.map((item, i) => i === index ? char : item));
+    if (char && index < 5) inputs.current[index + 1]?.focus();
+  }
+
+  function pasteDigits(value: string) {
+    const clean = value.replace(/\D/g, "").slice(0, 6).split("");
+    setDigits(Array.from({ length: 6 }, (_item, index) => clean[index] ?? ""));
+    inputs.current[Math.min(clean.length, 5)]?.focus();
+  }
+
+  async function verifyTotp(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (turnstileEnabled && !token) { setError("Complete the CAPTCHA to continue."); return; }
+    setLoading(true); setError("");
+    try {
+      const code = recovery ? "" : digits.join("");
+      const res = await fetch("/api/auth/totp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, recoveryCode: recovery ? recoveryCode : undefined, turnstileToken: token }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && typeof data.redirect === "string") { window.location.assign(data.redirect); return; }
+      setError(res.status === 401 ? "That code is not valid" : typeof data.error === "string" ? data.error : "Verification failed.");
+      setShake((value) => value + 1); setDigits(Array(6).fill(""));
+      if (turnstileEnabled) setResetNonce((value) => value + 1);
+    } catch { setError("Verification failed."); setShake((value) => value + 1); }
+    finally { setLoading(false); }
   }
 
   return (
     <main className="relative grid min-h-[100svh] place-items-center overflow-hidden bg-[var(--surface-canvas)] px-5 py-14 text-[var(--text-primary)]">
       <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <Image
-          src="/images/hero/slide-1-1672.webp"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-[72%_50%] opacity-30 dark:opacity-20"
-        />
+        <Image src="/images/hero/slide-1-1672.webp" alt="" fill priority sizes="100vw" className="object-cover object-[72%_50%] opacity-30 dark:opacity-20" />
         <div className="absolute inset-0 bg-[var(--surface-canvas)]/78 dark:bg-[#070b12]/72" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--surface-canvas)]/20 to-[var(--surface-canvas)]" />
-        <div className="absolute -left-32 top-1/4 size-96 rounded-full bg-[radial-gradient(circle,rgba(245,138,36,.14),transparent_68%)] blur-3xl" />
       </div>
-
       <div className="absolute right-5 top-5 z-10"><ThemeToggle /></div>
 
       <div className="relative w-full max-w-sm">
         <div className="mb-7 flex justify-center"><Logo /></div>
         <div className="rounded-[var(--radius-panel)] border border-[var(--border-hairline)] bg-[var(--surface-panel)]/95 p-7 shadow-[var(--shadow-soft)] backdrop-blur-xl">
           <p className="type-micro text-[var(--accent-brass)]">Secure access</p>
-          <h1 className="type-h1 mt-2 text-[var(--text-primary)]">Sign in</h1>
-          <p className="type-small mt-2 text-[var(--text-muted)]">Enter your workspace password to continue.</p>
+          <h1 className="type-h1 mt-2">{step === "totp" ? "Enter your code" : "Sign in"}</h1>
+          <p className="type-small mt-2 text-[var(--text-muted)]">
+            {step === "totp" ? `Open your authenticator app for ${username}.` : "Use your workspace username and password."}
+          </p>
+
+          {idle && step === "password" && (
+            <p role="status" className="mt-4 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-raised)] px-3 py-2 text-[12.5px] text-[var(--text-muted)]">Signed out after 3 minutes of inactivity.</p>
+          )}
 
           {error && (
             <p role="alert" className={cn("mt-5 rounded-[var(--radius-control)] border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-2 text-[12.5px] text-[var(--danger)]", shake > 0 && "login-shake")} key={shake}>
@@ -97,54 +116,58 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
             </p>
           )}
 
-          <form onSubmit={signIn} className="mt-5 space-y-3">
-            <label htmlFor="password" className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Password</label>
-            <div className="relative">
-              <input
-                id="password"
-                name="password"
-                type={show ? "text" : "password"}
-                autoComplete="current-password"
-                autoFocus
-                required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                onKeyDown={updateCapsLock}
-                onKeyUp={updateCapsLock}
-                className="min-h-11 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-3.5 pr-12 text-[14px] text-[var(--text-primary)] outline-none transition focus:border-[var(--accent-brass)] focus:ring-2 focus:ring-[var(--accent-brass)]/25"
-              />
-              <button
-                type="button"
-                onClick={() => setShow((value) => !value)}
-                aria-label={show ? "Hide password" : "Show password"}
-                className="absolute right-1 top-1 grid size-9 place-items-center rounded-[var(--radius-control)] text-[var(--text-muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]"
-              >
-                {show ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
+          {step === "password" ? (
+            <form onSubmit={signIn} className="mt-5 space-y-3">
+              <label className="block">
+                <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Username</span>
+                <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoFocus required className="mt-1 min-h-11 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-3.5 text-[14px] outline-none focus:border-[var(--accent-brass)] focus:ring-2 focus:ring-[var(--accent-brass)]/25" />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Password</span>
+                <div className="relative mt-1">
+                  <input type={show ? "text" : "password"} autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={updateCapsLock} onKeyUp={updateCapsLock} className="min-h-11 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-3.5 pr-12 text-[14px] outline-none focus:border-[var(--accent-brass)] focus:ring-2 focus:ring-[var(--accent-brass)]/25" />
+                  <button type="button" onClick={() => setShow((value) => !value)} aria-label={show ? "Hide password" : "Show password"} className="absolute right-1 top-1 grid size-9 place-items-center rounded-[var(--radius-control)] text-[var(--text-muted)] hover:bg-[var(--surface-raised)]">
+                    {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+              </label>
+              {capsLock && <p className="text-[11.5px] text-[var(--warning)]">Caps Lock is on.</p>}
+              {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} action="login" /></div>}
+              <button type="submit" disabled={loading || (turnstileEnabled && !token)} className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
+                {loading && <Loader2 className="size-4 animate-spin" />} Continue
               </button>
-            </div>
-            {capsLock && <p className="text-[11.5px] text-[var(--warning)]">Caps Lock is on.</p>}
+            </form>
+          ) : (
+            <form onSubmit={verifyTotp} className="mt-5 space-y-3">
+              {!recovery ? (
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">6-digit code</span>
+                  <div className="mt-1 flex gap-2" onPaste={(event) => { event.preventDefault(); pasteDigits(event.clipboardData.getData("text")); }}>
+                    {digits.map((digit, index) => (
+                      <input key={index} ref={(node) => { inputs.current[index] = node; }} value={digit} onChange={(event) => setDigit(index, event.target.value)} onKeyDown={(event) => { if (event.key === "Backspace" && !digits[index] && index > 0) inputs.current[index - 1]?.focus(); }} inputMode="numeric" autoComplete={index === 0 ? "one-time-code" : "off"} aria-label={`Digit ${index + 1}`} className="min-h-12 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] text-center font-mono text-[18px] outline-none focus:border-[var(--accent-brass)]" />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <label className="block">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Recovery code</span>
+                  <input value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value)} autoComplete="off" className="mt-1 min-h-11 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-3 font-mono text-[14px] outline-none focus:border-[var(--accent-brass)]" />
+                </label>
+              )}
+              {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} action="totp" /></div>}
+              <button type="submit" disabled={loading || (turnstileEnabled && !token) || (!recovery && digits.join("").length !== 6)} className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
+                {loading && <Loader2 className="size-4 animate-spin" />} Verify
+              </button>
+              <button type="button" onClick={() => { setRecovery((value) => !value); setError(""); }} className="w-full text-center text-[12px] font-semibold text-[var(--accent-brass-strong)] underline decoration-dotted underline-offset-4">
+                {recovery ? "Use an authenticator code" : "Use a recovery code"}
+              </button>
+              <button type="button" onClick={() => { setStep("password"); setError(""); setRecovery(false); }} className="w-full text-center text-[12px] text-[var(--text-muted)]">Back to password</button>
+            </form>
+          )}
 
-            {turnstileEnabled && (
-              <div className="flex justify-center">
-                <Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} />
-              </div>
-            )}
-            {turnstileEnabled && !token && (
-              <p className="text-center text-[12px] text-[var(--text-muted)]">Complete the CAPTCHA to enable sign in.</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading || (turnstileEnabled && !token)}
-              className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[14px] font-semibold text-[var(--text-on-brass)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]"
-            >
-              {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
-              Sign in
-            </button>
-          </form>
-
-          <div className="mt-5 text-center text-[12px] text-[var(--text-muted)]">
+          <div className="mt-5 flex items-center justify-between text-[12px] text-[var(--text-muted)]">
             <Link href="/" className="hover:text-[var(--text-primary)]">Back to site</Link>
+            <Link href="/setup" className="hover:text-[var(--text-primary)]">First setup</Link>
           </div>
         </div>
       </div>

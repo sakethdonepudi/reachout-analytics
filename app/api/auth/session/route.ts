@@ -6,5 +6,5 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   const session = await getSession(req);
   if (!session) return Response.json({ ok: false }, { status: 401, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
-  return Response.json({ ok: true, role: session.role, subject: session.sub, recent: sessionIsRecent(session) }, { headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
+  return Response.json({ ok: true, role: session.role, subject: session.sub, userId: session.userId, displayName: session.displayName, scope: session.scope, recent: sessionIsRecent(session) }, { headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
 }
