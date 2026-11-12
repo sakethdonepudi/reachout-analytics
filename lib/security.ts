@@ -17,9 +17,9 @@ export function buildCsp(nonce: string, options: { turnstile?: boolean } = {}): 
   return [
     "default-src 'self'",
     `script-src ${script}`,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https://*.fbcdn.net https://*.cdninstagram.com https://www.facebook.com",
-    "font-src 'self' https://fonts.gstatic.com data:",
+    "font-src 'self' data:",
     `connect-src 'self'${turnstile ? " https://challenges.cloudflare.com" : ""}`,
     "media-src 'self' https://*.fbcdn.net",
     `frame-src ${frames}`,
