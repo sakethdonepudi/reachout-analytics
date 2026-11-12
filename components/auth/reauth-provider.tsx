@@ -11,6 +11,7 @@ const ReauthContext = createContext<ReauthContextValue | null>(null);
 export function ReauthProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const resolveRef = useRef<((ok: boolean) => void) | null>(null);
@@ -20,6 +21,7 @@ export function ReauthProvider({ children }: { children: ReactNode }) {
     resolveRef.current = null;
     setOpen(false);
     setPassword("");
+    setTotp("");
     setBusy(false);
     setError("");
   }, []);
@@ -29,6 +31,7 @@ export function ReauthProvider({ children }: { children: ReactNode }) {
     return new Promise<boolean>((resolve) => {
       resolveRef.current = resolve;
       setPassword("");
+      setTotp("");
       setError("");
       setOpen(true);
     });
@@ -43,7 +46,7 @@ export function ReauthProvider({ children }: { children: ReactNode }) {
       const response = await fetch("/api/auth/reauth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, totp }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -73,21 +76,21 @@ export function ReauthProvider({ children }: { children: ReactNode }) {
       <Dialog
         open={open}
         onClose={() => finish(false)}
-        title="Confirm owner password"
-        description="Re-enter the owner password to continue."
+        title="Confirm it is you"
+        description="Enter your password and authenticator code to continue."
         footer={(
           <>
             <button type="button" onClick={() => finish(false)} className="min-h-10 rounded-[var(--radius-control)] border border-[var(--border-hairline)] px-4 text-[12.5px] font-semibold text-[var(--text-muted)] hover:bg-[var(--surface-raised)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]">
               Cancel
             </button>
-            <button type="submit" form="reauth-form" disabled={busy || !password} className="inline-flex min-h-10 items-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[12.5px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]">
+            <button type="submit" form="reauth-form" disabled={busy || !password || totp.length !== 6} className="inline-flex min-h-10 items-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[12.5px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]">
               {busy && <Loader2 className="size-3.5 animate-spin" aria-hidden />} Continue
             </button>
           </>
         )}
       >
         <form id="reauth-form" onSubmit={submit} className="space-y-2">
-          <label htmlFor="reauth-password" className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Owner password</label>
+          <label htmlFor="reauth-password" className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Password</label>
           <input
             id="reauth-password"
             type="password"
@@ -97,6 +100,18 @@ export function ReauthProvider({ children }: { children: ReactNode }) {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className="min-h-10 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-3 text-[13px] text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]"
+          />
+          <label htmlFor="reauth-totp" className="block pt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Authenticator code</label>
+          <input
+            id="reauth-totp"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            required
+            value={totp}
+            onChange={(event) => setTotp(event.target.value.replace(/\D/g, "").slice(0, 6))}
+            className="min-h-10 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-3 font-mono text-[16px] tracking-[0.3em] text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]"
           />
           {error && <p role="alert" className="text-[12px] text-[var(--danger)]">{error}</p>}
         </form>

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
-import Navbar, { Logo } from "@/components/site/navbar";
+import Navbar from "@/components/site/navbar";
+import { Logo } from "@/components/site/brand";
 import CompanyExperience from "@/components/site/company-marquee";
 import AboutHeroVisual from "@/components/site/about/hero-visual";
 import AboutStory from "@/components/site/about/story";

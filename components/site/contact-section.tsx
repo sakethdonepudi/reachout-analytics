@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Mail, Phone, MapPin, ArrowUpRight, CheckCircle2 } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
 import Globe from "@/components/site/globe";
-import { Logo } from "@/components/site/navbar";
+import { Logo } from "@/components/site/brand";
 import CompanyExperience from "@/components/site/company-marquee";
 import { CONTACT } from "@/lib/cases";
 import { rafLoop } from "@/lib/raf-loop";

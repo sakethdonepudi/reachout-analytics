@@ -6,5 +6,5 @@ export const dynamic = "force-dynamic";
 
 export default async function CampaignsPage() {
   const session = await requirePageSession("/campaigns", ["owner", "client"]);
-  redirect(roleHome(session.role));
+  redirect(session.role === "owner" ? "/dashboard" : "/case-studies");
 }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Download, FileSpreadsheet, History, LayoutDashboard, LogOut, Loader2, Map as MapIcon, Settings, Table2, Upload, UserCog } from "lucide-react";
-import { Logo } from "@/components/site/navbar";
+import { Logo } from "@/components/site/brand";
 import { useReauth } from "@/components/auth/reauth-provider";
 import ThemeToggle from "@/components/site/theme-toggle";
 import AboutEditor from "@/components/admin/about-editor";

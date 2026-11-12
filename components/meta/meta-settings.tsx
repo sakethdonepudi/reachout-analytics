@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, Loader2, PlugZap, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
-import Navbar from "@/components/site/navbar";
 import { useReauth } from "@/components/auth/reauth-provider";
 import { MetaTagging } from "@/components/meta/meta-tagging";
 import { SyncHealth } from "@/components/meta/sync-health";
@@ -155,7 +154,6 @@ export default function MetaSettings({ metaConfigured = true, approvedScopes = [
 
   return (
     <>
-      <Navbar />
       <main className="min-h-screen bg-background pt-32 text-foreground">
         <div className="mx-auto max-w-6xl px-6 pb-24 sm:px-10">
           <Link href="/meta-ads" className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-muted-foreground hover:text-foreground">
