@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import Navbar from "@/components/site/navbar";
-import { PartyIdentity, PartyMark } from "@/components/site/party-mark";
+import { PartyIdentity } from "@/components/site/party-mark";
+import StateMap from "@/components/case-studies/shared/state-map";
 import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl } from "@/lib/cases";
 import { requirePageSession } from "@/lib/require-session";
 import SocialPanel from "@/components/ads-desk/social-panel";
@@ -12,6 +13,14 @@ import { caseAllowed } from "@/lib/session-scope";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
+
+function yearFor(slug: string): number {
+  const match = slug.match(/(20\d{2})/);
+  if (match) return Number(match[1]);
+  if (slug === "telangana") return 2028;
+  if (slug === "north-east-elections") return 2026;
+  return 2026;
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -61,14 +70,13 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
       <Navbar />
       <CaseStudyTabs social={<main className="min-h-screen bg-background pt-12 text-foreground"><div className="mx-auto max-w-6xl px-6 pb-24 sm:px-10"><SocialPanel regions={social} /></div></main>}>
       <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_75%_10%,rgba(245,138,36,0.08),transparent_60%)]" aria-hidden />
-
-        <div className="relative mx-auto max-w-6xl px-6 pb-24 pt-36 sm:px-10">
-          <Link href="/#tour" className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-foreground/80 transition-colors hover:text-foreground">
-            <ArrowLeft className="size-4" /> Back to the map
+        <div className="relative mx-auto max-w-6xl px-6 pb-24 pt-24 sm:px-10">
+          <Link href="/case-studies" className="report-link inline-flex items-center gap-2 text-[12.5px]">
+            <ArrowLeft className="size-4" /> Back to case studies
           </Link>
 
-          <div className="mt-12 grid items-center gap-14 lg:grid-cols-[1.3fr_1fr]">
+          <div className={`mt-8 grid items-start gap-6 ${c ? "lg:grid-cols-[320px_minmax(0,1fr)]" : ""}`}>
+            {c && <StateMap stateCode={c.state} stateName={c.stateName} year={yearFor(c.slug)} party={c.party} />}
             <div>
               <span className="rounded-full border border-saffron/40 bg-saffron/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-saffron-2">
                 {c ? `Case study · ${c.badge}` : "Upcoming"}
@@ -88,16 +96,6 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
                 {c?.summary ?? "We're preparing for this election cycle. Get in touch to discuss how data can shape your campaign."}
               </p>
             </div>
-            {c && (
-              <div className="flex justify-center lg:justify-end">
-                <div className="w-full max-w-[320px] rounded-3xl border border-border bg-card/80 p-7 text-center shadow-[0_24px_60px_-36px_rgba(15,20,30,.45)]">
-                  <PartyMark party={c.party} size="xl" className="mx-auto" priority />
-                  <p className="mt-5 font-display text-2xl font-semibold tracking-[-0.02em]">{c.party}</p>
-                  <p className="mt-1 text-[14px] text-muted-foreground">{c.stateName}</p>
-                  <p className="mt-4 border-t border-border pt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-saffron-2">Case study</p>
-                </div>
-              </div>
-            )}
           </div>
 
           {c && (
@@ -105,17 +103,17 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
               <h2 className="mt-24 font-display text-3xl font-semibold tracking-tight">What we delivered</h2>
               <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {c.tags.map((t, i) => (
-                  <div key={t} className="glass rounded-2xl p-6">
-                    <span className="font-serif text-4xl italic text-saffron-2">{String(i + 1).padStart(2, "0")}</span>
-                    <h3 className="mt-3 font-display text-lg font-semibold">{t}</h3>
+                  <div key={t} className="report-card p-4">
+                    <span className="text-[11px] font-semibold text-[var(--r-teal-d)]">{String(i + 1).padStart(2, "0")}</span>
+                    <h3 className="mt-2 text-[15px] font-semibold text-[var(--r-navy)]">{t}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{CAPABILITIES[t] ?? ""}</p>
                   </div>
                 ))}
               </div>
 
               {/* TODO: replace with verified results for this campaign */}
-              <div className="mt-6 rounded-2xl border border-dashed border-border p-6 text-muted-foreground">
-                <b className="text-foreground/80">Results</b> — add verified outcomes for this campaign here (seats, vote share, accuracy of predictions).
+              <div className="report-note mt-6">
+                <b>Results</b>: add verified outcomes for this campaign here (seats, vote share, accuracy of predictions).
               </div>
             </>
           )}

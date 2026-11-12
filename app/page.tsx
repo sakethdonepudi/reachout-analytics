@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import PublicNavbar from "@/components/site/public-navbar-static";
 import ContactSection from "@/components/site/contact-section";
 import { Logo } from "@/components/site/brand";
+import HomeIndiaMap from "@/components/site/home-india-map";
 import { CASES, UPCOMING } from "@/lib/cases";
 import { POLITICAL_SERVICES, DATA_SERVICES } from "@/lib/services";
 import { TN_OPINION_POLL } from "@/lib/tamil-nadu/comparison";
@@ -51,8 +52,8 @@ const selected = ["tamil-nadu", "telangana", "andhra-pradesh-2024", "karnataka-2
 const services = [...POLITICAL_SERVICES.slice(0, 4), ...DATA_SERVICES.slice(0, 2)];
 
 const covered = [
-  ...CASES.map((item) => ({ slug: item.slug, title: item.title, state: item.stateName, year: yearFor(item.slug), status: statusFor(item.slug) })),
-  ...UPCOMING.map((item) => ({ slug: item.slug, title: item.title, state: "India", year: yearFor(item.slug), status: "Upcoming" as const })),
+  ...CASES.map((item) => ({ slug: item.slug, title: item.title, state: item.stateName, code: item.state, year: yearFor(item.slug), status: statusFor(item.slug) })),
+  ...UPCOMING.map((item) => ({ slug: item.slug, title: item.title, state: "India", code: null, year: yearFor(item.slug), status: "Upcoming" as const })),
 ];
 
 export default function Home() {
@@ -115,6 +116,9 @@ export default function Home() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="mt-4">
+              <HomeIndiaMap cases={covered.map((item) => ({ code: item.code, slug: item.slug, title: item.title, status: item.status }))} />
             </div>
           </div>
         </section>
