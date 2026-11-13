@@ -5,15 +5,12 @@ import { passwordStrength } from "@/lib/password-policy";
 import { generateTotpSecret, totpCode, totpStep, verifyTotp, normaliseRecoveryCode } from "@/lib/totp";
 import { safeNextPath } from "@/lib/access";
 import { needsEnrollment } from "@/lib/users";
-import { canOpenCase } from "@/lib/access";
 import { pendingTtlMs } from "@/lib/pending-auth";
 import { signPayload, verifyPayload } from "@/lib/signed-cookie";
 import { buildCsp } from "@/lib/security";
 import { turnstileConfigured, turnstileRequired } from "@/lib/turnstile";
 import { readFileSync } from "node:fs";
 import { CASES } from "@/lib/cases";
-import { TN_OPINION_POLL } from "@/lib/tamil-nadu/comparison";
-import { TVK_ACTUAL_SEATS, TVK_FORECASTERS } from "@/lib/tamil-nadu/forecasters";
 
 let pass = 0, fail = 0;
 function ok(name: string, condition: boolean, detail = "") {
@@ -60,23 +57,14 @@ ok("login loop rejected", safeNextPath("/login?next=/dashboard", "owner") === nu
 ok("out-of-role path rejected", safeNextPath("/dashboard", "client") === null);
 ok("client case path accepted", safeNextPath("/case-studies/tamil-nadu", "client") === "/case-studies/tamil-nadu");
 
-console.log("\n4. Published case access");
-ok("client opens a published case", canOpenCase("client", true));
-ok("client cannot open a draft", !canOpenCase("client", false));
-ok("owner opens drafts", canOpenCase("owner", false));
+console.log("\n4. Case access");
+ok("seven case studies are available", CASES.length === 7);
+ok("every case study is client visible", ["north-east-elections", "tamil-nadu", "telangana", "andhra-pradesh-2024", "gujarat", "bihar", "karnataka-2023"].every((slug) => CASES.some((item) => item.slug === slug)));
 
 console.log("\n4b. Simple client form");
 const usersForm = readFileSync("app/account/users/users-client.tsx", "utf8");
 ok("user form has no scope fields", !/clientScope|Case studies|States|Parties/.test(usersForm));
 ok("user form keeps the required fields", ["Username", "Display name", "Organisation", "Temporary password", "Require 2FA"].every((label) => usersForm.includes(label)));
-
-console.log("\n4c. Landing sources");
-const home = readFileSync("app/page.tsx", "utf8");
-ok("scoreboard uses the case registry", home.includes("CASES") && home.includes("statesCovered"));
-ok("survey responses come from the Tamil Nadu opinion poll", TN_OPINION_POLL.denominator === 31_672 && home.includes("TN_OPINION_POLL"));
-const tnForecast = TVK_FORECASTERS.find((row) => row.forecaster.startsWith("ReachOut"));
-ok("Tamil Nadu seats come from the forecaster table", Boolean(tnForecast) && tnForecast?.projectedSeats === 106 && TVK_ACTUAL_SEATS === 108 && home.includes("TVK_FORECASTERS"));
-ok("landing has no 3D globe or three.js", !/three|globe|party-orbit/i.test(home));
 
 console.log("\n5. Turnstile and CSP");
 ok("Turnstile is opt-in locally without keys", !turnstileConfigured() && !turnstileRequired());

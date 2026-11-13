@@ -312,7 +312,7 @@ export default function AdminPortal() {
               </select>
             </label>
             <Link href="/dashboard" className="rounded-full border border-[var(--border-hairline)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)]">Dashboard</Link>
-            <button onClick={logout} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12.5px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60"><LogOut className="size-3.5" /> Sign out</button>
+            <button onClick={logout} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12.5px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60"><LogOut className="size-3.5" /> Sign out</button>
           </div>
         </div>
       </header>
@@ -328,7 +328,7 @@ export default function AdminPortal() {
           <div className="mt-3 rounded-xl border border-border p-3 text-[11.5px] text-muted-foreground">
             <p className="font-semibold text-foreground/80">{activeCase?.title ?? "—"}</p>
             <p>{activeCase?.state} · {activeCase?.electionYear}</p>
-            <p className={cn("mt-1", activeCase?.published ? "text-[#2fbf4a]" : "text-saffron-2")}>{activeCase?.published ? "Published" : "Draft (private)"}</p>
+            <p className="mt-1 text-[var(--success)]">Client access: on</p>
           </div>
         </nav>
 
@@ -338,7 +338,7 @@ export default function AdminPortal() {
 
           <div className="mb-4 flex flex-wrap gap-2 lg:hidden">
             {SECTIONS.map(({ id, label }) => (
-              <button key={id} onClick={() => setSection(id)} className={cn("rounded-full border px-3 py-1.5 text-[12.5px]", section === id ? "border-saffron/60 bg-saffron/10 text-foreground" : "border-border text-muted-foreground")}>{label}</button>
+              <button key={id} onClick={() => setSection(id)} className={cn("rounded-full border px-3 py-1.5 text-[12.5px]", section === id ? "border-teal/60 bg-teal/10 text-foreground" : "border-border text-muted-foreground")}>{label}</button>
             ))}
           </div>
 
@@ -351,7 +351,7 @@ export default function AdminPortal() {
                 and in the public “About this data” panel.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <button onClick={() => setSection("poll")} className="rounded-lg bg-saffron px-3 py-1.5 text-[12.5px] font-semibold text-[#241203]">Open Telangana import</button>
+                <button onClick={() => setSection("poll")} className="rounded-lg bg-teal-deep px-3 py-1.5 text-[12.5px] font-semibold text-[#ffffff]">Open Telangana import</button>
                 <Link href="/case-studies/telangana" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">View public page</Link>
               </div>
               <div className="mt-6 rounded-2xl border border-border bg-card/60 p-4 text-[12px] text-muted-foreground">
@@ -371,7 +371,7 @@ export default function AdminPortal() {
               <h1 className="font-display text-2xl font-semibold">Overview · Tamil Nadu</h1>
               <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">Tamil Nadu uses the final calibrated aggregate workbook, not individual-response import. Survey votes, Saket&apos;s original calls, statewide-fit model calls, final district-calibrated calls and Actual 2026 results are separate layers. The previous geographic-allocation snapshot is archived privately and is not read.</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <button onClick={() => setSection("poll")} className="rounded-lg bg-saffron px-3 py-1.5 text-[12.5px] font-semibold text-[#241203]">Open Tamil Nadu source overview</button>
+                <button onClick={() => setSection("poll")} className="rounded-lg bg-teal-deep px-3 py-1.5 text-[12.5px] font-semibold text-[#ffffff]">Open Tamil Nadu source overview</button>
                 <a href="/api/admin/tamil-nadu/export?format=xlsx" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">Export final aggregates</a>
                 <Link href="/case-studies/tamil-nadu" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">View public page</Link>
               </div>
@@ -385,7 +385,7 @@ export default function AdminPortal() {
           {section === "overview" && caseId !== "telangana" && caseId !== "tamil-nadu" && (
             <div>
               <h1 className="font-display text-2xl font-semibold">Overview · {activeCase?.title}</h1>
-              <p className="mt-1 text-[13px] text-muted-foreground">Publication: {activeCase?.published ? "published — visible on the public dashboard" : "draft — private until published"}</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">Client access: always on. Publication status no longer gates case studies.</p>
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {card("Total", c.total)}{card("Valid party", c.valid)}{card("Blank", c.blank)}{card("Invalid", c.invalid)}{card("Recorded district", c.recorded)}{card("Estimated district", c.estimated)}
               </div>
@@ -417,15 +417,13 @@ export default function AdminPortal() {
               <p className="mt-1 text-[13px] text-muted-foreground">Select a case study (top-right) then manage its Opinion and Exit poll datasets in Poll Data. Publishing makes aggregates public.</p>
               <ul className="mt-5 space-y-2">
                 {cases.map((cs) => (
-                  <li key={cs.id} className={cn("flex flex-wrap items-center gap-3 rounded-2xl border p-3", cs.id === caseId ? "border-saffron/50 bg-saffron/[0.06]" : "border-border bg-card/50")}>
+                  <li key={cs.id} className={cn("flex flex-wrap items-center gap-3 rounded-2xl border p-3", cs.id === caseId ? "border-teal/50 bg-teal/[0.06]" : "border-border bg-card/50")}>
                     <button onClick={() => { setCaseId(cs.id); }} className="min-w-0 flex-1 text-left">
                       <p className="font-display text-[15px] font-semibold">{cs.title}</p>
                       <p className="text-[12px] text-muted-foreground">{cs.state} · {cs.electionYear} · {cs.slug}</p>
                     </button>
                     <input defaultValue={cs.title} onBlur={(e) => { if (e.target.value !== cs.title) saveTitle(cs, e.target.value); }} className="w-48 rounded-lg border border-border bg-elevated/60 px-2.5 py-1.5 text-[12.5px]" aria-label={`Title for ${cs.title}`} />
-                    <button onClick={() => togglePublish(cs)} className={cn("rounded-full border px-3 py-1.5 text-[12px] font-semibold", cs.published ? "border-[#2fbf4a]/60 bg-[#2fbf4a]/15 text-[var(--success)]" : "border-border text-muted-foreground")}>
-                      {cs.published ? "Published" : "Publish"}
-                    </button>
+                    <span className="rounded-full border border-[var(--border-hairline)] px-3 py-1.5 text-[12px] font-semibold text-[var(--text-muted)]">Client access: on</span>
                   </li>
                 ))}
               </ul>
@@ -470,7 +468,7 @@ export default function AdminPortal() {
                 </div>
               </div>
 
-              {view === "scenario" && <p className="mt-3 rounded-xl border border-saffron/30 bg-saffron/10 px-3 py-2 text-[12.5px] text-saffron-2">Includes estimated districts — records without recorded geography are allocated to a scenario district and are not verified respondent locations.</p>}
+              {view === "scenario" && <p className="mt-3 rounded-xl border border-teal/30 bg-teal/10 px-3 py-2 text-[12.5px] text-teal-deep">Includes estimated districts — records without recorded geography are allocated to a scenario district and are not verified respondent locations.</p>}
 
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {card("Total", c.total)}{card("Valid party", c.valid)}{card("Blank", c.blank)}{card("Invalid", c.invalid)}{card("Recorded", c.recorded)}{card("Estimated", c.estimated)}
@@ -482,7 +480,7 @@ export default function AdminPortal() {
                   {shares.shares.map((s) => (
                     <li key={s.party} className="flex items-center gap-3 text-[13px]">
                       <span className="w-52 shrink-0 truncate text-foreground/80">{s.party}</span>
-                      <span className="h-2 flex-1 overflow-hidden rounded-full bg-elevated"><span className="block h-full rounded-full bg-saffron" style={{ width: `${s.pct}%` }} /></span>
+                      <span className="h-2 flex-1 overflow-hidden rounded-full bg-elevated"><span className="block h-full rounded-full bg-teal" style={{ width: `${s.pct}%` }} /></span>
                       <span className="w-28 text-right tabular-nums text-muted-foreground">{s.count.toLocaleString("en-IN")} · {s.pct}%</span>
                     </li>
                   ))}
@@ -492,7 +490,7 @@ export default function AdminPortal() {
               <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_320px]">
                 <div className="rounded-2xl border border-border bg-card/60 p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <input placeholder="Search Response ID…" value={filters.q} onChange={(e) => { setSkip(0); setFilters((f) => ({ ...f, q: e.target.value })); }} className="rounded-xl border border-border bg-elevated/60 px-3 py-2 text-[13px] outline-none focus:border-saffron/60" />
+                    <input placeholder="Search Response ID…" value={filters.q} onChange={(e) => { setSkip(0); setFilters((f) => ({ ...f, q: e.target.value })); }} className="rounded-xl border border-border bg-elevated/60 px-3 py-2 text-[13px] outline-none focus:border-teal/60" />
                     <select value={filters.status} onChange={(e) => { setSkip(0); setFilters((f) => ({ ...f, status: e.target.value })); }} className="rounded-xl border border-border bg-elevated/60 px-2.5 py-2 text-[13px]"><option value="">All statuses</option><option value="valid">Valid</option><option value="blank">Blank</option><option value="invalid">Invalid</option></select>
                     <select value={filters.geographyBasis} onChange={(e) => { setSkip(0); setFilters((f) => ({ ...f, geographyBasis: e.target.value })); }} className="rounded-xl border border-border bg-elevated/60 px-2.5 py-2 text-[13px]"><option value="">All geography</option><option value="Recorded or source-mapped district">Recorded</option><option value="Estimated allocation">Estimated</option></select>
                     <span className="ml-auto text-[12px] text-muted-foreground">{total.toLocaleString("en-IN")} records</span>
@@ -532,21 +530,21 @@ export default function AdminPortal() {
                   <input type="file" accept=".xlsx" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); setParsed(null); setMessage(""); }} className="mt-3 block w-full text-[12.5px] file:mr-3 file:rounded-lg file:border-0 file:bg-elevated file:px-3 file:py-1.5 file:text-foreground" />
                   <div className="mt-3 flex gap-2 text-[12.5px]">
                     {(["append", "replace"] as const).map((m) => (
-                      <label key={m} className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5", mode === m ? "border-saffron/60 bg-saffron/10" : "border-border")}>
+                      <label key={m} className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5", mode === m ? "border-teal/60 bg-teal/10" : "border-border")}>
                         <input type="radio" name="mode" checked={mode === m} onChange={() => setMode(m)} /> {m === "append" ? "Append" : "Replace"}
                       </label>
                     ))}
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button disabled={busy} onClick={parseSelected} className="flex-1 rounded-xl border border-border px-3 py-2 text-[12.5px] font-medium hover:bg-elevated disabled:opacity-60">{busy ? "Working…" : "Validate & preview"}</button>
-                    <button disabled={busy || !preview?.canCommit} onClick={commitImport} className="flex-1 rounded-xl bg-saffron px-3 py-2 text-[12.5px] font-semibold text-[#241203] disabled:opacity-50">Confirm import</button>
+                    <button disabled={busy || !preview?.canCommit} onClick={commitImport} className="flex-1 rounded-xl bg-teal-deep px-3 py-2 text-[12.5px] font-semibold text-[#ffffff] disabled:opacity-50">Confirm import</button>
                   </div>
                   {message && <p className="mt-3 rounded-lg border border-border bg-elevated/50 px-3 py-2 text-[12px]">{message}</p>}
                   {preview && (
                     <div className="mt-3 space-y-2 text-[12px]">
                       <div className="rounded-lg border border-border p-2.5"><p className="font-semibold">Opinion Poll</p><p className="text-muted-foreground">{preview.opinion.total} rows · {preview.opinion.valid} valid · {preview.opinion.blank} blank · {preview.opinion.invalid} invalid</p></div>
                       <div className="rounded-lg border border-border p-2.5"><p className="font-semibold">Exit Poll</p><p className="text-muted-foreground">{preview.exit.total} rows · {preview.exit.valid} valid · {preview.exit.blank} blank · {preview.exit.invalid} invalid · {preview.exit.recorded} recorded · {preview.exit.estimated} estimated</p></div>
-                      {preview.errors.length > 0 && <p className="text-saffron-2">{preview.errors.length} error(s) — resolve before importing</p>}
+                      {preview.errors.length > 0 && <p className="text-teal-deep">{preview.errors.length} error(s) — resolve before importing</p>}
                     </div>
                   )}
                 </div>
@@ -573,7 +571,7 @@ export default function AdminPortal() {
                         </div>
                       ))}
                     </div>
-                    {coverage.allocation.note && <p className="mt-2 text-[12px] font-semibold text-saffron-2">{coverage.allocation.note}</p>}
+                    {coverage.allocation.note && <p className="mt-2 text-[12px] font-semibold text-teal-deep">{coverage.allocation.note}</p>}
                     {coverage.allocation.zeroDistricts.length > 0 && <p className="mt-1 text-[11.5px] text-muted-foreground">Empty districts: {coverage.allocation.zeroDistricts.join(", ")}</p>}
                     {coverage.allocation.byDistrict.length > 0 && (
                       <ul className="mt-2 space-y-0.5 text-[12px] text-muted-foreground">
@@ -583,7 +581,7 @@ export default function AdminPortal() {
                     <p className="mt-2 text-[10.5px] text-muted-foreground">Method {coverage.allocation.method} · {coverage.allocation.version} · source {coverage.allocation.source}</p>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <button onClick={loadCoverage} className="rounded-xl border border-border px-3 py-2 text-[12.5px] hover:bg-elevated">Refresh preview</button>
-                      <button disabled={coverageBusy || coverage.allocation.zeroDistricts.length === 0} onClick={runCoverage} className="rounded-xl bg-saffron px-3 py-2 text-[12.5px] font-semibold text-[#241203] disabled:opacity-50">{coverageBusy ? "Working…" : "Preview & allocate"}</button>
+                      <button disabled={coverageBusy || coverage.allocation.zeroDistricts.length === 0} onClick={runCoverage} className="rounded-xl bg-teal-deep px-3 py-2 text-[12.5px] font-semibold text-[#ffffff] disabled:opacity-50">{coverageBusy ? "Working…" : "Preview & allocate"}</button>
                     </div>
                   </>
                 ) : (
@@ -609,7 +607,7 @@ export default function AdminPortal() {
                     <p className="mt-1 text-[11.5px] text-muted-foreground">Constituency PIN mapping: {pinPreview.summary.pinMapping.constituencies} entries · {pinPreview.summary.pinMapping.version}{pinPreview.summary.pinMapping.constituencies === 0 ? " — none bundled, district-candidate fallback used" : ""}</p>
                     <p className="mt-1 text-[11.5px] text-muted-foreground">Binding: {pinPreview.appliedImportId && pinPreview.appliedImportId === pinPreview.importId ? "✓ committed scenario is bound to the active published import" : pinPreview.appliedImportId ? "⚠ last commit is bound to a different import — regenerate" : "not committed yet"}</p>
                     {pinPreview.datasetChanged && (
-                      <p className="mt-2 rounded-lg border border-saffron/40 bg-saffron/10 px-3 py-2 text-[12px] text-saffron-2">The active dataset changed since the last allocation — regenerate the preview before committing.</p>
+                      <p className="mt-2 rounded-lg border border-teal/40 bg-teal/10 px-3 py-2 text-[12px] text-teal-deep">The active dataset changed since the last allocation — regenerate the preview before committing.</p>
                     )}
 
                     <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
@@ -682,7 +680,7 @@ export default function AdminPortal() {
                     )}
 
                     {(pinPreview.summary.unresolvedGeography.noDistrict > 0 || pinPreview.summary.districtsWithoutCandidates.length > 0 || pinPreview.summary.ambiguousPins.length > 0) && (
-                      <div className="mt-2 space-y-1 text-[11.5px] text-saffron-2">
+                      <div className="mt-2 space-y-1 text-[11.5px] text-teal-deep">
                         {pinPreview.summary.unresolvedGeography.noDistrict > 0 && <p>Unresolved geography (no district and no zone): {pinPreview.summary.unresolvedGeography.noDistrict.toLocaleString("en-IN")} responses</p>}
                         {pinPreview.summary.districtsWithoutCandidates.length > 0 && <p>Unresolved districts (no reference candidates): {pinPreview.summary.districtsWithoutCandidates.join(", ")}</p>}
                         {pinPreview.summary.ambiguousPins.length > 0 && <p>Ambiguous PIN↔district mappings excluded from candidates: {pinPreview.summary.ambiguousPins.join(", ")}</p>}
@@ -695,7 +693,7 @@ export default function AdminPortal() {
                     </label>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <button onClick={loadPinScenario} className="rounded-xl border border-border px-3 py-2 text-[12.5px] hover:bg-elevated">Refresh preview</button>
-                      <button disabled={pinBusy || !pinConfirm} onClick={applyPinScenario} className="rounded-xl bg-saffron px-3 py-2 text-[12.5px] font-semibold text-[#241203] disabled:opacity-50">{pinBusy ? "Generating…" : "Generate PIN breakdown"}</button>
+                      <button disabled={pinBusy || !pinConfirm} onClick={applyPinScenario} className="rounded-xl bg-teal-deep px-3 py-2 text-[12.5px] font-semibold text-[#ffffff] disabled:opacity-50">{pinBusy ? "Generating…" : "Generate PIN breakdown"}</button>
                       {pinScenario?.appliedAt && <span className="text-[11.5px] text-muted-foreground">Last applied {new Date(pinScenario.appliedAt).toLocaleString()}{pinScenario.allocationVersion ? ` · ${pinScenario.allocationVersion}` : ""}</span>}
                     </div>
                   </>
@@ -714,7 +712,7 @@ export default function AdminPortal() {
                 Telangana scenario imports are tracked in their own namespace. Their history, active-source status, preview and
                 export controls live in the <b className="text-foreground/85">Poll Data</b> section for this case study.
               </p>
-              <button onClick={() => setSection("poll")} className="mt-4 rounded-lg bg-saffron px-3 py-1.5 text-[12.5px] font-semibold text-[#241203]">
+              <button onClick={() => setSection("poll")} className="mt-4 rounded-lg bg-teal-deep px-3 py-1.5 text-[12.5px] font-semibold text-[#ffffff]">
                 Open Telangana import history
               </button>
             </div>
@@ -725,7 +723,7 @@ export default function AdminPortal() {
               <h1 className="font-display text-2xl font-semibold">Source History · Tamil Nadu</h1>
               <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">The active build uses <b className="text-foreground/85">tn-2026-saket-v3</b>, generated from <span className="font-mono">SAKET_TN_District_Estimate_calibrated_v3.xlsx</span>. The previous workbook and geographic-allocation snapshot are retained privately under the archive path and are not queried.</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <a href="/api/admin/tamil-nadu/export?format=xlsx" className="rounded-lg bg-saffron px-3 py-1.5 text-[12.5px] font-semibold text-[#241203]">Export source aggregates</a>
+                <a href="/api/admin/tamil-nadu/export?format=xlsx" className="rounded-lg bg-teal-deep px-3 py-1.5 text-[12.5px] font-semibold text-[#ffffff]">Export source aggregates</a>
                 <Link href="/case-studies/tamil-nadu" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">View public page</Link>
               </div>
               <div className="mt-5 rounded-2xl border border-border bg-card/60 p-4 text-[12px] text-muted-foreground">
@@ -745,7 +743,7 @@ export default function AdminPortal() {
                     <li key={h.importId} className="rounded-xl border border-border p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-medium">{h.filename} · {h.pollType}</span>
-                        <span className={h.outcome === "success" ? "text-[#2fbf4a]" : "text-saffron-2"}>{h.outcome} · {h.mode}</span>
+                        <span className={h.outcome === "success" ? "text-[#1d9e75]" : "text-teal-deep"}>{h.outcome} · {h.mode}</span>
                       </div>
                       <p className="mt-1 text-muted-foreground">{new Date(h.at).toLocaleString()} · {h.uploader} · +{h.inserted}{h.skipped ? ` · ${h.skipped} skipped` : ""}{h.error ? ` · ${h.error}` : ""}</p>
                     </li>
@@ -760,7 +758,7 @@ export default function AdminPortal() {
               <h1 className="font-display text-2xl font-semibold">Website Content</h1>
               <p className="mt-1 text-[13px] text-muted-foreground">Edit the public About page. Case-study titles and publication are managed in Case Studies.</p>
               <div className="mt-5"><AboutEditor /></div>
-              <p className="mt-5 max-w-2xl rounded-xl border border-saffron/30 bg-saffron/10 px-3 py-2 text-[12px] text-saffron-2">
+              <p className="mt-5 max-w-2xl rounded-xl border border-teal/30 bg-teal/10 px-3 py-2 text-[12px] text-teal-deep">
                 ⚠ The contact email and phone on the site are still placeholders (configured in <code>lib/cases.ts</code>). Supply verified values and they’ll be applied.
               </p>
             </div>

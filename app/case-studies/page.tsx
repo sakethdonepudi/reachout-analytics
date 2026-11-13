@@ -5,7 +5,7 @@ import Navbar from "@/components/site/navbar";
 import { CASES, caseUrl } from "@/lib/cases";
 import { PartyMark } from "@/components/site/party-mark";
 import { requirePageSession } from "@/lib/require-session";
-import { scopedCases } from "@/lib/session-scope";
+import { visibleCases } from "@/lib/session-scope";
 
 export const metadata: Metadata = {
   title: "Case Studies — ReachOut Analytics",
@@ -16,14 +16,14 @@ export const dynamic = "force-dynamic";
 
 export default async function CaseStudiesIndex() {
   const session = await requirePageSession("/case-studies");
-  const visible = scopedCases(session);
+  const visible = await visibleCases(session);
 
   return (
     <>
       <Navbar />
       <main className="min-h-screen bg-background pt-32 text-foreground">
         <div className="mx-auto max-w-6xl px-6 pb-24 sm:px-10">
-          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-saffron-2">Protected workspace</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-teal-deep">Protected workspace</p>
           <h1 className="mt-3 font-display text-[clamp(34px,5vw,64px)] font-semibold tracking-[-0.03em]">Case Studies</h1>
           <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
             Select a state to open its protected election intelligence dashboard.
@@ -34,7 +34,7 @@ export default async function CaseStudiesIndex() {
               return (
                 <Link key={c.slug} href={caseUrl(c.slug)} className="glass group flex flex-col rounded-3xl p-5 transition-transform duration-300 hover:-translate-y-1">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="rounded-full border border-saffron/40 bg-saffron/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-saffron-2">{c.badge}</span>
+                    <span className="rounded-full border border-teal/40 bg-teal/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-deep">{c.badge}</span>
                     <span className="flex items-center gap-2"><PartyMark party={c.party} size="sm" /><span className="text-[11px] font-bold text-muted-foreground">{c.party}</span></span>
                   </div>
                   <h2 className="mt-4 font-display text-xl font-semibold">{c.title}</h2>
