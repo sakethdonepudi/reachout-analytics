@@ -14,12 +14,13 @@ export default function Experience() {
   const [mount, setMount] = useState(false);
 
   useEffect(() => {
+    const mount = () => setMount(true);
     const onScroll = () => {
-      if (window.scrollY > window.innerHeight * 0.15) setMount(true);
+      if (window.scrollY > window.innerHeight * 0.15) mount();
     };
     onScroll();
     addEventListener("scroll", onScroll, { passive: true });
-    return () => removeEventListener("scroll", onScroll);
+    return () => { removeEventListener("scroll", onScroll); };
   }, []);
 
   return mount ? <IndiaMap /> : null;

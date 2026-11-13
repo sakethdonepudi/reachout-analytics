@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Mail, Phone, MapPin, ArrowUpRight, CheckCircle2 } from "lucide-react";
 import ShimmerButton from "@/components/ui/shimmer-button";
-import Globe from "@/components/site/globe";
+import dynamic from "next/dynamic";
 import { Logo } from "@/components/site/brand";
 import CompanyExperience from "@/components/site/company-marquee";
 import { CONTACT } from "@/lib/cases";
 import { rafLoop } from "@/lib/raf-loop";
+
+const Globe = dynamic(() => import("@/components/site/globe"), { ssr: false });
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -26,8 +28,21 @@ export default function ContactSection() {
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [globeReady, setGlobeReady] = useState(false);
+  const [active, setActive] = useState(false);
 
   useEffect(() => {
+    const el = section.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setActive(true); setGlobeReady(true); }
+    }, { rootMargin: "400px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!active) return;
     const tick = () => {
       const s = section.current, sl = slot.current, fl = flyer.current;
       if (s && sl && fl) {
@@ -51,31 +66,31 @@ export default function ContactSection() {
       }
     };
     return rafLoop(tick);
-  }, []);
+  }, [active]);
 
   const field =
-    "w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-base text-white placeholder:text-white/30 outline-none transition focus:border-saffron/60 focus:bg-white/[0.07] focus:ring-4 focus:ring-saffron/10";
-  const label = "mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45";
+    "w-full rounded-md border border-[var(--r-line)] bg-white px-4 py-2.5 text-base text-[var(--r-ink)] placeholder:text-[var(--r-muted)] outline-none focus:border-[var(--r-teal)] focus:ring-2 focus:ring-[var(--r-hl)]";
+  const label = "mb-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--r-muted)]";
 
   return (
     <section
       ref={section}
       id="contact"
-      className="pointer-events-auto relative z-[2] min-h-[100svh] overflow-hidden bg-[linear-gradient(180deg,rgba(5,11,31,0)_0%,rgba(5,11,31,.5)_22%,#050b1f_55%)] px-6 pb-2 pt-36 text-white scroll-mt-24 sm:px-10 lg:pb-10"
+      className="pointer-events-auto relative z-[2] min-h-[100svh] overflow-hidden bg-[var(--r-bg)] px-6 pb-2 pt-36 text-[var(--r-ink)] scroll-mt-24 sm:px-10 lg:pb-10"
     >
       {/* flying globe (fixed, follows the slot) */}
       <div ref={flyer} className="pointer-events-none fixed left-0 top-0 z-[1] invisible will-change-transform" aria-hidden>
-        <div className="absolute inset-[-10%] rounded-full bg-[radial-gradient(circle,rgba(40,90,200,.2),transparent_60%)] blur-2xl" />
-        <Globe className="relative size-full" speed={12} direction="clockwise" spinRef={spin} />
+        <div className="absolute inset-[-10%] rounded-full bg-[radial-gradient(circle,rgba(29,158,117,.12),transparent_60%)] blur-2xl" />
+        {globeReady ? <Globe className="relative size-full" speed={12} direction="clockwise" spinRef={spin} /> : <div className="size-full rounded-full border border-[var(--r-line)] bg-[var(--r-hl)]" aria-hidden />}
       </div>
 
       <div className="relative z-[2] mx-auto max-w-6xl">
         <div className="text-center">
-          <span className="inline-flex rounded-full border border-saffron/40 bg-saffron/10 px-4 py-1.5 text-sm font-medium text-saffron-2">Contact</span>
+          <span className="inline-flex rounded-full border border-teal/40 bg-[var(--r-hl)] px-4 py-1.5 text-sm font-medium text-[var(--r-teal-d)]">Contact</span>
           <h2 className="mt-6 font-display text-[clamp(44px,6vw,80px)] font-semibold tracking-[-0.035em]">
-            Let&apos;s win your <span className="text-gradient-saffron font-serif font-normal italic">next election</span>
+            Let&apos;s win your <span className="text-[var(--r-navy)] font-serif font-normal italic">next election</span>
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-[17px] leading-relaxed text-white/60">
+          <p className="mx-auto mt-4 max-w-xl text-[17px] leading-relaxed text-[var(--r-muted)]">
             Tell us about your campaign. Our strategy team will get back to you within one business day.
           </p>
         </div>
@@ -84,24 +99,24 @@ export default function ContactSection() {
           {/* left */}
           <div>
             <h3 className="font-display text-2xl font-semibold">Get in touch</h3>
-            <p className="mt-2 max-w-sm text-white/55">Reach out via any channel below — or send a message and we&apos;ll call you back.</p>
+            <p className="mt-2 max-w-sm text-[var(--r-muted)]">Reach out via any channel below — or send a message and we&apos;ll call you back.</p>
             <ul className="mt-8 space-y-4">
               {[
                 { icon: Mail, text: CONTACT.email, href: `mailto:${CONTACT.email}` },
                 { icon: Phone, text: CONTACT.phone, href: `tel:${CONTACT.phone.replace(/\s/g, "")}` },
                 { icon: MapPin, text: CONTACT.address },
               ].map(({ icon: Icon, text, href }) => (
-                <li key={text} className="flex items-start gap-4 text-white/80">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.04]">
-                    <Icon className="size-[18px] text-saffron-2" />
+                <li key={text} className="flex items-start gap-4 text-[var(--r-ink)]">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[var(--r-line)] bg-white">
+                    <Icon className="size-[18px] text-teal-deep" />
                   </span>
-                  {href ? <a href={href} className="pt-2 hover:text-white">{text}</a> : <span className="pt-2 leading-relaxed">{text}</span>}
+                  {href ? <a href={href} className="pt-2 hover:text-[var(--r-ink)]">{text}</a> : <span className="pt-2 leading-relaxed">{text}</span>}
                 </li>
               ))}
             </ul>
             <div className="mt-6 flex gap-2">
               {[["LinkedIn", CONTACT.linkedin], ["Instagram", CONTACT.instagram]].map(([name, href]) => (
-                <a key={name} href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70 transition hover:border-white/25 hover:text-white">
+                <a key={name} href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--r-line)] bg-white px-4 py-2 text-sm text-[var(--r-muted)] transition hover:border-[var(--r-teal)] hover:text-[var(--r-ink)]">
                   {name}<ArrowUpRight className="size-3.5" />
                 </a>
               ))}
@@ -111,16 +126,16 @@ export default function ContactSection() {
           </div>
 
           {/* right: form */}
-          <div className="relative rounded-3xl border border-white/10 bg-[#0a1226]/70 p-5 backdrop-blur-2xl sm:p-7">
-            <span className="tricolor-line absolute inset-x-8 top-0 h-px opacity-70" aria-hidden />
+          <div className="relative report-card p-5 sm:p-7">
+            
             <h3 className="font-display text-2xl font-semibold">Send a message</h3>
-            <p className="mt-1.5 text-white/55">Fill out the form and we&apos;ll get back to you promptly.</p>
-            <div className="my-4 border-t border-dashed border-white/10 sm:my-5" />
+            <p className="mt-1.5 text-[var(--r-muted)]">Fill out the form and we&apos;ll get back to you promptly.</p>
+            <div className="my-4 border-t border-dashed border-[var(--r-line)] sm:my-5" />
             {sent ? (
               <div className="flex flex-col items-center py-16 text-center">
-                <CheckCircle2 className="size-12 text-[#2fbf4a]" />
+                <CheckCircle2 className="size-12 text-[#1d9e75]" />
                 <p className="mt-4 font-display text-xl font-semibold">Thank you — message received.</p>
-                <p className="mt-1 text-white/55">We&apos;ll be in touch within one business day.</p>
+                <p className="mt-1 text-[var(--r-muted)]">We&apos;ll be in touch within one business day.</p>
               </div>
             ) : (
               <form
@@ -168,16 +183,16 @@ export default function ContactSection() {
                 </div>
                 <label className="block"><span className={label}>Message</span><textarea name="message" rows={4} className={`${field} resize-none`} placeholder="Tell us about your constituency, timeline and goals" /></label>
                 {error && <p className="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-200">{error}</p>}
-                <ShimmerButton text={sending ? "Sending..." : "Send message"} duration={1.6} className="w-full border-saffron/40 py-3.5 dark:bg-[#0a1a44]/80 backdrop-blur-xl" />
+                <ShimmerButton text={sending ? "Sending..." : "Send message"} duration={1.6} className="w-full border-teal/40 py-3.5  backdrop-blur-xl" />
               </form>
             )}
           </div>
         </div>
 
-        <CompanyExperience tone="dark" className="mt-12 border-white/10" />
+        <CompanyExperience tone="dark" className="mt-12 border-[var(--r-line)]" />
 
-        <footer className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-4 text-sm text-white/40 sm:flex-row">
-          <div className="flex flex-wrap items-center gap-5"><Logo variant="dark" /><Link href="/services" className="hover:text-white">Services</Link><Link href="/services/research-content" className="hover:text-white">Research &amp; Content</Link></div>
+        <footer className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-[var(--r-line)] pt-4 text-sm text-[var(--r-muted)] sm:flex-row">
+          <div className="flex flex-wrap items-center gap-5"><Logo variant="dark" /><Link href="/services" className="hover:text-[var(--r-ink)]">Services</Link><Link href="/services/research-content" className="hover:text-[var(--r-ink)]">Research &amp; Content</Link></div>
           <span>© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</span>
         </footer>
       </div>
