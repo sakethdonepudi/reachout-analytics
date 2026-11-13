@@ -17,6 +17,7 @@ import {
 import TelanganaRail, { type ScopeResult } from "./telangana-rail";
 import CaseStudySplit from "@/components/case-studies/shared/case-study-split";
 import type { MapTheme } from "./telangana-map";
+import SignalLoader from "@/components/ui/signal-loader";
 
 const TelanganaMap = dynamic(() => import("./telangana-map"), {
   ssr: false,
@@ -280,11 +281,7 @@ export default function TelanganaDashboard() {
     );
   }
   if (!data || !historyReady) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-background text-foreground">
-        <p className="text-sm text-muted-foreground">Loading Telangana election intelligence…</p>
-      </main>
-    );
+    return <main className="min-h-screen bg-[var(--r-bg)]"><SignalLoader label="Opening Telangana" /></main>;
   }
 
   const isStatewide = !district && !currentAc;

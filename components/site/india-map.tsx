@@ -466,6 +466,7 @@ export default function IndiaMap() {
       <div
         ref={cardRef}
         data-ui
+        data-opening-label={cardCase ? `Opening ${cardCase.title}` : undefined}
         role="link"
         tabIndex={0}
         onClick={(e) => { if (!(e.target as HTMLElement).closest("[data-close]") && cardCase) router.push(caseUrl(cardCase.slug)); }}

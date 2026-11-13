@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import RouteTransition from "@/components/site/route-transition";
+import NavigationLoader from "@/components/site/navigation-loader";
 import CsrfFetch from "@/components/site/csrf-fetch";
 import { ReauthProvider } from "@/components/auth/reauth-provider";
 import IdleProvider from "@/components/auth/idle-provider";
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <CsrfFetch />
         <ReauthProvider><IdleProvider>{children}</IdleProvider></ReauthProvider>
         <RouteTransition />
+        <NavigationLoader />
       </body>
     </html>
   );

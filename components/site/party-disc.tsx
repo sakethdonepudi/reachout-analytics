@@ -30,6 +30,7 @@ export default function PartyDisc({
   return (
     <button
       type="button"
+      data-opening-label={active && identity.caseSlug ? `Opening ${identity.state}` : undefined}
       onClick={() => (active ? router.push(caseUrl(identity.caseSlug)) : onActivate?.())}
       aria-label={active ? `${label} — view case study` : `Bring ${label} forward`}
       aria-current={active ? "true" : undefined}

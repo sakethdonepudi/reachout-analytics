@@ -13,6 +13,7 @@ import TamilNaduRail, { type TnScopeResult, type TnTab, type TnView } from "./ta
 import CaseStudySplit from "@/components/case-studies/shared/case-study-split";
 import type { TnCaseData } from "@/lib/tamil-nadu/view-data";
 import type { MapTheme } from "./tamil-nadu-map";
+import SignalLoader from "@/components/ui/signal-loader";
 
 const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
   ssr: false,
@@ -179,7 +180,7 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
   if (error && !data) {
     return <main className="grid min-h-screen place-items-center bg-background px-6 text-center"><div><h1 className="font-display text-2xl font-semibold">Tamil Nadu data unavailable</h1><p className="mt-2 text-sm text-muted-foreground">{error}</p></div></main>;
   }
-  if (!data) return <main className="grid min-h-screen place-items-center bg-background"><p className="text-sm text-muted-foreground">Loading Tamil Nadu election intelligence…</p></main>;
+  if (!data) return <main className="min-h-screen bg-[var(--r-bg)]"><SignalLoader label="Opening Tamil Nadu" /></main>;
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">

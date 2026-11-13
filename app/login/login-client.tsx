@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/brand";
 import Turnstile from "@/components/site/turnstile";
+import SignalLoader from "@/components/ui/signal-loader";
 import { cn } from "@/lib/utils";
 
 function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; nonce?: string }) {
@@ -18,6 +19,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [opening, setOpening] = useState<string | null>(null);
   const [shake, setShake] = useState(0);
   const [resetNonce, setResetNonce] = useState(0);
   const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
@@ -27,6 +29,12 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
   const onVerify = useCallback((value: string) => setToken(value), []);
   const next = search.get("next") ?? "";
   const idle = search.get("reason") === "idle";
+
+  function startOpening(redirect: string) {
+    const label = redirect.includes("/dashboard") ? "Opening Dashboard" : redirect.includes("/case-studies") ? "Opening Case Studies" : "Opening";
+    setOpening(label);
+    window.setTimeout(() => window.location.assign(redirect), 60);
+  }
 
   function updateCapsLock(event: React.KeyboardEvent<HTMLInputElement>) {
     setCapsLock(event.getModifierState("CapsLock"));
@@ -43,7 +51,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
         body: JSON.stringify({ username, password, next, turnstileToken: token }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && typeof data.redirect === "string") { window.location.assign(data.redirect); return; }
+      if (res.ok && typeof data.redirect === "string") { startOpening(data.redirect); return; }
       if (res.ok && data.step === "totp") { setStep("totp"); setToken(""); setResetNonce((value) => value + 1); return; }
       setError(res.status === 401 ? "Incorrect username or password" : typeof data.error === "string" ? data.error : "Sign-in failed. Please try again.");
       setShake((value) => value + 1); setPassword("");
@@ -76,7 +84,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
         body: JSON.stringify({ code, recoveryCode: recovery ? recoveryCode : undefined, turnstileToken: token }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && typeof data.redirect === "string") { window.location.assign(data.redirect); return; }
+      if (res.ok && typeof data.redirect === "string") { startOpening(data.redirect); return; }
       setError(res.status === 401 ? "That code is not valid" : typeof data.error === "string" ? data.error : "Verification failed.");
       setShake((value) => value + 1); setDigits(Array(6).fill(""));
       if (turnstileEnabled) setResetNonce((value) => value + 1);
@@ -85,7 +93,9 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
   }
 
   return (
-    <main className="grid min-h-[100svh] place-items-center bg-[var(--r-bg)] px-5 py-14 text-[var(--r-ink)]">
+    <>
+      <SignalLoader active={Boolean(opening)} label={opening ?? "Opening"} />
+      <main className="grid min-h-[100svh] place-items-center bg-[var(--r-bg)] px-5 py-14 text-[var(--r-ink)]">
       <div className="relative w-full max-w-sm">
         <div className="mb-7 flex justify-center"><Logo /></div>
         <div className="report-card p-7">
@@ -161,7 +171,8 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
           </div>
         </div>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 
