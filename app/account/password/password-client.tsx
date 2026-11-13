@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useState, type FormEvent } from "react";
-import { Loader2 } from "lucide-react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
+import { Check, Loader2 } from "lucide-react";
 import Turnstile from "@/components/site/turnstile";
 import { passwordStrength } from "@/lib/password-policy";
 import { useNavigate } from "@/lib/use-navigate";
+import { useDelayedFlag } from "@/lib/use-delayed-flag";
+import { shakeElement } from "@/lib/shake";
 
 const STRENGTH = ["", "Weak", "Fair", "Good", "Strong"];
 
@@ -14,14 +16,17 @@ export default function PasswordClient({ first, turnstileEnabled, nonce }: { fir
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [resetNonce, setResetNonce] = useState(0);
   const onVerify = useCallback((value: string) => setToken(value), []);
   const strength = passwordStrength(form.password);
+  const formRef = useRef<HTMLFormElement>(null);
+  const showSpinner = useDelayedFlag(busy);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError("");
-    if (form.password !== form.confirm) { setError("The passwords do not match."); return; }
+    if (form.password !== form.confirm) { setError("The passwords do not match."); shakeElement(formRef.current); return; }
     setBusy(true);
     try {
       const response = await fetch("/api/account/password", {
@@ -30,11 +35,12 @@ export default function PasswordClient({ first, turnstileEnabled, nonce }: { fir
         body: JSON.stringify({ ...form, turnstileToken: token }),
       });
       const data = await response.json().catch(() => ({}));
-      if (response.ok && data.redirect) { navigate.replace(data.redirect); return; }
-      if (response.ok) { navigate.replace("/dashboard"); return; }
+      if (response.ok && data.redirect) { setSuccess(true); window.setTimeout(() => navigate.replace(data.redirect), 280); return; }
+      if (response.ok) { setSuccess(true); window.setTimeout(() => navigate.replace("/dashboard"), 280); return; }
       setError(typeof data.error === "string" ? data.error : "Could not change the password.");
+      shakeElement(formRef.current);
       if (turnstileEnabled) setResetNonce((value) => value + 1);
-    } catch { setError("Could not change the password."); }
+    } catch { setError("Could not change the password."); shakeElement(formRef.current); }
     finally { setBusy(false); }
   }
 
@@ -56,8 +62,8 @@ export default function PasswordClient({ first, turnstileEnabled, nonce }: { fir
           </div>
           <Field label="Confirm new password" type="password" value={form.confirm} onChange={(value) => setForm((current) => ({ ...current, confirm: value }))} autoComplete="new-password" />
           {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="password" /></div>}
-          <button type="submit" disabled={busy || (turnstileEnabled && !token)} className="report-btn w-full disabled:opacity-60">
-            {busy && <Loader2 className="size-4 animate-spin" />} Save password
+          <button type="submit" disabled={busy || success || (turnstileEnabled && !token)} className="report-btn w-full disabled:opacity-60">
+            {success ? <Check className="success-pop size-4" /> : showSpinner ? <Loader2 className="size-4 animate-spin" /> : null} Save password
           </button>
         </form>
       </div>

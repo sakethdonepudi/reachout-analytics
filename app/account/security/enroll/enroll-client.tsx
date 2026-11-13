@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/brand";
 import { useNavigate } from "@/lib/use-navigate";
+import { useDelayedFlag } from "@/lib/use-delayed-flag";
+import { shakeElement } from "@/lib/shake";
 
 type Enroll = { secret: string; qr: string; account: string };
 
@@ -16,6 +18,8 @@ export default function EnrollClient() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [redirect, setRedirect] = useState("");
+  const codeRef = useRef<HTMLDivElement>(null);
+  const showSpinner = useDelayedFlag(busy);
 
   useEffect(() => {
     void fetch("/api/account/totp", { cache: "no-store" })
@@ -39,7 +43,7 @@ export default function EnrollClient() {
       if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : "That code is not valid.");
       setCodes(data.recoveryCodes ?? []);
       setRedirect(data.redirect ?? "");
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "That code is not valid."); }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "That code is not valid."); shakeElement(codeRef.current); }
     finally { setBusy(false); }
   }
 
@@ -62,14 +66,14 @@ export default function EnrollClient() {
                   <p className="mt-1 break-all rounded-lg border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-2 py-1.5 font-mono text-[12px]">{enroll.secret}</p>
                   <div className="mt-4">
                     <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">6-digit code</span>
-                    <div className="mt-1 flex gap-1.5" onPaste={(event) => { event.preventDefault(); const clean = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6).split(""); setDigits(Array.from({ length: 6 }, (_v, i) => clean[i] ?? "")); }}>
+                    <div ref={codeRef} className="mt-1 flex gap-1.5" onPaste={(event) => { event.preventDefault(); const clean = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6).split(""); setDigits(Array.from({ length: 6 }, (_v, i) => clean[i] ?? "")); }}>
                       {digits.map((digit, index) => (
                         <input key={index} value={digit} onChange={(event) => { const char = event.target.value.replace(/\D/g, "").slice(-1); setDigits((current) => current.map((item, i) => i === index ? char : item)); if (char) (event.target.nextElementSibling as HTMLInputElement | null)?.focus(); }} inputMode="numeric" autoComplete={index === 0 ? "one-time-code" : "off"} aria-label={`Digit ${index + 1}`} className="min-h-11 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] text-center font-mono text-[17px] outline-none focus:border-[var(--accent-brass)]" />
                       ))}
                     </div>
                   </div>
                   <button type="button" onClick={() => void confirm()} disabled={busy || digits.join("").length !== 6} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
-                    {busy && <Loader2 className="size-4 animate-spin" />} Confirm
+                    {showSpinner && <Loader2 className="size-4 animate-spin" />} Confirm
                   </button>
                 </div>
               </div>

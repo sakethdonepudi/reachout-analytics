@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useState, type FormEvent } from "react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/brand";
 import Turnstile from "@/components/site/turnstile";
 import { passwordStrength } from "@/lib/password-policy";
 import { useNavigate } from "@/lib/use-navigate";
+import { useDelayedFlag } from "@/lib/use-delayed-flag";
+import { shakeElement } from "@/lib/shake";
 
 const STRENGTH = ["", "Weak", "Fair", "Good", "Strong"];
 
@@ -16,8 +18,11 @@ export default function SetupClient({ turnstileEnabled, nonce }: { turnstileEnab
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [resetNonce, setResetNonce] = useState(0);
   const strength = passwordStrength(form.password);
+  const formRef = useRef<HTMLFormElement>(null);
+  const showSpinner = useDelayedFlag(busy);
   const onVerify = useCallback((value: string) => setToken(value), []);
 
   function set(key: keyof typeof form, value: string) {
@@ -27,19 +32,20 @@ export default function SetupClient({ turnstileEnabled, nonce }: { turnstileEnab
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError("");
-    if (form.password !== form.confirm) { setError("The passwords do not match."); return; }
+    if (form.password !== form.confirm) { setError("The passwords do not match."); shakeElement(formRef.current); return; }
     setBusy(true);
     try {
       const response = await fetch("/api/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, turnstileToken: token }),
+        body: JSON.stringify({ ...form, username: form.username.trim().toLowerCase(), turnstileToken: token }),
       });
       const data = await response.json().catch(() => ({}));
-      if (response.ok && data.redirect) { navigate.replace(data.redirect); return; }
+      if (response.ok && data.redirect) { setSuccess(true); window.setTimeout(() => navigate.replace(data.redirect), 280); return; }
       setError(typeof data.error === "string" ? data.error : "Setup failed.");
+      shakeElement(formRef.current);
       if (turnstileEnabled) setResetNonce((value) => value + 1);
-    } catch { setError("Setup failed."); }
+    } catch { setError("Setup failed."); shakeElement(formRef.current); }
     finally { setBusy(false); }
   }
 
@@ -53,7 +59,7 @@ export default function SetupClient({ turnstileEnabled, nonce }: { turnstileEnab
           <h1 className="type-h1 mt-2">Create the first owner</h1>
           <p className="type-small mt-2 text-[var(--text-muted)]">This page stops working after the first owner exists.</p>
           {error && <p role="alert" className="mt-4 rounded-[var(--radius-control)] border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-2 text-[12.5px] text-[var(--danger)]">{error}</p>}
-          <form onSubmit={submit} className="mt-5 space-y-3">
+          <form ref={formRef} onSubmit={submit} className="mt-5 space-y-3">
             <Field label="Setup token" type="password" value={form.setupToken} onChange={(value) => set("setupToken", value)} autoComplete="off" />
             <Field label="Username" value={form.username} onChange={(value) => set("username", value)} autoComplete="username" hint="3-32 characters: a-z, 0-9, dot, underscore, hyphen" />
             <Field label="Display name" value={form.displayName} onChange={(value) => set("displayName", value)} autoComplete="name" />
@@ -66,8 +72,8 @@ export default function SetupClient({ turnstileEnabled, nonce }: { turnstileEnab
             </div>
             <Field label="Confirm password" type="password" value={form.confirm} onChange={(value) => set("confirm", value)} autoComplete="new-password" />
             {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="setup" /></div>}
-            <button type="submit" disabled={busy || (turnstileEnabled && !token)} className="report-btn w-full disabled:opacity-60">
-              {busy && <Loader2 className="size-4 animate-spin" />} Create owner
+            <button type="submit" disabled={busy || success || (turnstileEnabled && !token)} className="report-btn w-full disabled:opacity-60">
+              {success ? <Check className="success-pop size-4" /> : showSpinner ? <Loader2 className="size-4 animate-spin" /> : null} Create owner
             </button>
           </form>
           <div className="mt-5 text-center text-[12px] text-[var(--text-muted)]"><Link href="/" className="hover:text-[var(--text-primary)]">Back to site</Link></div>

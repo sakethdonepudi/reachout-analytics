@@ -1,13 +1,15 @@
 "use client";
 
-import { Suspense, useCallback, useRef, useState, type FormEvent } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Check, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/brand";
 import Turnstile from "@/components/site/turnstile";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@/lib/use-navigate";
+import { useDelayedFlag } from "@/lib/use-delayed-flag";
+import { shakeElement } from "@/lib/shake";
 
 function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; nonce?: string }) {
   const search = useSearchParams();
@@ -21,17 +23,22 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [shake, setShake] = useState(0);
+  const [success, setSuccess] = useState(false);
   const [resetNonce, setResetNonce] = useState(0);
   const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
   const [recovery, setRecovery] = useState(false);
   const [recoveryCode, setRecoveryCode] = useState("");
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
+  const formRef = useRef<HTMLFormElement>(null);
+  const submittedCode = useRef("");
+  const showSpinner = useDelayedFlag(loading);
   const onVerify = useCallback((value: string) => setToken(value), []);
   const next = search.get("next") ?? "";
   const idle = search.get("reason") === "idle";
 
   function startOpening(redirect: string) {
-    navigate.replace(redirect);
+    setSuccess(true);
+    window.setTimeout(() => navigate.replace(redirect), 280);
   }
 
   function updateCapsLock(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -46,15 +53,16 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, next, turnstileToken: token }),
+        body: JSON.stringify({ username: username.trim().toLowerCase(), password, next, turnstileToken: token }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && typeof data.redirect === "string") { startOpening(data.redirect); return; }
       if (res.ok && data.step === "totp") { setStep("totp"); setToken(""); setResetNonce((value) => value + 1); return; }
       setError(res.status === 401 ? "Incorrect username or password" : typeof data.error === "string" ? data.error : "Sign-in failed. Please try again.");
+      shakeElement(formRef.current);
       setShake((value) => value + 1); setPassword("");
       if (turnstileEnabled) setResetNonce((value) => value + 1);
-    } catch { setError("Sign-in failed. Please try again."); setShake((value) => value + 1); }
+    } catch { setError("Sign-in failed. Please try again."); shakeElement(formRef.current); setShake((value) => value + 1); }
     finally { setLoading(false); }
   }
 
@@ -70,8 +78,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
     inputs.current[Math.min(clean.length, 5)]?.focus();
   }
 
-  async function verifyTotp(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submitCode() {
     if (turnstileEnabled && !token) { setError("Complete the CAPTCHA to continue."); return; }
     setLoading(true); setError("");
     try {
@@ -84,11 +91,21 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
       const data = await res.json().catch(() => ({}));
       if (res.ok && typeof data.redirect === "string") { startOpening(data.redirect); return; }
       setError(res.status === 401 ? "That code is not valid" : typeof data.error === "string" ? data.error : "Verification failed.");
-      setShake((value) => value + 1); setDigits(Array(6).fill(""));
+      submittedCode.current = "";
+      shakeElement(formRef.current); setShake((value) => value + 1); setDigits(Array(6).fill(""));
       if (turnstileEnabled) setResetNonce((value) => value + 1);
-    } catch { setError("Verification failed."); setShake((value) => value + 1); }
+    } catch { submittedCode.current = ""; setError("Verification failed."); shakeElement(formRef.current); setShake((value) => value + 1); }
     finally { setLoading(false); }
   }
+
+  useEffect(() => {
+    const code = digits.join("");
+    if (step !== "totp" || recovery || code.length !== 6 || loading) return;
+    if (submittedCode.current === code) return;
+    submittedCode.current = code;
+    void submitCode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [digits, step, recovery, loading]);
 
   return (
     <>
@@ -113,7 +130,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
           )}
 
           {step === "password" ? (
-            <form onSubmit={signIn} className="mt-5 space-y-3">
+            <form ref={formRef} onSubmit={signIn} className="mt-5 space-y-3">
               <label className="block">
                 <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Username</span>
                 <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoFocus required className="mt-1 min-h-11 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-3.5 text-[14px] outline-none focus:border-[var(--accent-brass)] focus:ring-2 focus:ring-[var(--accent-brass)]/25" />
@@ -129,12 +146,12 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
               </label>
               {capsLock && <p className="text-[11.5px] text-[var(--warning)]">Caps Lock is on.</p>}
               {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="login" /></div>}
-              <button type="submit" disabled={loading || (turnstileEnabled && !token)} className="report-btn w-full disabled:opacity-60">
-                {loading && <Loader2 className="size-4 animate-spin" />} Continue
+              <button type="submit" disabled={loading || success || (turnstileEnabled && !token)} className="report-btn w-full disabled:opacity-60">
+                {success ? <Check className="success-pop size-4" /> : showSpinner ? <Loader2 className="size-4 animate-spin" /> : null} Continue
               </button>
             </form>
           ) : (
-            <form onSubmit={verifyTotp} className="mt-5 space-y-3">
+            <form ref={formRef} onSubmit={(event) => { event.preventDefault(); submittedCode.current = ""; void submitCode(); }} className="mt-5 space-y-3">
               {!recovery ? (
                 <div>
                   <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">6-digit code</span>
@@ -151,8 +168,8 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
                 </label>
               )}
               {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="totp" /></div>}
-              <button type="submit" disabled={loading || (turnstileEnabled && !token) || (!recovery && digits.join("").length !== 6)} className="report-btn w-full disabled:opacity-60">
-                {loading && <Loader2 className="size-4 animate-spin" />} Verify
+              <button type="submit" disabled={loading || success || (turnstileEnabled && !token) || (!recovery && digits.join("").length !== 6)} className="report-btn w-full disabled:opacity-60">
+                {success ? <Check className="success-pop size-4" /> : showSpinner ? <Loader2 className="size-4 animate-spin" /> : null} Verify
               </button>
               <button type="button" onClick={() => { setRecovery((value) => !value); setError(""); }} className="w-full text-center text-[12px] font-semibold text-[var(--r-teal-d)] underline decoration-dotted underline-offset-4">
                 {recovery ? "Use an authenticator code" : "Use a recovery code"}

@@ -1123,8 +1123,12 @@ section[aria-label="Tamil Nadu vote share"] { background: var(--surface-panel); 
   border-bottom-color: var(--r-teal);
 }
 
+@keyframes success-pop { 0% { transform: scale(1); } 55% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.success-pop { animation: success-pop 320ms cubic-bezier(.34,1.56,.64,1) both; }
+
 .report-btn,
 .report-btn-secondary {
+  transition: transform var(--dur-instant) var(--ease-out), background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
   display: inline-flex;
   min-height: 40px;
   align-items: center;
@@ -1136,6 +1140,8 @@ section[aria-label="Tamil Nadu vote share"] { background: var(--surface-panel); 
   font-weight: 600;
   text-decoration: none;
 }
+.report-btn:active,
+.report-btn-secondary:active { transform: scale(.97); }
 .report-btn {
   background: var(--r-navy);
   border: 1px solid var(--r-navy);
