@@ -18,7 +18,10 @@ export type AdsAccountAggregate = {
 
 export type AdsTopAccount = { id: string; name: string; value: number };
 
+export const SUMMARY_SCHEMA = 2;
+
 export type AdsRegionSummary = {
+  schemaVersion: number;
   versionId: string;
   regionKey: string;
   label: string;
@@ -33,14 +36,6 @@ export type AdsRegionSummary = {
   rates: { ctr: number; engagementRate: number; cpm: number };
   accounts: AdsAccountAggregate[];
   top: { impressions: AdsTopAccount[]; reach: AdsTopAccount[]; engagements: AdsTopAccount[] };
-  findings: {
-    topAccount: string | null;
-    topAccountShare: number;
-    topFiveShare: number;
-    delivering: number;
-    deliveringTopAccount: string | null;
-    deliveringTopCount: number;
-  };
 };
 
 function aggregate(region: AdsRegion): AdsAccountAggregate[] {
@@ -67,22 +62,9 @@ function topTen(accounts: AdsAccountAggregate[], key: "impressions" | "reach" | 
 
 export function buildRegionSummary(region: AdsRegion, versionId: string, takenAt: string): AdsRegionSummary {
   const accounts = aggregate(region);
-  const byImpressions = [...accounts].sort((a, b) => b.impressions - a.impressions);
   const totalImpressions = region.totals.impressions;
-  const top = byImpressions[0];
-  const topFive = byImpressions.slice(0, 5).reduce((sum, account) => sum + account.impressions, 0);
-  const deliveringByAccount: Record<string, number> = {};
-  let delivering = 0;
-  for (const account of region.accounts) {
-    for (const campaign of account.campaigns) {
-      if (campaign.delivery === "Delivering" || campaign.delivery === "Started today") {
-        delivering += 1;
-        deliveringByAccount[account.name] = (deliveringByAccount[account.name] ?? 0) + 1;
-      }
-    }
-  }
-  const deliveringTop = Object.entries(deliveringByAccount).sort((a, b) => b[1] - a[1])[0];
   return {
+    schemaVersion: SUMMARY_SCHEMA,
     versionId,
     regionKey: region.key,
     label: region.label,
@@ -104,14 +86,6 @@ export function buildRegionSummary(region: AdsRegion, versionId: string, takenAt
       impressions: topTen(accounts, "impressions"),
       reach: topTen(accounts, "reach"),
       engagements: topTen(accounts, "engagements"),
-    },
-    findings: {
-      topAccount: top?.name ?? null,
-      topAccountShare: totalImpressions > 0 && top ? (top.impressions / totalImpressions) * 100 : 0,
-      topFiveShare: totalImpressions > 0 ? (topFive / totalImpressions) * 100 : 0,
-      delivering,
-      deliveringTopAccount: deliveringTop?.[0] ?? null,
-      deliveringTopCount: deliveringTop?.[1] ?? 0,
     },
   };
 }

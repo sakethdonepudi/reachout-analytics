@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { AdsSocialCampaign } from "@/lib/ads-desk/client-dto";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { AdsSocialCampaign, AdsSocialView } from "@/lib/ads-desk/client-dto";
 import { Download } from "lucide-react";
-import type { AdsSocialView } from "@/lib/ads-desk/client-dto";
 import { Dialog } from "@/components/ui/dialog";
 import OpenMenu from "@/components/ads-desk/open-menu";
 import { exactNumber, indianUnits, percent, rate } from "@/lib/ads-desk/format";
@@ -11,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 const number = (value: number) => new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(value);
 const money = (value: number) => `₹${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value)}`;
+const REACH_CAVEAT = "Reach is summed per campaign; one person can count more than once.";
 
 type Metric = "impressions" | "reach" | "engagements";
 
@@ -22,15 +22,13 @@ type AccountRow = {
 
 function statusTone(delivery: string): string {
   if (delivery === "Delivering" || delivery === "Started today") return "live";
-  if (delivery === "Completed") return "soon";
-  if (/limit/i.test(delivery)) return "soon";
   return "soon";
 }
 
-function StatCard({ label, value, note, exact }: { label: string; value: number | string; note?: string; exact?: string }) {
+function StatCard({ label, value, note, exact, tooltip }: { label: string; value: number | string; note?: string; exact?: string; tooltip?: string }) {
   const display = typeof value === "number" ? indianUnits(value) : value;
   return (
-    <div className="report-stat" title={exact ?? (typeof value === "number" ? exactNumber(value) : undefined)}>
+    <div className="report-stat" title={tooltip ?? exact ?? (typeof value === "number" ? exactNumber(value) : undefined)}>
       <p className="report-stat-label">{label}</p>
       <p className="report-stat-value">{display}</p>
       {typeof value === "number" && <span className="sr-only">Exact value: {exactNumber(value)}</span>}
@@ -52,6 +50,16 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
   const [remotePage, setRemotePage] = useState(1);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
   const [campaignError, setCampaignError] = useState("");
+  const chartRef = useRef<HTMLDivElement | null>(null);
+  const [chartWidth, setChartWidth] = useState(320);
+
+  useEffect(() => {
+    const node = chartRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver(([entry]) => setChartWidth(Math.max(240, Math.round(entry.contentRect.width))));
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   const region = regions[Math.min(active, regions.length - 1)];
   const rows = useMemo(() => {
@@ -72,7 +80,7 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
     });
   }, [region]);
 
-  if (!regions.length || !region) return <section className="report-card p-5 text-[13px] text-[var(--r-muted)]">Social data not uploaded yet.</section>;
+  if (!regions.length || !region) return <section className="social-panel report-card p-4 text-[13px] text-[var(--r-muted)]">Social data not uploaded yet.</section>;
 
   const owner = region.totals.spend != null;
   const totalImpressions = region.totals.impressions;
@@ -80,13 +88,6 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
   const engagementRate = rate(region.totals.engagements, totalImpressions);
   const cpm = region.totals.spend != null && totalImpressions > 0 ? (region.totals.spend / totalImpressions) * 1000 : 0;
   const totalAccounts = rows.length;
-  const topByImpressions = [...rows].sort((a, b) => b.impressions - a.impressions);
-  const topAccount = topByImpressions[0];
-  const topFiveShare = totalImpressions > 0 ? (topByImpressions.slice(0, 5).reduce((sum, item) => sum + item.impressions, 0) / totalImpressions) * 100 : 0;
-  const topAccountShare = totalImpressions > 0 && topAccount ? (topAccount.impressions / totalImpressions) * 100 : 0;
-  const delivering = rows.flatMap((row) => row.campaigns.filter((campaign) => campaign.delivery === "Delivering" || campaign.delivery === "Started today").map(() => row));
-  const deliveringCounts = delivering.reduce<Record<string, number>>((acc, row) => { acc[row.name] = (acc[row.name] ?? 0) + 1; return acc; }, {});
-  const deliveringTop = Object.entries(deliveringCounts).sort((a, b) => b[1] - a[1])[0];
 
   const filteredRows = expanded && query.trim() ? rows.filter((row) => row.name.toLowerCase().includes(query.trim().toLowerCase())) : rows;
   const visibleRows = [...filteredRows].sort((a, b) => {
@@ -97,6 +98,7 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
   const tableRows = expanded ? visibleRows : visibleRows.slice(0, 10);
   const chartRows = [...rows].sort((a, b) => b[metric] - a[metric]).slice(0, 10);
   const chartMax = Math.max(1, ...chartRows.map((row) => row[metric]));
+  const labelWidth = Math.min(chartWidth * 0.4, Math.max(96, chartWidth * 0.3));
 
   function downloadCsv() {
     if (!owner) return;
@@ -145,13 +147,15 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
     : false;
 
   return (
-    <section className={cn("report-card p-4 sm:p-5", compact && "text-[12px]")} aria-label="Social media" style={{ borderLeft: `3px solid ${region.band}` }}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-[20px] font-semibold text-[var(--r-navy)]">{region.label} · {region.range}</h2>
-          <p className="mt-1 text-[12px] text-[var(--r-muted)]">Meta ads delivery · data as of {region.asOf}</p>
+    <section className={cn("social-panel report-card", compact && "social-compact")} aria-label="Social media" style={{ borderLeft: `3px solid ${region.band}` }}>
+      <div className="social-inner p-4">
+      <div className="social-head">
+        <div className="min-w-0">
+          <h2 className="social-title">{region.label}</h2>
+          <p className="social-sub">{region.range}</p>
+          <p className="social-sub">Meta ads delivery · data as of {region.asOf}</p>
         </div>
-        {owner && <button type="button" onClick={downloadCsv} className="report-btn-secondary"><Download className="size-3.5" /> Download CSV</button>}
+        {owner && <button type="button" onClick={downloadCsv} className="report-btn-secondary social-download"><Download className="size-3.5" /> Download CSV</button>}
       </div>
 
       {regions.length > 1 && (
@@ -164,87 +168,83 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
         </div>
       )}
 
-      <div className={cn("mt-4 grid gap-3", compact ? "grid-cols-2" : "sm:grid-cols-3 lg:grid-cols-5")}>
-        <StatCard label="Reach" value={region.totals.reach} note={`${number(region.totals.campaigns)} campaigns · ${number(region.totals.accounts)} accounts`} />
+      <div className="social-stats mt-4">
+        <StatCard label="Reach" value={region.totals.reach} note={`${number(region.totals.campaigns)} campaigns · ${number(region.totals.accounts)} accounts`} tooltip={REACH_CAVEAT} />
         <StatCard label="Impressions" value={region.totals.impressions} note={`CTR ${percent(ctr)}`} />
         <StatCard label={region.viewsLabel ?? "Views"} value={region.totals.views} note="Video views in the report" />
         <StatCard label="Engagement rate" value={percent(engagementRate)} note={`${indianUnits(region.totals.engagements)} engagements`} exact={percent(engagementRate)} />
         {owner && <StatCard label="Spend" value={region.totals.spend ?? 0} note={`CPM ${money(cpm)}`} />}
       </div>
+      <p className="social-caveat">{REACH_CAVEAT}</p>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
-        <div className="report-note">
-          <p className="font-semibold">Key findings</p>
-          <ul className="mt-1 list-disc space-y-1 pl-4">
-            <li>{topAccount ? `${topAccount.name} leads on impressions with ${percent(topAccountShare)} of the total.` : "No account data is available."}</li>
-            <li>The top five accounts hold {percent(topFiveShare)} of all impressions.</li>
-            <li>{deliveringTop ? `${delivering.length} campaigns are delivering, concentrated in ${deliveringTop[0]} (${deliveringTop[1]}).` : "No campaigns are currently delivering."}</li>
-          </ul>
-        </div>
-        <div className="report-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-[14px] font-semibold text-[var(--r-navy)]">Top accounts</h3>
-            <div className="flex gap-1">
-              {(["impressions", "reach", "engagements"] as Metric[]).map((item) => (
-                <button key={item} type="button" onClick={() => setMetric(item)} aria-pressed={metric === item} className={cn("rounded-md px-2 py-1 text-[11px] font-semibold", metric === item ? "bg-[var(--r-navy)] text-white" : "border border-[var(--r-line)] text-[var(--r-muted)]")}>{item === "engagements" ? "Engagement" : item[0].toUpperCase() + item.slice(1)}</button>
-              ))}
-            </div>
-          </div>
-          <div className="mt-3 space-y-1.5">
-            {chartRows.map((row) => (
-              <div key={row.name} className="grid grid-cols-[minmax(0,1fr)_3.5rem] items-center gap-2">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="w-[42%] truncate text-[11px] text-[var(--r-ink)]" title={row.name}>{row.name}</span>
-                    <span className="h-3 rounded-sm bg-[var(--r-navy)]" style={{ width: `${Math.max(1, (row[metric] / chartMax) * 55)}%` }} title={`${exactNumber(row[metric])} ${metric}`} />
-                  </div>
-                </div>
-                <span className="text-right text-[11px] tabular-nums text-[var(--r-muted)]">{indianUnits(row[metric])}</span>
-              </div>
+      <div className="social-chart report-card mt-4 p-3" ref={chartRef}>
+        <div className="social-chart-head">
+          <h3 className="social-chart-title">Top accounts</h3>
+          <div className="social-toggle" role="group" aria-label="Chart metric">
+            {(["impressions", "reach", "engagements"] as Metric[]).map((item) => (
+              <button key={item} type="button" onClick={() => setMetric(item)} aria-pressed={metric === item} className={cn("social-toggle-button", metric === item && "on")}>{item === "engagements" ? "Engagement" : item[0].toUpperCase() + item.slice(1)}</button>
             ))}
           </div>
-          <p className="mt-2 text-[10.5px] text-[var(--r-muted)]">Top 10 of {number(totalAccounts)} accounts by {metric}.</p>
+        </div>
+        <div className="social-chart-body mt-3">
+          {chartRows.map((row) => (
+            <div key={row.name} className="social-chart-row" style={{ "--social-label": `${labelWidth}px` } as React.CSSProperties}>
+              <span className="social-chart-label" title={row.name}>{row.name}</span>
+              <span className="social-chart-track"><span className="social-chart-bar" style={{ width: `${Math.max(1, (row[metric] / chartMax) * 100)}%` }} title={`${exactNumber(row[metric])} ${metric}`} /></span>
+              <span className="social-chart-value">{indianUnits(row[metric])}</span>
+            </div>
+          ))}
+        </div>
+        <p className="social-chart-caption">Top 10 of {number(totalAccounts)} accounts by {metric}.</p>
+      </div>
+
+      <div className="social-accounts-head">
+        <h3 className="social-accounts-title">Accounts</h3>
+        <div className="social-accounts-actions">
+          {expanded && <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search accounts" aria-label="Search accounts" className="social-search" />}
+          {totalAccounts > 10 && <button type="button" onClick={() => setExpanded((value) => !value)} className="social-showall">{expanded ? "Show top 10" : `Show all ${number(totalAccounts)} accounts`}</button>}
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-[15px] font-semibold text-[var(--r-navy)]">Accounts</h3>
-        <div className="flex flex-wrap items-center gap-2">
-          {expanded && <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search accounts" aria-label="Search accounts" className="min-h-9 rounded-md border border-[var(--r-line)] bg-white px-2 text-[12px]" />}
-          {totalAccounts > 10 && <button type="button" onClick={() => setExpanded((value) => !value)} className="rounded-md border border-[var(--r-line)] px-2 py-1 text-[11.5px] font-semibold text-[var(--r-navy)]">{expanded ? "Show top 10" : `Show all ${number(totalAccounts)} accounts`}</button>}
-        </div>
-      </div>
+      <ul className="social-list">
+        {tableRows.map((row) => (
+          <li key={row.name} className="social-list-row">
+            <button type="button" onClick={() => openAccountDrawer(row)} className="social-list-name" title={row.name}>{row.name}</button>
+            <p className="social-list-metrics">
+              <span>{number(row.campaignCount)} campaigns</span>
+              <span>{indianUnits(row.impressions)} impressions</span>
+              <span>{percent(rate(row.impressions, totalImpressions))} share</span>
+              {owner && <span>{money(row.spend)}</span>}
+            </p>
+          </li>
+        ))}
+      </ul>
 
-      <div className="mt-2 overflow-x-auto rounded-[10px] border border-[var(--r-line)]">
-        <table className="w-full min-w-[720px] text-left text-[12px]">
-          <thead><tr>{["Account", "Campaigns", "Impressions", "Share", "CTR", "Engagement rate"].map((label) => <th key={label} className={cn("px-2 py-2", label !== "Account" && "text-right")}>{label}</th>)}{owner && <><th className="px-2 py-2 text-right">Spend</th><th className="px-2 py-2 text-right">CPM</th><th className="px-2 py-2 text-right">Open</th></>}</tr></thead>
+      <div className="social-table-wrap">
+        <table className="social-table">
+          <thead><tr><th>Account</th><th className="right">Campaigns</th><th className="right">Impressions</th><th className="right">Share</th><th className="right social-col-wide">CTR</th><th className="right social-col-wide">Engagement rate</th>{owner && <><th className="right social-col-wide">Spend</th><th className="right social-col-wide">CPM</th><th className="right social-col-wide">Open</th></>}</tr></thead>
           <tbody>
             {tableRows.map((row) => (
-              <tr key={row.name} className="hover:bg-[var(--r-bg)]">
-                <td className="px-2 py-2"><button type="button" onClick={() => openAccountDrawer(row)} className="text-left font-semibold text-[var(--r-navy)] underline-offset-2 hover:underline">{row.name}</button></td>
-                <td className="px-2 py-2 text-right tabular-nums">{number(row.campaignCount)}</td>
-                <td className="px-2 py-2 text-right tabular-nums" title={exactNumber(row.impressions)}>{indianUnits(row.impressions)}</td>
-                <td className="px-2 py-2 text-right tabular-nums">{percent(rate(row.impressions, totalImpressions))}</td>
-                <td className="px-2 py-2 text-right tabular-nums">{percent(rate(row.clicks, row.impressions))}</td>
-                <td className="px-2 py-2 text-right tabular-nums">{percent(rate(row.engagements, row.impressions))}</td>
-                {owner && <><td className="px-2 py-2 text-right tabular-nums">{money(row.spend)}</td><td className="px-2 py-2 text-right tabular-nums">{row.impressions > 0 ? money(row.spend / row.impressions * 1000) : "-"}</td><td className="px-2 py-2 text-right"><OpenMenu links={[{ href: row.href, label: "Ads Manager" }, { href: row.billingHref, label: "Billing" }, { href: row.allAdsetsHref, label: "All ad sets" }, { href: row.allAdsHref, label: "All ads" }]} /></td></>}
+              <tr key={row.name}>
+                <td><button type="button" onClick={() => openAccountDrawer(row)} className="social-account-link" title={row.name}>{row.name}</button></td>
+                <td className="right tabular-nums">{number(row.campaignCount)}</td>
+                <td className="right tabular-nums" title={exactNumber(row.impressions)}>{indianUnits(row.impressions)}</td>
+                <td className="right tabular-nums">{percent(rate(row.impressions, totalImpressions))}</td>
+                <td className="right tabular-nums social-col-wide">{percent(rate(row.clicks, row.impressions))}</td>
+                <td className="right tabular-nums social-col-wide">{percent(rate(row.engagements, row.impressions))}</td>
+                {owner && <><td className="right tabular-nums social-col-wide" title={money(row.spend)}>{indianUnits(row.spend)}</td><td className="right tabular-nums social-col-wide">{row.impressions > 0 ? money(row.spend / row.impressions * 1000) : "-"}</td><td className="right social-col-wide"><OpenMenu links={[{ href: row.href, label: "Ads Manager" }, { href: row.billingHref, label: "Billing" }, { href: row.allAdsetsHref, label: "All ad sets" }, { href: row.allAdsHref, label: "All ads" }]} /></td></>}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div className="report-note mt-4">
-        <p className="font-semibold">Methodology</p>
-        <p className="mt-1">{region.note}</p>
-        <p className="mt-1">Source: Reachout Ads Desk HTML upload. Data as of {region.asOf}. Reach is added up per campaign, so one person reached by two campaigns counts twice. Treat reach as volume, not unique people.</p>
-      </div>
-
-      <Dialog open={Boolean(openAccount)} onClose={() => setOpenAccount(null)} title={openAccount?.name ?? "Account"} description={openAccount ? `${number(openAccount.campaignCount)} campaigns` : undefined} placement="right" className="max-w-2xl">
+      <Dialog open={Boolean(openAccount)} onClose={() => setOpenAccount(null)} title={openAccount?.name ?? "Account"} description={openAccount ? `${number(openAccount.campaignCount)} campaigns` : undefined} placement="right" className="max-w-none sm:max-w-[480px]">
         {openAccount && (
           <>
+            {owner && <div className="mb-3 flex flex-wrap gap-2 border-b border-[var(--r-line)] pb-3"><OpenMenu links={[{ href: openAccount.href, label: "Ads Manager" }, { href: openAccount.billingHref, label: "Billing" }, { href: openAccount.allAdsetsHref, label: "All ad sets" }, { href: openAccount.allAdsHref, label: "All ads" }]} /></div>}
             <div className="overflow-x-auto rounded-[10px] border border-[var(--r-line)]">
-              <table className="w-full min-w-[720px] text-left text-[11.5px]">
+              <table className="w-full min-w-[620px] text-left text-[11.5px]">
                 <thead><tr>{["Campaign", "Status", "Start", "End", "Impressions", "Reach", "Clicks", "Results"].map((label) => <th key={label} className={cn("px-2 py-2", !["Campaign", "Status", "Start", "End", "Results"].includes(label) && "text-right")}>{label}</th>)}{owner && <><th className="px-2 py-2 text-right">Spend</th><th className="px-2 py-2 text-right">Cost/result</th><th className="px-2 py-2 text-right">Open</th></>}</tr></thead>
                 <tbody>
                   {shownCampaigns.map((campaign) => (
@@ -270,6 +270,7 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
           </>
         )}
       </Dialog>
+      </div>
     </section>
   );
 }

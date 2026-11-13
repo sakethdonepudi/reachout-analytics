@@ -227,7 +227,7 @@ export default function TamilNaduRail({
   const actualTotal = seatTotal(scope.actualSeats);
 
   return (
-    <section aria-label="Tamil Nadu vote share" className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--surface-panel)] p-3">
+    <section aria-label="Tamil Nadu vote share" className="social-panel rounded-2xl border border-[var(--border-hairline)] bg-[var(--surface-panel)] p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="font-display text-lg font-semibold leading-tight">Tamil Nadu {selectedYear} · Vote Share</h2>
@@ -260,7 +260,7 @@ export default function TamilNaduRail({
         <>
           {isStatewide ? (
             <div className="mt-2 overflow-x-auto rounded-lg border border-border/70">
-              <table className={cn("w-full table-fixed border-collapse", compact ? "min-w-[318px] text-[8.5px]" : "min-w-[400px] text-[9.5px]")}>
+              <table className={cn("w-full table-fixed border-collapse", compact ? "min-w-0 text-[8.5px]" : "min-w-0 text-[9.5px]")}>
                 <caption className="sr-only">Tamil Nadu vote-share comparison</caption>
                 <colgroup><col className="w-[34%]" /><col className="w-[22%]" /><col className="w-[22%]" /><col className="w-[22%]" /></colgroup>
                 <thead>
@@ -285,7 +285,7 @@ export default function TamilNaduRail({
             </div>
           ) : (
             <div className="mt-2 overflow-x-auto rounded-lg border border-border/70">
-              <table className={cn("w-full table-fixed border-collapse", compact ? "min-w-[360px] text-[8.5px]" : "min-w-[430px] text-[9.5px]")}>
+              <table className={cn("w-full table-fixed border-collapse", compact ? "min-w-0 text-[8.5px]" : "min-w-0 text-[9.5px]")}>
                 <caption className="sr-only">{scope.label} local survey estimate, {baselineLabel} historical result, statewide opinion availability and local actual availability.</caption>
                 <colgroup><col className="w-[30%]" /><col className="w-[19%]" /><col className="w-[17%]" /><col className="w-[17%]" /><col className="w-[17%]" /></colgroup>
                 <thead>

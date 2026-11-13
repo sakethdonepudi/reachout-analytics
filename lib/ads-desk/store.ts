@@ -39,7 +39,7 @@ async function readActiveVersionId(): Promise<string | null> {
   return row?._id ?? null;
 }
 
-const cachedActiveVersionId = unstable_cache(readActiveVersionId, ["ads-active-version-id"], { tags: ["ads"] });
+const cachedActiveVersionId = unstable_cache(readActiveVersionId, ["ads-active-version-id-v3"], { tags: ["ads"] });
 
 /** Active version id only. Never reads ads_versions.data. */
 export async function getActiveVersionId(): Promise<string | null> {
@@ -60,7 +60,7 @@ async function readRegionSummaries(versionId: string): Promise<AdsRegionSummary[
 const cachedRegionSummaries = unstable_cache(async (versionId: string) => {
   const rows = await readRegionSummaries(versionId);
   return rows.length ? rows : null;
-}, ["ads-region-summaries"], { tags: ["ads"] });
+}, ["ads-region-summaries-v2"], { tags: ["ads"] });
 
 /** Per-region summary documents. Empty results are never served from cache. */
 export async function getRegionSummaries(versionId: string): Promise<AdsRegionSummary[]> {
@@ -90,7 +90,11 @@ export async function getActiveRegionSummaries(): Promise<AdsRegionSummary[]> {
   const versionId = await getActiveVersionId();
   if (!versionId) return [];
   const summaries = await getRegionSummaries(versionId);
-  if (summaries.length) return summaries;
+  if (summaries.length && summaries.every((item) => item.schemaVersion === 2)) return summaries;
+  if (summaries.length) {
+    const rebuilt = await buildActiveSummaries(versionId);
+    if (rebuilt.length) return rebuilt;
+  }
   // One-time backfill after a deploy of an active version published before
   // summaries existed. Return the Mongo rows directly; never read the empty cache again.
   const built = await buildActiveSummaries(versionId);

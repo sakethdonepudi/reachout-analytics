@@ -95,6 +95,7 @@ ok("data pages have no decorative classes", dataPages.every((file) => !/radial-g
     const firstSummaries = await getActiveRegionSummaries();
     const secondSummaries = await getActiveRegionSummaries();
     ok("first summary read backfills", firstSummaries.length === 1 && firstSummaries[0].regionKey === "tn2026");
+    ok("summary schema has no findings", firstSummaries[0].schemaVersion === 2 && !("findings" in firstSummaries[0]));
     ok("second summary read reuses the same result", secondSummaries.length === 1 && secondSummaries[0].accounts[0].impressions === firstSummaries[0].accounts[0].impressions);
     console.log("\n3b. Report formatting");
 ok("Indian units", indianUnits(1_933_867_599) === "193.4 Cr" && indianUnits(30_862_233) === "3.1 Cr" && indianUnits(247_000) === "2.5 L");
