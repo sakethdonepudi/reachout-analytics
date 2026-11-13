@@ -208,6 +208,30 @@ body {
   overflow-x: hidden;
 }
 
+/* Fitts: standalone controls get a 40px target, 44px on touch. Inline prose
+   links are left alone; footer and back links opt in below. */
+button,
+[role="button"],
+select,
+textarea,
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { min-height: 40px; }
+button { min-width: 40px; }
+.hit-expand { position: relative; min-height: 40px; }
+.hit-expand::after { content: ""; position: absolute; inset: -4px; }
+main table a { display: inline-flex; min-height: 40px; align-items: center; }
+nav[aria-label="Footer"] a,
+#contact a,
+.footer-link { display: inline-flex; min-height: 40px; align-items: center; }
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  select,
+  textarea,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  nav[aria-label="Footer"] a { min-height: 44px; }
+  button { min-width: 44px; }
+}
+
 /* ---------- motion utilities ---------- */
 .pressable {
   transition: transform var(--dur-instant) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
@@ -1731,8 +1755,8 @@ tr[data-highlight="true"] { background: var(--r-hl); }
 @keyframes row-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .social-chevron {
   display: inline-grid;
-  min-width: 32px;
-  min-height: 32px;
+  min-width: 40px;
+  min-height: 40px;
   place-items: center;
   border: 1px solid var(--r-line);
   border-radius: 6px;

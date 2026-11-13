@@ -21,7 +21,7 @@ export default async function DashboardPage() {
               <p className="type-micro text-[var(--accent-brass-strong)]">Owner home</p>
               <h1 className="font-display text-[clamp(28px,4vw,44px)] font-semibold tracking-[-0.03em]">Ads Desk</h1>
             </div>
-            <a href="/dashboard/case-studies" className="text-[12px] font-semibold text-[var(--accent-brass-strong)]">Case studies dashboard</a>
+            <a href="/dashboard/case-studies" className="footer-link text-[12px] font-semibold text-[var(--accent-brass-strong)]">Case studies dashboard</a>
           </div>
           <div className="mt-5"><AdsDesk data={active ? withOwnerLinks(active.data) : null} versions={versions.map((version) => ({ _id: version._id, uploadedAt: version.uploadedAt, uploadedBy: version.uploadedBy, sha256: version.sha256, fileName: version.fileName, status: version.status, takenAt: version.takenAt }))} defaultRegion="tn2026" unmapped={unmapped} clientLinks={clientLinks} /></div>
         </div>

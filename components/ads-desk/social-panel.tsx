@@ -344,9 +344,9 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
           description={openAccount ? `${region.label} · ${number(openAccount.campaignCount)} campaigns` : undefined}
           headerExtra={openAccount && (openAccount.allAdsetsHref || openAccount.allAdsHref || (owner && openAccount.billingHref)) ? (
             <div className="flex flex-wrap gap-3 text-[11px] font-normal">
-              {openAccount.allAdsetsHref && <a href={openAccount.allAdsetsHref} target="_blank" rel="noopener noreferrer" className="text-[var(--r-muted)] underline-offset-2 hover:underline">All ad sets<ArrowUpRight className="ml-0.5 inline size-3" aria-hidden /></a>}
-              {openAccount.allAdsHref && <a href={openAccount.allAdsHref} target="_blank" rel="noopener noreferrer" className="text-[var(--r-muted)] underline-offset-2 hover:underline">All ads<ArrowUpRight className="ml-0.5 inline size-3" aria-hidden /></a>}
-              {owner && openAccount.billingHref && <a href={openAccount.billingHref} target="_blank" rel="noopener noreferrer" className="text-[var(--r-muted)] underline-offset-2 hover:underline">Billing<ArrowUpRight className="ml-0.5 inline size-3" aria-hidden /></a>}
+              {openAccount.allAdsetsHref && <a href={openAccount.allAdsetsHref} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center text-[var(--r-muted)] underline-offset-2 hover:underline">All ad sets<ArrowUpRight className="ml-0.5 inline size-3" aria-hidden /></a>}
+              {openAccount.allAdsHref && <a href={openAccount.allAdsHref} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center text-[var(--r-muted)] underline-offset-2 hover:underline">All ads<ArrowUpRight className="ml-0.5 inline size-3" aria-hidden /></a>}
+              {owner && openAccount.billingHref && <a href={openAccount.billingHref} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center text-[var(--r-muted)] underline-offset-2 hover:underline">Billing<ArrowUpRight className="ml-0.5 inline size-3" aria-hidden /></a>}
             </div>
           ) : undefined}
           placement="right"
@@ -365,9 +365,9 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
                 <label className="relative min-w-0 flex-1">
                   <span className="sr-only">Search campaigns</span>
                   <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-[var(--r-muted)]" aria-hidden />
-                  <input value={campaignQuery} onChange={(event) => setCampaignQuery(event.target.value)} placeholder="Search campaigns" className="min-h-9 w-full rounded-md border border-[var(--r-line)] bg-white pl-7 pr-2 text-[11.5px]" />
+                  <input value={campaignQuery} onChange={(event) => setCampaignQuery(event.target.value)} placeholder="Search campaigns" className="min-h-10 w-full rounded-md border border-[var(--r-line)] bg-white pl-7 pr-2 text-[11.5px]" />
                 </label>
-                <select aria-label="Sort campaigns" value={campaignSort} onChange={(event) => setCampaignSort(event.target.value as CampaignSort)} className="min-h-9 rounded-md border border-[var(--r-line)] bg-white px-2 text-[11.5px]"><option value="impressions">Impressions</option><option value="reach">Reach</option><option value="clicks">Clicks</option><option value="results">Results</option></select>
+                <select aria-label="Sort campaigns" value={campaignSort} onChange={(event) => setCampaignSort(event.target.value as CampaignSort)} className="min-h-10 rounded-md border border-[var(--r-line)] bg-white px-2 text-[11.5px]"><option value="impressions">Impressions</option><option value="reach">Reach</option><option value="clicks">Clicks</option><option value="results">Results</option></select>
               </div>
               {campaignLoading && campaigns.length === 0 && <div className="space-y-2">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-10 animate-pulse rounded bg-[var(--r-bg)]" />)}</div>}
               {campaignError && <div className="rounded-md border border-[var(--r-coral)]/40 bg-[#fdf0eb] p-3 text-[12px] text-[var(--r-coral)]"><p>{campaignError}</p><button type="button" onClick={() => { cache.current.delete(`${openAccount.name}|${campaignQuery.trim()}|${campaignSort}`); setRetryKey((value) => value + 1); }} className="mt-2 rounded border border-[var(--r-coral)]/40 px-2 py-1 text-[11px] font-semibold">Retry</button></div>}

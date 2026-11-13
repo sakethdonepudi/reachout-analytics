@@ -187,7 +187,7 @@ export default function TamilNaduDashboard({ caseData, aggregates, owner = false
           className="lg:flex-1"
           controls={(
             <div className="relative z-30 lg:min-h-0">
-              <CaseBackLink className="inline-flex items-center gap-2 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
+              <CaseBackLink className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
                 <ArrowLeft className="size-3.5" /> Back to Case Studies
               </CaseBackLink>
               <PartyIdentity party="AIADMK" state="Tamil Nadu" size="sm" className="mt-4" />

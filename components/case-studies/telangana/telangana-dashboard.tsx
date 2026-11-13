@@ -250,7 +250,7 @@ export default function TelanganaDashboard({ aggregates, history }: { aggregates
           controls={(
             <div className="relative z-30 lg:min-h-0">
               <Link href="/case-studies"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
                 <ArrowLeft className="size-3.5" /> Back to Case Studies
               </Link>
 

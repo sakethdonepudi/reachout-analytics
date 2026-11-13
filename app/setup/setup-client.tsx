@@ -76,7 +76,7 @@ export default function SetupClient({ turnstileEnabled, nonce }: { turnstileEnab
               {success ? <Check className="success-pop size-4" /> : showSpinner ? <Loader2 className="size-4 animate-spin" /> : null} Create owner
             </button>
           </form>
-          <div className="mt-5 text-center text-[12px] text-[var(--text-muted)]"><Link href="/" className="hover:text-[var(--text-primary)]">Back to site</Link></div>
+          <div className="mt-5 text-center text-[12px] text-[var(--text-muted)]"><Link href="/" className="footer-link hover:text-[var(--text-primary)]">Back to site</Link></div>
         </div>
       </div>
     </main>

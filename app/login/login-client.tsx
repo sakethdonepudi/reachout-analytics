@@ -139,7 +139,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
                 <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Password</span>
                 <div className="relative mt-1">
                   <input type={show ? "text" : "password"} autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={updateCapsLock} onKeyUp={updateCapsLock} className="min-h-11 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-3.5 pr-12 text-[14px] outline-none focus:border-[var(--accent-brass)] focus:ring-2 focus:ring-[var(--accent-brass)]/25" />
-                  <button type="button" onClick={() => setShow((value) => !value)} aria-label={show ? "Hide password" : "Show password"} className="absolute right-1 top-1 grid size-9 place-items-center rounded-[var(--radius-control)] text-[var(--text-muted)] hover:bg-[var(--surface-raised)]">
+                  <button type="button" onClick={() => setShow((value) => !value)} aria-label={show ? "Hide password" : "Show password"} className="absolute right-0.5 top-0.5 grid size-10 place-items-center rounded-[var(--radius-control)] text-[var(--text-muted)] hover:bg-[var(--surface-raised)]">
                     {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
                 </div>
@@ -180,8 +180,8 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
           )}
 
           <div className="mt-5 flex items-center justify-between text-[12px] text-[var(--text-muted)]">
-            <Link href="/" className="hover:text-[var(--text-primary)]">Back to site</Link>
-            <Link href="/setup" className="hover:text-[var(--text-primary)]">First setup</Link>
+            <Link href="/" className="footer-link hover:text-[var(--text-primary)]">Back to site</Link>
+            <Link href="/setup" className="footer-link hover:text-[var(--text-primary)]">First setup</Link>
           </div>
         </div>
       </div>

@@ -321,7 +321,7 @@ export default function AdminPortal() {
                 {cases.map((cs) => <option key={cs.id} value={cs.id}>{cs.title} · {cs.electionYear}</option>)}
               </select>
             </label>
-            <Link href="/dashboard" className="rounded-full border border-[var(--border-hairline)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)]">Dashboard</Link>
+            <Link href="/dashboard" className="inline-flex min-h-10 items-center rounded-full border border-[var(--border-hairline)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)]">Dashboard</Link>
             <button onClick={logout} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12.5px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60"><LogOut className="size-3.5" /> Sign out</button>
           </div>
         </div>

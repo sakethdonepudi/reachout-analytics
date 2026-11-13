@@ -29,7 +29,7 @@ export default function ServicesPreview() {
             <h2 className="type-h2 mt-3">Two practices. One decision-focused team.</h2>
             <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">Research and analytics for political programmes, alongside data and business capability for organisations of every kind.</p>
           </div>
-          <Link href="/services" className="inline-flex shrink-0 items-center gap-2 text-[12px] font-bold uppercase tracking-[0.1em] text-foreground transition-colors hover:text-teal-deep">Explore all services<ArrowUpRight className="size-4" /></Link>
+          <Link href="/services" className="inline-flex min-h-10 shrink-0 items-center gap-2 text-[12px] font-bold uppercase tracking-[0.1em] text-foreground transition-colors hover:text-teal-deep">Explore all services<ArrowUpRight className="size-4" /></Link>
         </Reveal>
 
         <div className="mt-9 grid gap-4 md:grid-cols-2">
