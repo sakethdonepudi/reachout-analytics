@@ -5,7 +5,7 @@ import { Loader2, Save } from "lucide-react";
 import type { AboutContent } from "@/lib/about-content";
 
 const label = "mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground";
-const input = "w-full rounded-xl border border-border bg-elevated/60 px-3 py-2 text-[13px] text-foreground outline-none focus:border-saffron/60 focus:ring-2 focus:ring-saffron/20";
+const input = "w-full rounded-xl border border-border bg-elevated/60 px-3 py-2 text-[13px] text-foreground outline-none focus:border-teal/60 focus:ring-2 focus:ring-teal/20";
 
 /**
  * Editor for the public /about page. The redesigned page is a fixed brand
@@ -62,7 +62,7 @@ export default function AboutEditor() {
       </div>
 
       <div className="flex items-center gap-3">
-        <button onClick={save} disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-saffron px-4 py-2 text-[13px] font-semibold text-[#241203] disabled:opacity-60">
+        <button onClick={save} disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-teal-deep px-4 py-2 text-[13px] font-semibold text-[#ffffff] disabled:opacity-60">
           {busy ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save About page
         </button>
         {msg && <span className="text-[12.5px] text-muted-foreground">{msg}</span>}

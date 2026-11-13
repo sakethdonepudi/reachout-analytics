@@ -6,7 +6,7 @@ function PoliticalVisual() {
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
       <div className="absolute inset-0 bg-[radial-gradient(70%_60%_at_80%_10%,rgba(123,140,255,.24),transparent_62%)]" />
       <svg viewBox="0 0 620 460" fill="none" className="absolute -right-16 top-2 h-[112%] w-[86%] opacity-90 transition-transform duration-700 group-hover:translate-x-2">
-        <g stroke="#8c9bff" strokeWidth="1" opacity=".22">
+        <g stroke="#7fd7bd" strokeWidth="1" opacity=".22">
           <path d="M-20 110C84 44 154 164 250 96S428 12 660 84" />
           <path d="M-20 140C92 74 164 194 260 126S444 42 660 114" />
           <path d="M-20 170C100 104 174 224 270 156S460 72 660 144" />
@@ -16,7 +16,7 @@ function PoliticalVisual() {
           <path d="M-20 372C94 282 166 420 270 332S448 222 660 318" />
           <path d="M-20 404C102 314 178 452 282 364S466 254 660 350" />
         </g>
-        <g stroke="#8c9bff" strokeWidth="1" opacity=".42">
+        <g stroke="#7fd7bd" strokeWidth="1" opacity=".42">
           <path d="M-20 246C72 176 132 286 222 218S382 124 660 202" />
           <path d="M-20 276C78 206 142 316 232 248S396 154 660 232" />
           <path d="M-20 306C84 236 152 346 242 278S410 184 660 262" />
@@ -28,8 +28,8 @@ function PoliticalVisual() {
         </g>
         <circle cx="258" cy="300" r="22" stroke="var(--about-lime)" strokeWidth="1" opacity=".35" />
         <circle cx="258" cy="300" r="42" stroke="var(--about-lime)" strokeWidth="1" opacity=".14" />
-        <path d="M160 190L258 300L356 236" stroke="#c9fa00" strokeWidth="1.4" strokeDasharray="4 6" opacity=".55" />
-        <g fill="#c9fa00" opacity=".7">
+        <path d="M160 190L258 300L356 236" stroke="#1d9e75" strokeWidth="1.4" strokeDasharray="4 6" opacity=".55" />
+        <g fill="#1d9e75" opacity=".7">
           <circle cx="160" cy="190" r="2.4" />
           <circle cx="356" cy="236" r="2.4" />
         </g>
@@ -95,7 +95,7 @@ function ResearchVisual() {
           <span className="block h-1.5 w-[92%] rounded-full bg-foreground/10" />
           <span className="block h-1.5 w-[62%] rounded-full bg-foreground/10" />
         </div>
-        <div className="mt-4 rounded-md bg-[#c9fa0055] px-2 py-1.5">
+        <div className="mt-4 rounded-md bg-[#1d9e7555] px-2 py-1.5">
           <span className="block h-1.5 w-[76%] rounded-full bg-[#5e7200]/50" />
         </div>
         <p className="mt-3 text-[8px] uppercase tracking-[0.14em] text-muted-foreground">Annotated</p>
@@ -163,7 +163,7 @@ export default function AboutPractices() {
               </p>
               <Link
                 href="/services#political-intelligence"
-                className="mt-6 inline-flex min-h-11 items-center gap-1.5 rounded-full border border-white/15 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white transition-colors hover:border-[#c9fa00]/60 hover:text-[color:var(--about-lime)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9fa00]/50"
+                className="mt-6 inline-flex min-h-11 items-center gap-1.5 rounded-full border border-white/15 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white transition-colors hover:border-[#1d9e75]/60 hover:text-[color:var(--about-lime)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d9e75]/50"
               >
                 Explore political intelligence <ArrowUpRight className="size-3.5" />
               </Link>

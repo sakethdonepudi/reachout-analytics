@@ -12,7 +12,7 @@ type CategoryGroup = { label: string; categories: readonly string[] };
 type Props = { categories?: readonly string[]; groups?: CategoryGroup[]; showOrganisation?: boolean };
 
 const EMPTY: State = { name: "", organisation: "", email: "", phone: "", service: "", requirement: "" };
-const field = "w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-[14px] text-foreground placeholder:text-muted-foreground/60 outline-none transition focus:border-saffron/60 focus:ring-4 focus:ring-saffron/10";
+const field = "w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-[14px] text-foreground placeholder:text-muted-foreground/60 outline-none transition focus:border-teal/60 focus:ring-4 focus:ring-teal/10";
 const label = "mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
 
 export default function ServicesEnquiry({ categories = SERVICE_CATEGORIES, groups, showOrganisation = true }: Props) {
@@ -79,7 +79,7 @@ export default function ServicesEnquiry({ categories = SERVICE_CATEGORIES, group
   return (
     <div className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:gap-12">
       <div className="rounded-3xl border border-border bg-card/70 p-6 sm:p-7">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-saffron-2">Start a conversation</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-deep">Start a conversation</p>
         <h3 className="mt-3 font-display text-[clamp(22px,2.4vw,30px)] font-semibold tracking-[-0.02em]">
           Tell us what decision you need to make.
         </h3>
@@ -87,9 +87,9 @@ export default function ServicesEnquiry({ categories = SERVICE_CATEGORIES, group
           Share the question, the data you have and the outcome you need. We will respond with a practical next step, not a sales pitch.
         </p>
         <ul className="mt-6 space-y-4 text-[13.5px] text-foreground/80">
-          <li className="flex items-start gap-3"><Mail className="mt-0.5 size-4 shrink-0 text-saffron-2" /><a href={`mailto:${CONTACT.email}`} className="break-all hover:text-saffron-2">{CONTACT.email}</a></li>
-          <li className="flex items-start gap-3"><Phone className="mt-0.5 size-4 shrink-0 text-saffron-2" /><a href={`tel:${CONTACT.phone.replace(/\s/g, "")}`} className="hover:text-saffron-2">{CONTACT.phone}</a></li>
-          <li className="flex items-start gap-3"><MapPin className="mt-0.5 size-4 shrink-0 text-saffron-2" /><span className="leading-relaxed">{CONTACT.address}</span></li>
+          <li className="flex items-start gap-3"><Mail className="mt-0.5 size-4 shrink-0 text-teal-deep" /><a href={`mailto:${CONTACT.email}`} className="break-all hover:text-teal-deep">{CONTACT.email}</a></li>
+          <li className="flex items-start gap-3"><Phone className="mt-0.5 size-4 shrink-0 text-teal-deep" /><a href={`tel:${CONTACT.phone.replace(/\s/g, "")}`} className="hover:text-teal-deep">{CONTACT.phone}</a></li>
+          <li className="flex items-start gap-3"><MapPin className="mt-0.5 size-4 shrink-0 text-teal-deep" /><span className="leading-relaxed">{CONTACT.address}</span></li>
         </ul>
         <div className="mt-5 flex flex-wrap gap-2">
           <a href={CONTACT.linkedin} target="_blank" rel="noreferrer" className="rounded-full border border-border px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground">LinkedIn</a>
@@ -103,7 +103,7 @@ export default function ServicesEnquiry({ categories = SERVICE_CATEGORIES, group
       <div className="rounded-3xl border border-border bg-card p-5 shadow-[0_18px_50px_-34px_rgba(15,20,30,.5)] sm:p-7">
         {sent ? (
           <div className="flex min-h-[420px] flex-col items-center justify-center text-center" role="status" aria-live="polite">
-            <span className="grid size-14 place-items-center rounded-full bg-[#2fbf4a]/12 text-[#2fbf4a]"><CheckCircle2 className="size-7" /></span>
+            <span className="grid size-14 place-items-center rounded-full bg-[#1d9e75]/12 text-[#1d9e75]"><CheckCircle2 className="size-7" /></span>
             <h3 className="mt-5 font-display text-2xl font-semibold">Enquiry received</h3>
             <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-muted-foreground">Thank you. We will review your requirement and get back to you using the contact details provided.</p>
             <button type="button" onClick={() => { setSent(false); setValues(EMPTY); }} className="mt-6 rounded-full border border-border px-4 py-2 text-[13px] font-semibold hover:bg-elevated">Send another enquiry</button>
@@ -131,7 +131,7 @@ export default function ServicesEnquiry({ categories = SERVICE_CATEGORIES, group
             {error && <p role="alert" className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-rose-700"><AlertCircle className="mt-0.5 size-4 shrink-0" />{error}</p>}
             <div className="mt-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
               <p className="text-[10.5px] text-muted-foreground">Fields marked * are required. Your details are used only to respond to this enquiry.</p>
-              <button type="submit" disabled={sending} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-saffron px-5 py-3 text-[13px] font-semibold text-[#241203] transition hover:brightness-105 disabled:cursor-wait disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+              <button type="submit" disabled={sending} className="inline-flex shrink-0 items-center gap-2 rounded-full bg-teal-deep px-5 py-3 text-[13px] font-semibold text-[#ffffff] transition hover:brightness-105 disabled:cursor-wait disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
                 {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
                 {sending ? "Sending…" : "Send enquiry"}
               </button>

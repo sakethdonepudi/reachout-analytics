@@ -10,7 +10,7 @@ export default function AboutTelangana({ data, history }: { data: Oct26; history
     <details className="group mx-auto max-w-[1720px] px-4 pb-10 lg:px-6">
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-[12px] font-semibold [&::-webkit-details-marker]:hidden">
         About this data
-        <span className="rounded-full bg-saffron/15 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-saffron-2">Final workbook</span>
+        <span className="rounded-full bg-teal/15 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-teal-deep">Final workbook</span>
         <span className="ml-auto text-[10px] font-normal text-muted-foreground transition-transform group-open:rotate-180">▾</span>
       </summary>
       <div className="space-y-2.5 rounded-b-xl border border-t-0 border-border bg-card px-4 py-3 text-[11px] leading-relaxed text-muted-foreground">
@@ -46,7 +46,7 @@ export default function AboutTelangana({ data, history }: { data: Oct26; history
         <p>
           <b className="text-foreground/85">Map colour.</b> For 2014, 2018 and 2023, each assembly is filled by its actual winner
           in that party&apos;s colour, shaded by the winner&apos;s vote share. For 2028 it is filled by the final workbook&apos;s
-          leading predicted party after the AIMIM extraction (BRS/TRS pink, Congress/INC blue, BJP saffron, AIMIM green, Others
+          leading predicted party after the AIMIM extraction (BRS/TRS pink, Congress/INC blue, BJP teal, AIMIM green, Others
           muted purple). The final workbook contains no prediction override; Kodangal is not a tie.
         </p>
         <p>

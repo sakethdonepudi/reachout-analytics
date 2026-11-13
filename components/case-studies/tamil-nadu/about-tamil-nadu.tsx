@@ -5,7 +5,7 @@ export default function AboutTamilNadu({ data }: { data: TnAggregates }) {
     <details className="group mx-auto max-w-[1720px] px-4 pb-10 lg:px-6">
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-[12px] font-semibold [&::-webkit-details-marker]:hidden">
         About this data
-        <span className="rounded-full bg-saffron/15 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-saffron-2">Workbook estimate</span>
+        <span className="rounded-full bg-teal/15 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-teal-deep">Workbook estimate</span>
         <span className="ml-auto text-[10px] font-normal text-muted-foreground transition-transform group-open:rotate-180">▾</span>
       </summary>
       <div className="space-y-2.5 rounded-b-xl border border-t-0 border-border bg-card px-4 py-3 text-[11px] leading-relaxed text-muted-foreground">

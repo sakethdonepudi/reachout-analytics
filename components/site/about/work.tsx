@@ -12,7 +12,7 @@ function MapArt({ map }: { map: MapPreview }) {
         className="pointer-events-none absolute inset-0 opacity-[.5]"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(140,155,255,.14) 1px, transparent 1px), linear-gradient(90deg, rgba(140,155,255,.14) 1px, transparent 1px)",
+            "linear-gradient(rgba(31,78,120,.14) 1px, transparent 1px), linear-gradient(90deg, rgba(31,78,120,.14) 1px, transparent 1px)",
           backgroundSize: "34px 34px",
         }}
         aria-hidden

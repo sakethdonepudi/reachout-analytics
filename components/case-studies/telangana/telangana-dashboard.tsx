@@ -75,8 +75,8 @@ function SearchSelect({
       <span className={LABEL}>{label}</span>
       <button type="button" disabled={disabled} aria-haspopup="listbox" aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={cn("mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-[var(--surface-panel)] px-2.5 py-2 text-left text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
-          disabled ? "cursor-not-allowed opacity-50" : "hover:border-saffron/40")}>
+        className={cn("mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-[var(--surface-panel)] px-2.5 py-2 text-left text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60",
+          disabled ? "cursor-not-allowed opacity-50" : "hover:border-teal/40")}>
         <span className="truncate">{selected?.label ?? placeholder}</span>
         <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
@@ -103,7 +103,7 @@ function SearchSelect({
                     o.value === value ? "font-semibold text-foreground" : "text-muted-foreground")}>
                   <span className="min-w-0 flex-1 truncate">{o.label}</span>
                   {o.hint && <span className="shrink-0 text-[9px] uppercase tracking-wide opacity-60">{o.hint}</span>}
-                  {o.value === value && <Check className="size-3 shrink-0 text-saffron-2" />}
+                  {o.value === value && <Check className="size-3 shrink-0 text-teal-deep" />}
                 </button>
               </li>
             ))}
@@ -267,7 +267,7 @@ export default function TelanganaDashboard() {
           <h1 className="font-display text-2xl font-semibold">Telangana data unavailable</h1>
           <p className="mt-2 text-sm text-muted-foreground">{error}</p>
           <button type="button" onClick={() => setReloadKey((k) => k + 1)}
-            className="mt-4 rounded-full border border-border px-4 py-1.5 text-[12px] font-semibold hover:border-saffron/50">Try again</button>
+            className="mt-4 rounded-full border border-border px-4 py-1.5 text-[12px] font-semibold hover:border-teal/50">Try again</button>
         </div>
       </main>
     );
@@ -307,7 +307,7 @@ export default function TelanganaDashboard() {
           controls={(
             <div className="relative z-30 lg:min-h-0">
               <Link href="/case-studies"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
                 <ArrowLeft className="size-3.5" /> Back to Case Studies
               </Link>
 
@@ -321,7 +321,7 @@ export default function TelanganaDashboard() {
                   <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-border p-0.5" role="group" aria-label="Election year">
                     {ELECTION_YEARS.map((y) => (
                       <button key={y} type="button" aria-pressed={year === y} onClick={() => setYear(y)}
-                        className={cn("rounded-md px-2 py-1.5 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60",
+                        className={cn("rounded-md px-2 py-1.5 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60",
                           year === y ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
                         {YEAR_LABEL[y]}
                       </button>
@@ -357,11 +357,11 @@ export default function TelanganaDashboard() {
               {(district || currentAc) && (
                 <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5">
                   <button type="button" onClick={reset}
-                    className="inline-flex items-center gap-1 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold transition-colors hover:border-teal/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
                     <ArrowLeft className="size-3" /> Telangana
                   </button>
                   <button type="button" onClick={reset}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold transition-colors hover:border-saffron/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold transition-colors hover:border-teal/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
                     <RotateCcw className="size-3" /> Reset
                   </button>
                 </div>

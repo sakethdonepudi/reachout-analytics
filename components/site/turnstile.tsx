@@ -84,7 +84,7 @@ export default function Turnstile({
 
   if (status === "unconfigured") {
     return (
-      <p className="rounded-xl border border-saffron/30 bg-saffron/10 px-3 py-2 text-[12px] text-saffron-2">
+      <p className="rounded-xl border border-teal/30 bg-teal/10 px-3 py-2 text-[12px] text-teal-deep">
         CAPTCHA is not configured on this deployment — set NEXT_PUBLIC_TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY.
       </p>
     );
@@ -94,7 +94,7 @@ export default function Turnstile({
       <div ref={ref} />
       {status === "error" && (
         <button type="button" onClick={() => { setStatus("loading"); setAttempt((a) => a + 1); }}
-          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[12.5px] hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[12.5px] hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
           <RefreshCw className="size-3.5" /> Retry CAPTCHA
         </button>
       )}

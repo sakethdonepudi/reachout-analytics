@@ -236,7 +236,7 @@ export default function TamilNaduRail({
           </p>
         </div>
         <button type="button" onClick={onExpand} aria-label="Expand the vote-share analysis"
-          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-muted-foreground transition-colors hover:border-saffron/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 sm:min-h-8">
+          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-muted-foreground transition-colors hover:border-teal/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60 sm:min-h-8">
           <Maximize2 className="size-3" /> Expand
         </button>
       </div>

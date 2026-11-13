@@ -143,7 +143,7 @@ export default function TelanganaAdmin() {
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />} Preview
           </button>
           <button type="button" onClick={() => run(true)} disabled={!files.length || !preview?.ok || busy}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-saffron px-3 py-1.5 text-[12px] font-semibold text-[#241203] hover:brightness-105 disabled:opacity-40">
+            className="inline-flex items-center gap-1.5 rounded-lg bg-teal-deep px-3 py-1.5 text-[12px] font-semibold text-[#ffffff] hover:brightness-105 disabled:opacity-40">
             Publish
           </button>
           {msg && <span className="text-[11.5px] text-muted-foreground">{msg}</span>}

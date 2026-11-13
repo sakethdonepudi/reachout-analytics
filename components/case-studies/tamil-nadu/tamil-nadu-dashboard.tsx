@@ -52,7 +52,7 @@ function SearchSelect({ label, value, options, placeholder, onChange, disabled =
     <div ref={root} className="relative">
       <span className={LABEL}>{label}</span>
       <button type="button" aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => setOpen((v) => !v)}
-        className="mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-[var(--surface-panel)] px-2.5 py-2 text-left text-[12px] transition-colors hover:border-saffron/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60 disabled:cursor-not-allowed disabled:opacity-55">
+        className="mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-[var(--surface-panel)] px-2.5 py-2 text-left text-[12px] transition-colors hover:border-teal/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60 disabled:cursor-not-allowed disabled:opacity-55">
         <span className="truncate">{selected?.label ?? placeholder}</span>
         <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
@@ -77,7 +77,7 @@ function SearchSelect({ label, value, options, placeholder, onChange, disabled =
                   className={cn("flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px]", i === active ? "bg-muted/50" : "", o.value === value ? "font-semibold text-foreground" : "text-muted-foreground")}>
                   <span className="min-w-0 flex-1 truncate">{o.label}</span>
                   {o.hint && <span className="shrink-0 text-[9px] uppercase tracking-wide opacity-60">{o.hint}</span>}
-                  {o.value === value && <Check className="size-3 shrink-0 text-saffron-2" />}
+                  {o.value === value && <Check className="size-3 shrink-0 text-teal-deep" />}
                 </button>
               </li>
             ))}
@@ -199,7 +199,7 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
           className="lg:flex-1"
           controls={(
             <div className="relative z-30 lg:min-h-0">
-              <Link href="/case-studies" className="inline-flex items-center gap-2 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60">
+              <Link href="/case-studies" className="inline-flex items-center gap-2 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
                 <ArrowLeft className="size-3.5" /> Back to Case Studies
               </Link>
               <PartyIdentity party="AIADMK" state="Tamil Nadu" size="sm" className="mt-4" />
@@ -207,12 +207,12 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
                 <div>
                   <span className={LABEL}>Election year</span>
                   <div className="mt-1 flex flex-col gap-0.5 rounded-lg border border-border p-0.5" role="group" aria-label="Election year">
-                    {YEARS.map((y) => <button key={y.id} type="button" aria-pressed={year === y.id} onClick={() => setYear(y.id)} className={cn("w-full rounded-md px-2 py-1.5 text-left text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron/60", year === y.id ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>{y.label}</button>)}
+                    {YEARS.map((y) => <button key={y.id} type="button" aria-pressed={year === y.id} onClick={() => setYear(y.id)} className={cn("w-full rounded-md px-2 py-1.5 text-left text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60", year === y.id ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>{y.label}</button>)}
                   </div>
                 </div>
                 <SearchSelect label="District" value={district ?? ""} options={districtOptions} placeholder="Select a district" onChange={(v) => selectDistrict(v || null)} />
                 <SearchSelect label="Assembly" value={acNo != null ? String(acNo) : ""} options={assemblyOptions} placeholder={district ? "Select an assembly" : "Select a district first"} disabled={!district} onChange={(v) => selectAc(v ? Number(v) : null)} />
-                {(district || currentAc) && <button type="button" onClick={resetToState} className="flex w-full items-center gap-2 rounded-lg border border-border px-2.5 py-2 text-left text-[11.5px] font-semibold hover:border-saffron/40"><RotateCcw className="size-3.5" /> Reset to Tamil Nadu</button>}
+                {(district || currentAc) && <button type="button" onClick={resetToState} className="flex w-full items-center gap-2 rounded-lg border border-border px-2.5 py-2 text-left text-[11.5px] font-semibold hover:border-teal/40"><RotateCcw className="size-3.5" /> Reset to Tamil Nadu</button>}
               </div>
             </div>
           )}
@@ -222,8 +222,8 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
                 <TamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} theme={(theme === "light" ? "light" : "dark") as MapTheme} fitKey={fitKey} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={resetToState} />
                 {(district || currentAc) && (
                   <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 lg:left-3 lg:top-3">
-                    <button type="button" onClick={resetToState} className="inline-flex items-center gap-1 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold hover:border-saffron/50"><ArrowLeft className="size-3" /> Tamil Nadu</button>
-                    <button type="button" onClick={resetToState} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold hover:border-saffron/50"><RotateCcw className="size-3" /> Reset</button>
+                    <button type="button" onClick={resetToState} className="inline-flex items-center gap-1 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold hover:border-teal/50"><ArrowLeft className="size-3" /> Tamil Nadu</button>
+                    <button type="button" onClick={resetToState} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold hover:border-teal/50"><RotateCcw className="size-3" /> Reset</button>
                   </div>
                 )}
               </div>

@@ -26,9 +26,9 @@ export const NO_DATA_COLOR: Record<ThemeName, string> = {
 
 /** Selected-district fill + its outline (brand orange family). */
 export const SELECTED_FILL: Record<ThemeName, string> = {
-  light: "#f7c894",
+  light: "#d7ebe3",
 };
 
 export const SELECTED_LINE: Record<ThemeName, string> = {
-  light: "#e07617",
+  light: "#1d9e75",
 };
