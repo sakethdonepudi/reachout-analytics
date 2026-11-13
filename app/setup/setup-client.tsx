@@ -6,10 +6,12 @@ import { Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/brand";
 import Turnstile from "@/components/site/turnstile";
 import { passwordStrength } from "@/lib/password-policy";
+import { useNavigate } from "@/lib/use-navigate";
 
 const STRENGTH = ["", "Weak", "Fair", "Good", "Strong"];
 
 export default function SetupClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; nonce?: string }) {
+  const navigate = useNavigate();
   const [form, setForm] = useState({ setupToken: "", username: "", displayName: "", password: "", confirm: "" });
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
@@ -34,7 +36,7 @@ export default function SetupClient({ turnstileEnabled, nonce }: { turnstileEnab
         body: JSON.stringify({ ...form, turnstileToken: token }),
       });
       const data = await response.json().catch(() => ({}));
-      if (response.ok && data.redirect) { window.location.assign(data.redirect); return; }
+      if (response.ok && data.redirect) { navigate.replace(data.redirect); return; }
       setError(typeof data.error === "string" ? data.error : "Setup failed.");
       if (turnstileEnabled) setResetNonce((value) => value + 1);
     } catch { setError("Setup failed."); }

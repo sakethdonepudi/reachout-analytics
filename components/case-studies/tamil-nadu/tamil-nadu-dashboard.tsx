@@ -10,10 +10,10 @@ import {
   TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_SEAT_GROUPS, tnLeader, tnPct, type TnAggregates, type TnGroup, type TnSeatGroup, type TnShares, type TnYear, type TnYearOrCurrent,
 } from "@/lib/tamil-nadu/model";
 import TamilNaduRail, { type TnScopeResult, type TnTab, type TnView } from "./tamil-nadu-rail";
+import CaseBackLink from "@/components/site/case-back-link";
 import CaseStudySplit from "@/components/case-studies/shared/case-study-split";
 import type { TnCaseData } from "@/lib/tamil-nadu/view-data";
 import type { MapTheme } from "./tamil-nadu-map";
-import SignalLoader from "@/components/ui/signal-loader";
 
 const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
   ssr: false,
@@ -92,11 +92,10 @@ function SearchSelect({ label, value, options, placeholder, onChange, disabled =
   );
 }
 
-export default function TamilNaduDashboard({ caseData, owner = false }: { caseData: TnCaseData; owner?: boolean }) {
+export default function TamilNaduDashboard({ caseData, aggregates, owner = false }: { caseData: TnCaseData; aggregates: TnAggregates; owner?: boolean }) {
   const theme = "light" as const;
   const opinionPoll = caseData.opinionPoll;
-  const [data, setData] = useState<TnAggregates | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const data = aggregates;
   const [district, setDistrict] = useState<string | null>(null);
   const [acNo, setAcNo] = useState<number | null>(null);
   const [year, setYear] = useState<TnYearOrCurrent>("2026");
@@ -106,16 +105,6 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
   const handleViewChange = useCallback((next: TnView) => { viewRef.current = next; }, []);
   const [chartOpen, setChartOpen] = useState(false);
   const expandFocus = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/public/case-studies/tamil-nadu/aggregates", { cache: "no-store", signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((d: TnAggregates) => setData(d))
-      .catch((e) => { if ((e as Error)?.name !== "AbortError") setError(e instanceof Error ? e.message : "Could not load Tamil Nadu data"); });
-
-    return () => controller.abort();
-  }, []);
 
   const acs = data?.acs ?? [];
   const districts = data?.districts ?? [];
@@ -180,11 +169,6 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
     return TN_GROUPS.filter((g) => data?.presence[year][g]).map((g) => ({ key: g, label: TN_LABEL[g], colour: TN_COLOR[g] }));
   }, [year, data?.presence]);
 
-  if (error && !data) {
-    return <main className="grid min-h-screen place-items-center bg-background px-6 text-center"><div><h1 className="font-display text-2xl font-semibold">Tamil Nadu data unavailable</h1><p className="mt-2 text-sm text-muted-foreground">{error}</p></div></main>;
-  }
-  if (!data) return <main className="min-h-screen bg-[var(--r-bg)]"><SignalLoader label="Opening Tamil Nadu" /></main>;
-
   return (
     <div className="relative min-h-screen bg-background text-foreground">
       <section className="relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-24 sm:pt-28 lg:flex lg:h-[100svh] lg:min-h-[760px] lg:flex-col lg:overflow-hidden lg:px-6 lg:pt-20">
@@ -203,9 +187,9 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
           className="lg:flex-1"
           controls={(
             <div className="relative z-30 lg:min-h-0">
-              <Link href="/case-studies" className="inline-flex items-center gap-2 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
+              <CaseBackLink className="inline-flex items-center gap-2 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
                 <ArrowLeft className="size-3.5" /> Back to Case Studies
-              </Link>
+              </CaseBackLink>
               <PartyIdentity party="AIADMK" state="Tamil Nadu" size="sm" className="mt-4" />
               <div className="mt-5 space-y-3 pb-2">
                 <div>

@@ -6,11 +6,12 @@ import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/brand";
 import Turnstile from "@/components/site/turnstile";
-import SignalLoader from "@/components/ui/signal-loader";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "@/lib/use-navigate";
 
 function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; nonce?: string }) {
   const search = useSearchParams();
+  const navigate = useNavigate();
   const [step, setStep] = useState<"password" | "totp">("password");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +20,6 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [opening, setOpening] = useState<string | null>(null);
   const [shake, setShake] = useState(0);
   const [resetNonce, setResetNonce] = useState(0);
   const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
@@ -31,9 +31,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
   const idle = search.get("reason") === "idle";
 
   function startOpening(redirect: string) {
-    const label = redirect.includes("/dashboard") ? "Opening Dashboard" : redirect.includes("/case-studies") ? "Opening Case Studies" : "Opening";
-    setOpening(label);
-    window.setTimeout(() => window.location.assign(redirect), 60);
+    navigate.replace(redirect);
   }
 
   function updateCapsLock(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -94,7 +92,6 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
 
   return (
     <>
-      <SignalLoader active={Boolean(opening)} label={opening ?? "Opening"} />
       <main className="grid min-h-[100svh] place-items-center bg-[var(--r-bg)] px-5 py-14 text-[var(--r-ink)]">
       <div className="relative w-full max-w-sm">
         <div className="mb-7 flex justify-center"><Logo /></div>

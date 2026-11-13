@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@/lib/use-navigate";
 import { PARTIES, type PoliticalIdentity } from "@/lib/parties";
 import { caseUrl } from "@/lib/cases";
 import { cn } from "@/lib/utils";
@@ -22,7 +22,7 @@ export default function PartyDisc({
   onActivate?: () => void;
   className?: string;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [failed, setFailed] = useState(false);
   const party = PARTIES[identity.party];
   const label = `${party.name}, ${party.fullName}, ${identity.state}`;
@@ -31,7 +31,9 @@ export default function PartyDisc({
     <button
       type="button"
       data-opening-label={active && identity.caseSlug ? `Opening ${identity.state}` : undefined}
-      onClick={() => (active ? router.push(caseUrl(identity.caseSlug)) : onActivate?.())}
+      onClick={() => (active ? navigate.push(caseUrl(identity.caseSlug), { label: `Opening ${identity.state}` }) : onActivate?.())}
+      onMouseEnter={() => { if (active) navigate.prefetch(caseUrl(identity.caseSlug)); }}
+      onFocus={() => { if (active) navigate.prefetch(caseUrl(identity.caseSlug)); }}
       aria-label={active ? `${label} — view case study` : `Bring ${label} forward`}
       aria-current={active ? "true" : undefined}
       className={cn(

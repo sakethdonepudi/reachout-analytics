@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { TRANSITION_EVENT, type TransitionDetail, type TransitionMeta } from "@/lib/route-transition";
+import { setCoverActive } from "@/lib/cover-state";
 
 type Phase = "idle" | "covering" | "revealing";
 
-const COVER_MS = 480; // time the overlay takes to cover before we navigate
-const SETTLE_MS = 220; // let the new page paint under the cover
-const REVEAL_MS = 620; // fade the cover away
+const COVER_MS = 220; // cover-in animation; navigation starts immediately
+const SETTLE_MS = 80; // let the destination commit under the cover
+const REVEAL_MS = 240; // fade the cover away
 
 /**
  * Full-screen cover used when moving from the map into a case study.
@@ -20,7 +21,6 @@ export default function RouteTransition() {
   const pathname = usePathname();
   const [phase, setPhase] = useState<Phase>("idle");
   const [meta, setMeta] = useState<TransitionMeta | null>(null);
-  const coverTimer = useRef<number | null>(null);
   const phaseRef = useRef<Phase>("idle");
   phaseRef.current = phase;
 
@@ -35,13 +35,13 @@ export default function RouteTransition() {
       }
       setMeta(m);
       setPhase("covering");
-      if (coverTimer.current) window.clearTimeout(coverTimer.current);
-      coverTimer.current = window.setTimeout(() => router.push(href), COVER_MS);
+      setCoverActive(true);
+      // Navigate at time 0 and let the cover animate over the route swap.
+      router.push(href);
     };
     window.addEventListener(TRANSITION_EVENT, onNavigate);
     return () => {
       window.removeEventListener(TRANSITION_EVENT, onNavigate);
-      if (coverTimer.current) window.clearTimeout(coverTimer.current);
     };
   }, [router]);
 
@@ -49,7 +49,7 @@ export default function RouteTransition() {
   useEffect(() => {
     if (phaseRef.current !== "covering") return;
     const t = window.setTimeout(() => setPhase("revealing"), SETTLE_MS);
-    const done = window.setTimeout(() => setPhase("idle"), SETTLE_MS + REVEAL_MS);
+    const done = window.setTimeout(() => { setPhase("idle"); setCoverActive(false); }, SETTLE_MS + REVEAL_MS);
     return () => {
       window.clearTimeout(t);
       window.clearTimeout(done);

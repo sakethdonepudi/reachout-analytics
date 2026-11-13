@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@/lib/use-navigate";
+import { announceOpening } from "@/lib/use-navigate";
 import Link from "next/link";
 import { Download, FileSpreadsheet, History, LayoutDashboard, LogOut, Loader2, Map as MapIcon, Settings, Table2, Upload, UserCog } from "lucide-react";
 import { Logo } from "@/components/site/brand";
@@ -76,7 +77,7 @@ const SECTIONS = [
 type SectionId = (typeof SECTIONS)[number]["id"];
 
 export default function AdminPortal() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { requestReauth } = useReauth();
   const [ready, setReady] = useState(false);
   const [cases, setCases] = useState<CaseRecord[]>([]);
@@ -114,11 +115,11 @@ export default function AdminPortal() {
 
   useEffect(() => {
     fetch("/api/auth/session").then(async (r) => {
-      if (!r.ok) { router.replace("/login"); return; }
+      if (!r.ok) { navigate.replace("/login"); return; }
       setReady(true);
     });
     fetch("/api/admin/case-studies").then(async (r) => { if (r.ok) setCases((await r.json()).cases); });
-  }, [router]);
+  }, [navigate]);
 
   const loadSummary = useCallback(async () => {
     const r = await fetch(`/api/data/summary?caseStudyId=${encodeURIComponent(caseId)}&view=${view}`);
@@ -170,7 +171,7 @@ export default function AdminPortal() {
   const shares = pollType === "opinion" ? sum?.opinionShares : sum?.exitShares;
   const c = active?.counts ?? EMPTY;
 
-  async function logout() { await fetch("/api/auth/logout", { method: "POST" }); router.replace("/login"); }
+  async function logout() { await fetch("/api/auth/logout", { method: "POST" }); navigate.replace("/login"); }
   async function togglePublish(rec: CaseRecord) {
     const r = await fetch("/api/admin/case-studies", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: rec.id, patch: { published: !rec.published } }) });
     if (r.ok) { const d = await r.json(); setCases((cs) => cs.map((x) => (x.id === rec.id ? d.case : x))); }
@@ -244,7 +245,7 @@ export default function AdminPortal() {
 
   async function ensureRecent(): Promise<boolean> {
     const session = await fetch("/api/auth/session", { cache: "no-store" });
-    if (!session.ok) { router.replace("/login"); return false; }
+    if (!session.ok) { navigate.replace("/login"); return false; }
     const data = await session.json();
     if (data.recent) return true;
     return requestReauth();

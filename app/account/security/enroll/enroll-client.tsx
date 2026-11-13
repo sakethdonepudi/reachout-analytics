@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/brand";
+import { useNavigate } from "@/lib/use-navigate";
 
 type Enroll = { secret: string; qr: string; account: string };
 
 export default function EnrollClient() {
+  const navigate = useNavigate();
   const [enroll, setEnroll] = useState<Enroll | null>(null);
   const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
   const [codes, setCodes] = useState<string[] | null>(null);
@@ -85,7 +87,7 @@ export default function EnrollClient() {
               <input type="checkbox" checked={saved} onChange={(event) => setSaved(event.target.checked)} className="mt-0.5 size-4 accent-[var(--accent-brass)]" />
               I have saved these recovery codes somewhere safe.
             </label>
-            <button type="button" disabled={!saved} onClick={() => window.location.assign(redirect || "/dashboard")} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
+            <button type="button" disabled={!saved} onClick={() => navigate.replace(redirect || "/dashboard")} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] text-[14px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
               <Check className="size-4" /> Continue
             </button>
           </>

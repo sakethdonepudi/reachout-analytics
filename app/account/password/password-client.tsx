@@ -4,10 +4,12 @@ import { useCallback, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import Turnstile from "@/components/site/turnstile";
 import { passwordStrength } from "@/lib/password-policy";
+import { useNavigate } from "@/lib/use-navigate";
 
 const STRENGTH = ["", "Weak", "Fair", "Good", "Strong"];
 
 export default function PasswordClient({ first, turnstileEnabled, nonce }: { first: boolean; turnstileEnabled: boolean; nonce?: string }) {
+  const navigate = useNavigate();
   const [form, setForm] = useState({ current: "", password: "", confirm: "" });
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
@@ -28,8 +30,8 @@ export default function PasswordClient({ first, turnstileEnabled, nonce }: { fir
         body: JSON.stringify({ ...form, turnstileToken: token }),
       });
       const data = await response.json().catch(() => ({}));
-      if (response.ok && data.redirect) { window.location.assign(data.redirect); return; }
-      if (response.ok) { window.location.assign("/dashboard"); return; }
+      if (response.ok && data.redirect) { navigate.replace(data.redirect); return; }
+      if (response.ok) { navigate.replace("/dashboard"); return; }
       setError(typeof data.error === "string" ? data.error : "Could not change the password.");
       if (turnstileEnabled) setResetNonce((value) => value + 1);
     } catch { setError("Could not change the password."); }

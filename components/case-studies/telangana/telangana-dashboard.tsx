@@ -14,10 +14,11 @@ import {
   ELECTION_YEARS, YEAR_LABEL, baselineYear, historicalAc, historicalShares,
   historicalTotal, setHistoryBundle, winnerColour, winnerLabel, winnerSeats, type ElectionYear,
 } from "@/lib/telangana/history-runtime";
+import type { ClientHistoryBundle } from "@/lib/telangana/history-runtime";
 import TelanganaRail, { type ScopeResult } from "./telangana-rail";
+import CaseBackLink from "@/components/site/case-back-link";
 import CaseStudySplit from "@/components/case-studies/shared/case-study-split";
 import type { MapTheme } from "./telangana-map";
-import SignalLoader from "@/components/ui/signal-loader";
 
 const TelanganaMap = dynamic(() => import("./telangana-map"), {
   ssr: false,
@@ -118,12 +119,10 @@ function SearchSelect({
   );
 }
 
-export default function TelanganaDashboard() {
+export default function TelanganaDashboard({ aggregates, history }: { aggregates: Oct26; history: ClientHistoryBundle }) {
   const theme = "light" as const;
-  const [data, setData] = useState<Oct26 | null>(null);
-  const [historyReady, setHistoryReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
+  const data = aggregates;
+  useState(() => { setHistoryBundle(history); return true; });
 
   const [district, setDistrict] = useState<string | null>(null);
   const [acNo, setAcNo] = useState<number | null>(null);
@@ -139,37 +138,6 @@ export default function TelanganaDashboard() {
     setChartOpen(false);
     requestAnimationFrame(() => expandFocus.current?.focus());
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const controller = new AbortController();
-    setError(null);
-    fetch("/api/public/case-studies/telangana/aggregates", { cache: "no-store", signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((d: Oct26) => { if (!cancelled) setData(d); })
-      .catch((e) => {
-        if (cancelled || (e as Error)?.name === "AbortError") return;
-        setError(e instanceof Error ? e.message : "Could not load Telangana data");
-      });
-    return () => { cancelled = true; controller.abort(); };
-  }, [reloadKey]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const controller = new AbortController();
-    fetch("/api/public/case-studies/telangana/history", { cache: "no-store", signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((payload) => {
-        if (cancelled || !payload?.history) return;
-        setHistoryBundle(payload.history);
-        setHistoryReady(true);
-      })
-      .catch((e) => {
-        if (cancelled || (e as Error)?.name === "AbortError") return;
-        setError(e instanceof Error ? e.message : "Could not load Telangana history");
-      });
-    return () => { cancelled = true; controller.abort(); };
-  }, [reloadKey]);
 
   const acs = data?.acs ?? [];
   const acByNo = useMemo(() => new Map(acs.map((a) => [a.no, a])), [acs]);
@@ -261,29 +229,6 @@ export default function TelanganaDashboard() {
       key: party, label: winnerLabel(party), colour: winnerColour(party), split: false,
     }));
   }, [year, scopeAcs]);
-
-  if (error && !data) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-background px-6 text-center text-foreground">
-        <div>
-          <h1 className="font-display text-2xl font-semibold">Telangana data unavailable</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{error}</p>
-          <button type="button" onClick={() => setReloadKey((k) => k + 1)}
-            className="mt-4 rounded-full border border-border px-4 py-1.5 text-[12px] font-semibold hover:border-teal/50">Try again</button>
-        </div>
-      </main>
-    );
-  }
-  if (error && data && !historyReady) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-background px-6 text-center text-foreground">
-        <div><h1 className="font-display text-2xl font-semibold">Telangana history unavailable</h1><p className="mt-2 text-sm text-muted-foreground">{error}</p></div>
-      </main>
-    );
-  }
-  if (!data || !historyReady) {
-    return <main className="min-h-screen bg-[var(--r-bg)]"><SignalLoader label="Opening Telangana" /></main>;
-  }
 
   const isStatewide = !district && !currentAc;
 

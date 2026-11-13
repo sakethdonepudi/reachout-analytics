@@ -5,8 +5,10 @@ import { KeyRound, Loader2, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { useReauth } from "@/components/auth/reauth-provider";
+import { useNavigate } from "@/lib/use-navigate";
 
 export default function SecurityClient({ enabled, required }: { enabled: boolean; required: boolean }) {
+  const navigate = useNavigate();
   const { requestReauth } = useReauth();
   const [busy, setBusy] = useState("");
   const [codes, setCodes] = useState<string[] | null>(null);
@@ -31,7 +33,7 @@ export default function SecurityClient({ enabled, required }: { enabled: boolean
     if (!(await requestReauth())) return;
     setBusy("replace");
     await fetch("/api/account/totp", { method: "DELETE" });
-    window.location.assign("/account/security/enroll");
+    navigate.replace("/account/security/enroll");
   }
 
   return (

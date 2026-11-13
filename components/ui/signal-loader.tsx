@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { isCoverActive, onCoverEnd } from "@/lib/cover-state";
 
 const NODES: [number, number][] = [
   [88, 172], [98, 142], [120, 121], [148, 110], [178, 106], [208, 111], [233, 124],
@@ -16,33 +17,90 @@ const CONTOURS = [
   "M 126 171 L 134 157 L 157 145 L 180 141 L 203 145 L 226 157 L 234 171 L 226 185 L 203 197 L 180 201 L 157 197 L 134 185 Z",
 ];
 
+/*
+ * Only one full-screen loader may be visible at a time. The first instance
+ * whose delay has elapsed owns the overlay; others wait until it releases,
+ * which prevents the route fallback and the navigation loader stacking.
+ */
+let owner: symbol | null = null;
+const waiters = new Set<{ id: symbol; tryShow: () => void }>();
+
+function claim(id: symbol): boolean {
+  if (owner === null) { owner = id; return true; }
+  return owner === id;
+}
+
+function release(id: symbol) {
+  if (owner !== id) return;
+  owner = null;
+  for (const waiter of [...waiters]) waiter.tryShow();
+}
+
 export default function SignalLoader({
   label, active = true, delay = 250, minimum = 300, theme = "light",
 }: { label: string; active?: boolean; delay?: number; minimum?: number; theme?: "light" | "dark" }) {
+  const idRef = useRef<symbol | null>(null);
+  if (!idRef.current) idRef.current = Symbol("signal-loader");
+  const id = idRef.current;
   const [shown, setShown] = useState(false);
+  const activeRef = useRef(active);
+  const shownRef = useRef(shown);
   const shownAt = useRef(0);
+  const delayDone = useRef(false);
+  const attemptRef = useRef<() => void>(() => {});
+  const entryRef = useRef<{ id: symbol; tryShow: () => void } | null>(null);
+  if (!entryRef.current) entryRef.current = { id, tryShow: () => attemptRef.current() };
+
+  activeRef.current = active;
+  shownRef.current = shown;
+
+  attemptRef.current = () => {
+    if (!activeRef.current) { waiters.delete(entryRef.current!); return; }
+    if (shownRef.current || !delayDone.current) return;
+    if (isCoverActive()) { waiters.add(entryRef.current!); return; }
+    if (!claim(id)) { waiters.add(entryRef.current!); return; }
+    waiters.delete(entryRef.current!);
+    shownAt.current = performance.now();
+    setShown(true);
+  };
 
   useEffect(() => {
-    if (active) {
-      if (shown) return;
-      const timer = window.setTimeout(() => {
-        shownAt.current = performance.now();
-        setShown(true);
-      }, delay);
-      return () => window.clearTimeout(timer);
+    if (!active) {
+      waiters.delete(entryRef.current!);
+      return;
     }
-    if (!shown) return;
+    delayDone.current = false;
+    const timer = window.setTimeout(() => {
+      delayDone.current = true;
+      attemptRef.current();
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [active, delay]);
+
+  useEffect(() => {
+    if (active || !shown) return;
     const remaining = Math.max(0, minimum - (performance.now() - shownAt.current));
     const timer = window.setTimeout(() => setShown(false), remaining);
     return () => window.clearTimeout(timer);
-  }, [active, delay, minimum, shown]);
+  }, [active, minimum, shown]);
+
+  useEffect(() => {
+    if (shown || owner !== id) return;
+    release(id);
+  }, [shown, id]);
+
+  useEffect(() => onCoverEnd(() => attemptRef.current()), []);
+
+  useEffect(() => () => {
+    if (entryRef.current) waiters.delete(entryRef.current);
+    release(id);
+  }, [id]);
 
   if (!shown) return null;
 
   return (
     <div className={cn("signal-loader", theme === "dark" && "signal-loader--dark")} data-testid="signal-loader" role="status" aria-live="polite" aria-atomic="true">
       <span className="sr-only">{label}</span>
-
       <div className="signal-loader__stage" aria-hidden="true">
         <svg viewBox="0 0 360 310" className="signal-loader__art" focusable="false">
           <g className="signal-loader__contours" fill="none" stroke="#1f4e78" strokeWidth="0.9">

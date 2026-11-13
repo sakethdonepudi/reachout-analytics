@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowUpRight, X } from "lucide-react";
 import * as THREE from "three";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 import { rafLoop } from "@/lib/raf-loop";
 import { CASES, UPCOMING, caseUrl, type CaseStudy } from "@/lib/cases";
 import { PartyMark } from "@/components/site/party-mark";
-import { startRouteTransition } from "@/lib/route-transition";
 import STATES from "@/lib/data/india-states.json";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "@/lib/use-navigate";
 
 /* Map outline data: "India" by svg-maps (github.com/VictorCazanave/svg-maps), CC BY 4.0 */
 
@@ -29,9 +28,7 @@ type Stop = { kind: "hero" | "case" | "final"; c?: CaseStudy; t: THREE.Vector3; 
  * the contact section (with the globe) comes in.
  */
 export default function IndiaMap() {
-  const router = useRouter();
-  const routerRef = useRef(router);
-  routerRef.current = router;
+  const navigate = useNavigate();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -254,7 +251,7 @@ export default function IndiaMap() {
     const onUp = () => { drag = null; };
     const onClick = (e: MouseEvent) => {
       if (!finalOn || dragMoved || isUI(e.target)) return;
-      if (hovered) { const c = CASES.find((c) => c.state === hovered); if (c) { setSelected(selectedRef.current === c.slug ? null : c.slug); return; } }
+      if (hovered) { const c = CASES.find((c) => c.state === hovered); if (c) { navigate.prefetch(caseUrl(c.slug)); setSelected(selectedRef.current === c.slug ? null : c.slug); return; } }
       setSelected(null);
     };
     addEventListener("pointermove", onMove);
@@ -469,8 +466,16 @@ export default function IndiaMap() {
         data-opening-label={cardCase ? `Opening ${cardCase.title}` : undefined}
         role="link"
         tabIndex={0}
-        onClick={(e) => { if (!(e.target as HTMLElement).closest("[data-close]") && cardCase) router.push(caseUrl(cardCase.slug)); }}
-        onKeyDown={(e) => { if (e.key === "Enter" && cardCase) router.push(caseUrl(cardCase.slug)); }}
+        onMouseEnter={() => { if (cardCase) navigate.prefetch(caseUrl(cardCase.slug)); }}
+        onFocus={() => { if (cardCase) navigate.prefetch(caseUrl(cardCase.slug)); }}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("[data-close]") || !cardCase) return;
+          navigate.push(caseUrl(cardCase.slug), { cover: { title: cardCase.title, eyebrow: cardCase.label, subtitle: cardCase.region } });
+        }}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" || !cardCase) return;
+          navigate.push(caseUrl(cardCase.slug), { cover: { title: cardCase.title, eyebrow: cardCase.label, subtitle: cardCase.region } });
+        }}
         style={{ background: "rgba(255,255,255,.97)" }}
         className="invisible fixed left-0 top-0 z-[4] w-[calc(100vw-32px)] max-w-[300px] cursor-pointer rounded-2xl border border-[var(--r-line)] p-4 opacity-0 transition-[box-shadow] hover:shadow-[0_30px_80px_-10px_rgba(29,158,117,.2)] sm:w-[300px]"
       >
@@ -532,8 +537,9 @@ export default function IndiaMap() {
             <button
               key={c.slug}
               onClick={() => setSelected(selected === c.slug ? null : c.slug)}
-              onMouseEnter={() => (chipHoverRef.current = c.state)}
+              onMouseEnter={() => { chipHoverRef.current = c.state; navigate.prefetch(caseUrl(c.slug)); }}
               onMouseLeave={() => (chipHoverRef.current = null)}
+              onFocus={() => navigate.prefetch(caseUrl(c.slug))}
               className={cn(
                 "flex items-center gap-1.5 rounded-full border border-[var(--r-line)] bg-white px-3 py-1.5 text-[12.5px] font-semibold backdrop-blur-xl transition hover:border-teal/60 hover:bg-teal/15",
                 selected === c.slug && "border-teal/70 bg-teal/20",
