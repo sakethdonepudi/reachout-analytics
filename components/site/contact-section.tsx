@@ -1,102 +1,183 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Mail, MapPin, Phone } from "lucide-react";
+import { Mail, Phone, MapPin, ArrowUpRight, CheckCircle2 } from "lucide-react";
+import ShimmerButton from "@/components/ui/shimmer-button";
+import Globe from "@/components/site/globe";
 import { Logo } from "@/components/site/brand";
+import CompanyExperience from "@/components/site/company-marquee";
 import { CONTACT } from "@/lib/cases";
+import { rafLoop } from "@/lib/raf-loop";
 
-const field = "mt-1 min-h-10 w-full rounded-md border border-[var(--r-line)] bg-white px-3 text-[13.5px] text-[var(--r-ink)] outline-none focus:border-[var(--r-teal)] focus:ring-2 focus:ring-[var(--r-hl)]";
-const label = "text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--r-muted)]";
+const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
+/**
+ * Last page. While it scrolls in, the 3D India map pulls away and a globe —
+ * starting large and India-facing — shrinks into its place beside the contact
+ * details and begins turning clockwise.
+ */
 export default function ContactSection() {
+  const section = useRef<HTMLElement>(null);
+  const slot = useRef<HTMLDivElement>(null);
+  const flyer = useRef<HTMLDivElement>(null);
+  const spin = useRef(0);
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 
-  return (
-    <section id="contact" className="report-section scroll-mt-20">
-      <div className="report-wrap py-6">
-        <h2 className="report-heading">Contact</h2>
-        <p className="report-sub">Tell us about the decision, data or campaign you need help with.</p>
+  useEffect(() => {
+    const tick = () => {
+      const s = section.current, sl = slot.current, fl = flyer.current;
+      if (s && sl && fl) {
+        const r = s.getBoundingClientRect();
+        const p = clamp(1 - r.top / innerHeight, 0, 1); // 0 → section just below the fold, 1 → at the top
+        const e = ease(clamp((p - 0.12) / 0.8, 0, 1));
+        const end = sl.getBoundingClientRect();
+        // Bound the decorative globe so it can never cover foreground content.
+        const startSize = Math.min(Math.min(innerWidth, innerHeight) * 0.9, 640);
+        const sx = innerWidth / 2 - startSize / 2, sy = innerHeight / 2 - startSize / 2;
+        const size = startSize + (end.width - startSize) * e;
+        const x = sx + (end.left - sx) * e, y = sy + (end.top - sy) * e;
+        fl.style.width = fl.style.height = `${size}px`;
+        fl.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        const o = clamp((p - 0.18) / 0.32, 0, 1);
+        fl.style.opacity = String(o);
+        fl.style.visibility = o > 0.01 ? "visible" : "hidden";
+        const fb = e < 0.98 ? `blur(${((1 - e) * 3).toFixed(0)}px)` : "none";
+        if (fl.style.filter !== fb) fl.style.filter = fb;
+        spin.current = o > 0.01 ? 0.15 + e * 0.85 : -1;
+      }
+    };
+    return rafLoop(tick);
+  }, []);
 
-        <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-          <div className="report-card p-5">
-            <h3 className="text-[16px] font-semibold text-[var(--r-navy)]">Get in touch</h3>
-            <ul className="mt-4 space-y-3 text-[13px] text-[var(--r-muted)]">
-              <li className="flex items-start gap-2"><Mail className="mt-0.5 size-4 shrink-0 text-[var(--r-teal)]" /><a className="report-link" href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a></li>
-              <li className="flex items-start gap-2"><Phone className="mt-0.5 size-4 shrink-0 text-[var(--r-teal)]" /><a className="report-link" href={`tel:${CONTACT.phone.replace(/\s/g, "")}`}>{CONTACT.phone}</a></li>
-              <li className="flex items-start gap-2"><MapPin className="mt-0.5 size-4 shrink-0 text-[var(--r-teal)]" /><span>{CONTACT.address}</span></li>
+  const field =
+    "w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-base text-white placeholder:text-white/30 outline-none transition focus:border-saffron/60 focus:bg-white/[0.07] focus:ring-4 focus:ring-saffron/10";
+  const label = "mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45";
+
+  return (
+    <section
+      ref={section}
+      id="contact"
+      className="pointer-events-auto relative z-[2] min-h-[100svh] overflow-hidden bg-[linear-gradient(180deg,rgba(5,11,31,0)_0%,rgba(5,11,31,.5)_22%,#050b1f_55%)] px-6 pb-2 pt-36 text-white scroll-mt-24 sm:px-10 lg:pb-10"
+    >
+      {/* flying globe (fixed, follows the slot) */}
+      <div ref={flyer} className="pointer-events-none fixed left-0 top-0 z-[1] invisible will-change-transform" aria-hidden>
+        <div className="absolute inset-[-10%] rounded-full bg-[radial-gradient(circle,rgba(40,90,200,.2),transparent_60%)] blur-2xl" />
+        <Globe className="relative size-full" speed={12} direction="clockwise" spinRef={spin} />
+      </div>
+
+      <div className="relative z-[2] mx-auto max-w-6xl">
+        <div className="text-center">
+          <span className="inline-flex rounded-full border border-saffron/40 bg-saffron/10 px-4 py-1.5 text-sm font-medium text-saffron-2">Contact</span>
+          <h2 className="mt-6 font-display text-[clamp(44px,6vw,80px)] font-semibold tracking-[-0.035em]">
+            Let&apos;s win your <span className="text-gradient-saffron font-serif font-normal italic">next election</span>
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-[17px] leading-relaxed text-white/60">
+            Tell us about your campaign. Our strategy team will get back to you within one business day.
+          </p>
+        </div>
+
+        <div className="mt-16 grid items-start gap-10 lg:grid-cols-2 lg:gap-16">
+          {/* left */}
+          <div>
+            <h3 className="font-display text-2xl font-semibold">Get in touch</h3>
+            <p className="mt-2 max-w-sm text-white/55">Reach out via any channel below — or send a message and we&apos;ll call you back.</p>
+            <ul className="mt-8 space-y-4">
+              {[
+                { icon: Mail, text: CONTACT.email, href: `mailto:${CONTACT.email}` },
+                { icon: Phone, text: CONTACT.phone, href: `tel:${CONTACT.phone.replace(/\s/g, "")}` },
+                { icon: MapPin, text: CONTACT.address },
+              ].map(({ icon: Icon, text, href }) => (
+                <li key={text} className="flex items-start gap-4 text-white/80">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.04]">
+                    <Icon className="size-[18px] text-saffron-2" />
+                  </span>
+                  {href ? <a href={href} className="pt-2 hover:text-white">{text}</a> : <span className="pt-2 leading-relaxed">{text}</span>}
+                </li>
+              ))}
             </ul>
-            <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--r-line)] pt-4 text-[12.5px]">
-              <a className="report-link" href={CONTACT.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
-              <a className="report-link" href={CONTACT.instagram} target="_blank" rel="noopener noreferrer">Instagram</a>
+            <div className="mt-6 flex gap-2">
+              {[["LinkedIn", CONTACT.linkedin], ["Instagram", CONTACT.instagram]].map(([name, href]) => (
+                <a key={name} href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70 transition hover:border-white/25 hover:text-white">
+                  {name}<ArrowUpRight className="size-3.5" />
+                </a>
+              ))}
             </div>
+            {/* the globe lands here */}
+            <div ref={slot} className="mx-auto mt-4 aspect-square w-full max-w-[220px] lg:mx-0 lg:mt-2 lg:max-w-[180px]" />
           </div>
 
-          <div className="report-card p-5">
+          {/* right: form */}
+          <div className="relative rounded-3xl border border-white/10 bg-[#0a1226]/70 p-5 backdrop-blur-2xl sm:p-7">
+            <span className="tricolor-line absolute inset-x-8 top-0 h-px opacity-70" aria-hidden />
+            <h3 className="font-display text-2xl font-semibold">Send a message</h3>
+            <p className="mt-1.5 text-white/55">Fill out the form and we&apos;ll get back to you promptly.</p>
+            <div className="my-4 border-t border-dashed border-white/10 sm:my-5" />
             {sent ? (
-              <div className="flex min-h-64 flex-col items-center justify-center text-center">
-                <CheckCircle2 className="size-10 text-[var(--r-teal)]" />
-                <p className="mt-3 text-[16px] font-semibold text-[var(--r-navy)]">Thank you. Message received.</p>
-                <p className="mt-1 text-[13px] text-[var(--r-muted)]">We will be in touch within one business day.</p>
+              <div className="flex flex-col items-center py-16 text-center">
+                <CheckCircle2 className="size-12 text-[#2fbf4a]" />
+                <p className="mt-4 font-display text-xl font-semibold">Thank you — message received.</p>
+                <p className="mt-1 text-white/55">We&apos;ll be in touch within one business day.</p>
               </div>
             ) : (
               <form
-                className="space-y-3"
-                onSubmit={async (event) => {
-                  event.preventDefault();
+                className="space-y-3 sm:space-y-4"
+                onSubmit={async (e) => {
+                  e.preventDefault();
                   if (sending) return;
                   setSending(true);
                   setError("");
-                  const form = new FormData(event.currentTarget);
+                  const f = new FormData(e.currentTarget);
                   try {
-                    const response = await fetch("/api/contact", {
+                    const res = await fetch("/api/contact", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        name: form.get("name"),
-                        organisation: form.get("organisation"),
-                        email: form.get("email"),
-                        phone: form.get("phone"),
-                        message: form.get("message"),
-                        website: form.get("website"),
+                        name: f.get("name"),
+                        organisation: f.get("organisation"),
+                        email: f.get("email"),
+                        phone: f.get("phone"),
+                        message: f.get("message"),
+                        website: f.get("website"), // honeypot
                       }),
                     });
-                    if (!response.ok) {
-                      const body = await response.json().catch(() => ({}));
-                      throw new Error(body.error || "Something went wrong");
+                    if (!res.ok) {
+                      const d = await res.json().catch(() => ({}));
+                      throw new Error(d.error || "Something went wrong");
                     }
                     setSent(true);
-                  } catch (caught) {
-                    setError(caught instanceof Error ? caught.message : "Something went wrong. Please try again or email us.");
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Something went wrong - please try again or email us.");
                   } finally {
                     setSending(false);
                   }
                 }}
               >
+                {/* honeypot: hidden from humans, bots fill it */}
                 <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-5 sm:grid-cols-2">
                   <label className="block"><span className={label}>Full name</span><input required name="name" className={field} placeholder="Your name" /></label>
-                  <label className="block"><span className={label}>Party or organisation</span><input name="organisation" className={field} placeholder="Party or campaign" /></label>
+                  <label className="block"><span className={label}>Party / organisation</span><input name="organisation" className={field} placeholder="Party or campaign" /></label>
+                </div>
+                <div className="grid gap-5 sm:grid-cols-2">
                   <label className="block"><span className={label}>Email</span><input required type="email" name="email" className={field} placeholder="you@example.com" /></label>
                   <label className="block"><span className={label}>Phone</span><input type="tel" name="phone" className={field} placeholder="+91" /></label>
                 </div>
-                <label className="block"><span className={label}>Message</span><textarea name="message" rows={4} className={field} placeholder="Constituency, timeline and goals" /></label>
-                {error && <p role="alert" className="rounded-md border border-[var(--r-coral)]/40 bg-[#fdf0eb] px-3 py-2 text-[12.5px] text-[var(--r-coral)]">{error}</p>}
-                <button type="submit" disabled={sending} className="report-btn w-full disabled:opacity-60">{sending ? "Sending..." : "Send message"}</button>
+                <label className="block"><span className={label}>Message</span><textarea name="message" rows={4} className={`${field} resize-none`} placeholder="Tell us about your constituency, timeline and goals" /></label>
+                {error && <p className="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-200">{error}</p>}
+                <ShimmerButton text={sending ? "Sending..." : "Send message"} duration={1.6} className="w-full border-saffron/40 py-3.5 dark:bg-[#0a1a44]/80 backdrop-blur-xl" />
               </form>
             )}
           </div>
         </div>
 
-        <footer className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-[var(--r-line)] pt-5 text-[12px] text-[var(--r-muted)] sm:flex-row sm:items-center">
-          <div className="flex flex-wrap items-center gap-4">
-            <Logo />
-            <Link href="/services" className="hover:text-[var(--r-navy)]">Services</Link>
-            <Link href="/services/research-content" className="hover:text-[var(--r-navy)]">Research and Content</Link>
-            <Link href="/about" className="hover:text-[var(--r-navy)]">About Us</Link>
-          </div>
+        <CompanyExperience tone="dark" className="mt-12 border-white/10" />
+
+        <footer className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-4 text-sm text-white/40 sm:flex-row">
+          <div className="flex flex-wrap items-center gap-5"><Logo variant="dark" /><Link href="/services" className="hover:text-white">Services</Link><Link href="/services/research-content" className="hover:text-white">Research &amp; Content</Link></div>
           <span>© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</span>
         </footer>
       </div>

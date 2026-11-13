@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
 import { COOKIE, LEGACY_COOKIE, getSessionByToken } from "@/lib/auth";
 import { getUser } from "@/lib/users";
-import { CASES } from "@/lib/cases";
+import { scopedCases } from "@/lib/session-scope";
 import { listCases } from "@/lib/case-registry";
+import { caseBySlug } from "@/lib/cases";
 import PublicNavbar from "./public-navbar";
 import ClientNavbar from "./client-navbar";
 import OwnerNavbar from "./owner-navbar";
@@ -25,10 +26,10 @@ export default async function Navbar() {
   const signInAt = new Date(session.iat).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
   const lastLoginAt = user?.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—";
 
-  const registry = await listCases().catch(() => []);
-  const bySlug = new Map(registry.map((row) => [row.slug, row]));
   if (session.role === "owner") {
-    const cases = CASES.map((item) => ({
+    const registry = await listCases().catch(() => []);
+    const bySlug = new Map(registry.map((row) => [row.slug, row]));
+    const cases = scopedCases(session).map((item) => ({
       slug: item.slug,
       title: item.title,
       state: item.stateName,
@@ -47,12 +48,11 @@ export default async function Navbar() {
     );
   }
 
-  const published = new Set(registry.filter((row) => row.published).map((row) => row.slug));
-  const cases = CASES.filter((item) => published.has(item.slug)).map((item) => ({
+  const cases = scopedCases(session).map((item) => ({
     slug: item.slug,
     title: item.title,
     state: item.stateName,
-    year: bySlug.get(item.slug)?.electionYear ?? yearFor(item.slug),
+    year: caseBySlug(item.slug) ? yearFor(item.slug) : 2026,
     draft: false,
   }));
   return (

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
-import Navbar from "@/components/site/public-navbar-static";
+import Navbar from "@/components/site/public-navbar";
 import { Logo } from "@/components/site/brand";
+import CompanyExperience from "@/components/site/company-marquee";
+import AboutHeroVisual from "@/components/site/about/hero-visual";
 import AboutStory from "@/components/site/about/story";
 import AboutPractices from "@/components/site/about/practices";
 import AboutWork from "@/components/site/about/work";
@@ -36,9 +38,17 @@ export default async function AboutPage() {
   return (
     <>
       <Navbar />
-      <main className="about-page report-shell min-h-screen pt-14">
+      <main className="about-page min-h-screen bg-background text-foreground">
         {/* opening statement */}
-        <section className="relative overflow-hidden pb-10 pt-10">
+        <section className="relative overflow-hidden pb-16 pt-32 sm:pb-20 sm:pt-36">
+          <div className="pointer-events-none absolute inset-0" aria-hidden>
+            <div className="absolute -left-32 -top-24 size-[520px] rounded-full bg-[radial-gradient(circle,rgba(31,78,120,.13),transparent_66%)] blur-2xl" />
+            <div className="absolute -right-24 top-24 size-[440px] rounded-full bg-[radial-gradient(circle,rgba(29,158,117,.17),transparent_68%)] blur-2xl" />
+            <div
+              className="absolute inset-x-0 top-0 h-px opacity-70"
+              style={{ background: "linear-gradient(90deg, transparent, var(--about-blue), var(--about-lime), transparent)" }}
+            />
+          </div>
 
           <div className="relative mx-auto max-w-6xl px-6 sm:px-10">
             <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
@@ -59,13 +69,13 @@ export default async function AboutPage() {
                 <div className="mt-8 flex flex-wrap items-center gap-3">
                   <Link
                     href="/#contact"
-                    className="inline-flex min-h-12 items-center gap-2 report-btn shadow-[0_18px_40px_-24px_rgba(23,20,245,.8)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--about-blue)]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--about-blue-solid)] px-6 py-3.5 text-[14px] font-semibold text-white shadow-[0_18px_40px_-24px_rgba(31,78,120,.8)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--about-blue)]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
                     Discuss your project <ArrowRight className="size-4" />
                   </Link>
                   <a
                     href="#work"
-                    className="inline-flex min-h-12 items-center gap-2 report-btn-secondary transition hover:border-[color:var(--about-blue-line)] hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--about-blue)]/40"
+                    className="inline-flex min-h-12 items-center gap-2 rounded-full border border-border bg-card/70 px-6 py-3.5 text-[14px] font-semibold text-foreground transition hover:border-[color:var(--about-blue-line)] hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--about-blue)]/40"
                   >
                     See the work <ArrowUpRight className="size-4" />
                   </a>
@@ -75,7 +85,8 @@ export default async function AboutPage() {
                 </p>
               </div>
 
-                          </div>
+              <AboutHeroVisual />
+            </div>
           </div>
         </section>
 
@@ -83,27 +94,28 @@ export default async function AboutPage() {
         <AboutPractices />
         <AboutWork />
 
-        
+        <CompanyExperience className="border-t" />
+
         {/* closing invitation */}
         <section id="contact-cta" className="relative scroll-mt-24 overflow-hidden">
           <div className="mx-auto max-w-6xl px-6 pb-20 pt-16 sm:px-10 sm:pb-24 sm:pt-20">
-            <div className="relative overflow-hidden rounded-[10px] bg-[var(--about-deep)] px-6 py-12 text-white shadow-[0_34px_90px_-54px_rgba(8,6,62,.8)] sm:px-12 sm:py-16 lg:px-16">
+            <div className="relative overflow-hidden rounded-[34px] bg-[var(--about-deep)] px-6 py-12 text-white shadow-[0_34px_90px_-54px_rgba(8,6,62,.8)] sm:px-12 sm:py-16 lg:px-16">
               <div className="pointer-events-none absolute inset-0" aria-hidden>
                 <div
                   className="absolute inset-0 opacity-30"
                   style={{
                     backgroundImage:
-                      "linear-gradient(rgba(140,155,255,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(140,155,255,.16) 1px, transparent 1px)",
+                      "linear-gradient(rgba(31,78,120,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(31,78,120,.16) 1px, transparent 1px)",
                     backgroundSize: "42px 42px",
                   }}
                 />
-                <div className="absolute -right-20 -top-24 size-[380px] rounded-full bg-[radial-gradient(circle,rgba(201,250,0,.22),transparent_66%)] blur-2xl" />
+                <div className="absolute -right-20 -top-24 size-[380px] rounded-full bg-[radial-gradient(circle,rgba(29,158,117,.22),transparent_66%)] blur-2xl" />
                 <svg viewBox="0 0 900 360" fill="none" className="absolute inset-x-0 bottom-0 h-auto w-full opacity-70">
                   <g stroke="var(--about-lime)" strokeWidth="1" opacity=".22">
                     <path d="M-20 300C120 220 210 340 330 260S530 160 920 240" />
                     <path d="M-20 330C128 250 220 370 340 290S548 190 920 270" />
                   </g>
-                  <g stroke="#8c9bff" strokeWidth="1" opacity=".3">
+                  <g stroke="#7fd7bd" strokeWidth="1" opacity=".3">
                     <path d="M-20 250C110 180 190 290 300 218S500 124 920 194" />
                     <path d="M-20 276C116 206 202 316 312 244S518 150 920 220" />
                   </g>
