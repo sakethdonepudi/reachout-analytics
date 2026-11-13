@@ -5,6 +5,7 @@ import RouteTransition from "@/components/site/route-transition";
 import NavigationLoader from "@/components/site/navigation-loader";
 import RouteHistory from "@/components/site/route-history";
 import HashScroller from "@/components/site/hash-scroller";
+import MotionTier from "@/components/site/motion-tier";
 import CsrfFetch from "@/components/site/csrf-fetch";
 import { ReauthProvider } from "@/components/auth/reauth-provider";
 import IdleProvider from "@/components/auth/idle-provider";
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <NavigationLoader />
         <RouteHistory />
         <HashScroller />
+        <MotionTier />
       </body>
     </html>
   );

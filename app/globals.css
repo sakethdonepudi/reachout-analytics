@@ -72,6 +72,16 @@
   --danger: #991b1b;
   --danger-bg: rgba(185, 28, 28, 0.1);
 
+  /* motion system */
+  --dur-instant: 80ms;
+  --dur-fast: 140ms;
+  --dur-base: 200ms;
+  --dur-slow: 280ms;
+  --dur-hero: 600ms;
+  --ease-out: cubic-bezier(.2,.8,.2,1);
+  --ease-in: cubic-bezier(.4,0,1,1);
+  --ease-in-out: cubic-bezier(.65,0,.35,1);
+
   /* party palettes — exact case-study colours */
   --party-tvk: #eab308;
   --party-aiadmk: #16a34a;
@@ -149,6 +159,11 @@
     --duration-fast: 0ms;
     --duration-base: 0ms;
     --duration-slow: 0ms;
+    --dur-instant: 0ms;
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+    --dur-hero: 0ms;
   }
   *,
   *::before,
@@ -192,6 +207,28 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
+
+/* ---------- motion utilities ---------- */
+.pressable {
+  transition: transform var(--dur-instant) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.pressable:hover { transform: translateY(-1px); }
+.pressable:active { transform: scale(.97); }
+.motion-cta { transition: transform var(--dur-instant) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+.motion-cta:hover { transform: translateY(-1px); box-shadow: 0 18px 40px -22px rgba(0,0,0,.55); }
+.motion-cta:active { transform: scale(.97); }
+html[data-hidden="true"] *,
+html[data-hidden="true"] *::before,
+html[data-hidden="true"] *::after { animation-play-state: paused !important; }
+
+/* Frequency tier C: feedback only. No entrance or decorative motion. */
+html[data-motion-tier="c"] .reveal,
+html[data-motion-tier="c"] .reveal.reveal-hidden { opacity: 1 !important; transform: none !important; transition: none !important; }
+html[data-motion-tier="c"] .animate-rise,
+html[data-motion-tier="c"] .animate-bob,
+html[data-motion-tier="c"] .chart-in,
+html[data-motion-tier="c"] .hero-stage,
+html[data-motion-tier="c"] .hero-party { animation: none !important; }
 
 /* ---------- shared utilities ---------- */
 @utility glass {
