@@ -189,10 +189,11 @@ export default function NavCore({ variant, displayName, username, organisation, 
             ) : (
               <>
                 <div ref={accountRef} className="relative hidden md:block">
-                  <button type="button" onClick={() => setAccountOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountOpen} aria-label={`Account menu, ${variant === "client" ? displayName ?? "Client" : "Account"}`} className={cn("inline-flex min-h-10 items-center gap-2 rounded-full px-2 text-[12px] font-semibold text-[var(--h-ink)] hover:bg-[var(--h-surface-inset)]", accountOpen && "site-group-inset")}>
-                    <span aria-hidden className="grid size-7 place-items-center rounded-full bg-[var(--r-navy)] text-[10px] font-bold text-white">{initials(displayName ?? "User")}</span>
+                  <button type="button" onClick={() => setAccountOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountOpen} className={cn("inline-flex min-h-10 items-center gap-2 rounded-full px-2 text-[12px] font-semibold text-[var(--h-ink)] hover:bg-[var(--h-surface-inset)]", accountOpen && "site-group-inset")}>
+                    <span className="sr-only">Account menu</span>
+                    <span className="grid size-7 place-items-center rounded-full bg-[var(--r-navy)] text-[10px] font-bold text-white">{initials(displayName ?? "User")}</span>
                     <span className="hidden max-w-[110px] truncate lg:block">{variant === "client" ? displayName : "Account"}</span>
-                    <span aria-hidden className="hidden text-[9.5px] font-normal tabular-nums text-[var(--h-muted)] xl:inline">{idleLabel(remainingMs)}</span>
+                    <span className="hidden text-[9.5px] font-normal tabular-nums text-[var(--h-muted)] xl:inline">{idleLabel(remainingMs)}</span>
                     <ChevronDown className="size-3 text-[var(--h-muted)]" />
                   </button>
                   {accountOpen && (
