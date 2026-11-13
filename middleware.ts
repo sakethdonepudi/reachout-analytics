@@ -35,8 +35,8 @@ async function sessionFromCookie(token: string | undefined, secret: string): Pro
   }
 }
 
-function applyCommon(response: Response, nonce: string, protectedPath: boolean, turnstile = false) {
-  for (const [key, value] of Object.entries(securityHeaders(nonce, { turnstile }))) response.headers.set(key, value);
+function applyCommon(response: Response, nonce: string, protectedPath: boolean) {
+  for (const [key, value] of Object.entries(securityHeaders(nonce))) response.headers.set(key, value);
   if (protectedPath) for (const [key, value] of Object.entries(PROTECTED_HEADERS)) response.headers.set(key, value);
   if (!response.headers.get("Set-Cookie")?.includes(`${CSRF_COOKIE}=`)) {
     const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
@@ -47,12 +47,11 @@ function applyCommon(response: Response, nonce: string, protectedPath: boolean, 
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const turnstilePage = pathname === "/login" || pathname === "/setup" || pathname.startsWith("/account/security") || pathname.startsWith("/account/password");
   const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
     const target = request.nextUrl.clone();
     target.pathname = pathname.replace(/^\/admin/, "/dashboard/case-studies");
-    return applyCommon(NextResponse.redirect(target, 301), nonce, false, turnstilePage);
+    return applyCommon(NextResponse.redirect(target, 301), nonce, false);
   }
   const isProduction = process.env.NODE_ENV === "production";
   const token = request.cookies.get(isProduction ? PROD_COOKIE : DEV_COOKIE)?.value
@@ -62,7 +61,7 @@ export async function middleware(request: NextRequest) {
     const destination = session?.role === "owner"
       ? (pathname === "/data" ? "/dashboard/case-studies" : "/dashboard")
       : session?.role === "client" ? "/case-studies" : "/login";
-    return applyCommon(NextResponse.redirect(new URL(destination, request.url)), nonce, false, turnstilePage);
+    return applyCommon(NextResponse.redirect(new URL(destination, request.url)), nonce, false);
   }
   const roles = rolesForPath(pathname);
   const protectedPath = roles !== null;
@@ -73,7 +72,6 @@ export async function middleware(request: NextRequest) {
         NextResponse.json({ ok: false, error: message }, { status }),
         nonce,
         protectedPath,
-        turnstilePage,
       );
     }
     const target = status === 401
@@ -85,7 +83,7 @@ export async function middleware(request: NextRequest) {
           return login;
         })()
       : new URL(roleHome(session?.role ?? "client"), request.url);
-    return applyCommon(NextResponse.redirect(target), nonce, protectedPath, turnstilePage);
+    return applyCommon(NextResponse.redirect(target), nonce, protectedPath);
   };
 
   if (roles) {
@@ -96,7 +94,7 @@ export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  return applyCommon(response, nonce, protectedPath, turnstilePage);
+  return applyCommon(response, nonce, protectedPath);
 }
 
 export const config = {

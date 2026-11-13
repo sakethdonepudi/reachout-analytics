@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "@/lib/use-navigate";
 import { announceOpening } from "@/lib/use-navigate";
 import Link from "next/link";
 import { Download, FileSpreadsheet, History, LayoutDashboard, LogOut, Loader2, Map as MapIcon, Settings, Table2, Upload, UserCog } from "lucide-react";
@@ -77,7 +76,6 @@ const SECTIONS = [
 type SectionId = (typeof SECTIONS)[number]["id"];
 
 export default function AdminPortal() {
-  const navigate = useNavigate();
   const { requestReauth } = useReauth();
   const [ready, setReady] = useState(false);
   const [cases, setCases] = useState<CaseRecord[]>([]);
@@ -113,13 +111,18 @@ export default function AdminPortal() {
 
   const activeCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
 
+  function openLogin() {
+    announceOpening("Opening sign in", true);
+    window.setTimeout(() => window.location.assign("/login"), 120);
+  }
+
   useEffect(() => {
     fetch("/api/auth/session").then(async (r) => {
-      if (!r.ok) { navigate.replace("/login"); return; }
+      if (!r.ok) { openLogin(); return; }
       setReady(true);
     });
     fetch("/api/admin/case-studies").then(async (r) => { if (r.ok) setCases((await r.json()).cases); });
-  }, [navigate]);
+  }, []);
 
   const loadSummary = useCallback(async () => {
     const r = await fetch(`/api/data/summary?caseStudyId=${encodeURIComponent(caseId)}&view=${view}`);
@@ -171,7 +174,13 @@ export default function AdminPortal() {
   const shares = pollType === "opinion" ? sum?.opinionShares : sum?.exitShares;
   const c = active?.counts ?? EMPTY;
 
-  async function logout() { await fetch("/api/auth/logout", { method: "POST" }); navigate.replace("/login"); }
+  async function logout() {
+    const started = performance.now();
+    announceOpening("Signing out", true);
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    const remaining = 320 - (performance.now() - started);
+    window.setTimeout(() => window.location.assign("/login"), Math.max(0, remaining));
+  }
   async function togglePublish(rec: CaseRecord) {
     const r = await fetch("/api/admin/case-studies", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: rec.id, patch: { published: !rec.published } }) });
     if (r.ok) { const d = await r.json(); setCases((cs) => cs.map((x) => (x.id === rec.id ? d.case : x))); }
@@ -245,7 +254,7 @@ export default function AdminPortal() {
 
   async function ensureRecent(): Promise<boolean> {
     const session = await fetch("/api/auth/session", { cache: "no-store" });
-    if (!session.ok) { navigate.replace("/login"); return false; }
+    if (!session.ok) { openLogin(); return false; }
     const data = await session.json();
     if (data.recent) return true;
     return requestReauth();

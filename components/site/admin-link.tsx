@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
  * Auth-aware admin link: "Admin Login" (signed out) or "Dashboard" (signed in),
  * routing to /login or /admin respectively.
  */
-export default function AdminLink({ className, icon = false }: { className?: string; icon?: boolean }) {
+export default function AdminLink({ className: classNameProp, icon = false }: { className?: string; icon?: boolean }) {
   const [state, setState] = useState<"loading" | "auth" | "anon">("loading");
   useEffect(() => {
     let alive = true;
@@ -19,14 +19,15 @@ export default function AdminLink({ className, icon = false }: { className?: str
     return () => { alive = false; };
   }, []);
   const authed = state === "auth";
+  const className = cn("inline-flex items-center gap-1.5 transition-colors", classNameProp);
+  const content = <>{icon && <Lock className="size-3.5" aria-hidden />}{authed ? "Dashboard" : "Admin Login"}</>;
+
+  if (!authed) {
+    return <a href="/login" aria-label="Admin login" className={className}>{content}</a>;
+  }
   return (
-    <Link
-      href={authed ? "/dashboard/case-studies" : "/login"}
-      aria-label={authed ? "Admin dashboard" : "Admin login"}
-      className={cn("inline-flex items-center gap-1.5 transition-colors", className)}
-    >
-      {icon && <Lock className="size-3.5" aria-hidden />}
-      {authed ? "Dashboard" : "Admin Login"}
+    <Link href="/dashboard/case-studies" aria-label="Admin dashboard" className={className}>
+      {content}
     </Link>
   );
 }

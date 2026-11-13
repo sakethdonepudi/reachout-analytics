@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog } from "@/components/ui/dialog";
+import { announceOpening } from "@/lib/use-navigate";
 
 const IDLE_MS = 10 * 60 * 1000;
 const WARN_MS = 60 * 1000;
@@ -27,14 +28,23 @@ export default function IdleProvider({ children }: { children: ReactNode }) {
   const loggingOut = useRef(false);
   const channel = useRef<BroadcastChannel | null>(null);
 
+  const leave = useCallback((href: string, callLogout: boolean) => {
+    const started = performance.now();
+    announceOpening("Signing out", true);
+    const go = () => {
+      const remaining = 320 - (performance.now() - started);
+      window.setTimeout(() => window.location.assign(href), Math.max(0, remaining));
+    };
+    if (callLogout) void fetch("/api/auth/logout", { method: "POST" }).catch(() => {}).finally(go);
+    else go();
+  }, []);
+
   const signOut = useCallback(() => {
     if (loggingOut.current) return;
     loggingOut.current = true;
     channel.current?.postMessage({ type: "logout" });
-    void fetch("/api/auth/logout", { method: "POST" }).finally(() => {
-      window.location.assign("/login?reason=idle");
-    });
-  }, []);
+    leave("/login?reason=idle", true);
+  }, [leave]);
 
   const touch = useCallback((broadcast = true) => {
     const now = Date.now();
@@ -60,7 +70,7 @@ export default function IdleProvider({ children }: { children: ReactNode }) {
       channel.current.onmessage = (event: MessageEvent) => {
         const type = (event.data as { type?: string } | null)?.type;
         if (type === "activity") touch(false);
-        if (type === "logout") { loggingOut.current = true; window.location.assign("/login?reason=idle"); }
+        if (type === "logout") { loggingOut.current = true; leave("/login?reason=idle", false); }
       };
     }
     const onActivity = () => {
@@ -72,7 +82,7 @@ export default function IdleProvider({ children }: { children: ReactNode }) {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       void fetch("/api/auth/session", { cache: "no-store" }).then((response) => {
-        if (!response.ok) { loggingOut.current = true; window.location.assign("/login?reason=idle"); return; }
+        if (!response.ok) { loggingOut.current = true; leave("/login?reason=idle", false); return; }
         if (Date.now() - lastActivity.current > IDLE_MS) signOut();
       }).catch(() => {});
     };

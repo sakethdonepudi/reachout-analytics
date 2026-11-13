@@ -123,8 +123,14 @@ eq("protected cache control", PROTECTED_HEADERS["Cache-Control"], "private, no-s
 eq("protected vary", PROTECTED_HEADERS.Vary, "Cookie");
 
 ok("Turnstile is not configured without keys", turnstileConfigured() === false);
-ok("auth pages can opt in to Cloudflare in CSP", buildCsp("abc123", { turnstile: true }).includes("challenges.cloudflare.com"));
-ok("non-auth pages omit Cloudflare from CSP", !buildCsp("abc123").includes("challenges.cloudflare.com"));
+const cspAll = buildCsp("abc123");
+ok("every page allows Turnstile scripts", /script-src[^;]*https:\/\/challenges\.cloudflare\.com/.test(cspAll));
+ok("every page allows the Turnstile frame", /frame-src[^;]*https:\/\/challenges\.cloudflare\.com/.test(cspAll));
+ok("every page allows Turnstile connections", /connect-src[^;]*https:\/\/challenges\.cloudflare\.com/.test(cspAll));
+ok("CSP keeps local-only connect", /connect-src[^;]*'self'/.test(cspAll));
+ok("CSP keeps frame-ancestors none", cspAll.includes("frame-ancestors 'none'"));
+ok("CSP keeps base-uri none", cspAll.includes("base-uri 'none'"));
+ok("CSP keeps object-src none", cspAll.includes("object-src 'none'"));
 
 console.log("\n10. No dev auth bypass in shipping code");
 function filesUnder(dir: string): string[] {
@@ -142,6 +148,16 @@ const sources = filesUnder(process.cwd());
 const needle = "process.env." + "CASE_STUDY_" + "DEV_BYPASS";
 const bypassHits = sources.filter((file) => readFileSync(file, "utf8").includes(needle));
 eq("no CASE_STUDY_DEV_BYPASS", bypassHits, []);
+
+console.log("\n10b. Login entry points are full document loads");
+const loginNavHits = sources.filter((file) => {
+  if (!/\.(ts|tsx)$/.test(file)) return false;
+  const text = readFileSync(file, "utf8");
+  return /(?:router|navigate)\.(?:push|replace)\(\s*["'`]\/login/.test(text)
+    || /<Link\b[^>]*\bhref=["'`]\/login/.test(text)
+    || /<MobileLink\b[^>]*href=["'`]\/login/.test(text);
+});
+eq("no client-side navigation to /login", loginNavHits, []);
 
 console.log("\n11. Startup configuration");
 const startupEnv = {

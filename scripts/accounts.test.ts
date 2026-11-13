@@ -68,7 +68,7 @@ ok("user form keeps the required fields", ["Username", "Display name", "Organisa
 
 console.log("\n5. Turnstile and CSP");
 ok("Turnstile is opt-in locally without keys", !turnstileConfigured() && !turnstileRequired());
-const csp = buildCsp("nonce", { turnstile: true });
+const csp = buildCsp("nonce");
 ok("Turnstile adds the script origin", csp.includes("https://challenges.cloudflare.com"));
 ok("Turnstile adds the connect origin", /connect-src[^;]*challenges\.cloudflare\.com/.test(csp));
 ok("no unsafe-inline scripts", !/script-src[^;]*'unsafe-inline'/.test(csp));

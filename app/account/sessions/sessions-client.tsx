@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { announceOpening } from "@/lib/use-navigate";
 
 type Session = { id: string; device: string; ip: string; lastSeen: string; createdAt: string; current: boolean };
 
@@ -30,9 +31,12 @@ export default function SessionsClient() {
 
   async function endAll() {
     if (!window.confirm("Sign out of every session, including Meta connections?")) return;
+    const started = performance.now();
     setBusy("all");
+    announceOpening("Signing out", true);
     await fetch("/api/account/sessions?all=1", { method: "DELETE" });
-    window.location.assign("/login");
+    const remaining = 320 - (performance.now() - started);
+    window.setTimeout(() => window.location.assign("/login"), Math.max(0, remaining));
   }
 
   return (

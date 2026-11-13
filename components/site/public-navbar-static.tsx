@@ -18,7 +18,7 @@ export default function PublicNavbarStatic() {
         <nav className="ml-3 hidden items-center gap-0.5 md:flex" aria-label="Primary">
           {links.map(([href, label]) => <Link key={href} href={href} className="site-nav-link">{label}</Link>)}
         </nav>
-        <Link href="/login" className="ml-auto inline-flex h-9 items-center rounded-md bg-[var(--r-navy)] px-4 text-[12px] font-semibold text-white">Login</Link>
+        <a href="/login" className="ml-auto inline-flex h-9 items-center rounded-md bg-[var(--r-navy)] px-4 text-[12px] font-semibold text-white">Login</a>
       </div>
     </header>
   );

@@ -3,24 +3,23 @@ export const PROTECTED_HEADERS = {
   Vary: "Cookie",
 } as const;
 
-export function buildCsp(nonce: string, options: { turnstile?: boolean } = {}): string {
+export function buildCsp(nonce: string): string {
   const dev = process.env.NODE_ENV !== "production";
-  const turnstile = Boolean(options.turnstile);
   const script = [
     "'self'",
     `'nonce-${nonce}'`,
     "'strict-dynamic'",
-    ...(turnstile ? ["https://challenges.cloudflare.com"] : []),
+    "https://challenges.cloudflare.com",
     ...(dev ? ["'unsafe-eval'"] : []),
   ].join(" ");
-  const frames = (turnstile ? ["https://challenges.cloudflare.com"] : []).join(" ");
+  const frames = "https://challenges.cloudflare.com";
   return [
     "default-src 'self'",
     `script-src ${script}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self' data:",
-    `connect-src 'self'${turnstile ? " https://challenges.cloudflare.com" : ""}`,
+    "connect-src 'self' https://challenges.cloudflare.com",
     "media-src 'self'",
     `frame-src ${frames}`,
     "worker-src 'self' blob:",
@@ -32,9 +31,9 @@ export function buildCsp(nonce: string, options: { turnstile?: boolean } = {}): 
   ].join("; ");
 }
 
-export function securityHeaders(nonce: string, options: { turnstile?: boolean } = {}): Record<string, string> {
+export function securityHeaders(nonce: string): Record<string, string> {
   return {
-    "Content-Security-Policy": buildCsp(nonce, options),
+    "Content-Security-Policy": buildCsp(nonce),
     "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",

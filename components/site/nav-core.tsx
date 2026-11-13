@@ -159,7 +159,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
           </nav>
           <div className="ml-auto flex items-center gap-1">
             {variant === "public" ? (
-              <Link href="/login" className="hidden h-9 items-center rounded-full bg-[var(--r-navy)] px-4 text-[12px] font-semibold text-white md:inline-flex">Login</Link>
+              <a href="/login" className="hidden h-9 items-center rounded-full bg-[var(--r-navy)] px-4 text-[12px] font-semibold text-white md:inline-flex">Login</a>
             ) : (
               <>
                 <div ref={accountRef} className="relative hidden md:block">
@@ -221,7 +221,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
               <MobileLink href="/case-studies"><Lock className="size-3.5" /> Case Studies</MobileLink>
               <MobileLink href="/about">About Us</MobileLink>
               <MobileLink href="/#contact">Contact</MobileLink>
-              <MobileLink href="/login">Login</MobileLink>
+              <a href="/login" className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold text-[var(--h-muted)]">Login</a>
             </>
           )}
           {variant === "client" && (
