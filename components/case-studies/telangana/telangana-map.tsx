@@ -750,7 +750,7 @@ export default function TelanganaMap({ acs, district, ac, year, theme, fitKey = 
       </div>
 
       {tip && (
-        <div role="tooltip" className="pointer-events-none absolute z-20 w-[224px] rounded-lg border border-border bg-card/95 px-2.5 py-1.5 text-left shadow-lg backdrop-blur"
+        <div role="tooltip" className="pointer-events-none absolute z-20 w-[224px] rounded-lg border border-border bg-card/95 px-2.5 py-1.5 text-left shadow-lg"
           style={{ left: tip.x, top: tip.y }}>
           <p className="text-[11.5px] font-semibold leading-tight">{tip.title}</p>
           <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">{tip.sub}</p>

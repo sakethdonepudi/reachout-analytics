@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, startTransition, useMemo, useState } from "react";
 import { Maximize2 } from "lucide-react";
 import { TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_FULL, TN_SEAT_GROUPS, tnPct, type TnGroup, type TnSeatGroup, type TnShares, type TnYear } from "@/lib/tamil-nadu/model";
 import type { TnExitPollView, TnOpinionPollView, TnSocial } from "@/lib/tamil-nadu/view-data";
@@ -8,6 +8,8 @@ import { usePrefersReducedMotion } from "@/components/case-studies/telangana/cha
 import EChart from "@/components/case-studies/telangana/echart";
 import { cn } from "@/lib/utils";
 import SocialPanel from "@/components/ads-desk/social-panel";
+
+const MemoSocialPanel = memo(SocialPanel);
 
 export type TnTab = "change" | "share" | "seats";
 const TABS: { id: TnTab; label: string }[] = [
@@ -100,13 +102,23 @@ function DisplayPartyCell({ group, compact }: { group: DisplayGroup; compact: bo
 
 export default function TamilNaduRail({
   scope, tab, onTab, onExpand, theme, selectedYear, isStatewide, opinionPoll, exitPoll, social, actualShares,
-  view, onView, panelWidth = 500, owner = false, socialRegions,
+  onViewChange, panelWidth = 500, owner = false, socialRegions,
 }: {
   scope: TnScopeResult; tab: TnTab; onTab: (t: TnTab) => void; onExpand: () => void;
   theme: "light" | "dark"; selectedYear: TnYear | "2026"; isStatewide: boolean;
   opinionPoll: OpinionPollView; exitPoll: TnExitPollView; social: TnSocial; socialRegions?: TnSocial[]; actualShares: TnShares | null;
-  view: TnView; onView: (view: TnView) => void; panelWidth?: number; owner?: boolean;
+  onViewChange?: (view: TnView) => void; panelWidth?: number; owner?: boolean;
 }) {
+  const [view, setView] = useState<TnView>("polls");
+  const [openedSocial, setOpenedSocial] = useState(false);
+  const socialViews = useMemo(() => socialRegions ?? [social], [socialRegions, social]);
+  const selectView = (next: TnView) => {
+    onViewChange?.(next);
+    startTransition(() => {
+      setView(next);
+      if (next === "social") setOpenedSocial(true);
+    });
+  };
   const reduced = usePrefersReducedMotion();
   const p = palette(theme);
   const compact = panelWidth < 430;
@@ -243,20 +255,16 @@ export default function TamilNaduRail({
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <div className={cn(segWrap, "grid min-w-0 flex-1 grid-cols-2")} role="tablist" aria-label="Comparison content">
-          <button type="button" role="tab" aria-selected={view === "polls"} onClick={() => onView("polls")} className={segButton(view === "polls")}>
+          <button type="button" role="tab" aria-selected={view === "polls"} onClick={() => selectView("polls")} className={segButton(view === "polls")}>
             Polls
           </button>
-          <button type="button" role="tab" aria-selected={view === "social"} onClick={() => onView("social")} className={segButton(view === "social")}>
+          <button type="button" role="tab" aria-selected={view === "social"} onClick={() => selectView("social")} className={segButton(view === "social")}>
             Social Media
           </button>
         </div>
       </div>
 
-      {view === "social" ? (
-        <>
-          <SocialPanel compact regions={socialRegions ?? [social]} />
-        </>
-      ) : (
+      <div hidden={view !== "polls"} style={{ contentVisibility: view === "polls" ? "visible" : "hidden" }}>
         <>
           {isStatewide ? (
             <div className="mt-2 overflow-x-auto rounded-lg border border-border/70">
@@ -381,6 +389,11 @@ export default function TamilNaduRail({
             )}
           </div>
         </>
+      </div>
+      {openedSocial && (
+        <div hidden={view !== "social"} style={{ contentVisibility: view === "social" ? "visible" : "hidden" }}>
+          <MemoSocialPanel compact regions={socialViews} />
+        </div>
       )}
       {selectedYear === "2026" && scope.currentValid === 0 && <p className="mt-1 text-[9px] text-muted-foreground">No valid 2026 estimate in this scope.</p>}
     </section>

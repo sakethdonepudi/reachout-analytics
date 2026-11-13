@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Check, ChevronDown, RotateCcw, Search } from "lucide-react";
@@ -19,6 +19,8 @@ const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
   ssr: false,
   loading: () => <div className="grid h-full min-h-[420px] w-full place-items-center rounded-[10px] border border-[var(--border-hairline)] bg-[var(--surface-panel)] text-[12px] text-muted-foreground">Loading map...</div>,
 });
+const MemoTamilNaduMap = memo(TamilNaduMap);
+
 const TamilNaduAnalysis = dynamic(() => import("./tamil-nadu-analysis"), {
   ssr: false,
   loading: () => <div className="fixed inset-0 z-[140] grid place-items-center bg-background text-sm text-muted-foreground">Opening analysis…</div>,
@@ -99,8 +101,9 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
   const [acNo, setAcNo] = useState<number | null>(null);
   const [year, setYear] = useState<TnYearOrCurrent>("2026");
   const [tab, setTab] = useState<TnTab>("share");
-  const [view, setView] = useState<TnView>("polls");
   const [fitKey, setFitKey] = useState(0);
+  const viewRef = useRef<TnView>("polls");
+  const handleViewChange = useCallback((next: TnView) => { viewRef.current = next; }, []);
   const [chartOpen, setChartOpen] = useState(false);
   const expandFocus = useRef<HTMLElement | null>(null);
 
@@ -220,7 +223,7 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
           map={(
             <div className="flex h-full min-h-0 flex-col">
               <div className="relative min-h-0 flex-1">
-                <TamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} theme={(theme === "light" ? "light" : "dark") as MapTheme} fitKey={fitKey} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={resetToState} />
+                <MemoTamilNaduMap acs={acs} districts={districts} district={district} acNo={acNo} year={year} theme={(theme === "light" ? "light" : "dark") as MapTheme} fitKey={fitKey} onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={resetToState} />
                 {(district || currentAc) && (
                   <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 lg:left-3 lg:top-3">
                     <button type="button" onClick={resetToState} className="inline-flex items-center gap-1 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[11px] font-semibold hover:border-teal/50"><ArrowLeft className="size-3" /> Tamil Nadu</button>
@@ -236,7 +239,7 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
             </div>
           )}
           panel={(panelWidth) => (
-            <TamilNaduRail scope={scope} tab={tab} onTab={setTab} onExpand={openAnalysis} theme={theme === "light" ? "light" : "dark"} selectedYear={year} isStatewide={isStatewide} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} social={caseData.social} socialRegions={caseData.socialRegions} actualShares={caseData.actual.shares} view={view} onView={setView} panelWidth={panelWidth} owner={owner} />
+            <TamilNaduRail scope={scope} tab={tab} onTab={setTab} onExpand={openAnalysis} theme={theme === "light" ? "light" : "dark"} selectedYear={year} isStatewide={isStatewide} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} social={caseData.social} socialRegions={caseData.socialRegions} actualShares={caseData.actual.shares} onViewChange={handleViewChange} panelWidth={panelWidth} owner={owner} />
           )}
         />
       </section>
@@ -244,7 +247,7 @@ export default function TamilNaduDashboard({ caseData, owner = false }: { caseDa
 
       {chartOpen && (
         <TamilNaduAnalysis open={chartOpen} onClose={closeAnalysis} data={data} theme={theme === "light" ? "light" : "dark"}
-          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} onSelectAc={selectAc} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} eciActual={caseData.actual} social={caseData.social} socialRegions={caseData.socialRegions} forecasters={caseData.forecasters} forecastActualSeats={caseData.forecastActualSeats} initialView={view} initialTab={tab} owner={owner} />
+          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} onSelectAc={selectAc} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} eciActual={caseData.actual} social={caseData.social} socialRegions={caseData.socialRegions} forecasters={caseData.forecasters} forecastActualSeats={caseData.forecastActualSeats} initialView={viewRef.current} initialTab={tab} owner={owner} />
       )}
     </div>
   );

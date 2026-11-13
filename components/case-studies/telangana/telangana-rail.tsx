@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { startTransition, useMemo, useState } from "react";
 import { Expand, Maximize2 } from "lucide-react";
 import {
   PARTIES, PARTY_COLOR, PARTY_LABEL, fmtPct, fmtPp, type Party, type ShareSet,
@@ -50,12 +50,10 @@ const tip = (p: Pal) => ({
 const signed = (v: number, digits = 2) => `${v > 0 ? "+" : ""}${v.toFixed(digits)}`;
 
 export default function TelanganaRail({
-  scope, year, tab, onTab, onExpand, theme, leads2028, actualSeats, actualSeatsYear, isStatewide, panelWidth = 420,
+  scope, year, onExpand, theme, leads2028, actualSeats, actualSeatsYear, isStatewide, panelWidth = 420,
 }: {
   scope: ScopeResult;
   year: ElectionYear;
-  tab: Tab;
-  onTab: (t: Tab) => void;
   onExpand: () => void;
   theme: "light" | "dark";
   leads2028: Record<string, number>;
@@ -64,6 +62,8 @@ export default function TelanganaRail({
   isStatewide: boolean;
   panelWidth?: number;
 }) {
+  const [tab, setTab] = useState<Tab>("change");
+  const [opened, setOpened] = useState<Record<Tab, boolean>>({ change: true, share: false, seats: false });
   const reduced = usePrefersReducedMotion();
   const p = palette(theme);
   const compact = panelWidth < 400;
@@ -214,7 +214,7 @@ export default function TelanganaRail({
 
       <div className="mt-2 grid w-full grid-cols-3 gap-0.5 rounded-lg border border-border/70 bg-muted/20 p-0.5" role="tablist" aria-label="Comparison views">
         {TABS.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => onTab(t.id)}
+          <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => { setOpened((current) => ({ ...current, [t.id]: true })); startTransition(() => setTab(t.id)); }}
             className={cn("min-h-10 rounded-md px-2 py-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60 sm:min-h-7",
               tab === t.id ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground")}>
             {t.label}
@@ -223,23 +223,20 @@ export default function TelanganaRail({
       </div>
 
       <div className="pt-2">
-        {tab === "change" && (
-          <>
-            <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">2028 minus {baselineLabel} (pp)</p>
-            <EChart option={changeOption} height={chartHeight} reduced={reduced} ariaLabel={`Signed percentage-point change from ${baselineLabel} to the 2028 prediction for ${scope.label}`} />
-          </>
-        )}
-        {tab === "share" && (
-          <>
+        <div hidden={tab !== "change"} style={{ contentVisibility: tab === "change" ? "visible" : "hidden" }}>
+          <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">2028 minus {baselineLabel} (pp)</p>
+          <EChart option={changeOption} height={chartHeight} reduced={reduced} ariaLabel={`Signed percentage-point change from ${baselineLabel} to the 2028 prediction for ${scope.label}`} />
+        </div>
+        {opened.share && (
+          <div hidden={tab !== "share"} style={{ contentVisibility: tab === "share" ? "visible" : "hidden" }}>
             <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">2028 prediction share</p>
             <EChart option={shareOption} height={chartHeight} reduced={reduced} ariaLabel={`2028 prediction share for ${scope.label}`} />
-          </>
+          </div>
         )}
-        {tab === "seats" && (
-          <div className="space-y-2">
+        {opened.seats && (
+          <div hidden={tab !== "seats"} style={{ contentVisibility: tab === "seats" ? "visible" : "hidden" }} className="space-y-2">
             {leadRows(leads2028, "2028 projected leading assemblies")}
             {Object.keys(actualSeats).length > 0 && leadRows(actualSeats, `${actualSeatsYear} actual AC winners`, true)}
-
           </div>
         )}
       </div>

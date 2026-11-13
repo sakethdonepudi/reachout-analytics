@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Check, ChevronDown, RotateCcw, Search } from "lucide-react";
@@ -23,6 +23,8 @@ const TelanganaMap = dynamic(() => import("./telangana-map"), {
   ssr: false,
   loading: () => <div className="grid h-full min-h-[420px] w-full place-items-center rounded-[10px] border border-[var(--border-hairline)] bg-[var(--surface-panel)] text-[12px] text-muted-foreground">Loading map...</div>,
 });
+const MemoTelanganaMap = memo(TelanganaMap);
+
 const TelanganaAnalysis = dynamic(() => import("./telangana-analysis"), {
   ssr: false,
   loading: () => <div className="fixed inset-0 z-[140] grid place-items-center bg-background text-sm text-muted-foreground">Opening analysis…</div>,
@@ -126,7 +128,6 @@ export default function TelanganaDashboard() {
   const [district, setDistrict] = useState<string | null>(null);
   const [acNo, setAcNo] = useState<number | null>(null);
   const [year, setYear] = useState<ElectionYear>("2028");
-  const [tab, setTab] = useState<Tab>("share");
   const [fitKey, setFitKey] = useState(0);
   const [chartOpen, setChartOpen] = useState(false);
   const expandFocus = useRef<HTMLElement | null>(null);
@@ -348,7 +349,7 @@ export default function TelanganaDashboard() {
           )}
           map={(
             <div className="relative h-full min-h-0">
-              <TelanganaMap acs={acs} district={district} ac={acNo} year={year}
+              <MemoTelanganaMap acs={acs} district={district} ac={acNo} year={year}
                 theme={(theme === "light" ? "light" : "dark") as MapTheme} fitKey={fitKey}
                 onSelectDistrict={selectDistrict} onSelectAc={selectAc} onReset={reset} />
               {(district || currentAc) && (
@@ -366,7 +367,7 @@ export default function TelanganaDashboard() {
             </div>
           )}
           panel={(panelWidth) => (
-            <TelanganaRail scope={scope} year={year} tab={tab} onTab={setTab} onExpand={openAnalysis}
+            <TelanganaRail scope={scope} year={year} onExpand={openAnalysis}
               theme={theme === "light" ? "light" : "dark"} leads2028={leads2028} actualSeats={actualSeats} actualSeatsYear={actualSeatsYear} isStatewide={isStatewide} panelWidth={panelWidth} />
           )}
         />
