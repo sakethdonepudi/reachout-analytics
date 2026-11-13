@@ -38,7 +38,7 @@ const EMPTY: AdsSocialView = {
   accounts: [],
 };
 
-export function buildAdsSocial(version: AdsParse | AdsRegion | null, regionKey: string, includeCost: boolean): AdsSocialView {
+export function buildAdsSocial(version: AdsParse | AdsRegion | null, regionKey: string, includeCost: boolean, includeLinks = includeCost): AdsSocialView {
   if (!version) return EMPTY;
   const region = "regions" in version ? version.regions.find((item) => item.key === regionKey) : version;
   if (!region) return EMPTY;
@@ -57,19 +57,19 @@ export function buildAdsSocial(version: AdsParse | AdsRegion | null, regionKey: 
     },
     accounts: region.accounts.map((account) => ({
       name: account.name,
-      ...(includeCost ? {
+      ...(includeLinks ? {
         href: adsManagerCampaigns(account.id),
-        billingHref: billing(account.id),
         allAdsetsHref: adsManagerAdsets(account.id),
         allAdsHref: adsManagerAds(account.id),
       } : {}),
+      ...(includeCost ? { billingHref: billing(account.id) } : {}),
       campaigns: account.campaigns.map((campaign) => ({
         name: campaign.name, delivery: campaign.delivery, start: campaign.start, end: campaign.end,
         reach: campaign.reach, impressions: campaign.impressions, views: campaign.views,
         clicks: campaign.clicks, engagements: campaign.engagements,
         results: campaign.results, resultLabel: campaign.resultLabel,
-        ...(includeCost ? {
-          spend: campaign.spend, costPerResult: campaign.costPerResult,
+        ...(includeCost ? { spend: campaign.spend, costPerResult: campaign.costPerResult } : {}),
+        ...(includeLinks ? {
           adsets: campaign.adsets ?? null, ads: campaign.ads ?? null,
           href: adsManagerForCampaign(account.id, campaign.id),
           adsetsHref: campaign.adsets == null ? null : adsManagerAdsets(account.id, campaign.id),
@@ -80,7 +80,7 @@ export function buildAdsSocial(version: AdsParse | AdsRegion | null, regionKey: 
   };
 }
 
-export function buildAdsSocialFromSummary(summary: AdsRegionSummary, includeCost: boolean): AdsSocialView {
+export function buildAdsSocialFromSummary(summary: AdsRegionSummary, includeCost: boolean, includeLinks = includeCost): AdsSocialView {
   return {
     available: true,
     key: summary.regionKey,
@@ -109,10 +109,9 @@ export function buildAdsSocialFromSummary(summary: AdsRegionSummary, includeCost
       clicks: account.clicks,
       engagements: account.engagements,
       results: account.results,
-      ...(includeCost ? {
-        spend: account.spend,
+      ...(includeCost ? { spend: account.spend, billingHref: billing(account.id) } : {}),
+      ...(includeLinks ? {
         href: adsManagerCampaigns(account.id),
-        billingHref: billing(account.id),
         allAdsetsHref: adsManagerAdsets(account.id),
         allAdsHref: adsManagerAds(account.id),
       } : {}),

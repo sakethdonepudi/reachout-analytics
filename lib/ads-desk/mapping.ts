@@ -4,6 +4,7 @@ import { getMongo } from "@/lib/mongodb";
 import { caseBySlug } from "@/lib/cases";
 import { getActiveRegionSummaries } from "@/lib/ads-desk/store";
 import { buildAdsSocialFromSummary, type AdsSocialView } from "@/lib/ads-desk/client-dto";
+import { getClientLinks } from "@/lib/ads-desk/settings";
 
 export const DEFAULT_REGION_MAP: Record<string, string> = {
   tn2026: "tamil-nadu",
@@ -42,13 +43,13 @@ export async function setRegionMapping(regionKey: string, caseSlug: string | nul
 }
 
 export async function socialForCase(slug: string, includeCost: boolean): Promise<AdsSocialView[]> {
-  const [summaries, map] = await Promise.all([getActiveRegionSummaries(), getRegionMap()]);
+  const [summaries, map, clientLinks] = await Promise.all([getActiveRegionSummaries(), getRegionMap(), getClientLinks()]);
   if (!summaries.length) return [];
   const keys = Object.entries(map).filter(([, value]) => value === slug).map(([key]) => key);
   return keys.map((key) => {
     const summary = summaries.find((item) => item.regionKey === key);
     if (!summary) return null;
-    const view = buildAdsSocialFromSummary(summary, includeCost);
+    const view = buildAdsSocialFromSummary(summary, includeCost, includeCost || clientLinks);
     if (key === "ka2028") return { ...view, label: "Karnataka 2026-28" };
     return view;
   }).filter((view): view is AdsSocialView => Boolean(view));

@@ -9,7 +9,7 @@ export type AuditAction =
   | "login_success" | "login_failed" | "login_denied" | "reauth" | "logout" | "logout_all"
   | "role_denied" | "export" | "csrf_rejected" | "totp_failed" | "recovery_code_used" | "session_idle_timeout"
   | "owner_bootstrap" | "ads_upload" | "ads_publish" | "ads_rollback" | "user_created" | "user_updated" | "user_disabled" | "user_deleted"
-  | "password_reset" | "totp_reset" | "sign_out_everywhere" | "scope_changed" | "ads_summaries_rebuilt";
+  | "password_reset" | "totp_reset" | "sign_out_everywhere" | "scope_changed" | "ads_summaries_rebuilt" | "ads_client_links_changed";
 
 export async function audit(input: {
   action: AuditAction;

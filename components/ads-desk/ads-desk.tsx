@@ -15,7 +15,7 @@ type Preview = { versionId: string; regions: { key: string; label: string; total
 const money = (value: number) => `₹${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value)}`;
 const count = (value: number) => new Intl.NumberFormat("en-IN").format(value);
 
-export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }: { data: AdsParse | null; versions: Version[]; defaultRegion: string; unmapped?: string[] }) {
+export default function AdsDesk({ data, versions, defaultRegion, unmapped = [], clientLinks = true }: { data: AdsParse | null; versions: Version[]; defaultRegion: string; unmapped?: string[]; clientLinks?: boolean }) {
   const router = useRouter();
   const { requestReauth } = useReauth();
   const [tab, setTab] = useState<string>(data && defaultRegion && data.regions.some((region) => region.key === defaultRegion) ? defaultRegion : data?.regions[0]?.key ?? "all");
@@ -28,6 +28,8 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
   const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [rebuilding, setRebuilding] = useState(false);
+  const [linksToClients, setLinksToClients] = useState(clientLinks);
+  const [savingLinks, setSavingLinks] = useState(false);
   const [allExpanded, setAllExpanded] = useState(false);
   const [allQuery, setAllQuery] = useState("");
 
@@ -94,6 +96,23 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
     } catch { setMessage("Publish failed."); } finally { setBusy(""); }
   }
 
+  async function toggleClientLinks(retry = false) {
+    const next = !linksToClients;
+    setSavingLinks(true); setMessage("");
+    try {
+      const response = await fetch("/api/ads/client-links", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientLinks: next }) });
+      const payload = await response.json().catch(() => ({}));
+      if (response.status === 403 && payload.code === "reauth_required" && !retry) {
+        if (await requestReauth()) return toggleClientLinks(true);
+      }
+      if (!response.ok) { setMessage(payload.error ?? "Could not update the client link setting."); return; }
+      setLinksToClients(Boolean(payload.clientLinks));
+      setMessage(`Ads Manager links for clients are ${payload.clientLinks ? "on" : "off"}.`);
+      router.refresh();
+    } catch { setMessage("Could not update the client link setting."); }
+    finally { setSavingLinks(false); }
+  }
+
   async function rebuildSummaries(retry = false) {
     setRebuilding(true); setMessage("");
     try {
@@ -143,6 +162,9 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [] }
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><h2 className="text-[15px] font-semibold text-[var(--r-navy)]">Ads data</h2><p className="text-[12px] text-[var(--r-muted)]">{data ? `Data as of ${data.asOf}, ${data.takenAt}` : "No active upload yet."}</p></div>
           <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => void toggleClientLinks()} disabled={savingLinks} aria-pressed={linksToClients} className="report-btn-secondary disabled:opacity-60">
+              {savingLinks && <Loader2 className="size-3.5" />} Show Ads Manager links to clients: {linksToClients ? "On" : "Off"}
+            </button>
             <button type="button" onClick={() => void rebuildSummaries()} disabled={rebuilding} className="report-btn-secondary disabled:opacity-60">
               {rebuilding ? <Loader2 className="size-3.5" /> : <RefreshCw className="size-3.5" />} Rebuild social summaries
             </button>
