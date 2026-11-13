@@ -189,10 +189,10 @@ export default function ContactSection() {
           </div>
         </div>
 
-        <CompanyExperience tone="dark" className="mt-12 border-[var(--r-line)]" />
+        <CompanyExperience className="mt-12" />
 
         <footer className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-[var(--r-line)] pt-4 text-sm text-[var(--r-muted)] sm:flex-row">
-          <div className="flex flex-wrap items-center gap-5"><Logo variant="dark" /><Link href="/services" className="hover:text-[var(--r-ink)]">Services</Link><Link href="/services/research-content" className="hover:text-[var(--r-ink)]">Research &amp; Content</Link></div>
+          <div className="flex flex-wrap items-center gap-5"><Logo /><Link href="/services" className="hover:text-[var(--r-ink)]">Services</Link><Link href="/services/research-content" className="hover:text-[var(--r-ink)]">Research &amp; Content</Link></div>
           <span>© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</span>
         </footer>
       </div>

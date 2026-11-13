@@ -1418,3 +1418,66 @@ tr[data-highlight="true"] { background: var(--r-hl); }
   .social-toggle { width: auto; }
   .social-toggle-button { flex: 0 0 auto; padding: 5px 8px; font-size: 11px; }
 }
+
+/* Company experience logo strip. */
+.company-eyebrow {
+  margin: 0;
+  color: var(--r-teal-d);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.company-rows { display: flex; flex-direction: column; gap: 16px; }
+.company-row { height: 72px; overflow: hidden; }
+.company-marquee__viewport {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 80px, #000 calc(100% - 80px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 80px, #000 calc(100% - 80px), transparent 100%);
+}
+.company-marquee__track { animation-duration: 40s !important; }
+.company-marquee__track--left, .company-marquee__track--right { animation-duration: 40s !important; }
+.company-marquee__group { gap: 16px; padding-right: 16px; }
+.company-marquee__item { flex: 0 0 auto; }
+.company-tile {
+  display: flex;
+  width: 168px;
+  height: 72px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid var(--r-line);
+  border-radius: 12px;
+  background: #ffffff;
+  transition: border-color 200ms ease;
+}
+.company-tile:hover, .company-tile:focus-visible { border-color: var(--r-teal); outline: none; }
+.company-logo {
+  width: auto;
+  height: auto;
+  max-width: 70%;
+  object-fit: contain;
+  filter: grayscale(1);
+  opacity: 0.7;
+  transition: filter 200ms ease, opacity 200ms ease;
+}
+.company-tile:hover .company-logo,
+.company-tile:focus-visible .company-logo { filter: none; opacity: 1; }
+.company-row:hover .company-marquee__track,
+.company-row:focus-within .company-marquee__track { animation-play-state: paused; }
+@media (max-width: 639px) {
+  .company-row { height: 60px; }
+  .company-row--second { display: none; }
+  .company-tile { width: 140px; height: 60px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .company-rows { gap: 16px; }
+  .company-row { height: auto; overflow: visible; }
+  .company-row--second { display: block; }
+  .company-marquee__viewport { overflow: visible; -webkit-mask-image: none; mask-image: none; }
+  .company-marquee__track { display: block; width: auto; animation: none !important; transform: none !important; }
+  .company-marquee__group { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; padding: 0; }
+  .company-marquee__group[aria-hidden="true"] { display: none; }
+  .company-tile { transition: none; }
+  .company-logo { filter: none; opacity: 1; transition: none; }
+}
