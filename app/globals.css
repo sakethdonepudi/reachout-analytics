@@ -1491,21 +1491,13 @@ tr[data-highlight="true"] { background: var(--r-hl); }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 16px;
   padding: 24px;
-  background: #fefeff;
+  background: rgba(250, 250, 247, 0.92);
   color: var(--r-navy);
   overflow: hidden;
 }
-.signal-loader::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(31, 78, 120, 0.11) 1px, transparent 1.2px);
-  background-size: 18px 18px;
-  opacity: 0.55;
-  pointer-events: none;
-}
+.signal-loader::before { content: none; }
 .signal-loader__top {
   position: absolute;
   top: 18px;
@@ -1525,7 +1517,7 @@ tr[data-highlight="true"] { background: var(--r-hl); }
 }
 .signal-loader__stage {
   position: relative;
-  width: min(84vw, 470px);
+  width: 160px;
   aspect-ratio: 360 / 310;
 }
 .signal-loader__art { width: 100%; height: 100%; overflow: visible; }
@@ -1555,7 +1547,7 @@ tr[data-highlight="true"] { background: var(--r-hl); }
   animation: signal-pulse 0.7s ease-out forwards 0.72s;
 }
 .signal-loader__copy { position: relative; text-align: center; }
-.signal-loader__label { margin: 0; color: var(--r-navy); font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+.signal-loader__label { margin: 0; color: var(--r-muted); font-size: 13px; font-weight: 500; letter-spacing: -0.01em; }
 .signal-loader__dots { margin-top: 9px; display: flex; justify-content: center; gap: 5px; }
 .signal-loader__dots span { width: 4px; height: 4px; border-radius: 999px; background: var(--r-navy); opacity: 0.22; animation: signal-dot 1.1s ease-in-out infinite; }
 .signal-loader__dots span:nth-child(2) { animation-delay: 0.14s; }
@@ -1573,23 +1565,22 @@ tr[data-highlight="true"] { background: var(--r-hl); }
   to { opacity: 1; transform: scale(1); }
 }
 @keyframes signal-pulse {
-  0% { opacity: 0; transform: scale(0.58); }
+  0% { opacity: 0; transform: scale(1); }
   40% { opacity: 0.8; }
   100% { opacity: 0; transform: scale(1.38); }
 }
 @keyframes signal-dot { 0%, 100% { opacity: 0.22; } 50% { opacity: 0.75; } }
 @media (max-width: 640px) {
-  .signal-loader__stage { width: min(88vw, 360px); }
-  .signal-loader__top { top: 14px; padding: 0 16px; }
+  .signal-loader__stage { width: 128px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .signal-loader__node, .signal-loader__line, .signal-loader__contour, .signal-loader__mark, .signal-loader__pulse, .signal-loader__dots span { animation: none !important; }
+  .signal-loader__node, .signal-loader__line, .signal-loader__contour, .signal-loader__mark, .signal-loader__pulse { animation: none !important; }
   .signal-loader__node { opacity: 0.9; }
   .signal-loader__line { stroke-dashoffset: 0; }
   .signal-loader__contour { opacity: 0.14; stroke-dashoffset: 0; }
   .signal-loader__mark { opacity: 1; transform: none; }
   .signal-loader__pulse { opacity: 0; }
-  .signal-loader__dots span { opacity: 0.45; }
+  .signal-loader__dots span { animation-duration: 2.4s; }
 }
 .signal-loader--dark { background: #0c1117; color: #f1f3f5; }
 .signal-loader--dark::before { background-image: radial-gradient(circle, rgba(255, 255, 255, 0.10) 1px, transparent 1.2px); }

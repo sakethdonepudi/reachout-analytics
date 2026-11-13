@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Logo } from "@/components/site/brand";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const NODES: [number, number][] = [
@@ -17,24 +16,32 @@ const CONTOURS = [
   "M 126 171 L 134 157 L 157 145 L 180 141 L 203 145 L 226 157 L 234 171 L 226 185 L 203 197 L 180 201 L 157 197 L 134 185 Z",
 ];
 
-export default function SignalLoader({ label, active = true, delay = 250, theme = "light" }: { label: string; active?: boolean; delay?: number; theme?: "light" | "dark" }) {
+export default function SignalLoader({
+  label, active = true, delay = 250, minimum = 300, theme = "light",
+}: { label: string; active?: boolean; delay?: number; minimum?: number; theme?: "light" | "dark" }) {
   const [shown, setShown] = useState(false);
+  const shownAt = useRef(0);
 
   useEffect(() => {
-    if (!active) { setShown(false); return; }
-    const timer = window.setTimeout(() => setShown(true), delay);
+    if (active) {
+      if (shown) return;
+      const timer = window.setTimeout(() => {
+        shownAt.current = performance.now();
+        setShown(true);
+      }, delay);
+      return () => window.clearTimeout(timer);
+    }
+    if (!shown) return;
+    const remaining = Math.max(0, minimum - (performance.now() - shownAt.current));
+    const timer = window.setTimeout(() => setShown(false), remaining);
     return () => window.clearTimeout(timer);
-  }, [active, delay]);
+  }, [active, delay, minimum, shown]);
 
   if (!shown) return null;
 
   return (
     <div className={cn("signal-loader", theme === "dark" && "signal-loader--dark")} data-testid="signal-loader" role="status" aria-live="polite" aria-atomic="true">
       <span className="sr-only">{label}</span>
-      <div className="signal-loader__top" aria-hidden="true">
-        <Logo linked={false} className="h-5 w-24 sm:h-6 sm:w-28" />
-        <span>Election intelligence</span>
-      </div>
 
       <div className="signal-loader__stage" aria-hidden="true">
         <svg viewBox="0 0 360 310" className="signal-loader__art" focusable="false">
@@ -46,7 +53,7 @@ export default function SignalLoader({ label, active = true, delay = 250, theme 
             {NODES.map(([x, y], index) => <circle key={`${x}-${y}`} cx={x} cy={y} r="2.7" fill="#1714f5" className="signal-loader__node" style={{ animationDelay: `${index * 18}ms` }} />)}
           </g>
           <circle className="signal-loader__pulse" cx="180" cy="160" r="82" fill="none" stroke="#c9fa00" strokeWidth="3" />
-          <g transform="translate(82 54) scale(0.68)">
+          <g transform="translate(132.96 117.12) scale(0.32)">
             <g className="signal-loader__mark" fill="#1714f5" stroke="#1f4e78" strokeWidth="3" strokeLinejoin="round">
               <path d="M8 0H187C241 0 274 32 274 78C274 112 260 137 235 153L194 107C206 102 212 92 212 81C212 66 202 58 186 58H59Z" />
               <path d="M88 90H157L290 268H210Z" />
