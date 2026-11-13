@@ -26,6 +26,7 @@ async function ensureIndexes(database: NonNullable<Database>): Promise<void> {
     database.collection("ads_regions").createIndex({ versionId: 1, key: 1 }).catch(() => {}),
     database.collection("ads_accounts").createIndex({ versionId: 1, regionKey: 1, id: 1 }).catch(() => {}),
     database.collection("ads_campaigns").createIndex({ versionId: 1, regionKey: 1, accountId: 1 }).catch(() => {}),
+    database.collection("ads_campaigns").createIndex({ versionId: 1, regionKey: 1, accountId: 1, impressions: -1 }).catch(() => {}),
     database.collection("ads_pages").createIndex({ versionId: 1, pageId: 1 }).catch(() => {}),
     database.collection("ads_region_summaries").createIndex({ versionId: 1, regionKey: 1 }, { unique: true }).catch(() => {}),
   ]);

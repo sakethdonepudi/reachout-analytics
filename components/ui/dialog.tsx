@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,14 +16,15 @@ const overlayPlacement: Record<Placement, string> = {
 const panelPlacement: Record<Placement, string> = {
   center: "w-full max-w-lg rounded-[var(--radius-panel)]",
   bottom: "w-full max-w-none rounded-t-[var(--radius-panel)] sm:max-w-lg sm:rounded-[var(--radius-panel)]",
-  right: "h-full w-full max-w-sm rounded-none sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:rounded-[var(--radius-panel)]",
+  right: "h-full w-full max-w-none rounded-none sm:max-w-[480px]",
 };
 
-export function Dialog({ open, onClose, title, description, children, footer, placement = "center", className }: {
+export function Dialog({ open, onClose, title, description, headerExtra, children, footer, placement = "center", className }: {
   open: boolean;
   onClose: () => void;
   title: ReactNode;
   description?: ReactNode;
+  headerExtra?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   placement?: Placement;
@@ -32,6 +34,9 @@ export function Dialog({ open, onClose, title, description, children, footer, pl
   const restoreRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
   const descriptionId = useId();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -75,11 +80,11 @@ export function Dialog({ open, onClose, title, description, children, footer, pl
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  return createPortal(
     <div
-      className={cn("fixed inset-0 z-50 flex bg-black/50 backdrop-blur-sm", overlayPlacement[placement])}
+      className={cn("fixed inset-0 z-[70] flex bg-[rgba(17,24,39,.28)]", overlayPlacement[placement])}
       onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <div
@@ -95,10 +100,11 @@ export function Dialog({ open, onClose, title, description, children, footer, pl
           className,
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-[var(--border-hairline)] px-5 py-4">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[var(--border-hairline)] bg-[var(--surface-panel)] px-5 py-4">
           <div className="min-w-0">
             <h2 id={titleId} className="type-h3 text-[var(--text-primary)]">{title}</h2>
             {description && <p id={descriptionId} className="type-small mt-1 text-[var(--text-muted)]">{description}</p>}
+            {headerExtra && <div className="mt-2">{headerExtra}</div>}
           </div>
           <button
             type="button"
@@ -112,6 +118,7 @@ export function Dialog({ open, onClose, title, description, children, footer, pl
         <div className="px-5 py-4">{children}</div>
         {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border-hairline)] px-5 py-3">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
