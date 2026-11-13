@@ -35,8 +35,22 @@ export function Dialog({ open, onClose, title, description, headerExtra, childre
   const titleId = useId();
   const descriptionId = useId();
   const [mounted, setMounted] = useState(false);
+  const [present, setPresent] = useState(open);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (open) {
+      setPresent(true);
+      setClosing(false);
+      return;
+    }
+    if (!present) return;
+    setClosing(true);
+    const timer = window.setTimeout(() => { setPresent(false); setClosing(false); }, 180);
+    return () => window.clearTimeout(timer);
+  }, [open, present]);
 
   useEffect(() => {
     if (!open) return;
@@ -80,11 +94,12 @@ export function Dialog({ open, onClose, title, description, headerExtra, childre
     };
   }, [open, onClose]);
 
-  if (!open || !mounted) return null;
+  if (!present || !mounted) return null;
 
   return createPortal(
     <div
-      className={cn("fixed inset-0 z-[70] flex bg-[rgba(17,24,39,.28)]", overlayPlacement[placement])}
+      data-closing={closing}
+      className={cn("dialog-overlay fixed inset-0 z-[70] flex bg-[rgba(17,24,39,.28)]", overlayPlacement[placement])}
       onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <div
@@ -95,7 +110,8 @@ export function Dialog({ open, onClose, title, description, headerExtra, childre
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         className={cn(
-          "max-h-[calc(100vh-2rem)] overflow-y-auto border border-[var(--border-hairline)] bg-[var(--surface-panel)] shadow-[var(--shadow-soft)] focus:outline-none",
+          "dialog-panel max-h-[calc(100vh-2rem)] overflow-y-auto border border-[var(--border-hairline)] bg-[var(--surface-panel)] shadow-[var(--shadow-soft)] focus:outline-none",
+          `dialog-panel--${placement}`,
           panelPlacement[placement],
           className,
         )}
@@ -110,7 +126,7 @@ export function Dialog({ open, onClose, title, description, headerExtra, childre
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="grid size-10 shrink-0 place-items-center rounded-[var(--radius-control)] text-[var(--text-muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]"
+            className="grid size-11 shrink-0 place-items-center rounded-[var(--radius-control)] text-[var(--text-muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]"
           >
             <X className="size-4" aria-hidden />
           </button>

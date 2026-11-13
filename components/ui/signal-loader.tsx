@@ -111,6 +111,7 @@ export default function SignalLoader({
             {NODES.map(([x, y], index) => <circle key={`${x}-${y}`} cx={x} cy={y} r="2.7" fill="#1714f5" className="signal-loader__node" style={{ animationDelay: `${index * 18}ms` }} />)}
           </g>
           <circle className="signal-loader__pulse" cx="180" cy="160" r="82" fill="none" stroke="#c9fa00" strokeWidth="3" />
+          <g className="signal-loader__breathe">
           <g transform="translate(132.96 117.12) scale(0.32)">
             <g className="signal-loader__mark" fill="#1714f5" stroke="#1f4e78" strokeWidth="3" strokeLinejoin="round">
               <path d="M8 0H187C241 0 274 32 274 78C274 112 260 137 235 153L194 107C206 102 212 92 212 81C212 66 202 58 186 58H59Z" />
@@ -118,6 +119,7 @@ export default function SignalLoader({
               <path d="M4 199L78 135V190L4 253Z" />
               <path d="M4 268L78 203V268Z" fill="#c9fa00" />
             </g>
+          </g>
           </g>
         </svg>
       </div>

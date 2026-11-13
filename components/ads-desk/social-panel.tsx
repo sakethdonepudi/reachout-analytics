@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AdsSocialCampaign, AdsSocialView } from "@/lib/ads-desk/client-dto";
-import { ArrowUpRight, ChevronRight, Download, Search } from "lucide-react";
+import { ArrowUpRight, Check, ChevronRight, Download, Search } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import OpenMenu from "@/components/ads-desk/open-menu";
 import { exactNumber, indianUnits, percent, rate } from "@/lib/ads-desk/format";
@@ -24,12 +24,40 @@ type AccountRow = {
 
 type CampaignCache = { campaigns: AdsSocialCampaign[]; total: number; page: number; hasMore: boolean };
 
+function AnimatedNumber({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const started = useRef(false);
+  const [display, setDisplay] = useState(value);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || started.current) return;
+      started.current = true;
+      observer.disconnect();
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) { setDisplay(value); return; }
+      const from = performance.now();
+      const step = (now: number) => {
+        const progress = Math.min(1, (now - from) / 400);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setDisplay(Math.round(value * eased));
+        if (progress < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }, { threshold: 0.4 });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [value]);
+
+  return <span ref={ref}>{indianUnits(display)}</span>;
+}
+
 function StatCard({ label, value, note, exact, tooltip }: { label: string; value: number | string; note?: string; exact?: string; tooltip?: string }) {
-  const display = typeof value === "number" ? indianUnits(value) : value;
   return (
     <div className="report-stat" title={tooltip ?? exact ?? (typeof value === "number" ? exactNumber(value) : undefined)}>
       <p className="report-stat-label">{label}</p>
-      <p className="report-stat-value">{display}</p>
+      <p className="report-stat-value">{typeof value === "number" ? <AnimatedNumber value={value} /> : value}</p>
       {typeof value === "number" && <span className="sr-only">Exact value: {exactNumber(value)}</span>}
       {note && <p className="report-stat-note good">{note}</p>}
     </div>
@@ -56,10 +84,20 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
   const [campaignQuery, setCampaignQuery] = useState("");
   const [campaignSort, setCampaignSort] = useState<CampaignSort>("impressions");
   const [retryKey, setRetryKey] = useState(0);
+  const [chartGrown, setChartGrown] = useState(false);
+  const [chartStagger, setChartStagger] = useState(true);
+  const [downloaded, setDownloaded] = useState(false);
+  const downloadTimer = useRef(0);
   const cache = useRef(new Map<string, CampaignCache>());
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<HTMLDivElement | null>(null);
   const [chartWidth, setChartWidth] = useState(320);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setChartGrown(true));
+    const timer = window.setTimeout(() => setChartStagger(false), 700);
+    return () => { cancelAnimationFrame(frame); window.clearTimeout(timer); };
+  }, []);
 
   useEffect(() => {
     const node = chartRef.current;
@@ -110,6 +148,9 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
 
   function downloadCsv() {
     if (!owner) return;
+    setDownloaded(true);
+    window.clearTimeout(downloadTimer.current);
+    downloadTimer.current = window.setTimeout(() => setDownloaded(false), 1200);
     const header = ["Account", "Campaigns", "Impressions", "Share", "CTR", "Engagement rate", "Spend", "CPM"];
     const body = rows.map((row) => [
       row.name, String(row.campaignCount), String(row.impressions),
@@ -208,7 +249,7 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
             <p className="social-sub">{region.range}</p>
             <p className="social-sub">Meta ads delivery · data as of {region.asOf}</p>
           </div>
-          {owner && <button type="button" onClick={downloadCsv} className="report-btn-secondary social-download"><Download className="size-3.5" /> Download CSV</button>}
+          {owner && <button type="button" onClick={downloadCsv} className="report-btn-secondary social-download">{downloaded ? <Check className="size-3.5" /> : <Download className="size-3.5" />} {downloaded ? "Downloaded" : "Download CSV"}</button>}
         </div>
 
         {regions.length > 1 && (
@@ -240,10 +281,10 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
             </div>
           </div>
           <div className="social-chart-body mt-3">
-            {chartRows.map((row) => (
+            {chartRows.map((row, index) => (
               <div key={row.name} className="social-chart-row" style={{ "--social-label": `${labelWidth}px` } as React.CSSProperties}>
                 <span className="social-chart-label" title={row.name}>{row.name}</span>
-                <span className="social-chart-track"><span className="social-chart-bar" style={{ width: `${Math.max(1, (row[metric] / chartMax) * 100)}%` }} title={`${exactNumber(row[metric])} ${metric}`} /></span>
+                <span className="social-chart-track"><span className="social-chart-bar" style={{ width: `${chartGrown ? Math.max(1, (row[metric] / chartMax) * 100) : 0}%`, transitionDelay: chartStagger ? `${Math.min(index, 9) * 30}ms` : "0ms" }} title={`${exactNumber(row[metric])} ${metric}`} /></span>
                 <span className="social-chart-value">{indianUnits(row[metric])}</span>
               </div>
             ))}
@@ -261,7 +302,7 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
 
         <ul className="social-list">
           {tableRows.map((row) => (
-            <li key={row.name} className="social-list-row">
+            <li key={row.name} className={cn("social-list-row", expanded && "row-enter")}>
               <div className="social-list-top">
                 {accountLink(row, "social-list-name")}
                 <button type="button" aria-label={`Campaigns for ${row.name}`} onClick={(event) => openDrawer(row, event.currentTarget)} className="social-chevron"><ChevronRight className="size-4" /></button>
@@ -281,7 +322,7 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
             <thead><tr><th>Account</th><th className="right">Campaigns</th><th className="right">Impressions</th><th className="right">Share</th><th className="right social-col-wide">CTR</th><th className="right social-col-wide">Engagement rate</th>{owner && <><th className="right social-col-wide">Spend</th><th className="right social-col-wide">CPM</th></>}<th className="right"><span className="sr-only">Campaigns</span></th></tr></thead>
             <tbody>
               {tableRows.map((row) => (
-                <tr key={row.name} className="social-account-row" onClick={(event) => { if ((event.target as Element).closest("a,button")) return; openDrawer(row, event.currentTarget as HTMLElement); }}>
+                <tr key={row.name} className={cn("social-account-row", openAccount?.name === row.name && "is-open")} onClick={(event) => { if ((event.target as Element).closest("a,button")) return; openDrawer(row, event.currentTarget as HTMLElement); }}>
                   <td>{accountLink(row, "social-account-link")}</td>
                   <td className="right tabular-nums">{number(row.campaignCount)}</td>
                   <td className="right tabular-nums" title={exactNumber(row.impressions)}>{indianUnits(row.impressions)}</td>
@@ -338,7 +379,7 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
                       <thead><tr><th>Campaign</th><th className="right">Impressions</th><th className="right">Reach</th><th className="right">Clicks</th><th className="right">Results</th>{owner && <><th className="right">Spend</th><th className="right">Cost/result</th></>}</tr></thead>
                       <tbody>
                         {campaigns.map((campaign) => (
-                          <tr key={campaign.name}>
+                          <tr key={campaign.name} className="row-enter">
                             <td>
                               <div className="min-w-0">
                                 {campaign.href ? <a href={campaign.href} target="_blank" rel="noopener noreferrer" className="campaign-name" title={campaign.name}>{campaign.name}<ArrowUpRight className="ml-1 inline size-3" aria-hidden /></a> : <span className="campaign-name" title={campaign.name}>{campaign.name}</span>}
@@ -357,7 +398,7 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
                   </div>
                   <div className="campaign-cards">
                     {campaigns.map((campaign) => (
-                      <article key={campaign.name} className="campaign-card">
+                      <article key={campaign.name} className="campaign-card row-enter">
                         <div className="flex items-start justify-between gap-2">
                           {campaign.href ? <a href={campaign.href} target="_blank" rel="noopener noreferrer" className="campaign-name" title={campaign.name}>{campaign.name}<ArrowUpRight className="ml-1 inline size-3" aria-hidden /></a> : <span className="campaign-name" title={campaign.name}>{campaign.name}</span>}
                         </div>

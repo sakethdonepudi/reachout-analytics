@@ -1,6 +1,7 @@
 "use client";
 
-import { memo, startTransition, useMemo, useState } from "react";
+import { memo, startTransition, useMemo, useRef, useState } from "react";
+import { useSlidingUnderline } from "@/components/ui/use-sliding-underline";
 import { Maximize2 } from "lucide-react";
 import { TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_FULL, TN_SEAT_GROUPS, tnPct, type TnGroup, type TnSeatGroup, type TnShares, type TnYear } from "@/lib/tamil-nadu/model";
 import type { TnExitPollView, TnOpinionPollView, TnSocial } from "@/lib/tamil-nadu/view-data";
@@ -73,8 +74,8 @@ const seatTotal = (record: Record<TnSeatGroup, number> | null | undefined) => {
 /* One active-tab treatment across the whole compact panel. */
 const segWrap = "flex items-stretch border-b border-[var(--a-border)]";
 const segButton = (active: boolean) => cn(
-  "min-h-9 border-b-2 border-transparent px-2 text-[10px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--r-teal)] sm:min-h-7",
-  active ? "border-[var(--r-teal)] text-[var(--r-navy)]" : "text-muted-foreground",
+  "min-h-10 px-2 text-[10px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--r-teal)]",
+  active ? "text-[var(--r-navy)]" : "text-muted-foreground",
 );
 
 function PartyCell({ group, compact }: { group: TnGroup; compact: boolean }) {
@@ -111,6 +112,8 @@ export default function TamilNaduRail({
 }) {
   const [view, setView] = useState<TnView>("polls");
   const [openedSocial, setOpenedSocial] = useState(false);
+  const viewTabsRef = useRef<HTMLDivElement>(null);
+  const viewUnderline = useSlidingUnderline(viewTabsRef, view);
   const socialViews = useMemo(() => socialRegions ?? [social], [socialRegions, social]);
   const selectView = (next: TnView) => {
     onViewChange?.(next);
@@ -254,13 +257,14 @@ export default function TamilNaduRail({
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <div className={cn(segWrap, "grid min-w-0 flex-1 grid-cols-2")} role="tablist" aria-label="Comparison content">
-          <button type="button" role="tab" aria-selected={view === "polls"} onClick={() => selectView("polls")} className={segButton(view === "polls")}>
+        <div ref={viewTabsRef} className={cn(segWrap, "relative grid min-w-0 flex-1 grid-cols-2")} role="tablist" aria-label="Comparison content">
+          <button type="button" role="tab" aria-selected={view === "polls"} data-tab-active={view === "polls" || undefined} onClick={() => selectView("polls")} className={segButton(view === "polls")}>
             Polls
           </button>
-          <button type="button" role="tab" aria-selected={view === "social"} onClick={() => selectView("social")} className={segButton(view === "social")}>
+          <button type="button" role="tab" aria-selected={view === "social"} data-tab-active={view === "social" || undefined} onClick={() => selectView("social")} className={segButton(view === "social")}>
             Social Media
           </button>
+          {viewUnderline && <span className="tab-underline" style={{ transform: `translateX(${viewUnderline.left}px)`, width: viewUnderline.width }} aria-hidden />}
         </div>
       </div>
 

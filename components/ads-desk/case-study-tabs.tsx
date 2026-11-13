@@ -1,11 +1,14 @@
 "use client";
 
-import { startTransition, useEffect, useState, type ReactNode } from "react";
+import { startTransition, useEffect, useRef, useState, type ReactNode } from "react";
+import { useSlidingUnderline } from "@/components/ui/use-sliding-underline";
 import { cn } from "@/lib/utils";
 
 export default function CaseStudyTabs({ children, social }: { children: ReactNode; social: ReactNode }) {
   const [tab, setTab] = useState<"overview" | "social">("overview");
   const [openedSocial, setOpenedSocial] = useState(false);
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const underline = useSlidingUnderline(tabsRef, tab);
 
   useEffect(() => {
     if (tab === "social") setOpenedSocial(true);
@@ -21,10 +24,11 @@ export default function CaseStudyTabs({ children, social }: { children: ReactNod
   return (
     <>
       <div className="sticky top-[56px] z-20 border-b border-[var(--border-hairline)] bg-[var(--surface-canvas)]">
-        <div className="mx-auto flex max-w-6xl gap-1 px-6 sm:px-10" role="tablist" aria-label="Case study views">
+        <div ref={tabsRef} className="relative mx-auto flex max-w-6xl gap-1 px-6 sm:px-10" role="tablist" aria-label="Case study views">
           {(["overview", "social"] as const).map((id) => (
-            <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => select(id)} className={cn("min-h-10 border-b-2 px-3 text-[12px] font-semibold", tab === id ? "border-[var(--accent-brass)] text-[var(--text-primary)]" : "border-transparent text-[var(--text-muted)]")}>{id === "overview" ? "Overview" : "Social Media"}</button>
+            <button key={id} type="button" role="tab" aria-selected={tab === id} data-tab-active={tab === id || undefined} onClick={() => select(id)} className={cn("min-h-10 px-3 text-[12px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]/45", tab === id ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]")}>{id === "overview" ? "Overview" : "Social Media"}</button>
           ))}
+          {underline && <span className="tab-underline" style={{ transform: `translateX(${underline.left}px)`, width: underline.width }} aria-hidden />}
         </div>
       </div>
       <div hidden={tab !== "overview"} style={{ contentVisibility: tab === "overview" ? "visible" : "hidden" }}>{children}</div>

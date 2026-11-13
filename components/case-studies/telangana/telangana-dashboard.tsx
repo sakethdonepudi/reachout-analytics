@@ -103,7 +103,7 @@ function SearchSelect({
             {filtered.map((o, i) => (
               <li key={o.value || "all"} role="option" aria-selected={o.value === value}>
                 <button type="button" onClick={() => choose(o)} onMouseEnter={() => setActive(i)}
-                  className={cn("flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px]", i === active ? "bg-muted/50" : "",
+                  className={cn("flex min-h-10 w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px]", i === active ? "bg-muted/50" : "",
                     o.value === value ? "font-semibold text-foreground" : "text-muted-foreground")}>
                   <span className="min-w-0 flex-1 truncate">{o.label}</span>
                   {o.hint && <span className="shrink-0 text-[9px] uppercase tracking-wide opacity-60">{o.hint}</span>}
@@ -264,7 +264,7 @@ export default function TelanganaDashboard({ aggregates, history }: { aggregates
                   <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-border p-0.5" role="group" aria-label="Election year">
                     {ELECTION_YEARS.map((y) => (
                       <button key={y} type="button" aria-pressed={year === y} onClick={() => setYear(y)}
-                        className={cn("rounded-md px-2 py-1.5 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60",
+                        className={cn("min-h-10 rounded-md px-2 py-1.5 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60",
                           year === y ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
                         {YEAR_LABEL[y]}
                       </button>
