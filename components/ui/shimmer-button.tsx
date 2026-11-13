@@ -21,7 +21,7 @@ const ShimmerButton = ({
       <button
         onClick={onClick}
         className={cn(
-          "group relative bg-white  border border-neutral-200  px-8 py-3 rounded-full cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]",
+          "group motion-cta relative cursor-pointer rounded-full border border-neutral-200 bg-white px-8 py-3",
           className,
         )}
       >

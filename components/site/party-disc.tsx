@@ -36,6 +36,7 @@ export default function PartyDisc({
       onFocus={() => { if (active) navigate.prefetch(caseUrl(identity.caseSlug)); }}
       aria-label={active ? `${label} — view case study` : `Bring ${label} forward`}
       aria-current={active ? "true" : undefined}
+      data-disc-active={active}
       className={cn(
         "group relative block h-full w-full cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-teal/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
         className,
@@ -43,7 +44,8 @@ export default function PartyDisc({
     >
       <span
         className={cn(
-          "relative block h-full w-full overflow-hidden rounded-full transition duration-500",
+          "party-disc-face relative block h-full w-full overflow-hidden rounded-full transition duration-500",
+          active && "party-disc-face--active",
           active
             ? "border-2 border-teal shadow-[0_0_0_7px_rgba(29,158,117,.10),0_26px_64px_-20px_rgba(29,158,117,.55),0_12px_30px_-12px_rgba(0,0,0,.65)]"
             : "border border-white/15 shadow-[0_18px_44px_-22px_rgba(0,0,0,.85)]",

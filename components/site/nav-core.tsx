@@ -29,7 +29,7 @@ function idleLabel(ms: number): string {
   const seconds = Math.max(0, Math.round(ms / 1000));
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
-const linkClass = "inline-flex h-9 items-center rounded-full px-3 text-[12.5px] font-semibold text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45";
+const linkClass = "inline-flex min-h-10 items-center rounded-full px-3 text-[12.5px] font-semibold text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45";
 
 function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
@@ -74,11 +74,10 @@ function Dropdown({ label, items, footer, active, align = "left" }: {
 
   return (
     <div ref={root} className="relative" onMouseEnter={hoverOpen} onMouseLeave={hoverClose}>
-      <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setOpen((value) => !value); } }} className={cn(linkClass, "gap-1", (active || open) && "site-group-inset text-[var(--h-ink)]")}>
+      <button type="button" aria-haspopup="menu" aria-expanded={open} data-nav-active={active || undefined} aria-current={active ? "true" : undefined} onClick={() => setOpen((value) => !value)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setOpen((value) => !value); } }} className={cn(linkClass, "gap-1", (active || open) && "site-group-inset text-[var(--h-ink)]")}>
         {label}<ChevronDown className={cn("size-3 transition-transform", open && "rotate-180")} aria-hidden />
       </button>
-      {open && (
-        <div role="menu" className={cn("site-group absolute top-[calc(100%+8px)] z-50 w-64 rounded-2xl p-1.5 text-[var(--h-ink)]", align === "right" ? "right-0" : "left-0")}>
+      <div role="menu" aria-hidden={!open} data-open={open} data-align={align} className={cn("nav-menu site-group absolute top-[calc(100%+8px)] z-50 w-64 rounded-2xl p-1.5 text-[var(--h-ink)]", align === "right" ? "right-0" : "left-0")}>
           {items.map((item) => (
             <Link key={item.href + item.label} href={item.href} role="menuitem" onClick={() => setOpen(false)} className={cn("flex min-h-10 items-start gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium transition-colors hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45", item.active && "site-group-inset")}>
               {item.icon}
@@ -86,8 +85,7 @@ function Dropdown({ label, items, footer, active, align = "left" }: {
             </Link>
           ))}
           {footer && <><div className="my-1 h-px bg-[var(--h-border)]/20" /><Link href={footer.href} role="menuitem" onClick={() => setOpen(false)} className="flex min-h-10 items-center gap-2 rounded-xl px-3 text-[11.5px] font-semibold text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">{footer.icon}{footer.label}</Link></>}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -98,7 +96,9 @@ export default function NavCore({ variant, displayName, username, organisation, 
   const { remainingMs } = useIdle();
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [underline, setUnderline] = useState<{ left: number; width: number } | null>(null);
   const accountRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
   const home = variant === "owner" ? "/dashboard" : "/";
 
   useEffect(() => { setMenuOpen(false); setAccountOpen(false); }, [pathname]);
@@ -110,6 +110,31 @@ export default function NavCore({ variant, displayName, username, organisation, 
     document.addEventListener("mousedown", onPointer);
     return () => { document.removeEventListener("keydown", onKey); document.removeEventListener("mousedown", onPointer); };
   }, [accountOpen]);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const measure = () => {
+      const active = nav.querySelector<HTMLElement>('[data-nav-active="true"]');
+      if (!active) { setUnderline(null); return; }
+      setUnderline({ left: active.offsetLeft, width: active.offsetWidth });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(nav);
+    window.addEventListener("resize", measure);
+    return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
+  }, [pathname, variant]);
+
+  function isActive(href: string): boolean {
+    if (href === "/") return pathname === "/";
+    if (href === "/dashboard") return pathname === "/dashboard";
+    if (href === "/services") return pathname === "/services";
+    if (href === "/services/research-content") return pathname === "/services/research-content";
+    if (href === "/case-studies") return Boolean(pathname?.startsWith("/case-studies"));
+    if (href === "/about") return pathname === "/about";
+    return pathname === href;
+  }
 
   async function signOut() {
     const started = performance.now();
@@ -133,29 +158,30 @@ export default function NavCore({ variant, displayName, username, organisation, 
       <header className="site-header pointer-events-none fixed inset-x-0 top-0 z-50 px-3 pt-2 sm:px-4">
         <div className={cn("site-group pointer-events-auto mx-auto flex h-[52px] w-full max-w-[1240px] items-center gap-2 rounded-full px-3 sm:h-[56px] sm:px-4", glass)}>
           <Logo href={home} className="h-[26px] w-[116px] sm:h-[28px] sm:w-[126px]" />
-          <nav className="ml-2 hidden items-center gap-0.5 md:flex" aria-label="Primary">
+          <nav ref={navRef} className="relative ml-2 hidden items-center gap-0.5 md:flex" aria-label="Primary">
             {variant === "public" && (
               <>
-                <Link href="/" className={linkClass}>Home</Link>
-                <Link href="/services" className={linkClass}>Services</Link>
-                <Link href="/services/research-content" className={linkClass}>Research</Link>
-                <Link href="/case-studies" className={cn(linkClass, "gap-1")}><Lock className="size-3" aria-hidden /> Case Studies</Link>
-                <Link href="/about" className={linkClass}>About Us</Link>
+                <Link href="/" data-nav-active={isActive("/") || undefined} aria-current={isActive("/") ? "page" : undefined} className={linkClass}>Home</Link>
+                <Link href="/services" data-nav-active={isActive("/services") || undefined} aria-current={isActive("/services") ? "page" : undefined} className={linkClass}>Services</Link>
+                <Link href="/services/research-content" data-nav-active={isActive("/services/research-content") || undefined} aria-current={isActive("/services/research-content") ? "page" : undefined} className={linkClass}>Research</Link>
+                <Link href="/case-studies" data-nav-active={isActive("/case-studies") || undefined} aria-current={isActive("/case-studies") ? "page" : undefined} className={cn(linkClass, "gap-1")}><Lock className="size-3" aria-hidden /> Case Studies</Link>
+                <Link href="/about" data-nav-active={isActive("/about") || undefined} aria-current={isActive("/about") ? "page" : undefined} className={linkClass}>About Us</Link>
                 <Link href="/#contact" className={linkClass}>Contact</Link>
               </>
             )}
             {variant === "client" && (
               <>
-                <Link href="/" className={linkClass}>Home</Link>
-                {caseItems.length === 1 ? <Link href={caseItems[0].href} className={linkClass}>Case Studies</Link> : <Dropdown label="Case Studies" items={caseItems} active={pathname?.startsWith("/case-studies")} />}
+                <Link href="/" data-nav-active={isActive("/") || undefined} aria-current={isActive("/") ? "page" : undefined} className={linkClass}>Home</Link>
+                {caseItems.length === 1 ? <Link href={caseItems[0].href} data-nav-active={isActive("/case-studies") || undefined} aria-current={isActive("/case-studies") ? "page" : undefined} className={linkClass}>Case Studies</Link> : <Dropdown label="Case Studies" items={caseItems} active={pathname?.startsWith("/case-studies")} />}
               </>
             )}
             {variant === "owner" && (
               <>
-                <Link href="/dashboard" className={cn(linkClass, pathname === "/dashboard" && "site-group-inset text-[var(--h-ink)]")}>Dashboard</Link>
+                <Link href="/dashboard" data-nav-active={isActive("/dashboard") || undefined} aria-current={isActive("/dashboard") ? "page" : undefined} className={cn(linkClass, pathname === "/dashboard" && "site-group-inset text-[var(--h-ink)]")}>Dashboard</Link>
                 <Dropdown label="Case Studies" items={caseItems} footer={{ href: "/dashboard/case-studies", label: "Case studies dashboard", icon: <Settings className="size-3.5" /> }} active={pathname?.startsWith("/case-studies") || pathname === "/dashboard/case-studies"} />
               </>
             )}
+            {underline && <span className="nav-underline" style={{ transform: `translateX(${underline.left}px)`, width: underline.width }} aria-hidden />}
           </nav>
           <div className="ml-auto flex items-center gap-1">
             {variant === "public" ? (

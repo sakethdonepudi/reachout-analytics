@@ -34,7 +34,7 @@ export default function ServicesPreview() {
 
         <div className="mt-9 grid gap-4 md:grid-cols-2">
           {PREVIEW.map(({ Icon, title, body, href, points }, i) => (
-            <Reveal key={title} delay={i * 80}>
+            <Reveal key={title} delay={Math.min(i, 6) * 40}>
               <Link href={href} className="group flex h-full flex-col rounded-3xl border border-border bg-card p-6 transition duration-300 hover:-translate-y-1 hover:border-teal/35 hover:shadow-[0_22px_50px_-32px_rgba(15,20,30,.4)]">
                 <span className="grid size-11 place-items-center rounded-xl border border-border bg-elevated text-teal-deep"><Icon className="size-5" /></span>
                 <h3 className="mt-5 font-display text-2xl font-semibold tracking-[-0.02em]">{title}</h3>

@@ -67,6 +67,7 @@ export default function PartyOrbit({ compact = false, className }: { compact?: b
   const [visible, setVisible] = useState(true);
   const [hidden, setHidden] = useState(false);
   const [hover, setHover] = useState(false);
+  const [selecting, setSelecting] = useState(false);
 
   const geoRef = useRef(geo);
   const virtualRef = useRef(0);
@@ -186,7 +187,12 @@ export default function PartyOrbit({ compact = false, className }: { compact?: b
     return () => window.clearTimeout(t);
   }, [active, reduced, visible, hidden, hover]);
 
-  useEffect(() => { goTo(active); }, [active, goTo]);
+  useEffect(() => {
+    goTo(active);
+    setSelecting(true);
+    const timer = window.setTimeout(() => setSelecting(false), 420);
+    return () => window.clearTimeout(timer);
+  }, [active, goTo]);
 
   useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
 
@@ -195,6 +201,7 @@ export default function PartyOrbit({ compact = false, className }: { compact?: b
       ref={wrapRef}
       className={cn("relative w-full select-none", compact ? "max-w-[400px]" : "max-w-[520px]", className)}
       data-party-orbit
+      data-selecting={selecting}
       onPointerEnter={(e) => { if (e.pointerType === "mouse") setHover(true); }}
       onPointerLeave={() => setHover(false)}
       onFocusCapture={() => setHover(true)}

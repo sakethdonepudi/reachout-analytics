@@ -66,9 +66,18 @@ export default function Hero() {
   const [leaving, setLeaving] = useState<{ n: number; cycle: number } | null>(null);
   const [onscreen, setOnscreen] = useState(true);
   const [hidden, setHidden] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const reduced = useRef(false);
 
   useEffect(() => { reduced.current = matchMedia("(prefers-reduced-motion: reduce)").matches; }, []);
+
+  // The scroll cue only needs to invite the first scroll.
+  useEffect(() => {
+    if (scrolled) return;
+    const onScroll = () => { if (window.scrollY > 24) setScrolled(true); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [scrolled]);
 
   // Suspend rotation when the tab is hidden or the hero is off-screen.
   useEffect(() => {
@@ -139,23 +148,23 @@ export default function Hero() {
         <div className="grid w-full items-center gap-10 lg:grid-cols-2 lg:gap-14">
           {/* left: eyebrow → headline → description → CTAs */}
           <div className="max-w-xl">
-            <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-teal-deep">Election intelligence</p>
+            <p className="hero-stage text-[11px] font-bold uppercase tracking-[0.28em] text-teal-deep">Election intelligence</p>
 
             <h1 className="mt-5 font-display text-[clamp(30px,4.6vw,58px)] font-semibold leading-[1.06] tracking-[-0.03em] text-white [text-shadow:0_10px_60px_rgba(0,0,0,.45)]">
-              Winning elections
+              <span className="hero-line inline-block">Winning elections</span>
               <br />
-              with data,{" "}
-              <span className="text-gradient-teal inline-block px-[0.06em] pb-[0.12em] font-serif font-normal italic tracking-[-0.01em]">
+              <span className="hero-line hero-line--2 inline-block">with data,</span>{" "}
+              <span className="hero-word text-gradient-teal inline-block px-[0.06em] pb-[0.12em] font-serif font-normal italic tracking-[-0.01em]">
                 not guesswork.
               </span>
             </h1>
 
-            <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-white/75">
+            <p className="hero-sub mt-5 max-w-lg text-[15px] leading-relaxed text-white/75">
               Election analysis, voter insight and regional intelligence for parties and campaigns across India.
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <a href="/case-studies" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 py-3.5 text-[15px] font-medium text-white/90 backdrop-blur-xl transition-colors hover:bg-white/10">
+            <div className="hero-cta mt-8 flex flex-wrap items-center gap-3">
+              <a href="/case-studies" className="group motion-cta inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 py-3.5 text-[15px] font-medium text-white/90 backdrop-blur-xl transition-colors hover:bg-white/10">
                 Explore Case Studies
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
               </a>
@@ -163,20 +172,20 @@ export default function Hero() {
           </div>
 
           {/* right: party identity composition, vertically centred beside the headline */}
-          <div className="hidden justify-center lg:flex" data-hero-parties>
+          <div className="hero-party hidden justify-center lg:flex" data-hero-parties>
             <PartyOrbit />
           </div>
         </div>
 
         {/* mobile: compact party composition under the CTAs */}
-        <div className="mt-12 flex justify-center lg:hidden">
+        <div className="hero-party mt-12 flex justify-center lg:hidden">
           <PartyOrbit compact />
         </div>
 
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center">
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.3em] text-white/35">Scroll to explore</span>
+        <span className={cn("scroll-cue text-[10.5px] font-semibold uppercase tracking-[0.3em] text-white/35", scrolled && "scroll-cue--stopped")}>Scroll to explore</span>
       </div>
     </section>
   );
