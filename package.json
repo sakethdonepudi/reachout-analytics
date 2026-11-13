@@ -16,7 +16,8 @@
     "test:ads-desk": "tsx --conditions react-server scripts/ads-desk.test.ts",
     "migrate:client-scope": "tsx --conditions react-server scripts/migrate-client-scope.ts",
     "check:budgets": "node scripts/check-budgets.mjs",
-    "backfill:ads-summaries": "tsx --conditions react-server scripts/backfill-ads-summaries.ts"
+    "backfill:ads-summaries": "tsx --conditions react-server scripts/backfill-ads-summaries.ts",
+    "test:motion": "tsx scripts/motion.test.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",
