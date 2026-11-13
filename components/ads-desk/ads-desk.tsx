@@ -180,7 +180,7 @@ export default function AdsDesk({ data, versions, defaultRegion, unmapped = [], 
           onDragLeave={() => setDragging(false)}
           onDrop={(event) => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files?.[0]; if (file) void upload(file); }}
           onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") event.currentTarget.querySelector("input")?.click(); }}
-          className={cn("mt-3 rounded-[10px] border border-dashed px-4 py-4 text-center text-[12px] text-[var(--r-muted)]", dragging ? "border-[var(--r-teal)] bg-[var(--r-hl)]" : "border-[var(--r-line)]")}
+          className={cn("mt-3 rounded-[10px] border border-dashed px-4 py-4 text-center text-[12px] text-[var(--r-muted)] transition-transform duration-150", dragging ? "scale-[1.01] border-[var(--r-teal)] bg-[var(--r-hl)]" : "border-[var(--r-line)]")}
         >
           Drop the Reachout Ads Desk HTML here, or use Choose HTML. Maximum 15 MB.
           <input type="file" accept=".html,text/html" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); }} />

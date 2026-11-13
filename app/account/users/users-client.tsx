@@ -21,6 +21,7 @@ export default function UsersClient() {
   const [data, setData] = useState<Meta | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [busy, setBusy] = useState("");
+  const [rowPulse, setRowPulse] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -57,8 +58,15 @@ export default function UsersClient() {
   }
 
   async function create() {
-    const ok = await call(null, form, "POST");
-    if (ok) { setFirstLogin({ username: form.username, role: form.role }); setForm(EMPTY_FORM); setMessage(""); }
+    const username = form.username.trim().toLowerCase();
+    const ok = await call(null, { ...form, username }, "POST");
+    if (ok) {
+      setFirstLogin({ username, role: form.role });
+      setRowPulse(username);
+      window.setTimeout(() => setRowPulse(""), 600);
+      setForm(EMPTY_FORM);
+      setMessage("");
+    }
   }
 
   async function resetPassword(user: User) {
@@ -145,7 +153,7 @@ export default function UsersClient() {
             </thead>
             <tbody>
               {(data?.users ?? []).map((user) => (
-                <tr key={user._id} className="border-t border-[var(--border-hairline)]/70">
+                <tr key={user._id} className={cn("border-t border-[var(--border-hairline)]/70", rowPulse === user.username && "row-enter")}>
                   <td className="px-4 py-3"><p className="font-semibold">{user.displayName}</p><p className="text-[10.5px] text-[var(--text-muted)]">@{user.username}{user.organisation ? ` · ${user.organisation}` : ""}</p></td>
                   <td className="px-4 py-3"><Badge tone={user.role === "owner" ? "accent" : "neutral"}>{user.role}</Badge></td>
                   <td className="px-4 py-3"><Badge tone={user.status === "active" ? "success" : "danger"}>{user.status}</Badge></td>
