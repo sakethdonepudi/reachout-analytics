@@ -78,7 +78,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
           <div className={`mt-8 grid items-start gap-6 ${c ? "lg:grid-cols-[320px_minmax(0,1fr)]" : ""}`}>
             {c && <StateMap stateCode={c.state} stateName={c.stateName} year={yearFor(c.slug)} party={c.party} />}
             <div>
-              <span className="rounded-full border border-saffron/40 bg-saffron/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-saffron-2">
+              <span className="rounded-full border border-teal/40 bg-teal/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-teal-deep">
                 {c ? `Case study · ${c.badge}` : "Upcoming"}
               </span>
               <h1 className="mt-6 font-display text-[clamp(44px,6vw,84px)] font-semibold leading-[0.98] tracking-[-0.035em]">
@@ -87,7 +87,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
               {c && (
                 <div className="mt-5 flex flex-wrap items-center gap-4">
                   <p className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="size-4 text-saffron-2" /> {c.region}
+                    <MapPin className="size-4 text-teal-deep" /> {c.region}
                   </p>
                   <PartyIdentity party={c.party} state={c.stateName} size="sm" />
                 </div>
