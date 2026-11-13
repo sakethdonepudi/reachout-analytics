@@ -12,7 +12,7 @@ import { CONTACT } from "@/lib/cases";
 import { getAboutCached } from "@/lib/about-content";
 
 // Content is stored in MongoDB and can be updated from the admin portal.
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "About Us — ReachOut Analytics",

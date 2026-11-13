@@ -8,6 +8,7 @@ import { Logo } from "@/components/site/brand";
 import { Sheet } from "@/components/ui/sheet";
 import { useIdle } from "@/components/auth/idle-provider";
 import { cn } from "@/lib/utils";
+import { announceOpening } from "@/lib/use-navigate";
 
 type CaseItem = { slug: string; title: string; state: string; year: number; draft: boolean };
 
@@ -111,9 +112,13 @@ export default function NavCore({ variant, displayName, username, organisation, 
   }, [accountOpen]);
 
   async function signOut() {
+    const started = performance.now();
+    announceOpening("Signing out", true);
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
-    router.replace("/login");
-    router.refresh();
+    // Keep the loader up long enough to read before the full reload.
+    const remaining = 320 - (performance.now() - started);
+    if (remaining > 0) await new Promise((resolve) => window.setTimeout(resolve, remaining));
+    window.location.assign("/login");
   }
 
   const grouped = cases.reduce<Record<string, CaseItem[]>>((acc, item) => {
@@ -158,10 +163,10 @@ export default function NavCore({ variant, displayName, username, organisation, 
             ) : (
               <>
                 <div ref={accountRef} className="relative hidden md:block">
-                  <button type="button" onClick={() => setAccountOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountOpen} aria-label="Account menu" className={cn("inline-flex h-9 items-center gap-2 rounded-full px-2 text-[12px] font-semibold text-[var(--h-ink)] hover:bg-[var(--h-surface-inset)]", accountOpen && "site-group-inset")}>
-                    <span className="grid size-7 place-items-center rounded-full bg-[var(--r-navy)] text-[10px] font-bold text-white">{initials(displayName ?? "User")}</span>
+                  <button type="button" onClick={() => setAccountOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountOpen} aria-label={`Account menu, ${variant === "client" ? displayName ?? "Client" : "Account"}`} className={cn("inline-flex h-9 items-center gap-2 rounded-full px-2 text-[12px] font-semibold text-[var(--h-ink)] hover:bg-[var(--h-surface-inset)]", accountOpen && "site-group-inset")}>
+                    <span aria-hidden className="grid size-7 place-items-center rounded-full bg-[var(--r-navy)] text-[10px] font-bold text-white">{initials(displayName ?? "User")}</span>
                     <span className="hidden max-w-[110px] truncate lg:block">{variant === "client" ? displayName : "Account"}</span>
-                    <span className="hidden text-[9.5px] font-normal tabular-nums text-[var(--h-muted)] xl:inline">{idleLabel(remainingMs)}</span>
+                    <span aria-hidden className="hidden text-[9.5px] font-normal tabular-nums text-[var(--h-muted)] xl:inline">{idleLabel(remainingMs)}</span>
                     <ChevronDown className="size-3 text-[var(--h-muted)]" />
                   </button>
                   {accountOpen && (

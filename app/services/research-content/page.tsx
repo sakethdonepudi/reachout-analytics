@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   description: "Research planning, statistical analysis, academic editing and professional content support from ReachOut Analytics.",
 };
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 const ICONS: Record<ResearchIcon, typeof FileText> = {
   proposal: Sparkles, thesis: GraduationCap, statistics: FlaskConical,

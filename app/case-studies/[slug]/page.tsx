@@ -8,6 +8,7 @@ import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl } from "@/lib/cases"
 import { requirePageSession } from "@/lib/require-session";
 import SocialPanel from "@/components/ads-desk/social-panel";
 import CaseStudyTabs from "@/components/ads-desk/case-study-tabs";
+import CaseBackLink from "@/components/site/case-back-link";
 import { socialForCase } from "@/lib/ads-desk/mapping";
 import { caseAllowed } from "@/lib/session-scope";
 import { redirect } from "next/navigation";
@@ -71,9 +72,9 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
       <CaseStudyTabs social={<main className="min-h-screen bg-background pt-12 text-foreground"><div className="mx-auto max-w-6xl px-6 pb-24 sm:px-10"><SocialPanel regions={social} /></div></main>}>
       <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
         <div className="relative mx-auto max-w-6xl px-6 pb-24 pt-24 sm:px-10">
-          <Link href="/case-studies" className="report-link inline-flex items-center gap-2 text-[12.5px]">
+          <CaseBackLink className="report-link inline-flex items-center gap-2 text-[12.5px]">
             <ArrowLeft className="size-4" /> Back to case studies
-          </Link>
+          </CaseBackLink>
 
           <div className={`mt-8 grid items-start gap-6 ${c ? "lg:grid-cols-[320px_minmax(0,1fr)]" : ""}`}>
             {c && <StateMap stateCode={c.state} stateName={c.stateName} year={yearFor(c.slug)} party={c.party} />}

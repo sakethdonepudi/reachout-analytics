@@ -3,6 +3,8 @@ import localFont from "next/font/local";
 import "./globals.css";
 import RouteTransition from "@/components/site/route-transition";
 import NavigationLoader from "@/components/site/navigation-loader";
+import RouteHistory from "@/components/site/route-history";
+import HashScroller from "@/components/site/hash-scroller";
 import CsrfFetch from "@/components/site/csrf-fetch";
 import { ReauthProvider } from "@/components/auth/reauth-provider";
 import IdleProvider from "@/components/auth/idle-provider";
@@ -56,6 +58,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ReauthProvider><IdleProvider>{children}</IdleProvider></ReauthProvider>
         <RouteTransition />
         <NavigationLoader />
+        <RouteHistory />
+        <HashScroller />
       </body>
     </html>
   );

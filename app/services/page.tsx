@@ -19,6 +19,8 @@ import {
   serviceHref, type ServiceArea, type ServiceIcon,
 } from "@/lib/services";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Services — ReachOut Analytics",
   description: "Political intelligence, survey analysis, data analytics, predictive modelling, dashboards and corporate training from ReachOut Analytics.",

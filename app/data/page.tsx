@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
+import { requirePageSession } from "@/lib/require-session";
 
-/** The dataset management UI now lives in the central /admin portal. */
-export default function DataRedirect() {
-  redirect("/dashboard/case-studies");
+export const dynamic = "force-dynamic";
+
+/** Legacy dataset route. The management UI lives in the owner portal. */
+export default async function DataRedirect() {
+  const session = await requirePageSession("/data");
+  redirect(session.role === "owner" ? "/dashboard/case-studies" : "/case-studies");
 }

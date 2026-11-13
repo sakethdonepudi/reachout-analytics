@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import Navbar from "@/components/site/navbar";
 import { CASES, caseUrl } from "@/lib/cases";
 import { PartyMark } from "@/components/site/party-mark";
+import PrefetchLink from "@/components/site/prefetch-link";
 import { requirePageSession } from "@/lib/require-session";
 import { visibleCases } from "@/lib/session-scope";
 
@@ -32,7 +32,7 @@ export default async function CaseStudiesIndex() {
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visible.map((c) => {
               return (
-                <Link key={c.slug} href={caseUrl(c.slug)} className="glass group flex flex-col rounded-3xl p-5 transition-transform duration-300 hover:-translate-y-1">
+                <PrefetchLink key={c.slug} href={caseUrl(c.slug)} className="glass group flex flex-col rounded-3xl p-5 transition-transform duration-300 hover:-translate-y-1">
                   <div className="flex items-center justify-between gap-3">
                     <span className="rounded-full border border-teal/40 bg-teal/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-deep">{c.badge}</span>
                     <span className="flex items-center gap-2"><PartyMark party={c.party} size="sm" /><span className="text-[11px] font-bold text-muted-foreground">{c.party}</span></span>
@@ -43,7 +43,7 @@ export default async function CaseStudiesIndex() {
                   <span className="mt-5 inline-flex items-center gap-2 self-start rounded-full bg-foreground px-3.5 py-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-background transition-transform group-hover:translate-x-0.5">
                     View Case Study <ArrowUpRight className="size-3.5" />
                   </span>
-                </Link>
+                </PrefetchLink>
               );
             })}
           </div>
