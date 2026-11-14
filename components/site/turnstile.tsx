@@ -71,10 +71,13 @@ export default function Turnstile({
         });
         setStatus((current) => (current === "error" ? current : "loading"));
         window.clearTimeout(timer);
+        // The production widget lives in a closed shadow root, so a DOM child
+        // count is not a reliable appearance check. The render call itself is
+        // the signal that the script loaded; only a missing widget id means the
+        // load failed. The widget's own error callback handles the rest.
         timer = window.setTimeout(() => {
           if (cancelled) return;
-          const appeared = Boolean(ref.current && ref.current.childElementCount > 0);
-          if (!appeared) {
+          if (!widgetId.current) {
             setStatus("error");
             verify("");
           }

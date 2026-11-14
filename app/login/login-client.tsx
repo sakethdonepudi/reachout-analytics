@@ -179,9 +179,8 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
             </form>
           )}
 
-          <div className="mt-5 flex items-center justify-between text-[12px] text-[var(--text-muted)]">
+          <div className="mt-5 flex items-center text-[12px] text-[var(--text-muted)]">
             <Link href="/" className="footer-link hover:text-[var(--text-primary)]">Back to site</Link>
-            <Link href="/setup" className="footer-link hover:text-[var(--text-primary)]">First setup</Link>
           </div>
         </div>
       </div>
