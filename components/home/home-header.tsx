@@ -80,7 +80,7 @@ export default function HomeHeader({
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-50 h-16 border-b border-[#E6E6E6] bg-white">
+      <header className="fixed inset-x-0 top-0 z-[var(--z-nav)] h-16 border-b border-[#E6E6E6] bg-white">
         <div className="mx-auto flex h-full max-w-[1440px] items-center gap-4 px-5 sm:px-8 lg:px-16">
           <Logo variant="light" className="h-8 w-[124px] shrink-0" />
 
@@ -99,7 +99,7 @@ export default function HomeHeader({
                     >
                       <NavIcon name="casesOpen" /> Case Studies <ChevronDown className={casesOpen ? "size-3 rotate-180 transition-transform duration-150" : "size-3 transition-transform duration-150"} aria-hidden />
                     </button>
-                    <div role="menu" data-open={casesOpen} aria-hidden={!casesOpen} className="home-menu absolute left-0 top-[calc(100%+8px)] z-50 max-h-[70vh] w-72 overflow-y-auto rounded-xl border border-[#E6E6E6] bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,.08)]">
+                    <div role="menu" data-open={casesOpen} aria-hidden={!casesOpen} className="home-menu absolute left-0 top-[calc(100%+8px)] z-[var(--z-dropdown)] max-h-[70vh] w-72 overflow-y-auto rounded-xl border border-[#E6E6E6] bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,.08)]">
                       {Object.entries(grouped).map(([state, rows]) => (
                         <div key={state} className="mb-1 last:mb-0">
                           <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8A8A8A]">{state}</p>
@@ -139,7 +139,7 @@ export default function HomeHeader({
                   <span className="max-w-[110px] truncate">{displayName ?? "Account"}</span>
                   <span className="text-[9.5px] tabular-nums text-[#8A8A8A]">{idleLabel(remainingMs)}</span>
                 </button>
-                <div role="menu" data-open={accountOpen} aria-hidden={!accountOpen} className="home-menu absolute right-0 top-[calc(100%+8px)] z-50 w-60 rounded-xl border border-[#E6E6E6] bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,.08)]">
+                <div role="menu" data-open={accountOpen} aria-hidden={!accountOpen} className="home-menu absolute right-0 top-[calc(100%+8px)] z-[var(--z-dropdown)] w-60 rounded-xl border border-[#E6E6E6] bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,.08)]">
                   <p className="px-2 pb-1 text-[11px] text-[#6B6B6B]">Signs out in {idleLabel(remainingMs)}</p>
                   {[ACCOUNT_ITEMS.security, ACCOUNT_ITEMS.sessions, ACCOUNT_ITEMS.password].map((item) => (
                     <Link key={item.key} href={item.href} role="menuitem" onClick={() => setAccountOpen(false)} className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">

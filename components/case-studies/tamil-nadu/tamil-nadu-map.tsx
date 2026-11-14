@@ -638,7 +638,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         <canvas ref={canvasRef} className="block h-full w-full touch-none" aria-label="3D map of Tamil Nadu districts and assembly constituencies" role="img" />
         <div ref={labelRef} className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden />
       </div>
-      {tip && <div className="pointer-events-none fixed z-[80] max-w-[240px] rounded-lg border border-border bg-card/95 px-2.5 py-2 text-[10px] shadow-xl" style={{ left: Math.min(tip.x + 12, window.innerWidth - 255), top: Math.max(8, tip.y - 12) }}>
+      {tip && <div className="pointer-events-none fixed z-[var(--z-dropdown)] max-w-[240px] rounded-lg border border-border bg-card/95 px-2.5 py-2 text-[10px] shadow-xl" style={{ left: Math.min(tip.x + 12, window.innerWidth - 255), top: Math.max(8, tip.y - 12) }}>
         <div className="font-semibold" style={{ color: tip.color }}>{tip.title}</div>
         <div className="text-[9px] text-muted-foreground">{tip.sub}</div>
         <div className="mt-0.5 tabular-nums text-foreground/85">{tip.value}</div>

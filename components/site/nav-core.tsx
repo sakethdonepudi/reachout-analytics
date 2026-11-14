@@ -80,7 +80,7 @@ function Dropdown({ label, items, footer, active, align = "left" }: {
       <button type="button" aria-haspopup="menu" aria-expanded={open} data-nav-active={active || undefined} aria-current={active ? "true" : undefined} onClick={() => setOpen((value) => !value)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setOpen((value) => !value); } }} className={cn(linkClass, "gap-1", (active || open) && "site-group-inset text-[var(--h-ink)]")}>
         {label}<ChevronDown className={cn("size-3 transition-transform", open && "rotate-180")} aria-hidden />
       </button>
-      <div role="menu" aria-hidden={!open} data-open={open} data-align={align} className={cn("nav-menu site-group absolute top-[calc(100%+8px)] z-50 w-64 rounded-2xl p-1.5 text-[var(--h-ink)]", align === "right" ? "right-0" : "left-0")}>
+      <div role="menu" aria-hidden={!open} data-open={open} data-align={align} className={cn("nav-menu site-group absolute top-[calc(100%+8px)] z-[var(--z-dropdown)] w-64 rounded-2xl p-1.5 text-[var(--h-ink)]", align === "right" ? "right-0" : "left-0")}>
           {items.map((item) => (
             <Link key={item.href + item.label} href={item.href} role="menuitem" onClick={() => setOpen(false)} className={cn("flex min-h-10 items-start gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium transition-colors hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45", item.active && "site-group-inset")}>
               {item.party ? <NavPartyMark party={item.party} /> : item.icon}
@@ -159,7 +159,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
 
   return (
     <>
-      <header className="site-header pointer-events-none fixed inset-x-0 top-0 z-50 px-3 pt-2 sm:px-4">
+      <header className="site-header pointer-events-none fixed inset-x-0 top-0 z-[var(--z-nav)] px-3 pt-2 sm:px-4">
         <div className={cn("site-group pointer-events-auto mx-auto flex h-[52px] w-full max-w-[1240px] items-center gap-2 rounded-full px-3 sm:h-[56px] sm:px-4", glass)}>
           <Logo href={home} className="h-[26px] w-[116px] sm:h-[28px] sm:w-[126px]" />
           <nav ref={navRef} className="relative ml-2 hidden items-center gap-0.5 min-[900px]:flex" aria-label="Primary">

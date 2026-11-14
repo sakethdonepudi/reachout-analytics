@@ -72,6 +72,15 @@
   --danger: #991b1b;
   --danger-bg: rgba(185, 28, 28, 0.1);
 
+  /* layering scale */
+  --z-nav: 50;
+  --z-dropdown: 60;
+  --z-analysis: 100;
+  --z-drawer: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+  --z-loader: 500;
+
   /* precision style */
   --p-bg: #ffffff;
   --p-bg-alt: #fafafa;
@@ -1693,7 +1702,7 @@ tr[data-highlight="true"] { background: var(--r-hl); }
 .signal-loader {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: var(--z-loader);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1819,6 +1828,9 @@ tr[data-highlight="true"] { background: var(--r-hl); }
   background: #fff;
 }
 .social-chevron:hover { border-color: var(--r-teal); }
+@media (pointer: coarse) {
+  .social-chevron { min-width: 44px; min-height: 44px; }
+}
 .social-list-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .num-nowrap { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .campaign-table-wrap { overflow-x: auto; border: 1px solid var(--r-line); border-radius: 10px; }

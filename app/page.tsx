@@ -25,7 +25,7 @@ export default async function Home() {
       <HomeHeader role={session?.role === "client" ? "client" : "anon"} displayName={session?.displayName} cases={cases} />
       {/* Fixed 3D map layer. The opaque white hero sits above it; the tour starts below. */}
       <Experience />
-      <main className="pointer-events-none relative z-[6]">
+      <main className="pointer-events-none relative z-10">
         <PrecisionHero cases={cases} />
         <HeroFeatures />
         {/* scroll length that drives the 3D map tour */}

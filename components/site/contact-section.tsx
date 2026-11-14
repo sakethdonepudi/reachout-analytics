@@ -76,10 +76,10 @@ export default function ContactSection() {
     <section
       ref={section}
       id="contact"
-      className="precision-contact pointer-events-auto relative z-[2] min-h-[100svh] overflow-hidden px-6 pb-2 pt-36 text-[var(--p-ink)] scroll-mt-24 sm:px-10 lg:pb-10"
+      className="precision-contact pointer-events-auto relative z-10 min-h-[100svh] overflow-hidden px-6 pb-2 pt-36 text-[var(--p-ink)] scroll-mt-24 sm:px-10 lg:pb-10"
     >
       {/* flying globe (fixed, follows the slot) */}
-      <div className="relative z-[2] mx-auto max-w-6xl">
+      <div className="relative z-10 mx-auto max-w-6xl">
         <div className="text-center">
           <span className="inline-flex rounded-full border border-[#CFCFCF] bg-white px-4 py-1.5 text-sm font-medium text-[#555]">Contact</span>
           <h2 className="mt-6 font-display text-[clamp(44px,6vw,80px)] font-semibold tracking-[-0.035em]">

@@ -448,12 +448,12 @@ export default function IndiaMap() {
   return (
     <>
       <canvas ref={canvasRef} className="fixed inset-0 z-0 block h-screen w-screen will-change-[filter]" aria-label="3D map of India with ReachOut Analytics campaigns" />
-      <div className="pointer-events-none fixed inset-0 z-[1] opacity-50" aria-hidden style={{ backgroundImage: "radial-gradient(circle, #CFCFCF 0.7px, transparent 0.9px)", backgroundSize: "24px 24px", maskImage: "linear-gradient(to bottom, transparent 0%, #000 35%)", WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 35%)" }} />
-      <svg className="pointer-events-none fixed left-1/2 top-1/2 z-[1] h-[80vw] w-[80vw] -translate-x-1/2 -translate-y-1/2 opacity-30" viewBox="0 0 600 600" fill="none" aria-hidden><g stroke="#CFCFCF" strokeWidth="0.7" transform="rotate(-22 300 300)"><ellipse cx="300" cy="300" rx="270" ry="196" /><ellipse cx="300" cy="300" rx="220" ry="154" strokeDasharray="2 4" /></g></svg>
-      <div className="pointer-events-none fixed inset-0 z-[1] bg-[radial-gradient(120%_90%_at_50%_45%,transparent_55%,rgba(11,11,12,.06)_100%)]" aria-hidden />
+      <div className="pointer-events-none fixed inset-0 z-10 opacity-50" aria-hidden style={{ backgroundImage: "radial-gradient(circle, #CFCFCF 0.7px, transparent 0.9px)", backgroundSize: "24px 24px", maskImage: "linear-gradient(to bottom, transparent 0%, #000 35%)", WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 35%)" }} />
+      <svg className="pointer-events-none fixed left-1/2 top-1/2 z-10 h-[80vw] w-[80vw] -translate-x-1/2 -translate-y-1/2 opacity-30" viewBox="0 0 600 600" fill="none" aria-hidden><g stroke="#CFCFCF" strokeWidth="0.7" transform="rotate(-22 300 300)"><ellipse cx="300" cy="300" rx="270" ry="196" /><ellipse cx="300" cy="300" rx="220" ry="154" strokeDasharray="2 4" /></g></svg>
+      <div className="pointer-events-none fixed inset-0 z-10 bg-[radial-gradient(120%_90%_at_50%_45%,transparent_55%,rgba(11,11,12,.06)_100%)]" aria-hidden />
 
       {/* leader line */}
-      <svg ref={leaderRef} className="pointer-events-none fixed inset-0 z-[3] h-screen w-screen overflow-visible" aria-hidden>
+      <svg ref={leaderRef} className="pointer-events-none fixed inset-0 z-20 h-screen w-screen overflow-visible" aria-hidden>
         <defs>
           <linearGradient id="lg" x1="0" x2="1"><stop offset="0" stopColor="#CFCFCF" /><stop offset="1" stopColor="#CFCFCF" stopOpacity=".3" /></linearGradient>
         </defs>
@@ -479,7 +479,7 @@ export default function IndiaMap() {
           navigate.push(caseUrl(cardCase.slug), { cover: { title: cardCase.title, eyebrow: cardCase.label, subtitle: cardCase.region } });
         }}
         style={{ background: "#ffffff" }}
-        className="invisible fixed left-0 top-0 z-[4] w-[calc(100vw-32px)] max-w-[300px] cursor-pointer rounded-[16px] border border-[#E6E6E6] p-4 opacity-0 shadow-[0_10px_30px_rgba(0,0,0,.08)] transition-[box-shadow] hover:shadow-[0_18px_40px_rgba(0,0,0,.12)] sm:w-[300px]"
+        className="invisible fixed left-0 top-0 z-30 w-[calc(100vw-32px)] max-w-[300px] cursor-pointer rounded-[16px] border border-[#E6E6E6] p-4 opacity-0 shadow-[0_10px_30px_rgba(0,0,0,.08)] transition-[box-shadow] hover:shadow-[0_18px_40px_rgba(0,0,0,.12)] sm:w-[300px]"
       >
         <span className="pointer-events-none absolute inset-0 rounded-[16px] border border-transparent" aria-hidden>
           <span className="absolute left-0 top-0 size-3 border-l border-t border-[#0B0B0C]" style={{ margin: "-5px" }} />
@@ -524,7 +524,7 @@ export default function IndiaMap() {
       </div>
 
       {/* progress rail */}
-      <nav ref={railRef} data-ui className="fixed right-6 top-1/2 z-[3] hidden -translate-y-1/2 flex-col gap-3.5 opacity-0 md:flex" aria-label="Map sections">
+      <nav ref={railRef} data-ui className="fixed right-6 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-3.5 opacity-0 md:flex" aria-label="Map sections">
         {labels.map((label, i) => (
           <button key={label} onClick={() => scrollToStop(i)} className="group flex items-center justify-end gap-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--r-muted)]">
             <span className={cn("translate-x-1.5 opacity-0 transition group-hover:translate-x-0 group-hover:opacity-100", activeStop === i && "translate-x-0 text-[var(--r-ink)] opacity-100")}>{label}</span>
@@ -534,7 +534,7 @@ export default function IndiaMap() {
       </nav>
 
       {/* zoomed-out panel */}
-      <div ref={finalRef} data-ui className="invisible fixed bottom-6 left-4 right-4 z-[3] opacity-0 sm:bottom-10 sm:left-[5vw] sm:right-auto sm:max-w-[470px]">
+      <div ref={finalRef} data-ui className="invisible fixed bottom-6 left-4 right-4 z-20 opacity-0 sm:bottom-10 sm:left-[5vw] sm:right-auto sm:max-w-[470px]">
         <div className="text-[11px] font-bold uppercase tracking-[0.26em] text-teal-deep">Pan-India footprint</div>
         <h2 className="mb-4 mt-3 font-display text-[clamp(28px,3.4vw,46px)] font-semibold leading-[1.02] tracking-[-0.03em]">
           We don&apos;t just predict elections — <span className="text-[var(--r-navy)] font-serif font-normal italic">we influence outcomes.</span>
@@ -573,14 +573,14 @@ export default function IndiaMap() {
           ref={(el) => { pinRefs.current[c.slug] = el; }}
           data-ui
           onClick={() => setSelected(c.slug)}
-          className="glass fixed left-0 top-0 z-[3] whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold opacity-0 transition-opacity"
+          className="glass fixed left-0 top-0 z-20 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold opacity-0 transition-opacity"
           style={{ pointerEvents: "none" }}
         >
           {c.party} · {c.label}
         </button>
       ))}
 
-      <div ref={tipRef} className={cn("pointer-events-none fixed left-0 top-0 z-[5] whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-opacity glass", tip ? "opacity-100" : "opacity-0")}>
+      <div ref={tipRef} className={cn("pointer-events-none fixed left-0 top-0 z-30 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-opacity glass", tip ? "opacity-100" : "opacity-0")}>
         {tip?.name}
         {tip?.sub && <small className="mt-0.5 block text-[10px] uppercase tracking-[0.12em] text-teal-deep">{tip.sub}</small>}
       </div>

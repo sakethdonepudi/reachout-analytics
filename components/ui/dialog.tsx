@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { acquireDialogLayer, isTopDialogLayer, lockDocumentScroll, releaseDialogLayer, unlockDocumentScroll } from "@/lib/overlay-layers";
 
 type Placement = "center" | "bottom" | "right";
 
@@ -37,6 +38,8 @@ export function Dialog({ open, onClose, title, description, headerExtra, childre
   const [mounted, setMounted] = useState(false);
   const [present, setPresent] = useState(open);
   const [closing, setClosing] = useState(false);
+  const [layer, setLayer] = useState(0);
+  const layerId = useRef(Symbol("dialog"));
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -57,10 +60,11 @@ export function Dialog({ open, onClose, title, description, headerExtra, childre
     restoreRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const panel = panelRef.current;
     panel?.focus();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    setLayer(acquireDialogLayer(layerId.current));
+    lockDocumentScroll();
 
     function onKeyDown(event: KeyboardEvent) {
+      if (!isTopDialogLayer(layerId.current)) return;
       if (event.key === "Escape") {
         event.preventDefault();
         onClose();
@@ -89,7 +93,8 @@ export function Dialog({ open, onClose, title, description, headerExtra, childre
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
+      unlockDocumentScroll();
+      releaseDialogLayer(layerId.current);
       restoreRef.current?.focus();
     };
   }, [open, onClose]);
@@ -99,7 +104,8 @@ export function Dialog({ open, onClose, title, description, headerExtra, childre
   return createPortal(
     <div
       data-closing={closing}
-      className={cn("dialog-overlay fixed inset-0 z-[70] flex bg-[rgba(17,24,39,.28)]", overlayPlacement[placement])}
+      style={{ zIndex: placement === "right" ? `calc(var(--z-drawer) + ${layer * 10})` : `calc(var(--z-modal) + ${layer * 10})` }}
+      className={cn("dialog-overlay fixed inset-0 flex bg-[rgba(17,24,39,.28)]", overlayPlacement[placement])}
       onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <div

@@ -60,7 +60,7 @@ export default function RouteTransition() {
 
   return (
     <div
-      className="fixed inset-0 z-[80]"
+      className="fixed inset-0 z-[var(--z-loader)]"
       style={{
         animation: phase === "covering" ? `rt-in ${COVER_MS}ms cubic-bezier(.4,0,.2,1) forwards` : `rt-out ${REVEAL_MS}ms cubic-bezier(.4,0,.2,1) forwards`,
         background: "linear-gradient(180deg,#04091c 0%,#071331 55%,#04091c 100%)",

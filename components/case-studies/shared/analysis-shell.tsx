@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getDialogCount, lockDocumentScroll, subscribeDialogCount, unlockDocumentScroll } from "@/lib/overlay-layers";
 
 /* =====================================================================
    Shared presentation shell for the expanded analysis views.
@@ -37,11 +38,16 @@ export default function AnalysisShell({
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const headingId = useId();
+  const [dialogCount, setDialogCount] = useState(0);
+
+  useEffect(() => {
+    setDialogCount(getDialogCount());
+    return subscribeDialogCount(() => setDialogCount(getDialogCount()));
+  }, []);
 
   useEffect(() => {
     if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    lockDocumentScroll();
     const focusTimer = window.setTimeout(() => closeRef.current?.focus(), 30);
     const onKey = (event: KeyboardEvent) => {
       // A nested dialog (for example the Meta creative viewer) owns Escape and
@@ -69,7 +75,7 @@ export default function AnalysisShell({
     };
     document.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = previousOverflow;
+      unlockDocumentScroll();
       document.removeEventListener("keydown", onKey);
       window.clearTimeout(focusTimer);
     };
@@ -79,7 +85,9 @@ export default function AnalysisShell({
 
   return (
     <div
-      className="analysis-shell fixed inset-0 z-[140] flex"
+      data-analysis-shell
+      inert={dialogCount > 0 ? true : undefined}
+      className="analysis-shell fixed inset-0 z-[var(--z-analysis)] flex"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();

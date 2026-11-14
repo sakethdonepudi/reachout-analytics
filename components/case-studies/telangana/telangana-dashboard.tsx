@@ -28,7 +28,7 @@ const MemoTelanganaMap = memo(TelanganaMap);
 
 const TelanganaAnalysis = dynamic(() => import("./telangana-analysis"), {
   ssr: false,
-  loading: () => <div className="fixed inset-0 z-[140] grid place-items-center bg-background text-sm text-muted-foreground">Opening analysis…</div>,
+  loading: () => <div className="fixed inset-0 z-[var(--z-analysis)] grid place-items-center bg-background text-sm text-muted-foreground">Opening analysis…</div>,
 });
 
 type Tab = "change" | "share" | "seats";
@@ -85,7 +85,7 @@ function SearchSelect({
         <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 z-50 mt-1 overflow-hidden rounded-lg border border-border bg-card shadow-xl">
+        <div className="absolute left-0 right-0 z-[var(--z-dropdown)] mt-1 overflow-hidden rounded-lg border border-border bg-card shadow-xl">
           <div className="flex items-center gap-1.5 border-b border-border px-2">
             <Search className="size-3.5 shrink-0 text-muted-foreground" />
             <input ref={input} value={query}

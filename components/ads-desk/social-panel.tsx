@@ -305,7 +305,7 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
             <li key={row.name} className={cn("social-list-row", expanded && "row-enter")}>
               <div className="social-list-top">
                 {accountLink(row, "social-list-name")}
-                <button type="button" aria-label={`Campaigns for ${row.name}`} onClick={(event) => openDrawer(row, event.currentTarget)} className="social-chevron"><ChevronRight className="size-4" /></button>
+                <button type="button" aria-label={`Show campaigns for ${row.name}`} onClick={(event) => openDrawer(row, event.currentTarget)} className="social-chevron"><ChevronRight className="size-4" /></button>
               </div>
               <p className="social-list-metrics">
                 <MetricText value={row.impressions} label="impressions" />
@@ -330,7 +330,7 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
                   <td className="right tabular-nums social-col-wide">{percent(rate(row.clicks, row.impressions))}</td>
                   <td className="right tabular-nums social-col-wide">{percent(rate(row.engagements, row.impressions))}</td>
                   {owner && <><td className="right tabular-nums social-col-wide" title={money(row.spend)}>{indianUnits(row.spend)}</td><td className="right tabular-nums social-col-wide">{row.impressions > 0 ? money(row.spend / row.impressions * 1000) : "-"}</td></>}
-                  <td className="right"><button type="button" aria-label={`Campaigns for ${row.name}`} onClick={(event) => { event.stopPropagation(); openDrawer(row, event.currentTarget); }} className="social-chevron"><ChevronRight className="size-4" /></button></td>
+                  <td className="right"><button type="button" aria-label={`Show campaigns for ${row.name}`} onClick={(event) => { event.stopPropagation(); openDrawer(row, event.currentTarget); }} className="social-chevron"><ChevronRight className="size-4" /></button></td>
                 </tr>
               ))}
             </tbody>
