@@ -19,7 +19,7 @@ export function buildCsp(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self' data:",
-    "connect-src 'self' https://challenges.cloudflare.com",
+    "connect-src 'self' data: https://challenges.cloudflare.com https://*.challenges.cloudflare.com",
     "media-src 'self'",
     `frame-src ${frames}`,
     "worker-src 'self' blob:",

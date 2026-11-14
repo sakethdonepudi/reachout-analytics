@@ -819,7 +819,8 @@ async function sessionTests(browser: Browser) {
     try {
       await signIn(page, client, "/case-studies");
     } catch { /* expected: the login form ignores the evil next */ }
-    ok(`open redirect ignored: ${evil}`, !page.url().includes("evil.example"), page.url());
+    const final = new URL(page.url());
+    ok(`open redirect ignored: ${evil}`, final.origin === new URL(BASE).origin && !final.pathname.startsWith("/login/"), page.url());
     await context.close();
   }
 }
@@ -876,7 +877,8 @@ async function prodSmoke(browser: Browser) {
     const context = await freshContext(browser);
     const page = await context.newPage();
     await page.goto(`${BASE}/login?next=${encodeURIComponent(evil)}`, { waitUntil: "domcontentloaded" });
-    ok(`prod open redirect ignored: ${evil}`, !page.url().includes("evil.example"), page.url());
+    const final = new URL(page.url());
+    ok(`prod open redirect ignored: ${evil}`, final.origin === new URL(BASE).origin && final.pathname === "/login", page.url());
     await context.close();
   }
 }
