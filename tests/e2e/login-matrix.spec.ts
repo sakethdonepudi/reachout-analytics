@@ -129,6 +129,12 @@ async function turnstileReady(page: Page, timeout = 5000): Promise<boolean> {
     const ready = await page.evaluate(() => {
       const input = document.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]');
       if (input?.value) return true;
+      const widget = document.querySelector<HTMLElement>('[data-testid="turnstile-widget"]');
+      if (widget) {
+        const rect = widget.getBoundingClientRect();
+        const failed = Boolean(widget.closest("div")?.textContent?.includes("Security check didn"));
+        if (rect.width > 0 && rect.height > 0 && !failed) return true;
+      }
       return Array.from(document.querySelectorAll("iframe")).some((frame) => {
         if (!/challenges\.cloudflare\.com/.test(frame.src)) return false;
         const rect = frame.getBoundingClientRect();
