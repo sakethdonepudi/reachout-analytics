@@ -59,7 +59,7 @@ function ServiceCard({ service, delay = 0 }: { service: ServiceArea; delay?: num
             <Icon className="size-[18px]" />
           </span>
           {service.caseStudy && (
-            <Link href={service.caseStudy.href} className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-muted-foreground transition-colors hover:text-teal-deep">
+            <Link href={service.caseStudy.href} className="tap inline-flex items-center gap-1 text-[10.5px] font-semibold text-muted-foreground transition-colors hover:text-teal-deep">
               {service.caseStudy.label}<ArrowUpRight className="size-3" />
             </Link>
           )}
@@ -69,7 +69,7 @@ function ServiceCard({ service, delay = 0 }: { service: ServiceArea; delay?: num
         <ul className="mt-4 space-y-1.5">
           {service.deliverables.map((d) => <li key={d} className="flex items-start gap-2 text-[12.5px] leading-snug text-foreground/75"><CircleCheck className="mt-0.5 size-3.5 shrink-0 text-[#1d9e75]" />{d}</li>)}
         </ul>
-        <Link href={serviceHref(service.title)} className="mt-auto inline-flex min-h-11 items-center gap-1.5 pt-2 text-[11px] font-bold uppercase tracking-[0.1em] text-foreground/80 transition-colors hover:text-teal-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/50">
+        <Link href={serviceHref(service.title)} className="tap mt-auto inline-flex min-h-11 items-center gap-1.5 pt-2 text-[11px] font-bold uppercase tracking-[0.1em] text-foreground/80 transition-colors hover:text-teal-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/50">
           Discuss this service<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-focus-within:translate-x-0.5" />
         </Link>
       </article>
@@ -85,7 +85,7 @@ export default function ServicesPage() {
         <section className="precision-hero-band relative isolate overflow-hidden pb-16 pt-32 sm:pb-20 sm:pt-36">
           <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60%_55%_at_84%_12%,rgba(29,158,117,.12),transparent_66%),radial-gradient(52%_44%_at_5%_78%,rgba(29,158,117,.075),transparent_70%)]" aria-hidden />
           <div className="mx-auto max-w-6xl px-6 sm:px-10">
-            <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[12.5px] text-muted-foreground"><Link href="/" className="hover:text-foreground">Home</Link><span aria-hidden>/</span><span className="font-medium text-foreground/80">Services</span></nav>
+            <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[12.5px] text-muted-foreground"><Link href="/" className="tap hover:text-foreground">Home</Link><span aria-hidden>/</span><span className="font-medium text-foreground/80">Services</span></nav>
             <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.04fr)_minmax(0,.96fr)] lg:items-center lg:gap-6">
               <Reveal className="max-w-3xl">
                 <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-teal-deep">Political Intelligence &amp; Data Analytics</p>
@@ -114,7 +114,7 @@ export default function ServicesPage() {
                 <div className="flex items-center gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-teal-deep">Practice 01</p><AreaMotif variant="political" className="h-8 w-16" /></div>
                 <h2 className="mt-3 font-display text-[clamp(30px,4vw,48px)] font-semibold tracking-[-0.03em]">Political Intelligence</h2>
               </div>
-              <div><p className="max-w-2xl text-[14.5px] leading-relaxed text-muted-foreground">Research, geographic analysis and reporting for campaigns and political organisations. We describe analytical capability, not guaranteed electoral outcomes; conclusions remain dependent on the quality of available data and the wider campaign context.</p><Link href={serviceHref("Opinion polls & exit-poll analysis")} className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-foreground hover:text-teal-deep">Discuss a political project<ArrowRight className="size-3.5" /></Link></div>
+              <div><p className="max-w-2xl text-[14.5px] leading-relaxed text-muted-foreground">Research, geographic analysis and reporting for campaigns and political organisations. We describe analytical capability, not guaranteed electoral outcomes; conclusions remain dependent on the quality of available data and the wider campaign context.</p><Link href={serviceHref("Opinion polls & exit-poll analysis")} className="tap mt-4 inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-foreground hover:text-teal-deep">Discuss a political project<ArrowRight className="size-3.5" /></Link></div>
             </Reveal>
             <div className="mt-10 grid gap-4 md:auto-rows-fr md:grid-cols-2 lg:grid-cols-3">
               {POLITICAL_SERVICES.map((s, i) => <ServiceCard key={s.title} service={s} delay={i * 45} />)}
@@ -128,10 +128,10 @@ export default function ServicesPage() {
           <div className="mx-auto max-w-6xl px-6 py-16 sm:px-10 sm:py-20">
             <Reveal className="grid gap-6 lg:grid-cols-[1.02fr_.98fr] lg:items-end">
               <div>
-                <div className="flex items-center gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#1d9e75] ">Practice 02</p><AreaMotif variant="data" className="h-8 w-16" /></div>
+                <div className="flex items-center gap-3"><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#0B0B0C]">Practice 02</p><AreaMotif variant="data" className="h-8 w-16" /></div>
                 <h2 className="mt-3 font-display text-[clamp(30px,4vw,48px)] font-semibold tracking-[-0.03em]">Data & Business Analytics</h2>
               </div>
-              <div><p className="max-w-2xl text-[14.5px] leading-relaxed text-muted-foreground">From preparing a reliable dataset to building a dashboard, model or training programme, our work is scoped around the decision you need to make and the evidence available.</p><Link href={serviceHref("Data analysis & preparation")} className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-foreground hover:text-[#1d9e75] ">Discuss a data project<ArrowRight className="size-3.5" /></Link></div>
+              <div><p className="max-w-2xl text-[14.5px] leading-relaxed text-muted-foreground">From preparing a reliable dataset to building a dashboard, model or training programme, our work is scoped around the decision you need to make and the evidence available.</p><Link href={serviceHref("Data analysis & preparation")} className="tap mt-4 inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-foreground hover:text-[#1d9e75] ">Discuss a data project<ArrowRight className="size-3.5" /></Link></div>
             </Reveal>
             <div className="mt-10 grid gap-4 md:auto-rows-fr md:grid-cols-2 lg:grid-cols-3">
               {DATA_SERVICES.map((s, i) => <ServiceCard key={s.title} service={s} delay={i * 35} />)}

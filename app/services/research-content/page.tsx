@@ -41,7 +41,7 @@ function ResearchCard({ service, index }: { service: (typeof RESEARCH_SERVICES)[
         <ul className="mt-4 space-y-1.5">
           {service.deliverables.map((d) => <li key={d} className="flex items-start gap-2 text-[12.5px] leading-snug text-foreground/75"><CircleCheck className="mt-0.5 size-3.5 shrink-0 text-[#1d9e75]" />{d}</li>)}
         </ul>
-        <Link href={researchHref(service.category)} className="mt-auto inline-flex items-center gap-1.5 pt-5 text-[11px] font-bold uppercase tracking-[0.1em] text-foreground/80 transition-colors hover:text-teal-deep">Discuss this service<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" /></Link>
+        <Link href={researchHref(service.category)} className="tap mt-auto inline-flex items-center gap-1.5 pt-5 text-[11px] font-bold uppercase tracking-[0.1em] text-foreground/80 transition-colors hover:text-teal-deep">Discuss this service<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" /></Link>
       </article>
     </Reveal>
   );
@@ -59,7 +59,7 @@ export default function ResearchContentPage() {
             <path d="M120 380 L230 280 L340 310 L470 170 L610 220 L740 120" stroke="currentColor" strokeWidth="1.5" strokeDasharray="5 7" />
           </svg>
           <div className="mx-auto max-w-6xl px-6 sm:px-10">
-            <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[12.5px] text-muted-foreground"><Link href="/" className="hover:text-foreground">Home</Link><span aria-hidden>/</span><Link href="/services" className="hover:text-foreground">Services</Link><span aria-hidden>/</span><span className="font-medium text-foreground/80">Research & Content</span></nav>
+            <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[12.5px] text-muted-foreground"><Link href="/" className="tap hover:text-foreground">Home</Link><span aria-hidden>/</span><Link href="/services" className="tap hover:text-foreground">Services</Link><span aria-hidden>/</span><span className="font-medium text-foreground/80">Research & Content</span></nav>
             <Reveal className="mt-12 max-w-3xl">
               <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-teal-deep">Academic & professional support</p>
               <h1 className="mt-4 font-display text-[clamp(38px,5.6vw,72px)] font-semibold leading-[.98] tracking-[-0.045em]">Research & Content<br /><span className="text-gradient-teal">Services</span></h1>
@@ -70,7 +70,7 @@ export default function ResearchContentPage() {
               </div>
             </Reveal>
             <Reveal delay={100} className="mt-12 flex flex-wrap gap-2 border-t border-border pt-5">
-              {[["Services", "#research-services"], ["Quality", "#quality"], ["Enquiry", "#enquiry"]].map(([label, href]) => <a key={href} href={href} className="rounded-full border border-border bg-card/65 px-3.5 py-1.5 text-[12px] font-medium text-muted-foreground transition hover:border-teal/40 hover:text-foreground">{label}</a>)}
+              {[["Services", "#research-services"], ["Quality", "#quality"], ["Enquiry", "#enquiry"]].map(([label, href]) => <a key={href} href={href} className="tap rounded-full border border-border bg-card/65 px-3.5 py-1.5 text-[12px] font-medium text-muted-foreground transition hover:border-teal/40 hover:text-foreground">{label}</a>)}
             </Reveal>
           </div>
         </section>
@@ -127,7 +127,7 @@ export default function ResearchContentPage() {
         <footer className="border-t border-border">
           <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10 sm:px-10 lg:flex-row lg:items-center lg:justify-between">
             <div><Logo /><p className="mt-2 max-w-md text-[12px] leading-relaxed text-muted-foreground">{CONTACT.address}</p></div>
-            <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2 text-[12.5px] font-medium text-muted-foreground"><Link href="/services" className="hover:text-foreground">Services</Link><Link href="/services/research-content" className="hover:text-foreground">Research & Content</Link><Link href="/case-studies" className="hover:text-foreground">Case Studies</Link><Link href="/about" className="hover:text-foreground">About Us</Link><Link href="/#contact" className="hover:text-foreground">Contact</Link></nav>
+            <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2 text-[12.5px] font-medium text-muted-foreground"><Link href="/services" className="tap hover:text-foreground">Services</Link><Link href="/services/research-content" className="hover:text-foreground">Research & Content</Link><Link href="/case-studies" className="hover:text-foreground">Case Studies</Link><Link href="/about" className="hover:text-foreground">About Us</Link><Link href="/#contact" className="hover:text-foreground">Contact</Link></nav>
           </div>
           <div className="border-t border-border/70 py-4 text-center text-[11.5px] text-muted-foreground">© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</div>
         </footer>

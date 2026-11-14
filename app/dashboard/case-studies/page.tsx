@@ -362,7 +362,7 @@ export default function AdminPortal() {
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button onClick={() => setSection("poll")} className="rounded-lg bg-teal-deep px-3 py-1.5 text-[12.5px] font-semibold text-[#ffffff]">Open Telangana import</button>
-                <Link href="/case-studies/telangana" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">View public page</Link>
+                <Link href="/case-studies/telangana" className="tap rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">View public page</Link>
               </div>
               <div className="mt-6 rounded-2xl border border-border bg-card/60 p-4 text-[12px] text-muted-foreground">
                 <p className="font-semibold text-foreground/80">Data limits</p>
@@ -382,8 +382,8 @@ export default function AdminPortal() {
               <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">Tamil Nadu uses the final calibrated aggregate workbook, not individual-response import. Survey votes, Saket&apos;s original calls, statewide-fit model calls, final district-calibrated calls and Actual 2026 results are separate layers. The previous geographic-allocation snapshot is archived privately and is not read.</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button onClick={() => setSection("poll")} className="rounded-lg bg-teal-deep px-3 py-1.5 text-[12.5px] font-semibold text-[#ffffff]">Open Tamil Nadu source overview</button>
-                <a href="/api/admin/tamil-nadu/export?format=xlsx" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">Export final aggregates</a>
-                <Link href="/case-studies/tamil-nadu" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">View public page</Link>
+                <a href="/api/admin/tamil-nadu/export?format=xlsx" className="tap rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">Export final aggregates</a>
+                <Link href="/case-studies/tamil-nadu" className="tap rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">View public page</Link>
               </div>
               <div className="mt-6 rounded-2xl border border-border bg-card/60 p-4 text-[12px] text-muted-foreground">
                 <p className="font-semibold text-foreground/80">Source and geography</p>
@@ -447,7 +447,7 @@ export default function AdminPortal() {
               <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">The final calibrated aggregate workbook is active. Survey votes, Saket&apos;s original calls, statewide-fit model calls, final district-calibrated calls and actual 2026 results are separate layers. The previous allocation snapshot is archived privately and is not used.</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <a href="/api/admin/tamil-nadu/export?format=xlsx" className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-2 text-[12.5px] hover:bg-elevated"><Download className="size-4" /> Export final workbook aggregates</a>
-                <Link href="/case-studies/tamil-nadu" className="rounded-full border border-border px-3.5 py-2 text-[12.5px] text-muted-foreground hover:text-foreground">View public page</Link>
+                <Link href="/case-studies/tamil-nadu" className="tap rounded-full border border-border px-3.5 py-2 text-[12.5px] text-muted-foreground hover:text-foreground">View public page</Link>
               </div>
               <p className="mt-3 max-w-2xl text-[12px] leading-relaxed text-muted-foreground">Full calibration weights, cross-validation metrics, layer definitions and source audit remain available in the exported workbook.</p>
             </div>
@@ -734,7 +734,7 @@ export default function AdminPortal() {
               <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">The active build uses <b className="text-foreground/85">tn-2026-saket-v3</b>, generated from <span className="font-mono">SAKET_TN_District_Estimate_calibrated_v3.xlsx</span>. The previous workbook and geographic-allocation snapshot are retained privately under the archive path and are not queried.</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <a href="/api/admin/tamil-nadu/export?format=xlsx" className="rounded-lg bg-teal-deep px-3 py-1.5 text-[12.5px] font-semibold text-[#ffffff]">Export source aggregates</a>
-                <Link href="/case-studies/tamil-nadu" className="rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">View public page</Link>
+                <Link href="/case-studies/tamil-nadu" className="tap rounded-lg border border-border px-3 py-1.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground">View public page</Link>
               </div>
               <div className="mt-5 rounded-2xl border border-border bg-card/60 p-4 text-[12px] text-muted-foreground">
                 <p className="font-semibold text-foreground/80">Layer policy</p>

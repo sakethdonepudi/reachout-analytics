@@ -87,13 +87,13 @@ export default function ServicesEnquiry({ categories = SERVICE_CATEGORIES, group
           Share the question, the data you have and the outcome you need. We will respond with a practical next step, not a sales pitch.
         </p>
         <ul className="mt-6 space-y-4 text-[13.5px] text-foreground/80">
-          <li className="flex items-start gap-3"><Mail className="mt-0.5 size-4 shrink-0 text-teal-deep" /><a href={`mailto:${CONTACT.email}`} className="break-all hover:text-teal-deep">{CONTACT.email}</a></li>
-          <li className="flex items-start gap-3"><Phone className="mt-0.5 size-4 shrink-0 text-teal-deep" /><a href={`tel:${CONTACT.phone.replace(/\s/g, "")}`} className="hover:text-teal-deep">{CONTACT.phone}</a></li>
+          <li className="flex items-start gap-3"><Mail className="mt-0.5 size-4 shrink-0 text-teal-deep" /><a href={`mailto:${CONTACT.email}`} className="tap break-all hover:text-teal-deep">{CONTACT.email}</a></li>
+          <li className="flex items-start gap-3"><Phone className="mt-0.5 size-4 shrink-0 text-teal-deep" /><a href={`tel:${CONTACT.phone.replace(/\s/g, "")}`} className="tap hover:text-teal-deep">{CONTACT.phone}</a></li>
           <li className="flex items-start gap-3"><MapPin className="mt-0.5 size-4 shrink-0 text-teal-deep" /><span className="leading-relaxed">{CONTACT.address}</span></li>
         </ul>
         <div className="mt-5 flex flex-wrap gap-2">
-          <a href={CONTACT.linkedin} target="_blank" rel="noreferrer" className="rounded-full border border-border px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground">LinkedIn</a>
-          <a href={CONTACT.instagram} target="_blank" rel="noreferrer" className="rounded-full border border-border px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground">Instagram</a>
+          <a href={CONTACT.linkedin} target="_blank" rel="noreferrer" className="tap rounded-full border border-border px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground">LinkedIn</a>
+          <a href={CONTACT.instagram} target="_blank" rel="noreferrer" className="tap rounded-full border border-border px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground">Instagram</a>
         </div>
         <p className="mt-5 border-t border-border pt-4 text-[11px] leading-relaxed text-muted-foreground">
           We treat project data confidentially. Please do not send sensitive personal data in this initial enquiry.

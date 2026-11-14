@@ -52,7 +52,7 @@ export default async function AboutPage() {
 
           <div className="relative mx-auto max-w-6xl px-6 sm:px-10">
             <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
-              <Link href="/" className="transition-colors hover:text-foreground">Home</Link>
+              <Link href="/" className="tap transition-colors hover:text-foreground">Home</Link>
               <span aria-hidden>/</span>
               <span className="font-medium text-foreground/80">About Us</span>
             </nav>
@@ -154,7 +154,7 @@ export default async function AboutPage() {
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
               <Logo className="h-[30px] w-[132px] sm:h-[34px] sm:w-[150px]" />
               <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2 text-[12.5px] font-medium text-muted-foreground">
-                <Link href="/services" className="transition-colors hover:text-foreground">Services</Link>
+                <Link href="/services" className="tap transition-colors hover:text-foreground">Services</Link>
                 <Link href="/services/research-content" className="transition-colors hover:text-foreground">Research &amp; Content</Link>
                 <Link href="/case-studies" className="transition-colors hover:text-foreground">Case Studies</Link>
                 <Link href="/about" className="transition-colors hover:text-foreground">About Us</Link>

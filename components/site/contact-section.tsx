@@ -105,13 +105,13 @@ export default function ContactSection() {
                   <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[var(--r-line)] bg-white">
                     <Icon className="size-[18px] text-[var(--p-ink)]" />
                   </span>
-                  {href ? <a href={href} className="pt-2 hover:text-[var(--r-ink)]">{text}</a> : <span className="pt-2 leading-relaxed">{text}</span>}
+                  {href ? <a href={href} className="tap pt-2 hover:text-[var(--r-ink)]">{text}</a> : <span className="pt-2 leading-relaxed">{text}</span>}
                 </li>
               ))}
             </ul>
             <div className="mt-6 flex gap-2">
               {[["LinkedIn", CONTACT.linkedin], ["Instagram", CONTACT.instagram]].map(([name, href]) => (
-                <a key={name} href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--r-line)] bg-white px-4 py-2 text-sm text-[var(--r-muted)] transition hover:border-[var(--r-teal)] hover:text-[var(--r-ink)]">
+                <a key={name} href={href} target="_blank" rel="noreferrer" className="tap inline-flex items-center gap-1.5 rounded-full border border-[var(--r-line)] bg-white px-4 py-2 text-sm text-[var(--r-muted)] transition hover:border-[var(--r-teal)] hover:text-[var(--r-ink)]">
                   {name}<ArrowUpRight className="size-3.5" />
                 </a>
               ))}

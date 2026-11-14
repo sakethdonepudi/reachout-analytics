@@ -72,7 +72,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
       <CaseStudyTabs social={<main className="min-h-screen bg-background pt-12 text-foreground"><div className="mx-auto max-w-6xl px-6 pb-24 sm:px-10"><SocialPanel regions={social} /></div></main>}>
       <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
         <div className="relative mx-auto max-w-6xl px-6 pb-24 pt-24 sm:px-10">
-          <CaseBackLink className="report-link inline-flex items-center gap-2 text-[12.5px]">
+          <CaseBackLink className="report-link tap inline-flex items-center gap-2 text-[12.5px]">
             <ArrowLeft className="size-4" /> Back to case studies
           </CaseBackLink>
 
@@ -105,7 +105,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
               <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {c.tags.map((t, i) => (
                   <div key={t} className="report-card p-4">
-                    <span className="text-[11px] font-semibold text-[#8A8A8A]">{String(i + 1).padStart(2, "0")}</span>
+                    <span className="text-[11px] font-semibold text-[#6B6B6B]">{String(i + 1).padStart(2, "0")}</span>
                     <h3 className="mt-2 text-[15px] font-semibold text-[#0B0B0C]">{t}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{CAPABILITIES[t] ?? ""}</p>
                   </div>
@@ -124,7 +124,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
 
           {c && (
             <div className="mt-16 flex items-center justify-end border-t border-border pt-10">
-              <Link href={caseUrl(next.slug)} className="group flex items-center gap-3 text-muted-foreground transition-colors hover:text-foreground">
+              <Link href={caseUrl(next.slug)} className="tap group flex items-center gap-3 text-muted-foreground transition-colors hover:text-foreground">
                 Next: <b className="font-display text-lg text-foreground">{next.title}</b>
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
               </Link>

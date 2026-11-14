@@ -202,7 +202,7 @@ export default function TelanganaRail({
                 </th>
                 <td className={cn("px-1 text-right tabular-nums text-muted-foreground", rowPad)}>{fmtPct(scope.baseline[x])}</td>
                 <td className={cn("px-1 text-right tabular-nums font-semibold", rowPad)}>{fmtPct(scope.prediction[x])}</td>
-                <td className={cn("px-1 text-right tabular-nums", rowPad, scope.change[x] > 0 ? "text-emerald-600" : scope.change[x] < 0 ? "text-rose-600" : "text-muted-foreground")}>
+                <td className={cn("px-1 text-right tabular-nums", rowPad, scope.change[x] > 0 ? "text-emerald-700" : scope.change[x] < 0 ? "text-rose-700" : "text-muted-foreground")}>
                   {signed(scope.change[x])}
                 </td>
               </tr>

@@ -50,7 +50,7 @@ export default function SessionsClient() {
       <Card className="overflow-hidden">
         <div className="flex items-center justify-between gap-3 p-4">
           <h2 className="type-h3">Active sessions</h2>
-          <button type="button" onClick={() => void endAll()} disabled={busy === "all"} className="min-h-9 rounded-[var(--radius-control)] border border-[var(--danger)]/40 px-3 text-[11.5px] font-semibold text-[var(--danger)] disabled:opacity-50">Sign out everywhere</button>
+          <button type="button" onClick={() => void endAll()} disabled={busy === "all"} className="min-h-10 rounded-[var(--radius-control)] border border-[#B42318]/40 px-3 text-[11.5px] font-semibold text-[#B42318] disabled:opacity-50">Sign out everywhere</button>
         </div>
         <ul className="divide-y divide-[var(--border-hairline)]/70">
           {sessions.map((session) => (

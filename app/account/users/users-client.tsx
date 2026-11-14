@@ -136,7 +136,7 @@ export default function UsersClient() {
             </select>
           </label>
           <Field label="Temporary password" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} error={fieldErrors.password} hint="At least 12 characters." />
-          <label className="mt-5 flex items-center gap-2 text-[12px] font-semibold"><input type="checkbox" checked={form.role === "owner" || form.totpRequired} disabled={form.role === "owner"} onChange={(event) => setForm({ ...form, totpRequired: event.target.checked })} className="size-4 accent-[var(--accent-brass)]" /> Require 2FA</label>
+          <label className="mt-5 flex min-h-11 items-center gap-2 text-[12px] font-semibold"><input type="checkbox" checked={form.role === "owner" || form.totpRequired} disabled={form.role === "owner"} onChange={(event) => setForm({ ...form, totpRequired: event.target.checked })} className="size-4 accent-[var(--accent-brass)]" /> Require 2FA</label>
         </div>
 
         <button type="button" onClick={() => void create()} disabled={busy === "create"} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent-brass)] px-4 text-[12.5px] font-semibold text-[var(--text-on-brass)] disabled:opacity-60">
@@ -146,7 +146,7 @@ export default function UsersClient() {
 
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2 p-5"><h2 className="type-h3">Accounts</h2><span className="text-[11.5px] text-[var(--text-muted)]">{owners} active owner{owners === 1 ? "" : "s"} with 2FA</span></div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brass)]/40" role="region" aria-label="Users" tabIndex={0}>
           <table className="w-full min-w-[760px] border-collapse text-left text-[12px]">
             <thead>
               <tr><th className="px-4 py-2">User</th><th className="px-4 py-2">Role</th><th className="px-4 py-2">Status</th><th className="px-4 py-2">2FA</th><th className="px-4 py-2">Last sign-in</th><th className="px-4 py-2 text-right">Actions</th></tr>
