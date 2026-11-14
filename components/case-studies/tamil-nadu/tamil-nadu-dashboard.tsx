@@ -170,7 +170,7 @@ export default function TamilNaduDashboard({ caseData, aggregates, owner = false
   }, [year, data?.presence]);
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
+    <div className="app-chrome relative min-h-screen bg-white text-[var(--p-ink)]">
       <section className="relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-24 sm:pt-28 lg:flex lg:h-[100svh] lg:min-h-[760px] lg:flex-col lg:overflow-hidden lg:px-6 lg:pt-20">
         <h1 className="sr-only">Tamil Nadu election intelligence</h1>
 

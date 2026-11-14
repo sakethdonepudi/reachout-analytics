@@ -76,19 +76,14 @@ export default function ContactSection() {
     <section
       ref={section}
       id="contact"
-      className="pointer-events-auto relative z-[2] min-h-[100svh] overflow-hidden bg-[var(--r-bg)] px-6 pb-2 pt-36 text-[var(--r-ink)] scroll-mt-24 sm:px-10 lg:pb-10"
+      className="precision-contact pointer-events-auto relative z-[2] min-h-[100svh] overflow-hidden px-6 pb-2 pt-36 text-[var(--p-ink)] scroll-mt-24 sm:px-10 lg:pb-10"
     >
       {/* flying globe (fixed, follows the slot) */}
-      <div ref={flyer} className="pointer-events-none fixed left-0 top-0 z-[1] invisible will-change-transform" aria-hidden>
-        <div className="absolute inset-[-10%] rounded-full bg-[radial-gradient(circle,rgba(29,158,117,.12),transparent_60%)] blur-2xl" />
-        {globeReady ? <Globe className="relative size-full" speed={12} direction="clockwise" spinRef={spin} /> : <div className="size-full rounded-full border border-[var(--r-line)] bg-[var(--r-hl)]" aria-hidden />}
-      </div>
-
       <div className="relative z-[2] mx-auto max-w-6xl">
         <div className="text-center">
-          <span className="inline-flex rounded-full border border-teal/40 bg-[var(--r-hl)] px-4 py-1.5 text-sm font-medium text-[var(--r-teal-d)]">Contact</span>
+          <span className="inline-flex rounded-full border border-[#CFCFCF] bg-white px-4 py-1.5 text-sm font-medium text-[#555]">Contact</span>
           <h2 className="mt-6 font-display text-[clamp(44px,6vw,80px)] font-semibold tracking-[-0.035em]">
-            Let&apos;s win your <span className="text-[var(--r-navy)] font-serif font-normal italic">next election</span>
+            Let&apos;s win your <span className="font-serif font-normal italic">next election</span>
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-[17px] leading-relaxed text-[var(--r-muted)]">
             Tell us about your campaign. Our strategy team will get back to you within one business day.
@@ -99,7 +94,7 @@ export default function ContactSection() {
           {/* left */}
           <div>
             <h3 className="font-display text-2xl font-semibold">Get in touch</h3>
-            <p className="mt-2 max-w-sm text-[var(--r-muted)]">Reach out via any channel below — or send a message and we&apos;ll call you back.</p>
+            <p className="mt-2 max-w-sm text-[var(--r-muted)]">Reach out via any channel below, or send a message and we&apos;ll call you back.</p>
             <ul className="mt-8 space-y-4">
               {[
                 { icon: Mail, text: CONTACT.email, href: `mailto:${CONTACT.email}` },
@@ -108,7 +103,7 @@ export default function ContactSection() {
               ].map(({ icon: Icon, text, href }) => (
                 <li key={text} className="flex items-start gap-4 text-[var(--r-ink)]">
                   <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[var(--r-line)] bg-white">
-                    <Icon className="size-[18px] text-teal-deep" />
+                    <Icon className="size-[18px] text-[var(--p-ink)]" />
                   </span>
                   {href ? <a href={href} className="pt-2 hover:text-[var(--r-ink)]">{text}</a> : <span className="pt-2 leading-relaxed">{text}</span>}
                 </li>
@@ -121,8 +116,6 @@ export default function ContactSection() {
                 </a>
               ))}
             </div>
-            {/* the globe lands here */}
-            <div ref={slot} className="mx-auto mt-4 aspect-square w-full max-w-[220px] lg:mx-0 lg:mt-2 lg:max-w-[180px]" />
           </div>
 
           {/* right: form */}
@@ -133,8 +126,8 @@ export default function ContactSection() {
             <div className="my-4 border-t border-dashed border-[var(--r-line)] sm:my-5" />
             {sent ? (
               <div className="flex flex-col items-center py-16 text-center">
-                <CheckCircle2 className="size-12 text-[#1d9e75]" />
-                <p className="mt-4 font-display text-xl font-semibold">Thank you — message received.</p>
+                <CheckCircle2 className="size-12 text-[var(--p-ink)]" />
+                <p className="mt-4 font-display text-xl font-semibold">Thank you. Message received.</p>
                 <p className="mt-1 text-[var(--r-muted)]">We&apos;ll be in touch within one business day.</p>
               </div>
             ) : (
@@ -183,7 +176,7 @@ export default function ContactSection() {
                 </div>
                 <label className="block"><span className={label}>Message</span><textarea name="message" rows={4} className={`${field} resize-none`} placeholder="Tell us about your constituency, timeline and goals" /></label>
                 {error && <p className="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-200">{error}</p>}
-                <ShimmerButton text={sending ? "Sending..." : "Send message"} duration={1.6} className="w-full border-teal/40 py-3.5  backdrop-blur-xl" />
+                <button type="submit" disabled={sending} className="inline-flex min-h-12 w-full items-center justify-center rounded-[12px] bg-[#0B0B0C] px-5 text-[14px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60">{sending ? "Sending..." : "Send message"}</button>
               </form>
             )}
           </div>
@@ -191,10 +184,6 @@ export default function ContactSection() {
 
         <CompanyExperience className="mt-12" />
 
-        <footer className="mt-2 flex flex-col items-center justify-between gap-4 border-t border-[var(--r-line)] pt-4 text-sm text-[var(--r-muted)] sm:flex-row">
-          <div className="flex flex-wrap items-center gap-5"><Logo /><Link href="/services" className="hover:text-[var(--r-ink)]">Services</Link><Link href="/services/research-content" className="hover:text-[var(--r-ink)]">Research &amp; Content</Link></div>
-          <span>© {new Date().getFullYear()} ReachOut Analytics Pvt. Ltd.</span>
-        </footer>
       </div>
     </section>
   );

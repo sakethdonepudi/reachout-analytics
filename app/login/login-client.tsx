@@ -109,11 +109,11 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
 
   return (
     <>
-      <main className="grid min-h-[100svh] place-items-center bg-[var(--r-bg)] px-5 py-14 text-[var(--r-ink)]">
-      <div className="relative w-full max-w-sm">
+      <main className="auth-shell grid min-h-[100svh] place-items-center px-5 py-14 text-[var(--p-ink)]">
+      <div className="relative w-full max-w-[420px]">
         <div className="mb-7 flex justify-center"><Logo /></div>
-        <div className="report-card p-7">
-          <p className="type-micro text-[var(--r-teal-d)]">Secure access</p>
+        <div className="auth-card">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--p-muted)]">Secure access</p>
           <h1 className="type-h1 mt-2">{step === "totp" ? "Enter your code" : "Sign in"}</h1>
           <p className="type-small mt-2 text-[var(--text-muted)]">
             {step === "totp" ? `Open your authenticator app for ${username}.` : "Use your workspace username and password."}
@@ -171,11 +171,11 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
               <button type="submit" disabled={loading || success || (turnstileEnabled && !token) || (!recovery && digits.join("").length !== 6)} className="report-btn w-full disabled:opacity-60">
                 {success ? <Check className="success-pop size-4" /> : showSpinner ? <Loader2 className="size-4 animate-spin" /> : null} Verify
               </button>
-              <button type="button" onClick={() => { setRecovery((value) => !value); setError(""); }} className="w-full text-center text-[12px] font-semibold text-[var(--r-teal-d)] underline decoration-dotted underline-offset-4">
+              <button type="button" onClick={() => { setRecovery((value) => !value); setError(""); }} className="w-full text-center text-[12px] font-semibold text-[var(--p-ink)] underline decoration-dotted underline-offset-4">
                 {recovery ? "Use an authenticator code" : "Use a recovery code"}
               </button>
               <button type="button" onClick={() => { setStep("password"); setError(""); setRecovery(false); }} className="w-full text-center text-[12px] text-[var(--text-muted)]">Back to password</button>
-              {/timed out/i.test(error) && <a href="/login" className="block text-center text-[12px] font-semibold text-[var(--r-teal-d)] underline decoration-dotted underline-offset-4">Sign in again</a>}
+              {/timed out/i.test(error) && <a href="/login" className="block text-center text-[12px] font-semibold text-[var(--p-ink)] underline decoration-dotted underline-offset-4">Sign in again</a>}
             </form>
           )}
 

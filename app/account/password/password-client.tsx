@@ -45,9 +45,9 @@ export default function PasswordClient({ first, turnstileEnabled, nonce }: { fir
   }
 
   return (
-    <main className="grid min-h-[100svh] place-items-center bg-[var(--surface-canvas)] px-5 py-14 text-[var(--text-primary)]">
-      <div className="w-full max-w-md rounded-[var(--radius-panel)] border border-[var(--border-hairline)] bg-[var(--surface-panel)] p-7 shadow-[var(--shadow-soft)]">
-        <p className="type-micro text-[var(--accent-brass)]">Account</p>
+    <main className="auth-shell grid min-h-[100svh] place-items-center px-5 py-14 text-[var(--p-ink)]">
+      <div className="auth-card">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--p-muted)]">Account</p>
         <h1 className="type-h1 mt-2">{first ? "Choose your password" : "Change password"}</h1>
         <p className="type-small mt-2 text-[var(--text-muted)]">Use at least 12 characters. Do not reuse a password from another site.</p>
         {error && <p role="alert" className="mt-4 rounded-[var(--radius-control)] border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-2 text-[12.5px] text-[var(--danger)]">{error}</p>}

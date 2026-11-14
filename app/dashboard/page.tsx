@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-background pt-24 text-foreground sm:pt-28">
+      <main className="app-chrome min-h-screen bg-white pt-24 text-[var(--p-ink)] sm:pt-28">
         <div className="mx-auto w-full max-w-[1280px] px-4 pb-24 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>

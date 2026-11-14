@@ -50,12 +50,12 @@ export default function SetupClient({ turnstileEnabled, nonce }: { turnstileEnab
   }
 
   return (
-    <main className="relative grid min-h-[100svh] place-items-center bg-[var(--surface-canvas)] px-5 py-14 text-[var(--text-primary)]">
+    <main className="auth-shell relative grid min-h-[100svh] place-items-center px-5 py-14 text-[var(--p-ink)]">
       <div className="absolute right-5 top-5"></div>
       <div className="w-full max-w-md">
         <div className="mb-7 flex justify-center"><Logo /></div>
-        <div className="report-card p-7">
-          <p className="type-micro text-[var(--r-teal-d)]">One-time setup</p>
+        <div className="auth-card">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--p-muted)]">One-time setup</p>
           <h1 className="type-h1 mt-2">Create the first owner</h1>
           <p className="type-small mt-2 text-[var(--text-muted)]">This page stops working after the first owner exists.</p>
           {error && <p role="alert" className="mt-4 rounded-[var(--radius-control)] border border-[var(--danger)]/40 bg-[var(--danger-bg)] px-3 py-2 text-[12.5px] text-[var(--danger)]">{error}</p>}

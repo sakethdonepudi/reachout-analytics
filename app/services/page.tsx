@@ -81,8 +81,8 @@ export default function ServicesPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-background text-foreground">
-        <section className="relative isolate overflow-hidden pb-16 pt-32 sm:pb-20 sm:pt-36">
+      <main className="precision-public min-h-screen text-[var(--p-ink)]">
+        <section className="precision-hero-band relative isolate overflow-hidden pb-16 pt-32 sm:pb-20 sm:pt-36">
           <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60%_55%_at_84%_12%,rgba(29,158,117,.12),transparent_66%),radial-gradient(52%_44%_at_5%_78%,rgba(29,158,117,.075),transparent_70%)]" aria-hidden />
           <div className="mx-auto max-w-6xl px-6 sm:px-10">
             <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[12.5px] text-muted-foreground"><Link href="/" className="hover:text-foreground">Home</Link><span aria-hidden>/</span><span className="font-medium text-foreground/80">Services</span></nav>

@@ -1,130 +1,55 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import { CASES, caseUrl } from "@/lib/cases";
-import { POLITICAL_IDENTITIES } from "@/lib/parties";
 import { PartyMark } from "@/components/site/party-mark";
 import Reveal from "@/components/site/reveal";
-import { cn } from "@/lib/utils";
+import TickRule from "@/components/precision/tick-rule";
+import SectionHeader from "@/components/precision/section-header";
+import { PrecisionCardLink } from "@/components/precision/precision-card";
 
-function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { setN(to); return; }
-    let raf = 0;
-    const io = new IntersectionObserver((entries) => {
-      if (!entries.some((e) => e.isIntersecting)) return;
-      io.disconnect();
-      const start = performance.now();
-      const dur = 1100;
-      const step = (now: number) => {
-        const t = Math.min(1, (now - start) / dur);
-        setN(Math.round(to * (1 - Math.pow(1 - t, 3))));
-        if (t < 1) raf = requestAnimationFrame(step);
-      };
-      raf = requestAnimationFrame(step);
-    }, { threshold: 0.4 });
-    io.observe(el);
-    return () => { io.disconnect(); cancelAnimationFrame(raf); };
-  }, [to]);
-  return <span ref={ref} className="tabular-nums">{n}{suffix}</span>;
+function yearFor(slug: string, title: string): number {
+  const match = `${slug} ${title}`.match(/(20\d{2})/);
+  if (match) return Number(match[1]);
+  if (slug === "telangana") return 2028;
+  return 2026;
 }
 
 export default function WorkShowcase() {
-  const works = useMemo(() => CASES.filter((c) => c.party), []);
-
   return (
-    <section id="work" className="pointer-events-auto relative scroll-mt-24 overflow-hidden bg-background py-20 sm:py-24">
-      {/* ambient motion */}
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <div className="animate-drift absolute -left-24 top-10 size-[420px] rounded-full bg-[radial-gradient(circle,rgba(29,158,117,.12),transparent_65%)] blur-2xl" />
-        <div className="animate-drift absolute -right-20 bottom-0 size-[380px] rounded-full bg-[radial-gradient(circle,rgba(29,158,117,.10),transparent_65%)] blur-2xl [animation-delay:-6s]" />
-      </div>
+    <section id="work" className="pointer-events-auto relative scroll-mt-24 bg-[var(--p-bg-alt)] py-20 sm:py-24">
+      <div className="mx-auto max-w-6xl px-6 sm:px-10">
+        <TickRule />
+        <div className="mt-10 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+          <SectionHeader
+            eyebrow="Our work"
+            title="Campaigns across India"
+            lead="Selected election programmes, shown for illustration only. No endorsement or ongoing client relationship is implied."
+          />
+          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--p-muted)]">{CASES.length} case studies</span>
+        </div>
 
-      <div className="relative mx-auto max-w-6xl px-6 sm:px-10">
-        <Reveal className="mx-auto max-w-2xl text-center">
-          <p className="type-micro text-teal-deep">Our work</p>
-          <h2 className="type-h2 mt-3 text-foreground">
-            Campaigns across India
-          </h2>
-          <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-            Selected election programmes, with the state and party associations publicly reported. Shown for illustration only — no endorsement or ongoing client relationship is implied.
-          </p>
-        </Reveal>
-
-        {/* animated stats */}
-        <Reveal className="mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-4">
-          {[
-            { label: "Party-state pairs", value: POLITICAL_IDENTITIES.length },
-            { label: "Case studies", value: CASES.length },
-            { label: "Districts mapped", value: 38 },
-            { label: "Coverage", value: 6, suffix: "+" },
-          ].map((s) => (
-            <div key={s.label} className="glass rounded-2xl px-4 py-5 text-center">
-              <p className="font-display text-3xl font-semibold text-foreground"><CountUp to={s.value} suffix={s.suffix} /></p>
-              <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{s.label}</p>
-            </div>
-          ))}
-        </Reveal>
-
-        {/* authentic party symbols paired with their public state association */}
-        <Reveal className="mt-12">
-          <p className="mb-4 text-center text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Party symbols</p>
-          <div className="flex flex-wrap items-start justify-center gap-4 sm:gap-6">
-            {POLITICAL_IDENTITIES.map((identity) => (
-              <div key={identity.id} className="flex min-w-[94px] flex-col items-center gap-2 text-center">
-                <PartyMark party={identity.party} size="lg" />
-                <span className="text-[11px] font-semibold leading-tight text-foreground">{identity.party}</span>
-                <span className="text-[10.5px] leading-tight text-muted-foreground">{identity.state}</span>
-              </div>
-            ))}
-          </div>
-        </Reveal>
-
-        {/* work cards */}
-        <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {works.map((c, i) => {
-            return (
-              <Reveal key={c.slug} delay={i * 70}>
-                <Link
-                  href={caseUrl(c.slug)}
-                  className="group glass flex h-full flex-col rounded-3xl p-5 transition-transform duration-300 hover:-translate-y-1.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-full border border-teal/40 bg-teal/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-deep">
-                      {c.badge}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 flex items-center gap-3">
-                    <PartyMark party={c.party} size="md" />
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {CASES.map((item, index) => (
+            <Reveal key={item.slug} delay={Math.min(index, 6) * 40} className="h-full">
+              <PrecisionCardLink href={caseUrl(item.slug)} label={`Open ${item.party} · ${item.stateName} case study`} className="h-full p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <PartyMark party={item.party} size="md" />
                     <div className="min-w-0">
-                      <h3 className="font-display text-lg font-semibold leading-tight text-foreground">{c.title}</h3>
-                      <p className="truncate text-[12.5px] text-muted-foreground">{c.party} · {c.stateName}</p>
+                      <p className="font-display text-[16px] font-semibold leading-tight text-[var(--p-ink)]">{item.party} · {item.stateName}</p>
+                      <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-[var(--p-muted)]">{yearFor(item.slug, item.title)}</p>
                     </div>
                   </div>
-
-                  <p className="mt-3 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">{c.summary}</p>
-
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {c.tags.slice(0, 2).map((t, k) => (
-                      <span key={t} className={cn("rounded-md px-2 py-1 text-[10.5px] font-semibold", k === 1 ? "bg-[#1d9e75]/15 text-[var(--success)]" : "bg-elevated text-foreground/75")}>{t}</span>
-                    ))}
-                  </div>
-
-                  <div className="mt-auto flex items-center justify-between border-t border-border pt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-foreground">
-                    View case study
-                    <span className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-teal to-[#0f6e56] text-[#ffffff] transition-transform group-hover:translate-x-0.5"><ArrowUpRight className="size-4" /></span>
-                  </div>
-                </Link>
-              </Reveal>
-            );
-          })}
+                  <span className="rounded-full border border-[var(--p-line)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--p-muted)]">{item.badge}</span>
+                </div>
+                <p className="mt-4 line-clamp-2 text-[13px] leading-relaxed text-[var(--p-ink-2)]">{item.summary}</p>
+                <span className="mt-5 flex items-center justify-between border-t border-[var(--p-line)] pt-3 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[var(--p-ink)]">
+                  View case study <span className="text-[var(--p-ink)]" aria-hidden>↗</span>
+                </span>
+              </PrecisionCardLink>
+            </Reveal>
+          ))}
         </div>
       </div>
     </section>

@@ -304,13 +304,13 @@ export default function AdminPortal() {
     </div>
   );
 
-  if (!ready) return <main className="grid min-h-[100svh] place-items-center bg-background text-muted-foreground"><Loader2 className="size-5 animate-spin" /></main>;
+  if (!ready) return <main className="app-chrome grid min-h-[100svh] place-items-center bg-white text-muted-foreground"><Loader2 className="size-5 animate-spin" /></main>;
 
   const pageCount = Math.max(1, Math.ceil(total / 50));
   const page = Math.floor(skip / 50) + 1;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="app-chrome min-h-screen bg-white text-[var(--p-ink)]">
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-5 py-3">
           <div className="flex items-center gap-4"><Logo href="/dashboard" /><div className="hidden sm:block"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--accent-brass-strong)]">Owner tools</p><p className="text-[12.5px] font-semibold">Case studies dashboard</p></div></div>

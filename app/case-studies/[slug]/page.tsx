@@ -79,7 +79,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
           <div className={`mt-8 grid items-start gap-6 ${c ? "lg:grid-cols-[320px_minmax(0,1fr)]" : ""}`}>
             {c && <StateMap stateCode={c.state} stateName={c.stateName} year={yearFor(c.slug)} party={c.party} />}
             <div>
-              <span className="rounded-full border border-teal/40 bg-teal/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-teal-deep">
+              <span className="rounded-full border border-[#E6E6E6] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#555]">
                 {c ? `Case study · ${c.badge}` : "Upcoming"}
               </span>
               <h1 className="mt-6 font-display text-[clamp(44px,6vw,84px)] font-semibold leading-[0.98] tracking-[-0.035em]">
@@ -88,7 +88,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
               {c && (
                 <div className="mt-5 flex flex-wrap items-center gap-4">
                   <p className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="size-4 text-teal-deep" /> {c.region}
+                    <MapPin className="size-4 text-[#0B0B0C]" /> {c.region}
                   </p>
                   <PartyIdentity party={c.party} state={c.stateName} size="sm" />
                 </div>
@@ -105,8 +105,8 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
               <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {c.tags.map((t, i) => (
                   <div key={t} className="report-card p-4">
-                    <span className="text-[11px] font-semibold text-[var(--r-teal-d)]">{String(i + 1).padStart(2, "0")}</span>
-                    <h3 className="mt-2 text-[15px] font-semibold text-[var(--r-navy)]">{t}</h3>
+                    <span className="text-[11px] font-semibold text-[#8A8A8A]">{String(i + 1).padStart(2, "0")}</span>
+                    <h3 className="mt-2 text-[15px] font-semibold text-[#0B0B0C]">{t}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{CAPABILITIES[t] ?? ""}</p>
                   </div>
                 ))}

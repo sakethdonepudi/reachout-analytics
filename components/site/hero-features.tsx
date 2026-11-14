@@ -1,27 +1,36 @@
-import { BarChart3, Compass, Users } from "lucide-react";
+import { BriefcaseBusiness, Compass, Users } from "lucide-react";
 import Reveal from "@/components/site/reveal";
+import TickRule from "@/components/precision/tick-rule";
+import SectionHeader from "@/components/precision/section-header";
+import { PrecisionCard } from "@/components/precision/precision-card";
 
 const FEATURES = [
-  { Icon: BarChart3, title: "Election Analysis", desc: "Survey design, constituency modelling and seat-level strategy, built on field data." },
+  { Icon: BriefcaseBusiness, title: "Election Analysis", desc: "Survey design, constituency modelling and seat-level strategy, built on field data." },
   { Icon: Users, title: "Voter Insights", desc: "Segmentation, sentiment and targeting drawn from ongoing voter research." },
   { Icon: Compass, title: "Regional Intelligence", desc: "State and district research that helps campaigns focus where it counts." },
 ];
 
-/** The three capability cards, moved out of the hero into their own section. */
 export default function HeroFeatures() {
   return (
-    <section id="capabilities" className="relative z-10 border-t border-border bg-background">
-      <div className="mx-auto max-w-[1280px] px-6 py-16 sm:px-10 sm:py-20">
-        <div className="grid gap-4 sm:grid-cols-3">
+    <section id="capabilities" className="relative z-10 bg-white">
+      <div className="mx-auto max-w-6xl px-6 pb-20 pt-10 sm:px-10 sm:pb-24">
+        <TickRule />
+        <SectionHeader
+          eyebrow="What we do"
+          title="Decision-grade intelligence, built on field data."
+          lead="Three practices, one evidence base. Every map, poll and dashboard is built to answer a decision, not to decorate a deck."
+          className="mt-10"
+        />
+        <div className="mt-10 grid gap-4 sm:grid-cols-3">
           {FEATURES.map(({ Icon, title, desc }, index) => (
-            <Reveal key={title} delay={index * 70} className="h-full">
-              <div className="h-full rounded-2xl border border-border bg-card/70 p-5 transition-colors hover:border-teal/40">
-                <span className="mb-3 grid size-9 place-items-center rounded-xl border border-border bg-elevated text-teal-deep">
-                  <Icon className="size-4" />
+            <Reveal key={title} delay={Math.min(index, 6) * 40} className="h-full">
+              <PrecisionCard className="h-full p-6 hover:-translate-y-0.5">
+                <span className="grid size-10 place-items-center rounded-xl border border-[var(--p-line)] bg-[var(--p-bg-alt)] text-[var(--p-ink)]">
+                  <Icon className="size-5" strokeWidth={1.75} aria-hidden />
                 </span>
-                <h2 className="font-display text-[15px] font-semibold text-foreground">{title}</h2>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{desc}</p>
-              </div>
+                <h3 className="mt-5 font-display text-[17px] font-semibold tracking-[-0.02em] text-[var(--p-ink)]">{title}</h3>
+                <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--p-ink-2)]">{desc}</p>
+              </PrecisionCard>
             </Reveal>
           ))}
         </div>

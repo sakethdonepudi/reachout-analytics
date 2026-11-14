@@ -72,6 +72,16 @@
   --danger: #991b1b;
   --danger-bg: rgba(185, 28, 28, 0.1);
 
+  /* precision style */
+  --p-bg: #ffffff;
+  --p-bg-alt: #fafafa;
+  --p-ink: #0b0b0c;
+  --p-ink-2: #555555;
+  --p-muted: #6b6b6b;
+  --p-line: #e6e6e6;
+  --p-geo: #cfcfcf;
+  --p-shadow: 0 10px 30px rgba(0, 0, 0, .08);
+
   /* motion system */
   --dur-instant: 80ms;
   --dur-fast: 140ms;
@@ -1836,4 +1846,195 @@ tr[data-highlight="true"] { background: var(--r-hl); }
 @media (max-width: 639px) {
   .campaign-table-wrap { display: none; }
   .campaign-cards { display: block; }
+}
+
+/* Precision contact section */
+.precision-contact { background: #ffffff; }
+.precision-contact .report-card {
+  background: #ffffff;
+  border: 1px solid var(--p-line);
+  border-radius: 16px;
+  box-shadow: var(--p-shadow);
+}
+.precision-contact input,
+.precision-contact textarea {
+  border: 1px solid #CFCFCF !important;
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--p-ink);
+}
+.precision-contact input:focus,
+.precision-contact textarea:focus {
+  border-color: #0B0B0C !important;
+  box-shadow: 0 0 0 3px rgba(11, 11, 12, .08);
+  outline: none;
+}
+.precision-contact .report-card .border-dashed { border-color: var(--p-line); }
+
+/* Company marquee on white, grayscale until hover */
+.company-marquee { background: #ffffff !important; border-top: 1px solid var(--p-line); }
+.company-eyebrow { color: var(--p-muted) !important; }
+.company-marquee h2 { color: var(--p-ink) !important; }
+.company-tile { background: #ffffff !important; border: 1px solid var(--p-line); }
+.company-logo { filter: grayscale(1); opacity: .62; transition: filter 200ms var(--ease-out), opacity 200ms var(--ease-out); }
+.company-tile:hover .company-logo,
+.company-tile:focus-visible .company-logo { filter: none; opacity: 1; }
+
+/* Precision auth pages */
+.auth-shell { background: #ffffff; position: relative; overflow: hidden; }
+.auth-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, #CFCFCF 0.7px, transparent 0.9px);
+  background-size: 24px 24px;
+  opacity: .45;
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 30%, #000 75%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 30%, #000 75%, transparent 100%);
+  pointer-events: none;
+}
+.auth-shell::after {
+  content: "";
+  position: absolute;
+  width: min(78vw, 780px);
+  aspect-ratio: 1.55;
+  border: 1px solid #CFCFCF;
+  border-radius: 50%;
+  transform: rotate(-22deg);
+  right: -18%;
+  top: 12%;
+  opacity: .5;
+  pointer-events: none;
+}
+.auth-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid var(--p-line);
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 28px;
+  box-shadow: var(--p-shadow);
+}
+.auth-shell input,
+.auth-shell textarea {
+  border: 1px solid #CFCFCF !important;
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--p-ink);
+}
+.auth-shell input:focus,
+.auth-shell textarea:focus {
+  border-color: #0B0B0C !important;
+  box-shadow: 0 0 0 3px rgba(11, 11, 12, .08);
+  outline: none;
+}
+.auth-shell .report-btn {
+  background: #0B0B0C;
+  border-color: #0B0B0C;
+  color: #ffffff;
+  border-radius: 10px;
+}
+.auth-shell .report-btn:hover { background: #222; border-color: #222; }
+
+/* Precision public pages */
+.precision-public { background: #ffffff; color: var(--p-ink); }
+.precision-public .text-teal-deep,
+.precision-public .text-\[var\(--r-teal-d\)\] { color: var(--p-ink) !important; }
+.precision-public .text-muted-foreground { color: var(--p-ink-2) !important; }
+.precision-public .text-foreground { color: var(--p-ink) !important; }
+.precision-public .text-foreground\/80,
+.precision-public .text-foreground\/75 { color: var(--p-ink-2) !important; }
+.precision-public .border-border { border-color: var(--p-line) !important; }
+.precision-public .bg-card\/35,
+.precision-public .bg-card\/70 { background: var(--p-bg-alt) !important; }
+.precision-public .bg-card,
+.precision-public .bg-elevated { background: #ffffff !important; }
+.precision-public #data-analytics,
+.precision-public #research-content,
+.precision-public #enquiry { background: #ffffff !important; }
+.precision-public #enquiry { background: var(--p-bg-alt) !important; }
+.precision-public .service-card-icon {
+  color: var(--p-ink) !important;
+  border-color: var(--p-line) !important;
+  background: var(--p-bg-alt) !important;
+}
+.precision-public .bg-teal\/10,
+.precision-public .bg-teal\/\[\.07\] { background: var(--p-bg-alt) !important; }
+.precision-public .hover\:text-teal-deep:hover { color: var(--p-ink) !important; }
+.precision-public .report-btn,
+.precision-public .report-btn-secondary { background: #0B0B0C !important; border-color: #0B0B0C !important; color: #fff !important; }
+.precision-public .report-btn:hover,
+.precision-public .report-btn-secondary:hover { background: #222 !important; }
+
+/* Signed-in chrome: white surfaces and near-black controls; data colours stay. */
+.app-chrome { background: #ffffff; }
+.app-chrome .report-card { background: #ffffff; border-color: var(--p-line); }
+.app-chrome .report-btn { background: #0B0B0C; border-color: #0B0B0C; color: #fff; }
+.app-chrome .report-btn:hover { background: #222; border-color: #222; }
+.app-chrome .report-btn-secondary { background: #fff; border-color: #CFCFCF; color: var(--p-ink); }
+.app-chrome .report-btn-secondary:hover { background: #0B0B0C; border-color: #0B0B0C; color: #fff; }
+.app-chrome input:not([type="checkbox"]):not([type="radio"]),
+.app-chrome select,
+.app-chrome textarea { border-color: #CFCFCF; }
+.app-chrome input:not([type="checkbox"]):not([type="radio"]):focus,
+.app-chrome select:focus,
+.app-chrome textarea:focus { border-color: #0B0B0C; box-shadow: 0 0 0 3px rgba(11, 11, 12, .08); }
+.app-chrome .report-tab[aria-selected="true"] { color: var(--p-ink); }
+
+/* Precision public hero bands */
+.precision-public [class*="rgba(29,158,117"] { background-image: none !important; }
+.precision-hero-band .text-gradient-teal {
+  background: none !important;
+  -webkit-text-fill-color: currentColor;
+  color: var(--p-ink) !important;
+}
+.precision-hero-band a[href="#enquiry"] {
+  background: #0B0B0C !important;
+  border-color: #0B0B0C !important;
+  color: #fff !important;
+  border-radius: 10px !important;
+}
+.precision-hero-band a[href="/case-studies"] {
+  background: #fff !important;
+  border-color: #CFCFCF !important;
+  color: var(--p-ink) !important;
+}
+.precision-hero-band .service-hero-visual { filter: grayscale(1); opacity: .9; }
+.precision-hero-band .about-hero-visual,
+.precision-hero-band [class*="hero-visual"] { filter: grayscale(1); opacity: .9; }
+.precision-public .bg-teal-deep { background: #0B0B0C !important; }
+.precision-public .text-teal { color: var(--p-ink) !important; }
+.precision-public .hover\:border-teal\/40:hover { border-color: #CFCFCF !important; }
+
+/* Precision about hero */
+.precision-hero-band > div[aria-hidden] { display: none !important; }
+.precision-hero-band a[href="/#contact"] {
+  background: #0B0B0C !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  border-radius: 10px;
+}
+.about-page .about-eyebrow { color: var(--p-muted) !important; }
+.about-page .about-visual { filter: grayscale(1); opacity: .92; }
+.about-page .text-\[color\:var\(--about-lime\)\] { color: var(--p-muted) !important; }
+
+/* Neutralise remaining public teal accents that came from utility classes. */
+.precision-public [class*="bg-teal"],
+.precision-public [class*="bg-\[var(--r-teal"] { background-color: var(--p-bg-alt) !important; }
+.precision-public [class*="border-teal"],
+.precision-public [class*="border-\[var(--r-teal"] { border-color: var(--p-line) !important; }
+.precision-public [class*="text-teal"],
+.precision-public [class*="text-\[var(--r-teal"] { color: var(--p-ink) !important; }
+.precision-public button[class*="bg-teal"],
+.precision-public a[class*="bg-teal"] {
+  background-color: #0B0B0C !important;
+  border-color: #0B0B0C !important;
+  color: #ffffff !important;
+}
+.about-page [class*="bg-[var(--about-lime)]"] {
+  background-color: #ffffff !important;
+  color: var(--p-ink) !important;
+  border: 1px solid var(--p-line) !important;
 }

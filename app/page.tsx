@@ -7,6 +7,7 @@ import Experience from "@/components/site/experience";
 import WorkShowcase from "@/components/site/work-showcase";
 import ServicesPreview from "@/components/site/services-preview";
 import ContactSection from "@/components/site/contact-section";
+import SiteFooter from "@/components/site/site-footer";
 import { COOKIE, LEGACY_COOKIE, getSessionByToken } from "@/lib/auth";
 import { CASES } from "@/lib/cases";
 
@@ -32,6 +33,7 @@ export default async function Home() {
         <WorkShowcase />
         <ServicesPreview />
         <ContactSection />
+        <SiteFooter />
       </main>
     </>
   );

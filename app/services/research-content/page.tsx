@@ -51,8 +51,8 @@ export default function ResearchContentPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-background text-foreground">
-        <section className="relative isolate overflow-hidden pb-16 pt-32 sm:pb-20 sm:pt-36">
+      <main className="precision-public min-h-screen text-[var(--p-ink)]">
+        <section className="precision-hero-band relative isolate overflow-hidden pb-16 pt-32 sm:pb-20 sm:pt-36">
           <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(70%_60%_at_82%_8%,rgba(29,158,117,.09),transparent_65%),radial-gradient(55%_50%_at_8%_70%,rgba(29,158,117,.1),transparent_70%)]" aria-hidden />
           <svg className="animate-drift pointer-events-none absolute -right-40 top-6 -z-10 h-[520px] w-[780px] text-foreground/10" viewBox="0 0 780 520" fill="none" aria-hidden>
             {[0, 1, 2, 3, 4, 5].map((i) => <path key={i} d={`M-20 ${120 + i * 44} C 130 ${40 + i * 38}, 260 ${270 + i * 24}, 400 ${150 + i * 27} S 660 ${70 + i * 33}, 820 ${190 + i * 27}`} stroke="currentColor" strokeWidth="1" />)}

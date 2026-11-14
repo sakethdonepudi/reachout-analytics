@@ -38,9 +38,9 @@ export default async function AboutPage() {
   return (
     <>
       <Navbar />
-      <main className="about-page min-h-screen bg-background text-foreground">
+      <main className="precision-public about-page min-h-screen text-[var(--p-ink)]">
         {/* opening statement */}
-        <section className="relative overflow-hidden pb-16 pt-32 sm:pb-20 sm:pt-36">
+        <section className="precision-hero-band relative overflow-hidden pb-16 pt-32 sm:pb-20 sm:pt-36">
           <div className="pointer-events-none absolute inset-0" aria-hidden>
             <div className="absolute -left-32 -top-24 size-[520px] rounded-full bg-[radial-gradient(circle,rgba(31,78,120,.13),transparent_66%)] blur-2xl" />
             <div className="absolute -right-24 top-24 size-[440px] rounded-full bg-[radial-gradient(circle,rgba(29,158,117,.17),transparent_68%)] blur-2xl" />
@@ -85,7 +85,7 @@ export default async function AboutPage() {
                 </p>
               </div>
 
-              <AboutHeroVisual />
+              <div className="about-visual"><AboutHeroVisual /></div>
             </div>
           </div>
         </section>

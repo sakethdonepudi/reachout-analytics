@@ -78,23 +78,23 @@ export default function IndiaMap() {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
 
-    const BG = 0xfafaf7;
+    const BG = 0xffffff;
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(BG);
     scene.fog = new THREE.Fog(BG, 1400, 5200);
     const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 1, 12000);
 
     /* ---------- lights ---------- */
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x0a1636, 1.0));
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xf4f4f4, 1.15));
     const sun = new THREE.DirectionalLight(0xffffff, 2.2);
     sun.position.set(-380, 720, 460);
     sun.shadow.bias = -0.0006;
     sun.shadow.radius = 4;
     scene.add(sun);
-    const rim = new THREE.DirectionalLight(0x9cc6ff, 0.6);
+    const rim = new THREE.DirectionalLight(0xffffff, 0.35);
     rim.position.set(500, 180, -600);
     scene.add(rim);
-    const hubLight = new THREE.PointLight(0xffa640, 0, 150, 0);
+    const hubLight = new THREE.PointLight(0xffffff, 0, 150, 0);
     scene.add(hubLight);
 
     /* ---------- textures ---------- */
@@ -118,17 +118,17 @@ export default function IndiaMap() {
     });
 
     /* ---------- ground ---------- */
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshStandardMaterial({ color: 0xf1efe8, roughness: 1 }));
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 1 }));
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
-    const grid = new THREE.GridHelper(9000, 300, 0x234c9a, 0x163777);
+    const grid = new THREE.GridHelper(9000, 300, 0xcfcfcf, 0xe6e6e6);
     grid.position.y = 0.05;
     (grid.material as THREE.Material).transparent = true;
-    (grid.material as THREE.Material).opacity = 0.45;
+    (grid.material as THREE.Material).opacity = 0.3;
     scene.add(grid);
     const underGlow = new THREE.Mesh(
       new THREE.PlaneGeometry(1200, 1200),
-      new THREE.MeshBasicMaterial({ map: radialTex, color: 0x1d9e75, transparent: true, opacity: 0.06, blending: THREE.AdditiveBlending, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ map: radialTex, color: 0xcfcfcf, transparent: true, opacity: 0.04, blending: THREE.AdditiveBlending, depthWrite: false }),
     );
     underGlow.rotation.x = -Math.PI / 2;
     underGlow.position.y = 0.2;
@@ -139,9 +139,9 @@ export default function IndiaMap() {
     type St = { g: THREE.Group; cap: THREE.MeshStandardMaterial; side: THREE.MeshStandardMaterial; line: THREE.LineBasicMaterial; partner: boolean; name: string; lift: number; heat: number; hover: number };
     const states: Record<string, St> = {};
     const pickables: THREE.Mesh[] = [];
-    const C_BASE = new THREE.Color(0xe4e2da), C_PARTNER = new THREE.Color(0xd7ebe3), C_HOT = new THREE.Color(0x1d9e75);
-    const C_HOVER = new THREE.Color(0x1d9e75), C_HERO = new THREE.Color(0x1f4e78);
-    const S_BASE = new THREE.Color(0xc9c6bc), S_HOT = new THREE.Color(0x0f6e56);
+    const C_BASE = new THREE.Color(0xf4f4f4), C_PARTNER = new THREE.Color(0xd7ebe3), C_HOT = new THREE.Color(0x1d9e75);
+    const C_HOVER = new THREE.Color(0xd9d9d9), C_HERO = new THREE.Color(0x1f4e78);
+    const S_BASE = new THREE.Color(0xe6e6e6), S_HOT = new THREE.Color(0x0f6e56);
     for (const s of STATES as { id: string; name: string; d: string }[]) {
       const data = loader.parse(`<svg xmlns="http://www.w3.org/2000/svg"><path d="${s.d}"/></svg>`);
       const shapes = data.paths.flatMap((p) => SVGLoader.createShapes(p));
@@ -166,7 +166,7 @@ export default function IndiaMap() {
       shapes.forEach((sh) => { addLoop(sh.getPoints()); sh.holes.forEach((h) => addLoop(h.getPoints())); });
       const lg = new THREE.BufferGeometry();
       lg.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-      const line = new THREE.LineBasicMaterial({ color: partner ? 0xffb866 : 0x6f95dd, transparent: true, opacity: partner ? 0.8 : 0.55 });
+      const line = new THREE.LineBasicMaterial({ color: partner ? 0xffb866 : 0xcfcfcf, transparent: true, opacity: partner ? 0.8 : 0.55 });
       g.add(new THREE.LineSegments(lg, line));
       scene.add(g);
       pickables.push(mesh);
@@ -208,7 +208,7 @@ export default function IndiaMap() {
     for (let i = 0; i < PN; i++) { pp[i * 3] = (Math.random() - 0.5) * 1300; pp[i * 3 + 1] = 10 + Math.random() * 320; pp[i * 3 + 2] = (Math.random() - 0.5) * 1100; }
     const pg = new THREE.BufferGeometry();
     pg.setAttribute("position", new THREE.BufferAttribute(pp, 3));
-    const particles = new THREE.Points(pg, new THREE.PointsMaterial({ size: 2.4, map: radialTex, color: 0xbcd4ff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const particles = new THREE.Points(pg, new THREE.PointsMaterial({ size: 2.4, map: radialTex, color: 0xcfcfcf, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
     scene.add(particles);
 
     /* ---------- post ---------- */
@@ -448,15 +448,17 @@ export default function IndiaMap() {
   return (
     <>
       <canvas ref={canvasRef} className="fixed inset-0 z-0 block h-screen w-screen will-change-[filter]" aria-label="3D map of India with ReachOut Analytics campaigns" />
-      <div className="pointer-events-none fixed inset-0 z-[1] bg-[radial-gradient(120%_90%_at_50%_45%,transparent_55%,rgba(31,78,120,.10)_100%)]" aria-hidden />
+      <div className="pointer-events-none fixed inset-0 z-[1] opacity-50" aria-hidden style={{ backgroundImage: "radial-gradient(circle, #CFCFCF 0.7px, transparent 0.9px)", backgroundSize: "24px 24px", maskImage: "linear-gradient(to bottom, transparent 0%, #000 35%)", WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 35%)" }} />
+      <svg className="pointer-events-none fixed left-1/2 top-1/2 z-[1] h-[80vw] w-[80vw] -translate-x-1/2 -translate-y-1/2 opacity-30" viewBox="0 0 600 600" fill="none" aria-hidden><g stroke="#CFCFCF" strokeWidth="0.7" transform="rotate(-22 300 300)"><ellipse cx="300" cy="300" rx="270" ry="196" /><ellipse cx="300" cy="300" rx="220" ry="154" strokeDasharray="2 4" /></g></svg>
+      <div className="pointer-events-none fixed inset-0 z-[1] bg-[radial-gradient(120%_90%_at_50%_45%,transparent_55%,rgba(11,11,12,.06)_100%)]" aria-hidden />
 
       {/* leader line */}
       <svg ref={leaderRef} className="pointer-events-none fixed inset-0 z-[3] h-screen w-screen overflow-visible" aria-hidden>
         <defs>
-          <linearGradient id="lg" x1="0" x2="1"><stop offset="0" stopColor="#7fd7bd" /><stop offset="1" stopColor="#7fd7bd" stopOpacity=".3" /></linearGradient>
+          <linearGradient id="lg" x1="0" x2="1"><stop offset="0" stopColor="#CFCFCF" /><stop offset="1" stopColor="#CFCFCF" stopOpacity=".3" /></linearGradient>
         </defs>
         <path ref={leaderPath} fill="none" stroke="url(#lg)" strokeWidth="1.5" strokeDasharray="4 5" />
-        <circle ref={leaderDot} r="4" fill="#1d9e75" />
+        <circle ref={leaderDot} r="4" fill="#0B0B0C" />
       </svg>
 
       {/* small glass case card */}
@@ -476,14 +478,19 @@ export default function IndiaMap() {
           if (e.key !== "Enter" || !cardCase) return;
           navigate.push(caseUrl(cardCase.slug), { cover: { title: cardCase.title, eyebrow: cardCase.label, subtitle: cardCase.region } });
         }}
-        style={{ background: "rgba(255,255,255,.97)" }}
-        className="invisible fixed left-0 top-0 z-[4] w-[calc(100vw-32px)] max-w-[300px] cursor-pointer rounded-2xl border border-[var(--r-line)] p-4 opacity-0 transition-[box-shadow] hover:shadow-[0_30px_80px_-10px_rgba(29,158,117,.2)] sm:w-[300px]"
+        style={{ background: "#ffffff" }}
+        className="invisible fixed left-0 top-0 z-[4] w-[calc(100vw-32px)] max-w-[300px] cursor-pointer rounded-[16px] border border-[#E6E6E6] p-4 opacity-0 shadow-[0_10px_30px_rgba(0,0,0,.08)] transition-[box-shadow] hover:shadow-[0_18px_40px_rgba(0,0,0,.12)] sm:w-[300px]"
       >
-        <span className="tricolor-line absolute inset-x-5 top-0 h-px" aria-hidden />
+        <span className="pointer-events-none absolute inset-0 rounded-[16px] border border-transparent" aria-hidden>
+          <span className="absolute left-0 top-0 size-3 border-l border-t border-[#0B0B0C]" style={{ margin: "-5px" }} />
+          <span className="absolute right-0 top-0 size-3 border-r border-t border-[#0B0B0C]" style={{ margin: "-5px" }} />
+          <span className="absolute bottom-0 left-0 size-3 border-b border-l border-[#0B0B0C]" style={{ margin: "-5px" }} />
+          <span className="absolute bottom-0 right-0 size-3 border-b border-r border-[#0B0B0C]" style={{ margin: "-5px" }} />
+        </span>
         {cardCase && (
           <>
             <div className="mb-3 flex items-center justify-between">
-              <span className="rounded-full border border-teal/40 bg-teal/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-teal-deep">{cardCase.badge}</span>
+              <span className="rounded-full border border-[#E6E6E6] bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8A8A8A]">{cardCase.badge}</span>
               <div className="flex items-center gap-2">
                 {cardIsFinal ? (
                   <button data-close onClick={() => setSelected(null)} className="grid size-6 place-items-center rounded-full bg-[var(--r-bg)] text-[var(--r-muted)] hover:text-[var(--r-ink)]" aria-label="Close"><X className="size-3.5" /></button>
@@ -497,7 +504,7 @@ export default function IndiaMap() {
               <div className="min-w-0">
                 <h3 className="font-display text-xl font-semibold leading-tight text-[var(--r-ink)]">{cardCase.title}</h3>
                 <p className="flex items-center gap-2 truncate text-xs">
-                  <b className="shrink-0 font-bold text-teal-deep">{cardCase.party}</b>
+                  <b className="shrink-0 font-bold text-[#0B0B0C]">{cardCase.party}</b>
                   <span className="truncate text-[var(--r-muted)]">{cardCase.stateName}</span>
                 </p>
               </div>
@@ -505,12 +512,12 @@ export default function IndiaMap() {
             <p className="mb-3 text-[13px] leading-relaxed text-[var(--r-muted)]">{cardCase.summary}</p>
             <div className="mb-3.5 flex flex-wrap gap-1.5">
               {cardCase.tags.map((t, i) => (
-                <span key={t} className={cn("rounded-md px-2 py-1 text-[10.5px] font-semibold", i === 1 ? "bg-[#1d9e75]/15 text-[var(--r-teal-d)]" : "bg-[var(--r-bg)] text-[var(--r-ink)]/80")}>{t}</span>
+                <span key={t} className={cn("rounded-md px-2 py-1 text-[10.5px] font-semibold", "border border-[#E6E6E6] bg-white text-[#555]")}>{t}</span>
               ))}
             </div>
             <div className="flex items-center justify-between border-t border-[var(--r-line)] pt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--r-ink)]">
               View case study
-              <span className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-[var(--r-navy)] to-[var(--r-teal-d)] text-white"><ArrowUpRight className="size-4" /></span>
+              <span className="grid size-7 place-items-center rounded-full bg-[#0B0B0C] text-white"><ArrowUpRight className="size-4" /></span>
             </div>
           </>
         )}
@@ -521,7 +528,7 @@ export default function IndiaMap() {
         {labels.map((label, i) => (
           <button key={label} onClick={() => scrollToStop(i)} className="group flex items-center justify-end gap-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--r-muted)]">
             <span className={cn("translate-x-1.5 opacity-0 transition group-hover:translate-x-0 group-hover:opacity-100", activeStop === i && "translate-x-0 text-[var(--r-ink)] opacity-100")}>{label}</span>
-            <i className={cn("block size-2 rounded-full bg-[var(--r-line)] transition-all duration-300", activeStop === i && "h-6 rounded-md bg-[var(--r-teal)] shadow-[0_0_0_4px_rgba(29,158,117,.2),0_0_16px_rgba(29,158,117,.5)]")} />
+            <i className={cn("block h-2 w-px bg-[#BDBDBD] transition-all duration-300", activeStop === i && "h-4 w-0.5 bg-[#0B0B0C]")} />
           </button>
         ))}
       </nav>
