@@ -437,6 +437,12 @@ html[data-motion-tier="c"] .hero-party { animation: none !important; }
 .hero-orbit-drift { transform-box: fill-box; transform-origin: center; animation: hero-orbit-drift 20s ease-in-out infinite; }
 @keyframes hero-orbit-turn { to { transform: rotate(360deg); } }
 @keyframes hero-orbit-drift { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+/* Hero stack: centre the single column when it fits, otherwise start at the top padding. */
+.hero-stack { justify-content: flex-start; }
+@supports (justify-content: safe center) {
+  .hero-stack { justify-content: safe center; }
+}
+
 .case-disc::after { content: ""; position: absolute; inset: -7px; border-radius: 999px; }
 .case-disc-view::after { content: "View case study"; }
 .case-disc-face { box-shadow: 0 10px 30px rgba(0, 0, 0, .08); transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
