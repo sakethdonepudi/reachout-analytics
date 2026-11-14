@@ -30,6 +30,7 @@ type Stop = { kind: "hero" | "case" | "final"; c?: CaseStudy; t: THREE.Vector3; 
 export default function IndiaMap() {
   const navigate = useNavigate();
 
+  const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const leaderRef = useRef<SVGSVGElement>(null);
@@ -57,32 +58,35 @@ export default function IndiaMap() {
   const scrollToStop = (i: number) => {
     const tour = document.getElementById("tour");
     if (!tour) return;
-    const end = tour.offsetTop + tour.offsetHeight - innerHeight;
     const N = stopsCount - 1;
-    scrollTo({ top: (end * i) / (N + 0.35), behavior: "smooth" });
+    const travel = Math.max(1, tour.offsetHeight - (innerHeight - 64));
+    const top = tour.getBoundingClientRect().top + scrollY - 64 + (i / (N + 0.35)) * travel;
+    scrollTo({ top, behavior: "smooth" });
   };
 
   useEffect(() => {
     const canvas = canvasRef.current!;
+    const stage = stageRef.current!;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let vw = stage.clientWidth, vh = stage.clientHeight;
 
     /* ---------- renderer ---------- */
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
     } catch {
       return;
     }
     renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
-    renderer.setSize(innerWidth, innerHeight, false);
+    renderer.setSize(vw, vh, false);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
 
     const BG = 0xffffff;
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(BG);
+    scene.background = null;
     scene.fog = new THREE.Fog(BG, 1400, 5200);
-    const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 1, 12000);
+    const camera = new THREE.PerspectiveCamera(35, vw / vh, 1, 12000);
 
     /* ---------- lights ---------- */
     scene.add(new THREE.HemisphereLight(0xffffff, 0xf4f4f4, 1.15));
@@ -118,7 +122,7 @@ export default function IndiaMap() {
     });
 
     /* ---------- ground ---------- */
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 1 }));
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshStandardMaterial({ color: 0xfcfcfc, roughness: 1 }));
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
     const grid = new THREE.GridHelper(9000, 300, 0xcfcfcf, 0xe6e6e6);
@@ -228,11 +232,12 @@ export default function IndiaMap() {
       const tour = document.getElementById("tour");
       const contact = document.getElementById("contact");
       if (!tour) return;
-      const end = tour.offsetTop + tour.offsetHeight - innerHeight;
-      tTarget = clamp(scrollY / Math.max(1, end), 0, 1) * (N + 0.35);
-      tTarget = Math.min(tTarget, N);
-      heroP = clamp(scrollY / innerHeight, 0, 1);
-      contactP = contact ? clamp(1 - contact.getBoundingClientRect().top / innerHeight, 0, 1) : 0;
+      const tourTop = tour.getBoundingClientRect().top + scrollY;
+      const travel = Math.max(1, tour.offsetHeight - vh);
+      const progress = clamp((scrollY - (tourTop - 64)) / travel, 0, 1);
+      tTarget = Math.min(progress * (N + 0.35), N);
+      heroP = progress;
+      contactP = contact ? clamp(1 - contact.getBoundingClientRect().top / vh, 0, 1) : 0;
     };
     addEventListener("scroll", readScroll, { passive: true });
     readScroll();
@@ -243,14 +248,16 @@ export default function IndiaMap() {
     const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
     const isUI = (el: EventTarget | null) => !!(el as HTMLElement)?.closest?.("[data-ui],header,#top,#contact");
     const onMove = (e: PointerEvent) => {
-      mouse.x = (e.clientX / innerWidth) * 2 - 1; mouse.y = (e.clientY / innerHeight) * 2 - 1;
-      mouse.px = e.clientX; mouse.py = e.clientY;
+      const rect = stage.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1;
+      mouse.y = ((e.clientY - rect.top) / Math.max(1, rect.height)) * 2 - 1;
+      mouse.px = e.clientX - rect.left; mouse.py = e.clientY - rect.top;
       if (drag) { const dx = e.clientX - drag.x; drag.x = e.clientX; if (Math.abs(dx) > 1) dragMoved = true; yawVel = -dx * 0.004; userYaw += yawVel; }
     };
     const onDown = (e: PointerEvent) => { if (finalOn && e.pointerType === "mouse" && !isUI(e.target)) { drag = { x: e.clientX }; dragMoved = false; } };
     const onUp = () => { drag = null; };
     const onClick = (e: MouseEvent) => {
-      if (!finalOn || dragMoved || isUI(e.target)) return;
+      if (!stage.contains(e.target as Node) || !finalOn || dragMoved || isUI(e.target)) return;
       if (hovered) { const c = CASES.find((c) => c.state === hovered); if (c) { navigate.prefetch(caseUrl(c.slug)); setSelected(selectedRef.current === c.slug ? null : c.slug); return; } }
       setSelected(null);
     };
@@ -259,18 +266,21 @@ export default function IndiaMap() {
     addEventListener("pointerup", onUp);
     addEventListener("click", onClick);
     const onResize = () => {
-      camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-      renderer.setSize(innerWidth, innerHeight, false);
+      vw = stage.clientWidth; vh = stage.clientHeight;
+      camera.aspect = vw / vh; camera.updateProjectionMatrix();
+      renderer.setSize(vw, vh, false);
       readScroll();
     };
     addEventListener("resize", onResize);
 
     /* ---------- loop ---------- */
     const tgt = new THREE.Vector3(), tmp = new THREE.Vector3();
-    const project = (v: THREE.Vector3) => { tmp.copy(v).project(camera); return { x: ((tmp.x + 1) / 2) * innerWidth, y: ((1 - tmp.y) / 2) * innerHeight }; };
-    let rendered = false, last = performance.now(), lastFilter = "", lastCardSlug: string | null = null, lastFinal = false, lastStop = -1, lastTip = "";
+    const project = (v: THREE.Vector3) => { tmp.copy(v).project(camera); return { x: ((tmp.x + 1) / 2) * vw, y: ((1 - tmp.y) / 2) * vh }; };
+    let rendered = false, last = performance.now(), lastCardSlug: string | null = null, lastFinal = false, lastStop = -1, lastTip = "";
 
+    let stageVisible = true;
     const frame = (now: number) => {
+      if (!stageVisible) { last = now; return; }
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       const time = now / 1000;
       const fr = (r: number) => 1 - Math.pow(1 - r, dt * 60);
@@ -284,7 +294,7 @@ export default function IndiaMap() {
       const sRaw = finite ? Math.round(tCur) : 0;
       const s = Math.max(0, Math.min(sRaw, N));
       const S = STOPS[s] ?? STOPS[N];
-      const mobile = innerWidth <= 720;
+      const mobile = vw <= 720;
       const cE = ease(contactP);
 
       /* camera */
@@ -305,7 +315,7 @@ export default function IndiaMap() {
       const offOf = (st: Stop) => (st.kind === "case" ? 0.16 : st.offX ?? 0);
       const k = lerp(A.kind === "case" ? 1 : 0, B.kind === "case" ? 1 : 0, f);
       const ox = lerp(offOf(A), offOf(B), f) * (1 - cE);
-      camera.setViewOffset(innerWidth, innerHeight, mobile ? 0 : ox * innerWidth, mobile ? (k * 0.2 + finalW * 0.12 * (1 - cE)) * innerHeight : 0, innerWidth, innerHeight);
+      camera.setViewOffset(vw, vh, mobile ? 0 : ox * vw, mobile ? (k * 0.2 + finalW * 0.12 * (1 - cE)) * vh : 0, vw, vh);
 
       /* live case */
       const sel = selectedRef.current;
@@ -346,13 +356,10 @@ export default function IndiaMap() {
       hubLight.intensity += ((active ? 1.6 : 0) - hubLight.intensity) * fr(0.06);
       if (PN) { particles.rotation.y = time * 0.012; particles.position.y = Math.sin(time * 0.3) * 4; }
 
-      /* depth-of-field on the canvas: blurred behind the home screen, blurred again as it pulls away */
-      const blur = Math.round(10 * (1 - heroP) + cE * 7);
-      const filter = blur > 0 ? `blur(${blur}px)` : "none";
-      if (filter !== lastFilter) { canvas.style.filter = filter; lastFilter = filter; }
+      /* the map now lives inside its own section, so it is never blurred by the page above it */
       const op = (1 - cE * 0.9).toFixed(2);
       if (canvas.style.opacity !== op) canvas.style.opacity = op;
-      if (railRef.current) { const ra = heroP * (1 - contactP * 2); railRef.current.style.opacity = String(clamp(ra, 0, 1)); railRef.current.style.pointerEvents = ra > 0.5 ? "auto" : "none"; }
+      if (railRef.current) { const ra = stageVisible ? clamp(1 - contactP * 2, 0, 1) : 0; railRef.current.style.opacity = String(ra); railRef.current.style.pointerEvents = ra > 0.5 ? "auto" : "none"; }
 
       /* card */
       let cardA = 0;
@@ -370,13 +377,13 @@ export default function IndiaMap() {
         const cw = card.offsetWidth, ch = card.offsetHeight;
         let ax: number, ay: number;
         if (mobile) {
-          card.style.left = "16px"; card.style.top = `${innerHeight - 16 - ch}px`;
+          card.style.left = "16px"; card.style.top = `${vh - 16 - ch}px`;
           card.style.transform = `translateY(${(1 - cardA) * 24}px)`;
-          ax = innerWidth / 2; ay = innerHeight - 16 - ch;
+          ax = vw / 2; ay = vh - 16 - ch;
         } else {
           let left = mp.x + 80, side = 1;
-          if (left + cw > innerWidth - 80) { left = mp.x - 80 - cw; side = -1; }
-          const top = clamp(mp.y - ch * 0.45, 96, innerHeight - ch - 24);
+          if (left + cw > vw - 80) { left = mp.x - 80 - cw; side = -1; }
+          const top = clamp(mp.y - ch * 0.45, 24, vh - ch - 24);
           card.style.left = `${left}px`; card.style.top = `${top}px`;
           card.style.transform = `perspective(900px) rotateY(${(1 - cardA) * side * -18}deg) translateX(${(1 - cardA) * side * 24}px)`;
           ax = side > 0 ? left : left + cw; ay = top + 40;
@@ -417,13 +424,15 @@ export default function IndiaMap() {
       if (tipRef.current) tipRef.current.style.transform = `translate(${mouse.px + 16}px, ${mouse.py + 16}px)`;
       if (s !== lastStop) { lastStop = s; setActiveStop(s); }
 
-      // skip GPU work while the opaque home screen fully covers the map, or once the contact page has taken over
-      const visible = heroP > 0.35 && contactP < 0.999;
-      if (visible || !rendered) { renderer.render(scene, camera); rendered = true; }
+      // pause GPU work while the tour section is off screen
+      if (stageVisible || !rendered) { renderer.render(scene, camera); rendered = true; }
     };
+    const io = new IntersectionObserver(([entry]) => { stageVisible = entry.isIntersecting; }, { threshold: 0 });
+    io.observe(stage);
     const stopLoop = rafLoop(frame);
 
     return () => {
+      io.disconnect();
       stopLoop();
       removeEventListener("scroll", readScroll);
       removeEventListener("pointermove", onMove);
@@ -446,14 +455,13 @@ export default function IndiaMap() {
   const labels = ["Home", ...TOUR.map((c) => c.label), "All India"];
 
   return (
-    <>
-      <canvas ref={canvasRef} className="fixed inset-0 z-0 block h-screen w-screen will-change-[filter]" aria-label="3D map of India with ReachOut Analytics campaigns" />
-      <div className="pointer-events-none fixed inset-0 z-10 opacity-50" aria-hidden style={{ backgroundImage: "radial-gradient(circle, #CFCFCF 0.7px, transparent 0.9px)", backgroundSize: "24px 24px", maskImage: "linear-gradient(to bottom, transparent 0%, #000 35%)", WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 35%)" }} />
-      <svg className="pointer-events-none fixed left-1/2 top-1/2 z-10 h-[80vw] w-[80vw] -translate-x-1/2 -translate-y-1/2 opacity-30" viewBox="0 0 600 600" fill="none" aria-hidden><g stroke="#CFCFCF" strokeWidth="0.7" transform="rotate(-22 300 300)"><ellipse cx="300" cy="300" rx="270" ry="196" /><ellipse cx="300" cy="300" rx="220" ry="154" strokeDasharray="2 4" /></g></svg>
-      <div className="pointer-events-none fixed inset-0 z-10 bg-[radial-gradient(120%_90%_at_50%_45%,transparent_55%,rgba(11,11,12,.06)_100%)]" aria-hidden />
+    <div ref={stageRef} className="absolute inset-0 overflow-hidden">
+      <canvas ref={canvasRef} className="absolute inset-0 z-0 block h-full w-full" aria-label="3D map of India with ReachOut Analytics campaigns" />
+      <div className="pointer-events-none absolute inset-0 z-10 opacity-50" aria-hidden style={{ backgroundImage: "radial-gradient(circle, #CFCFCF 0.7px, transparent 0.9px)", backgroundSize: "24px 24px", maskImage: "linear-gradient(to bottom, transparent 0%, #000 35%, #000 82%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 35%, #000 82%, transparent 100%)" }} />
+      <svg className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[80vw] w-[80vw] -translate-x-1/2 -translate-y-1/2 opacity-30" viewBox="0 0 600 600" fill="none" aria-hidden><g stroke="#CFCFCF" strokeWidth="0.7" transform="rotate(-22 300 300)"><ellipse cx="300" cy="300" rx="270" ry="196" /><ellipse cx="300" cy="300" rx="220" ry="154" strokeDasharray="2 4" /></g></svg>
 
       {/* leader line */}
-      <svg ref={leaderRef} className="pointer-events-none fixed inset-0 z-20 h-screen w-screen overflow-visible" aria-hidden>
+      <svg ref={leaderRef} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible" aria-hidden>
         <defs>
           <linearGradient id="lg" x1="0" x2="1"><stop offset="0" stopColor="#CFCFCF" /><stop offset="1" stopColor="#CFCFCF" stopOpacity=".3" /></linearGradient>
         </defs>
@@ -479,7 +487,7 @@ export default function IndiaMap() {
           navigate.push(caseUrl(cardCase.slug), { cover: { title: cardCase.title, eyebrow: cardCase.label, subtitle: cardCase.region } });
         }}
         style={{ background: "#ffffff" }}
-        className="invisible fixed left-0 top-0 z-30 w-[calc(100vw-32px)] max-w-[300px] cursor-pointer rounded-[16px] border border-[#E6E6E6] p-4 opacity-0 shadow-[0_10px_30px_rgba(0,0,0,.08)] transition-[box-shadow] hover:shadow-[0_18px_40px_rgba(0,0,0,.12)] sm:w-[300px]"
+        className="invisible absolute left-0 top-0 z-30 w-[calc(100%-32px)] max-w-[300px] cursor-pointer rounded-[16px] border border-[#E6E6E6] p-4 opacity-0 shadow-[0_10px_30px_rgba(0,0,0,.08)] transition-[box-shadow] hover:shadow-[0_18px_40px_rgba(0,0,0,.12)] sm:w-[300px]"
       >
         <span className="pointer-events-none absolute inset-0 rounded-[16px] border border-transparent" aria-hidden>
           <span className="absolute left-0 top-0 size-3 border-l border-t border-[#0B0B0C]" style={{ margin: "-5px" }} />
@@ -524,7 +532,7 @@ export default function IndiaMap() {
       </div>
 
       {/* progress rail */}
-      <nav ref={railRef} data-ui className="fixed right-6 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-3.5 opacity-0 md:flex" aria-label="Map sections">
+      <nav ref={railRef} data-ui className="absolute right-6 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-3.5 opacity-0 md:flex" aria-label="Map sections">
         {labels.map((label, i) => (
           <button key={label} onClick={() => scrollToStop(i)} className="group flex items-center justify-end gap-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--r-muted)]">
             <span className={cn("translate-x-1.5 opacity-0 transition group-hover:translate-x-0 group-hover:opacity-100", activeStop === i && "translate-x-0 text-[var(--r-ink)] opacity-100")}>{label}</span>
@@ -534,12 +542,13 @@ export default function IndiaMap() {
       </nav>
 
       {/* zoomed-out panel */}
-      <div ref={finalRef} data-ui className="invisible fixed bottom-6 left-4 right-4 z-20 opacity-0 sm:bottom-10 sm:left-[5vw] sm:right-auto sm:max-w-[470px]">
-        <div className="text-[11px] font-bold uppercase tracking-[0.26em] text-teal-deep">Pan-India footprint</div>
-        <h2 className="mb-4 mt-3 font-display text-[clamp(28px,3.4vw,46px)] font-semibold leading-[1.02] tracking-[-0.03em]">
-          We don&apos;t just predict elections — <span className="text-[var(--r-navy)] font-serif font-normal italic">we influence outcomes.</span>
+      <div ref={finalRef} data-ui className="invisible absolute bottom-6 left-4 right-4 z-20 rounded-[16px] border border-[#E6E6E6] bg-white p-5 opacity-0 shadow-[0_10px_30px_rgba(0,0,0,.08)] sm:bottom-10 sm:left-[5vw] sm:right-auto sm:max-w-[470px]">
+        <div className="text-[11px] font-bold uppercase tracking-[0.26em] text-[#6B6B6B]">Coverage</div>
+        <h2 className="mt-3 font-display text-[clamp(28px,3.4vw,46px)] font-semibold leading-[1.02] tracking-[-0.03em] text-[#0B0B0C]">
+          Seven states. <span className="font-serif font-normal italic text-[#555]">One instrument.</span>
         </h2>
-        <div className="mb-3 flex flex-wrap gap-1.5">
+        <p className="mb-4 mt-2 max-w-[34ch] text-[14px] leading-relaxed text-[#555]">Select a state to open its case study.</p>
+        <div className="mb-4 flex flex-wrap gap-1.5">
           {CASES.map((c) => (
             <button
               key={c.slug}
@@ -548,22 +557,22 @@ export default function IndiaMap() {
               onMouseLeave={() => (chipHoverRef.current = null)}
               onFocus={() => navigate.prefetch(caseUrl(c.slug))}
               className={cn(
-                "flex items-center gap-1.5 rounded-full border border-[var(--r-line)] bg-white px-3 py-1.5 text-[12.5px] font-semibold backdrop-blur-xl transition hover:border-teal/60 hover:bg-teal/15",
-                selected === c.slug && "border-teal/70 bg-teal/20",
+                "flex min-h-10 items-center gap-1.5 rounded-full border border-[#E6E6E6] bg-white px-3 py-1.5 text-[12.5px] font-semibold text-[#0B0B0C] transition hover:border-[#0B0B0C]",
+                selected === c.slug && "border-[#0B0B0C] bg-[#0B0B0C] text-white",
               )}
             >
-              <i className={cn("size-1.5 rounded-full", c.tour ? "bg-teal-deep shadow-[0_0_8px_#1d9e75]" : "bg-[#1d9e75] shadow-[0_0_8px_#1d9e75]")} />
+              <i className={cn("size-1.5 rounded-full bg-[#0B0B0C]", selected === c.slug && "bg-white")} />
               {c.party} · {c.label}
             </button>
           ))}
         </div>
-        <div className="mb-5 hidden flex-wrap items-center gap-2 text-xs text-[var(--r-muted)] sm:flex">
+        <div className="mb-4 hidden flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-[#6B6B6B] sm:flex">
           Next up:
           {UPCOMING.map((u) => (
-            <a key={u.slug} href={caseUrl(u.slug)} className="rounded-md border border-dashed border-teal/50 px-2.5 py-1 font-semibold text-[var(--r-ink)] hover:bg-teal/10">{u.title}</a>
+            <a key={u.slug} href={caseUrl(u.slug)} className="inline-flex min-h-10 items-center rounded-md border border-dashed border-[#CFCFCF] px-2.5 py-1 font-semibold text-[#555] transition hover:border-[#0B0B0C] hover:text-[#0B0B0C]">{u.title}</a>
           ))}
         </div>
-        <p className="mt-3 hidden text-[10.5px] uppercase tracking-[0.16em] text-[var(--r-muted)] sm:block">Drag to rotate · Hover a state · Click a campaign</p>
+        <p className="hidden text-[10.5px] uppercase tracking-[0.16em] text-[#6B6B6B] sm:block">Drag to rotate · Select a state</p>
       </div>
 
       {/* labels over markers in the zoomed-out view */}
@@ -573,17 +582,19 @@ export default function IndiaMap() {
           ref={(el) => { pinRefs.current[c.slug] = el; }}
           data-ui
           onClick={() => setSelected(c.slug)}
-          className="glass fixed left-0 top-0 z-20 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold opacity-0 transition-opacity"
+          className="glass absolute left-0 top-0 z-20 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold opacity-0 transition-opacity"
           style={{ pointerEvents: "none" }}
         >
           {c.party} · {c.label}
         </button>
       ))}
 
-      <div ref={tipRef} className={cn("pointer-events-none fixed left-0 top-0 z-30 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-opacity glass", tip ? "opacity-100" : "opacity-0")}>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-20 bg-gradient-to-t from-white via-white/70 to-transparent" aria-hidden />
+
+      <div ref={tipRef} className={cn("pointer-events-none absolute left-0 top-0 z-30 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-opacity glass", tip ? "opacity-100" : "opacity-0")}>
         {tip?.name}
-        {tip?.sub && <small className="mt-0.5 block text-[10px] uppercase tracking-[0.12em] text-teal-deep">{tip.sub}</small>}
+        {tip?.sub && <small className="mt-0.5 block text-[10px] uppercase tracking-[0.12em] text-[#555]">{tip.sub}</small>}
       </div>
-    </>
+    </div>
   );
 }

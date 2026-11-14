@@ -72,7 +72,31 @@
   --danger: #991b1b;
   --danger-bg: rgba(185, 28, 28, 0.1);
 
-  /* layering scale */
+  /* slim navigation progress bar, shown only between 250ms and 800ms */
+.nav-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: var(--z-loader);
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.nav-progress span {
+  display: block;
+  height: 100%;
+  width: 40%;
+  background: #0B0B0C;
+  animation: nav-progress 900ms cubic-bezier(.4, 0, .2, 1) infinite;
+}
+@keyframes nav-progress {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress span { width: 100%; animation: none; opacity: .35; }
+}
+
+/* layering scale */
   --z-nav: 50;
   --z-dropdown: 60;
   --z-analysis: 100;
@@ -235,6 +259,35 @@ select,
 textarea,
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) { min-height: 40px; }
 button { min-width: 40px; }
+.tap {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding-inline: 4px;
+  margin-inline: -4px;
+}
+@media (pointer: coarse) { .tap { min-height: 44px; } }
+
+.auth-shell [class*="bg-[var(--accent-brass)]"],
+.app-chrome [class*="bg-[var(--accent-brass)]"] {
+  background-color: #0B0B0C !important;
+  border-color: #0B0B0C !important;
+  color: #FFFFFF !important;
+}
+.app-chrome input[type="checkbox"],
+.auth-shell input[type="checkbox"] {
+  position: relative;
+}
+.app-chrome input[type="checkbox"]::after,
+.auth-shell input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
+
+.brand-link { border: 0; border-radius: 2px; }
+.brand-link:focus { outline: none; }
+.brand-link:focus-visible { outline: 2px solid #0B0B0C; outline-offset: 4px; }
 .hit-expand { position: relative; min-height: 40px; }
 .hit-expand::after { content: ""; position: absolute; inset: -4px; }
 main table a { display: inline-flex; min-height: 40px; align-items: center; }
