@@ -60,8 +60,13 @@ export async function verifyTurnstile(
       "error-codes"?: string[];
     };
     if (!data.success) return { ok: false, configured: true, error: (data["error-codes"] ?? ["invalid-token"]).join(", ") };
-    if (data.action && data.action !== options.action) return { ok: false, configured: true, error: "CAPTCHA action mismatch" };
-    if (options.hostname && data.hostname && data.hostname !== options.hostname) return { ok: false, configured: true, error: "CAPTCHA hostname mismatch" };
+    // Turnstile's documented test secrets accept any token and report a dummy
+    // hostname. Only enforce the action and hostname for live secrets.
+    const testSecret = /^[123]x0{10,}/.test(secret);
+    if (!testSecret) {
+      if (data.action && data.action !== options.action) return { ok: false, configured: true, error: "CAPTCHA action mismatch" };
+      if (options.hostname && data.hostname && data.hostname !== options.hostname) return { ok: false, configured: true, error: "CAPTCHA hostname mismatch" };
+    }
     return { ok: true, configured: true };
   } catch {
     return { ok: false, configured: true, error: "CAPTCHA service unreachable" };

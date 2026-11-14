@@ -42,13 +42,12 @@ export function roleHome(role: Role): string {
 
 
 /**
- * Validate a post-login return path.
+ * Validate a same-origin relative path.
  *
- * Only same-origin relative paths starting with exactly one "/" are allowed.
  * Backslashes, schemes, protocol-relative URLs, encoded slashes and control
- * characters are rejected before the path is matched against the role rules.
+ * characters are rejected. Role access is not considered here.
  */
-export function safeNextPath(value: string | null | undefined, role: Role): string | null {
+export function safeRelativePath(value: string | null | undefined): string | null {
   if (!value || typeof value !== "string") return null;
   if (value.length > 2048) return null;
   if (/[\u0000-\u001f\u007f]/.test(value)) return null;
@@ -70,6 +69,13 @@ export function safeNextPath(value: string | null | undefined, role: Role): stri
   const path = `${url.pathname}${url.search}${url.hash}`;
   if (path.startsWith("/login")) return null;
   if (path.startsWith("/api/")) return null;
-  if (!canAccess(role, url.pathname)) return null;
   return path;
+}
+
+/** Validate a post-login return path against the role rules. */
+export function safeNextPath(value: string | null | undefined, role: Role): string | null {
+  const path = safeRelativePath(value);
+  if (!path) return null;
+  const url = new URL(path, "https://internal.invalid");
+  return canAccess(role, url.pathname) ? path : null;
 }

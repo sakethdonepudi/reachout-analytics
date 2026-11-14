@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { createSession, setSessionCookie } from "@/lib/auth";
-import { roleHome, safeNextPath } from "@/lib/access";
+import { canAccess, roleHome, rolesForPath, safeNextPath, safeRelativePath } from "@/lib/access";
 import { beginLoginAttempt, loginRateLimitResponse, recordLoginFailure, recordLoginSuccess } from "@/lib/login-guard";
 import { findUserByUsername, needsEnrollment, recordFailedLogin, touchLogin, verifyPasswordHash } from "@/lib/users";
 import { setPendingCookie } from "@/lib/pending-auth";
@@ -67,7 +67,15 @@ export async function POST(req: NextRequest) {
     return loginRateLimitResponse(retryAfter);
   }
 
-  const next = safeNextPath(parsed.data.next ?? null, user.role);
+  const allowedNext = safeNextPath(parsed.data.next ?? null, user.role);
+  const requested = safeRelativePath(parsed.data.next ?? null);
+  const requestedPath = requested ? new URL(requested, "https://internal.invalid").pathname : null;
+  const blockedByRole = Boolean(
+    requestedPath &&
+    rolesForPath(requestedPath) !== null &&
+    !canAccess(user.role, requestedPath),
+  );
+  const next = allowedNext ?? (blockedByRole ? "/no-access" : null);
 
   if (user.mustChangePassword) {
     const response = Response.json({ ok: true, step: "password", redirect: "/account/password?first=1" }, { headers });

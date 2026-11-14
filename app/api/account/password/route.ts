@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
     const fresh = (await getUser(user._id))!;
     const token = await createSession({ userId: fresh._id, role: fresh.role, displayName: fresh.displayName }, { device: req.headers.get("user-agent")?.slice(0, 200) ?? undefined, ip });
-    const response = Response.json({ ok: true, redirect: safeNextPath(pending.next ?? null, fresh.role) ?? (fresh.role === "owner" ? "/dashboard" : "/") }, { headers });
+    const response = Response.json({ ok: true, redirect: safeNextPath(pending.next ?? null, fresh.role) ?? roleHome(fresh.role) }, { headers });
     setSessionCookie(response, token);
     clearPendingCookie(response);
     return response;
@@ -70,5 +70,5 @@ export async function POST(req: NextRequest) {
   if (!result.ok) return Response.json({ ok: false, error: result.error }, { status: 400, headers });
   await refreshSessionAuth(auth.session.sid);
   await audit({ action: "password_reset", role: user.role, ip, meta: { userId: user._id } });
-  return Response.json({ ok: true }, { headers });
+  return Response.json({ ok: true, redirect: roleHome(user.role) }, { headers });
 }

@@ -8,6 +8,7 @@ import { Logo } from "@/components/site/brand";
 import { Sheet } from "@/components/ui/sheet";
 import { useIdle } from "@/components/auth/idle-provider";
 import { announceOpening } from "@/lib/use-navigate";
+import { broadcastLogout } from "@/lib/session-channel";
 import { NavIcon, NavPartyMark } from "@/components/site/nav-icon";
 import { useSlidingUnderline } from "@/components/ui/use-sliding-underline";
 import { ACCOUNT_ITEMS, ADMIN_LOGIN, CLIENT_NAV, PUBLIC_NAV, type NavItem } from "@/lib/nav";
@@ -58,6 +59,7 @@ export default function HomeHeader({
   async function signOut() {
     const started = performance.now();
     announceOpening("Signing out", true);
+    broadcastLogout();
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     const remaining = 320 - (performance.now() - started);
     if (remaining > 0) await new Promise((resolve) => window.setTimeout(resolve, remaining));

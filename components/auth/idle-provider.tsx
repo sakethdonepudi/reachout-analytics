@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Dialog } from "@/components/ui/dialog";
 import { announceOpening } from "@/lib/use-navigate";
 
@@ -17,6 +17,7 @@ export function useIdle() { return useContext(IdleContext); }
 
 export default function IdleProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [warn, setWarn] = useState(false);
   const [remaining, setRemaining] = useState(60);
   const [remainingMs, setRemainingMs] = useState(IDLE_MS);
@@ -109,6 +110,29 @@ export default function IdleProvider({ children }: { children: ReactNode }) {
       channel.current?.close();
     };
   }, [signOut, touch, leave]);
+
+  // A session that disappears between route changes (expired cookie, revoked
+  // tab) must not keep rendering protected content from the client cache.
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/auth/session", { cache: "no-store" })
+      .then((response) => {
+        if (cancelled) return;
+        if (response.ok) {
+          signedIn.current = true;
+          setIsSignedIn(true);
+          return;
+        }
+        if (signedIn.current) {
+          loggingOut.current = true;
+          signedIn.current = false;
+          setIsSignedIn(false);
+          leave("/login?reason=idle", false);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [pathname, leave]);
 
   // The idle countdown only runs for a confirmed session.
   useEffect(() => {

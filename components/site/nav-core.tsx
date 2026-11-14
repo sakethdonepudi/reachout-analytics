@@ -9,6 +9,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { useIdle } from "@/components/auth/idle-provider";
 import { cn } from "@/lib/utils";
 import { announceOpening } from "@/lib/use-navigate";
+import { broadcastLogout } from "@/lib/session-channel";
 import { NavIcon, NavPartyMark } from "@/components/site/nav-icon";
 import { ACCOUNT_ITEMS, ADMIN_LOGIN, CASE_DASHBOARD, CLIENT_NAV, OWNER_NAV, PUBLIC_NAV, type NavItem } from "@/lib/nav";
 import type { PartyId } from "@/lib/parties";
@@ -142,6 +143,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
   async function signOut() {
     const started = performance.now();
     announceOpening("Signing out", true);
+    broadcastLogout();
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     // Keep the loader up long enough to read before the full reload.
     const remaining = 320 - (performance.now() - started);

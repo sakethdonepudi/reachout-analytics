@@ -63,6 +63,9 @@ export async function middleware(request: NextRequest) {
       : session?.role === "client" ? "/case-studies" : "/login";
     return applyCommon(NextResponse.redirect(new URL(destination, request.url)), nonce, false);
   }
+  if (pathname === "/setup" && !process.env.SETUP_TOKEN) {
+    return applyCommon(NextResponse.rewrite(new URL("/_not-found", request.url)), nonce, false);
+  }
   const roles = rolesForPath(pathname);
   const protectedPath = roles !== null;
 
@@ -82,7 +85,7 @@ export async function middleware(request: NextRequest) {
           login.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
           return login;
         })()
-      : new URL(roleHome(session?.role ?? "client"), request.url);
+      : new URL("/no-access", request.url);
     return applyCommon(NextResponse.redirect(target), nonce, protectedPath);
   };
 
