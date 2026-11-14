@@ -7,33 +7,44 @@ import { OPENING_EVENT, type OpeningDetail } from "@/lib/use-navigate";
 import { TRANSITION_EVENT } from "@/lib/route-transition";
 import { routeLabel } from "@/lib/route-labels";
 
-type Opening = { label: string; immediate: boolean };
+type Phase = "idle" | "bar" | "full";
+type Opening = { label: string; phase: Phase };
 
 export default function NavigationLoader() {
   const pathname = usePathname();
   const [opening, setOpening] = useState<Opening | null>(null);
   const coverActive = useRef(false);
-  const showTimer = useRef(0);
+  const barTimer = useRef(0);
+  const fullTimer = useRef(0);
 
   useEffect(() => {
-    window.clearTimeout(showTimer.current);
+    window.clearTimeout(barTimer.current);
+    window.clearTimeout(fullTimer.current);
     setOpening(null);
     coverActive.current = false;
   }, [pathname]);
 
   useEffect(() => {
     const show = (label: string | null, immediate = false) => {
-      window.clearTimeout(showTimer.current);
+      window.clearTimeout(barTimer.current);
+      window.clearTimeout(fullTimer.current);
       if (!label || coverActive.current) return;
       if (immediate) {
-        setOpening({ label, immediate: true });
+        setOpening({ label, phase: "full" });
         return;
       }
-      showTimer.current = window.setTimeout(() => {
+      // Under 250ms nothing shows, 250 to 800ms is a slim progress bar,
+      // and a slow or full document load upgrades to the signal loader.
+      barTimer.current = window.setTimeout(() => {
         if (coverActive.current) return;
         if (document.querySelector('[data-testid="signal-loader"]')) return;
-        setOpening({ label, immediate: false });
+        setOpening({ label, phase: "bar" });
       }, 250);
+      fullTimer.current = window.setTimeout(() => {
+        if (coverActive.current) return;
+        if (document.querySelector('[data-testid="signal-loader"]')) return;
+        setOpening({ label, phase: "full" });
+      }, 800);
     };
 
     const onClick = (event: MouseEvent) => {
@@ -60,11 +71,13 @@ export default function NavigationLoader() {
     };
     const onCover = () => {
       coverActive.current = true;
-      window.clearTimeout(showTimer.current);
+      window.clearTimeout(barTimer.current);
+      window.clearTimeout(fullTimer.current);
       setOpening(null);
     };
     const onReady = () => {
-      window.clearTimeout(showTimer.current);
+      window.clearTimeout(barTimer.current);
+      window.clearTimeout(fullTimer.current);
       setOpening(null);
     };
 
@@ -74,12 +87,21 @@ export default function NavigationLoader() {
     window.addEventListener("reachout:ready", onReady);
     return () => {
       document.removeEventListener("click", onClick, true);
-      window.clearTimeout(showTimer.current);
+      window.clearTimeout(barTimer.current);
+      window.clearTimeout(fullTimer.current);
       window.removeEventListener(OPENING_EVENT, onOpening);
       window.removeEventListener(TRANSITION_EVENT, onCover);
       window.removeEventListener("reachout:ready", onReady);
     };
   }, []);
 
-  return opening ? <SignalLoader active label={opening.label} delay={0} /> : null;
+  if (!opening) return null;
+  if (opening.phase === "bar") {
+    return (
+      <div className="nav-progress" data-testid="nav-progress" role="status" aria-label={`Loading ${opening.label}`}>
+        <span />
+      </div>
+    );
+  }
+  return <SignalLoader active label={opening.label} delay={0} />;
 }
