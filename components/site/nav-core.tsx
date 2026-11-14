@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Lock, LogOut, Menu, Settings, Shield, Users } from "lucide-react";
+import { ChevronDown, Menu } from "lucide-react";
 import { Logo } from "@/components/site/brand";
 import { Sheet } from "@/components/ui/sheet";
 import { useIdle } from "@/components/auth/idle-provider";
 import { cn } from "@/lib/utils";
 import { announceOpening } from "@/lib/use-navigate";
+import { NavIcon, NavPartyMark } from "@/components/site/nav-icon";
+import { ACCOUNT_ITEMS, ADMIN_LOGIN, CASE_DASHBOARD, CLIENT_NAV, OWNER_NAV, PUBLIC_NAV, type NavItem } from "@/lib/nav";
+import type { PartyId } from "@/lib/parties";
 
-type CaseItem = { slug: string; title: string; state: string; year: number; draft: boolean };
+type CaseItem = { slug: string; title: string; state: string; party: PartyId; year: number; draft: boolean };
 
 export type NavCoreProps = {
   variant: "public" | "client" | "owner";
@@ -29,7 +32,7 @@ function idleLabel(ms: number): string {
   const seconds = Math.max(0, Math.round(ms / 1000));
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
-const linkClass = "inline-flex min-h-10 items-center rounded-full px-3 text-[12.5px] font-semibold text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45";
+const linkClass = "inline-flex shrink-0 whitespace-nowrap min-h-10 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45 max-[1100px]:px-2 max-[1100px]:text-[12px]";
 
 function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
@@ -45,7 +48,7 @@ function timeLeft(expiresAt: string | null): string {
 
 function Dropdown({ label, items, footer, active, align = "left" }: {
   label: React.ReactNode;
-  items: { href: string; label: string; hint?: string; icon?: React.ReactNode; active?: boolean }[];
+  items: { href: string; label: string; hint?: string; icon?: React.ReactNode; party?: PartyId; active?: boolean }[];
   footer?: { href: string; label: string; icon?: React.ReactNode };
   active?: boolean;
   align?: "left" | "right";
@@ -80,7 +83,7 @@ function Dropdown({ label, items, footer, active, align = "left" }: {
       <div role="menu" aria-hidden={!open} data-open={open} data-align={align} className={cn("nav-menu site-group absolute top-[calc(100%+8px)] z-50 w-64 rounded-2xl p-1.5 text-[var(--h-ink)]", align === "right" ? "right-0" : "left-0")}>
           {items.map((item) => (
             <Link key={item.href + item.label} href={item.href} role="menuitem" onClick={() => setOpen(false)} className={cn("flex min-h-10 items-start gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium transition-colors hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45", item.active && "site-group-inset")}>
-              {item.icon}
+              {item.party ? <NavPartyMark party={item.party} /> : item.icon}
               <span className="min-w-0"><span className="block">{item.label}</span>{item.hint && <span className="mt-0.5 block text-[10px] font-normal text-[var(--h-muted)]">{item.hint}</span>}</span>
             </Link>
           ))}
@@ -146,11 +149,12 @@ export default function NavCore({ variant, displayName, username, organisation, 
     window.location.assign("/login");
   }
 
-  const grouped = cases.reduce<Record<string, CaseItem[]>>((acc, item) => {
-    (acc[item.state] ??= []).push(item);
-    return acc;
-  }, {});
-  const caseItems = Object.entries(grouped).flatMap(([state, rows]) => rows.map((row) => ({ href: `/case-studies/${row.slug}`, label: row.title, hint: `${state} · ${row.year}${row.draft ? " · Draft" : ""}` })));
+  const caseItems = cases.map((row) => ({
+    href: `/case-studies/${row.slug}`,
+    label: `${row.state} · ${row.party}`,
+    hint: `${row.year}${row.draft ? " · Draft" : ""}`,
+    party: row.party,
+  }));
 
 
   return (
@@ -158,37 +162,28 @@ export default function NavCore({ variant, displayName, username, organisation, 
       <header className="site-header pointer-events-none fixed inset-x-0 top-0 z-50 px-3 pt-2 sm:px-4">
         <div className={cn("site-group pointer-events-auto mx-auto flex h-[52px] w-full max-w-[1240px] items-center gap-2 rounded-full px-3 sm:h-[56px] sm:px-4", glass)}>
           <Logo href={home} className="h-[26px] w-[116px] sm:h-[28px] sm:w-[126px]" />
-          <nav ref={navRef} className="relative ml-2 hidden items-center gap-0.5 md:flex" aria-label="Primary">
-            {variant === "public" && (
-              <>
-                <Link href="/" data-nav-active={isActive("/") || undefined} aria-current={isActive("/") ? "page" : undefined} className={linkClass}>Home</Link>
-                <Link href="/services" data-nav-active={isActive("/services") || undefined} aria-current={isActive("/services") ? "page" : undefined} className={linkClass}>Services</Link>
-                <Link href="/services/research-content" data-nav-active={isActive("/services/research-content") || undefined} aria-current={isActive("/services/research-content") ? "page" : undefined} className={linkClass}>Research</Link>
-                <Link href="/case-studies" data-nav-active={isActive("/case-studies") || undefined} aria-current={isActive("/case-studies") ? "page" : undefined} className={cn(linkClass, "gap-1")}><Lock className="size-3" aria-hidden /> Case Studies</Link>
-                <Link href="/about" data-nav-active={isActive("/about") || undefined} aria-current={isActive("/about") ? "page" : undefined} className={linkClass}>About Us</Link>
-                <Link href="/#contact" className={linkClass}>Contact</Link>
-              </>
-            )}
-            {variant === "client" && (
-              <>
-                <Link href="/" data-nav-active={isActive("/") || undefined} aria-current={isActive("/") ? "page" : undefined} className={linkClass}>Home</Link>
-                {caseItems.length === 1 ? <Link href={caseItems[0].href} data-nav-active={isActive("/case-studies") || undefined} aria-current={isActive("/case-studies") ? "page" : undefined} className={linkClass}>Case Studies</Link> : <Dropdown label="Case Studies" items={caseItems} active={pathname?.startsWith("/case-studies")} />}
-              </>
-            )}
-            {variant === "owner" && (
-              <>
-                <Link href="/dashboard" data-nav-active={isActive("/dashboard") || undefined} aria-current={isActive("/dashboard") ? "page" : undefined} className={cn(linkClass, pathname === "/dashboard" && "site-group-inset text-[var(--h-ink)]")}>Dashboard</Link>
-                <Dropdown label="Case Studies" items={caseItems} footer={{ href: "/dashboard/case-studies", label: "Case studies dashboard", icon: <Settings className="size-3.5" /> }} active={pathname?.startsWith("/case-studies") || pathname === "/dashboard/case-studies"} />
-              </>
-            )}
+          <nav ref={navRef} className="relative ml-2 hidden items-center gap-0.5 min-[900px]:flex" aria-label="Primary">
+            {variant === "public" && PUBLIC_NAV.map((item) => <NavLink key={item.key} item={item} active={isActive(item.href)} />)}
+            {variant === "client" && CLIENT_NAV.map((item) => {
+              if (item.key === "cases" && caseItems.length !== 1) {
+                return <Dropdown key="cases" label={<><NavIcon name="casesOpen" /> Case Studies</>} items={caseItems} active={Boolean(pathname?.startsWith("/case-studies"))} />;
+              }
+              if (item.key === "cases" && caseItems.length === 1) {
+                return <NavLink key="cases" item={{ ...item, href: caseItems[0].href }} active={Boolean(pathname?.startsWith("/case-studies"))} />;
+              }
+              return <NavLink key={item.key} item={item} active={isActive(item.href)} />;
+            })}
+            {variant === "owner" && OWNER_NAV.map((item) => item.key === "cases"
+              ? <Dropdown key="cases" label={<><NavIcon name="casesOpen" /> Case Studies</>} items={caseItems} footer={{ ...CASE_DASHBOARD, icon: <NavIcon name="database" /> }} active={Boolean(pathname?.startsWith("/case-studies")) || pathname === "/dashboard/case-studies"} />
+              : <NavLink key={item.key} item={item} active={isActive(item.href)} />)}
             {underline && <span className="nav-underline" style={{ transform: `translateX(${underline.left}px)`, width: underline.width }} aria-hidden />}
           </nav>
           <div className="ml-auto flex items-center gap-1">
             {variant === "public" ? (
-              <a href="/login" className="hit-expand hidden min-h-10 items-center rounded-full bg-[var(--r-navy)] px-4 text-[12px] font-semibold text-white md:inline-flex">Login</a>
+              <a href="/login" className="hit-expand hidden min-h-10 items-center gap-1.5 rounded-full bg-[var(--r-navy)] px-4 text-[12px] font-semibold text-white min-[900px]:inline-flex"><NavIcon name="login" /> Admin Login</a>
             ) : (
               <>
-                <div ref={accountRef} className="relative hidden md:block">
+                <div ref={accountRef} className="relative hidden min-[900px]:block">
                   <button type="button" onClick={() => setAccountOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountOpen} className={cn("inline-flex min-h-10 items-center gap-2 rounded-full px-2 text-[12px] font-semibold text-[var(--h-ink)] hover:bg-[var(--h-surface-inset)]", accountOpen && "site-group-inset")}>
                     <span className="sr-only">Account menu</span>
                     <span className="grid size-7 place-items-center rounded-full bg-[var(--r-navy)] text-[10px] font-bold text-white">{initials(displayName ?? "User")}</span>
@@ -216,24 +211,25 @@ export default function NavCore({ variant, displayName, username, organisation, 
                       )}
                       {variant === "owner" && (
                         <>
-                          <MenuLink href="/account/users" icon={<Users className="size-3.5" />}>Users</MenuLink>
-                          <MenuLink href="/account/sessions" icon={<Shield className="size-3.5" />}>Sessions</MenuLink>
-                          <MenuLink href="/account/security" icon={<Shield className="size-3.5" />}>Security</MenuLink>
+                          <MenuLink item={ACCOUNT_ITEMS.users} />
+                          <MenuLink item={ACCOUNT_ITEMS.sessions} />
+                          <MenuLink item={ACCOUNT_ITEMS.security} />
                         </>
                       )}
                       {variant === "client" && (
                         <>
-                          <MenuLink href="/account/password">Change password</MenuLink>
-                          <MenuLink href="/account/security" icon={<Shield className="size-3.5" />}>Security</MenuLink>
+                          <MenuLink item={ACCOUNT_ITEMS.security} />
+                          <MenuLink item={ACCOUNT_ITEMS.sessions} />
+                          <MenuLink item={ACCOUNT_ITEMS.password} />
                         </>
                       )}
-                      <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-left text-[12px] font-medium text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)]"><LogOut className="size-3.5" /> Sign out</button>
+                      <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-left text-[12px] font-medium text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)]"><NavIcon name="logout" /> Sign out</button>
                     </div>
                   )}
                 </div>
               </>
             )}
-            <button type="button" aria-label="Open menu" onClick={() => setMenuOpen(true)} className="grid size-10 place-items-center rounded-full text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] md:hidden"><Menu className="size-5" /></button>
+            <button type="button" aria-label="Open menu" onClick={() => setMenuOpen(true)} className="grid size-11 place-items-center rounded-full text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] min-[900px]:hidden"><Menu className="size-5" /></button>
           </div>
         </div>
       </header>
@@ -242,42 +238,65 @@ export default function NavCore({ variant, displayName, username, organisation, 
         <div className="space-y-1">
           {variant === "public" && (
             <>
-              <MobileLink href="/">Home</MobileLink>
-              <MobileLink href="/services">Services</MobileLink>
-              <MobileLink href="/services/research-content">Research</MobileLink>
-              <MobileLink href="/case-studies"><Lock className="size-3.5" /> Case Studies</MobileLink>
-              <MobileLink href="/about">About Us</MobileLink>
-              <MobileLink href="/#contact">Contact</MobileLink>
-              <a href="/login" className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold text-[var(--h-muted)]">Login</a>
+              {PUBLIC_NAV.map((item) => <MobileLink key={item.key} item={item} />)}
+              <a href={ADMIN_LOGIN.href} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold text-[var(--h-muted)]"><NavIcon name="login" /> Admin Login</a>
             </>
           )}
           {variant === "client" && (
             <>
-              <MobileLink href="/">Home</MobileLink>
-              <details className="rounded-xl"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-[14px] font-semibold">Case Studies<ChevronDown className="size-4" /></summary><div className="pl-3">{caseItems.map((item) => <MobileLink key={item.href} href={item.href}>{item.label}<span className="block text-[10px] font-normal text-[var(--h-muted)]">{item.hint}</span></MobileLink>)}</div></details>
+              <MobileLink item={CLIENT_NAV[0]} />
+              <details className="rounded-xl">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-[14px] font-semibold"><span className="flex items-center gap-2"><NavIcon name="casesOpen" /> Case Studies</span><ChevronDown className="size-4" /></summary>
+                <div className="pl-3">{caseItems.map((item) => <MobileCaseLink key={item.href} item={item} />)}</div>
+              </details>
+              {CLIENT_NAV.slice(2).map((item) => <MobileLink key={item.key} item={item} />)}
+              <div className="my-1 h-px bg-[var(--h-border)]/20" />
+              <MobileLink item={ACCOUNT_ITEMS.security} />
+              <MobileLink item={ACCOUNT_ITEMS.sessions} />
+              <MobileLink item={ACCOUNT_ITEMS.password} />
             </>
           )}
           {variant === "owner" && (
             <>
-              <MobileLink href="/dashboard">Dashboard</MobileLink>
-              <details className="rounded-xl"><summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-[14px] font-semibold">Case Studies<ChevronDown className="size-4" /></summary><div className="pl-3">{caseItems.map((item) => <MobileLink key={item.href} href={item.href}>{item.label}</MobileLink>)}<MobileLink href="/dashboard/case-studies"><Settings className="size-4" /> Case studies dashboard</MobileLink></div></details>
-
-              <MobileLink href="/account/users">Users</MobileLink>
-              <MobileLink href="/account/sessions">Sessions</MobileLink>
-              <MobileLink href="/account/security">Security</MobileLink>
+              <MobileLink item={OWNER_NAV[0]} />
+              <details className="rounded-xl">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-[14px] font-semibold"><span className="flex items-center gap-2"><NavIcon name="casesOpen" /> Case Studies</span><ChevronDown className="size-4" /></summary>
+                <div className="pl-3">{caseItems.map((item) => <MobileCaseLink key={item.href} item={item} />)}<MobileLink item={CASE_DASHBOARD} /></div>
+              </details>
+              <MobileLink item={ACCOUNT_ITEMS.users} />
+              <MobileLink item={ACCOUNT_ITEMS.sessions} />
+              <MobileLink item={ACCOUNT_ITEMS.security} />
             </>
           )}
-          {variant !== "public" && <button type="button" onClick={() => void signOut()} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-[14px] font-medium text-[var(--h-muted)]"><LogOut className="size-4" /> Sign out</button>}
+          {variant !== "public" && <button type="button" onClick={() => void signOut()} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-[14px] font-medium text-[var(--h-muted)]"><NavIcon name="logout" /> Sign out</button>}
         </div>
       </Sheet>
     </>
   );
 }
 
-function MenuLink({ href, children, icon }: { href: string; children: React.ReactNode; icon?: React.ReactNode }) {
-  return <Link href={href} role="menuitem" className="flex min-h-10 items-center gap-2 rounded-xl px-3 text-[12px] font-medium text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)]">{icon}{children}</Link>;
+function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+  return (
+    <Link href={item.href} data-nav-active={active || undefined} aria-current={active ? "page" : undefined} className={cn(linkClass, active && "site-group-inset text-[var(--h-ink)]")}>
+      <NavIcon name={item.icon} />
+      <span>{item.label}</span>
+    </Link>
+  );
 }
 
-function MobileLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return <Link href={href} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold text-[var(--h-muted)]">{children}</Link>;
+function MenuLink({ item }: { item: NavItem }) {
+  return <Link href={item.href} role="menuitem" className="flex min-h-10 items-center gap-2 rounded-xl px-3 text-[12px] font-medium text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)]"><NavIcon name={item.icon} /> {item.label}</Link>;
+}
+
+function MobileLink({ item }: { item: NavItem }) {
+  return <Link href={item.href} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold text-[var(--h-muted)]"><NavIcon name={item.icon} /> {item.label}</Link>;
+}
+
+function MobileCaseLink({ item }: { item: { href: string; label: string; hint: string; party: PartyId } }) {
+  return (
+    <Link href={item.href} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold text-[var(--h-muted)]">
+      <NavPartyMark party={item.party} />
+      <span className="min-w-0"><span className="block">{item.label}</span><span className="block text-[10px] font-normal">{item.hint}</span></span>
+    </Link>
+  );
 }

@@ -64,7 +64,12 @@ export default function IdleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     void fetch("/api/auth/session", { cache: "no-store" })
-      .then((response) => { if (response.ok) { signedIn.current = true; setIsSignedIn(true); } })
+      .then((response) => {
+        if (!response.ok) return;
+        signedIn.current = true;
+        lastActivity.current = Date.now();
+        setIsSignedIn(true);
+      })
       .catch(() => {});
     if (typeof window !== "undefined" && "BroadcastChannel" in window) {
       channel.current = new BroadcastChannel("ro-idle");
@@ -83,7 +88,13 @@ export default function IdleProvider({ children }: { children: ReactNode }) {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       void fetch("/api/auth/session", { cache: "no-store" }).then((response) => {
-        if (!response.ok) { loggingOut.current = true; leave("/login?reason=idle", false); return; }
+        if (!response.ok) {
+          // Public visitors have no session to expire; never send them to login.
+          if (signedIn.current) { loggingOut.current = true; leave("/login?reason=idle", false); }
+          return;
+        }
+        signedIn.current = true;
+        setIsSignedIn(true);
         if (Date.now() - lastActivity.current > IDLE_MS) signOut();
       }).catch(() => {});
     };
@@ -91,12 +102,22 @@ export default function IdleProvider({ children }: { children: ReactNode }) {
       window.addEventListener(event, onActivity, { passive: true });
     }
     document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      for (const event of ["mousemove", "mousedown", "keydown", "scroll", "wheel", "touchstart"]) window.removeEventListener(event, onActivity);
+      document.removeEventListener("visibilitychange", onVisible);
+      channel.current?.close();
+    };
+  }, [signOut, touch, leave]);
+
+  // The idle countdown only runs for a confirmed session.
+  useEffect(() => {
+    if (!isSignedIn) return;
     const timer = window.setInterval(() => {
-      if (cancelled || loggingOut.current || !signedIn.current) return;
+      if (loggingOut.current) return;
       if (document.visibilityState !== "visible") return;
       const idle = Date.now() - lastActivity.current;
-      const left = Math.max(0, IDLE_MS - idle);
-      setRemainingMs(left);
+      setRemainingMs(Math.max(0, IDLE_MS - idle));
       if (idle >= IDLE_MS) { signOut(); return; }
       if (idle >= IDLE_MS - WARN_MS) {
         setWarn(true);
@@ -105,14 +126,8 @@ export default function IdleProvider({ children }: { children: ReactNode }) {
         setWarn(false);
       }
     }, 1000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-      for (const event of ["mousemove", "mousedown", "keydown", "scroll", "wheel", "touchstart"]) window.removeEventListener(event, onActivity);
-      document.removeEventListener("visibilitychange", onVisible);
-      channel.current?.close();
-    };
-  }, [signOut, touch]);
+    return () => window.clearInterval(timer);
+  }, [isSignedIn, signOut]);
 
   return (
     <IdleContext.Provider value={{ remainingMs: isSignedIn ? remainingMs : IDLE_MS, signedIn: isSignedIn }}>

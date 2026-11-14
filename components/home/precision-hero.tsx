@@ -5,7 +5,7 @@ import CaseOrbit, { type OrbitCase } from "@/components/home/case-orbit";
 export default function PrecisionHero({ cases }: { cases: OrbitCase[] }) {
   return (
     <section className="pointer-events-auto relative z-10 bg-white pt-16">
-      <div className="mx-auto flex min-h-[calc(100svh-64px)] max-w-[1440px] flex-col justify-center px-6 py-12 sm:px-10 lg:grid lg:grid-cols-[42%_58%] lg:items-center lg:gap-10 lg:px-16">
+      <div className="mx-auto flex min-h-[calc(100svh-64px)] max-w-[1440px] flex-col justify-start px-6 py-12 sm:px-10 lg:grid lg:grid-cols-[42%_58%] lg:items-start lg:gap-10 lg:px-16">
         <div className="max-w-[560px]">
           <h1 className="font-display text-[clamp(46px,5.2vw,84px)] font-bold leading-[0.95] tracking-[-0.035em] text-[#0B0B0C]">
             <span className="block whitespace-nowrap">Find the signal.</span>

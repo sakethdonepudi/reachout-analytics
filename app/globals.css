@@ -442,7 +442,7 @@ html[data-motion-tier="c"] .hero-party { animation: none !important; }
   bottom: 0;
   height: 2px;
   border-radius: 999px;
-  background: var(--h-brass);
+  background: #0B0B0C;
   transition: transform 200ms var(--ease-out), width 200ms var(--ease-out);
   pointer-events: none;
 }

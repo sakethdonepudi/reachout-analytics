@@ -32,6 +32,7 @@ export default async function Navbar() {
       slug: item.slug,
       title: item.title,
       state: item.stateName,
+      party: item.party,
       year: bySlug.get(item.slug)?.electionYear ?? yearFor(item.slug),
       draft: (bySlug.get(item.slug)?.status ?? "draft") !== "published",
     }));
@@ -51,6 +52,7 @@ export default async function Navbar() {
     slug: item.slug,
     title: item.title,
     state: item.stateName,
+    party: item.party,
     year: bySlug.get(item.slug)?.electionYear ?? yearFor(item.slug),
     draft: false,
   }));
