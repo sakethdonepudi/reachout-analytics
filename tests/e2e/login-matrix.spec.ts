@@ -803,6 +803,8 @@ async function sessionTests(browser: Browser) {
     await signIn(page, client, "/case-studies");
     await page.clock.install();
     await page.goto(`${BASE}/case-studies/tamil-nadu`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: /Account menu/ }).first().waitFor({ state: "visible", timeout: 15000 });
+    await page.waitForTimeout(1200);
     await page.clock.fastForward(11 * 60 * 1000);
     await page.waitForURL((url) => url.pathname === "/login", { timeout: 15000 }).catch(() => {});
     ok("idle: signs out after the idle window", new URL(page.url()).pathname === "/login", page.url());
