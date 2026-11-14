@@ -18,7 +18,11 @@
     "check:budgets": "node scripts/check-budgets.mjs",
     "backfill:ads-summaries": "tsx --conditions react-server scripts/backfill-ads-summaries.ts",
     "test:motion": "tsx scripts/motion.test.ts",
-    "test:layers": "tsx scripts/layers.test.ts"
+    "test:layers": "tsx scripts/layers.test.ts",
+    "e2e:seed": "tsx --conditions react-server tests/e2e/seed-users.ts",
+    "test:e2e": "tsx tests/e2e/login-matrix.spec.ts",
+    "test:e2e:prod": "tsx tests/e2e/login-matrix.spec.ts --prod",
+    "qa:visual": "tsx tests/e2e/visual-qa.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",
@@ -51,6 +55,8 @@
     "@types/react-dom": "^19",
     "@types/three": "^0.186.0",
     "@types/topojson-client": "^3.1.5",
+    "axe-core": "^4.10.2",
+    "playwright-core": "^1.64.0",
     "polygon-clipping": "^0.15.7",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
