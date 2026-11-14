@@ -19,7 +19,7 @@ const inter = localFont({
   ],
   variable: "--font-inter",
   display: "swap",
-  preload: false,
+  preload: true,
   fallback: ["ui-sans-serif", "system-ui", "sans-serif"],
 });
 const interTight = localFont({
@@ -31,7 +31,7 @@ const interTight = localFont({
   ],
   variable: "--font-inter-tight",
   display: "swap",
-  preload: false,
+  preload: true,
   fallback: ["ui-sans-serif", "system-ui", "sans-serif"],
 });
 const instrumentSerif = localFont({

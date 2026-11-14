@@ -222,6 +222,9 @@ main table a { display: inline-flex; min-height: 40px; align-items: center; }
 nav[aria-label="Footer"] a,
 #contact a,
 .footer-link { display: inline-flex; min-height: 40px; align-items: center; }
+@media (max-width: 767px) {
+  .hit-expand { min-height: 44px; }
+}
 @media (pointer: coarse) {
   button,
   [role="button"],
@@ -345,6 +348,48 @@ html[data-motion-tier="c"] .hero-party { animation: none !important; }
 .dialog-overlay[data-closing="true"] .dialog-panel--center { animation: dialog-pop-out 180ms var(--ease-in) both; }
 .dialog-panel--bottom { animation: sheet-in 240ms var(--ease-out) both; }
 .dialog-overlay[data-closing="true"] .dialog-panel--bottom { animation: sheet-out 180ms var(--ease-in) both; }
+
+/* precision hero orbit */
+.hero-orbit-mask {
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 34%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 34%);
+}
+@media (max-width: 767px) {
+  .hero-orbit-mask {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 30%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 30%);
+  }
+}
+.hero-orbit-turn { transform-box: fill-box; transform-origin: center; animation: hero-orbit-turn 720s linear infinite; }
+.hero-orbit-drift { transform-box: fill-box; transform-origin: center; animation: hero-orbit-drift 20s ease-in-out infinite; }
+@keyframes hero-orbit-turn { to { transform: rotate(360deg); } }
+@keyframes hero-orbit-drift { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+.case-disc::after { content: ""; position: absolute; inset: -7px; border-radius: 999px; }
+.case-disc-view::after { content: "View case study"; }
+.case-disc-face { box-shadow: 0 10px 30px rgba(0, 0, 0, .08); transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+.case-disc:hover .case-disc-face { transform: translateY(-2px); box-shadow: 0 16px 34px rgba(0, 0, 0, .12); }
+.case-disc:focus-visible .case-disc-face { outline: 2px solid #0B0B0C; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-orbit-turn, .hero-orbit-drift { animation: none !important; }
+  .case-disc { transition: none !important; }
+}
+
+.home-menu {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-4px) scale(.98);
+  transform-origin: top right;
+  transition: opacity 100ms var(--ease-in), transform 100ms var(--ease-in), visibility 0s linear 100ms;
+}
+.home-menu[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: none;
+  transition: opacity 140ms var(--ease-out), transform 140ms var(--ease-out), visibility 0s;
+}
 
 /* hero staging: eyebrow, two headline lines, drawn last word, subtext, CTA */
 @keyframes hero-rise-sm { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }

@@ -33,7 +33,8 @@ export default function IdleProvider({ children }: { children: ReactNode }) {
     announceOpening("Signing out", true);
     const go = () => {
       const remaining = 320 - (performance.now() - started);
-      window.setTimeout(() => window.location.assign(href), Math.max(0, remaining));
+      const target = href.startsWith("/login") ? `${href}&next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}` : href;
+      window.setTimeout(() => window.location.assign(target), Math.max(0, remaining));
     };
     if (callLogout) void fetch("/api/auth/logout", { method: "POST" }).catch(() => {}).finally(go);
     else go();

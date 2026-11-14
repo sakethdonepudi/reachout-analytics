@@ -22,10 +22,10 @@ function useInView<T extends HTMLElement>() {
   return { ref, onScreen };
 }
 
-function CompanyTile({ logo, eager }: { logo: ExperienceOrganisation; eager: boolean }) {
+function CompanyTile({ logo, eager, decorative = false }: { logo: ExperienceOrganisation; eager: boolean; decorative?: boolean }) {
   return (
     <li className="company-marquee__item">
-      <div className="company-tile" tabIndex={0}>
+      <div className="company-tile" tabIndex={decorative ? -1 : 0}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={logo.src}
@@ -53,7 +53,7 @@ function CompanyRow({ direction, items, eager, second = false }: { direction: Di
             {items.map((logo) => <CompanyTile key={logo.name} logo={logo} eager={eager} />)}
           </ul>
           <ul className="company-marquee__group" aria-hidden="true">
-            {items.map((logo) => <CompanyTile key={`duplicate-${logo.name}`} logo={logo} eager={eager} />)}
+            {items.map((logo) => <CompanyTile key={`duplicate-${logo.name}`} logo={logo} eager={eager} decorative />)}
           </ul>
         </div>
       </div>
