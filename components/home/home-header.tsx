@@ -11,7 +11,7 @@ import { announceOpening } from "@/lib/use-navigate";
 import { broadcastLogout } from "@/lib/session-channel";
 import { NavIcon, NavPartyMark } from "@/components/site/nav-icon";
 import { useSlidingUnderline } from "@/components/ui/use-sliding-underline";
-import { ACCOUNT_ITEMS, ADMIN_LOGIN, CLIENT_NAV, PUBLIC_NAV, type NavItem } from "@/lib/nav";
+import { ACCOUNT_ITEMS, CLIENT_NAV, LOGIN, PUBLIC_NAV, type NavItem } from "@/lib/nav";
 import type { PartyId } from "@/lib/parties";
 
 export type HomeCase = { slug: string; party: PartyId; stateName: string };
@@ -85,7 +85,7 @@ export default function HomeHeader({
 
           <nav ref={navRef} className="relative ml-2 hidden items-center gap-0.5 min-[900px]:flex" aria-label="Primary">
             {items.map((item) => {
-              if (role === "client" && item.key === "cases") {
+              if (item.key === "cases") {
                 return (
                   <div key="cases" ref={casesRef} className="relative">
                     <button
@@ -121,9 +121,14 @@ export default function HomeHeader({
 
           <div className="ml-auto flex items-center gap-1">
             {role === "anon" ? (
-              <a href={ADMIN_LOGIN.href} className="hidden min-h-10 items-center gap-1.5 rounded-[10px] border border-[#0B0B0C] px-4 text-[13px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white min-[900px]:inline-flex">
-                <NavIcon name="login" /> Admin Login
-              </a>
+              <>
+                <a href={LOGIN.href} className="hidden min-h-10 items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[13px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:inline-flex">
+                  <NavIcon name="login" /> {LOGIN.label}
+                </a>
+                <a href={LOGIN.href} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#0B0B0C] px-3 text-[12px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:hidden">
+                  <NavIcon name="login" /> {LOGIN.label}
+                </a>
+              </>
             ) : (
               <div ref={accountRef} className="relative hidden min-[900px]:block">
                 <button
@@ -180,9 +185,17 @@ export default function HomeHeader({
             </>
           ) : (
             <>
-              {PUBLIC_NAV.map((item) => <MobileLink key={item.key} item={item} />)}
-              <a href={ADMIN_LOGIN.href} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-semibold text-[#0B0B0C]">
-                <NavIcon name="login" /> Admin Login
+              <MobileLink item={PUBLIC_NAV[0]} />
+              <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">Case Studies</p>
+              {cases.map((row) => (
+                <Link key={row.slug} href={`/case-studies/${row.slug}`} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#0B0B0C]">
+                  <NavPartyMark party={row.party} />
+                  <span>{row.stateName} · {row.party}</span>
+                </Link>
+              ))}
+              <div className="my-1 h-px bg-[#E6E6E6]" />
+              <a href={LOGIN.href} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-semibold text-[#0B0B0C]">
+                <NavIcon name="login" /> {LOGIN.label}
               </a>
             </>
           )}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check, Eye, EyeOff, Loader2 } from "lucide-react";
@@ -181,7 +182,11 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
 
         </div>
         <p className="mt-6 text-center text-[11.5px] text-[#6B6B6B]">ReachOut Analytics · Since 2023</p>
-        <a href="https://www.reachoutanalytics.com" className="mt-1 block text-center text-[11.5px] font-medium text-[#0B0B0C] underline decoration-dotted underline-offset-4">Back to main website</a>
+        <div className="mt-1 flex items-center justify-center gap-2 text-[11.5px]">
+          <Link href="/" className="font-medium text-[#0B0B0C] underline decoration-dotted underline-offset-4">Back to home</Link>
+          <span className="text-[#C9C9C9]" aria-hidden>·</span>
+          <a href="https://www.reachoutanalytics.com" className="font-medium text-[#0B0B0C] underline decoration-dotted underline-offset-4">Main website</a>
+        </div>
       </div>
       </main>
     </>

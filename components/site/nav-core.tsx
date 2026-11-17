@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { announceOpening } from "@/lib/use-navigate";
 import { broadcastLogout } from "@/lib/session-channel";
 import { NavIcon, NavPartyMark } from "@/components/site/nav-icon";
-import { ACCOUNT_ITEMS, ADMIN_LOGIN, CLIENT_NAV, OWNER_NAV, PUBLIC_NAV, type NavItem } from "@/lib/nav";
+import { ACCOUNT_ITEMS, CLIENT_NAV, LOGIN, OWNER_NAV, PUBLIC_NAV, type NavItem } from "@/lib/nav";
 import type { PartyId } from "@/lib/parties";
 
 type CaseItem = { slug: string; title: string; state: string; party: PartyId; year: number; draft: boolean };
@@ -162,7 +162,9 @@ export default function NavCore({ variant, displayName, username, organisation, 
         <div className={cn("site-group pointer-events-auto mx-auto flex h-[52px] w-full max-w-[1240px] items-center gap-2 rounded-full px-3 sm:h-[56px] sm:px-4", glass)}>
           <Logo href={home} className="h-[26px] w-[116px] sm:h-[28px] sm:w-[126px]" />
           <nav ref={navRef} className="relative ml-2 hidden items-center gap-0.5 min-[900px]:flex" aria-label="Primary">
-            {variant === "public" && PUBLIC_NAV.map((item) => <NavLink key={item.key} item={item} active={isActive(item.href)} />)}
+            {variant === "public" && PUBLIC_NAV.map((item) => item.key === "cases" && caseItems.length > 1
+              ? <Dropdown key="cases" label={<><NavIcon name="casesOpen" /> Case Studies</>} items={caseItems} active={Boolean(pathname?.startsWith("/case-studies"))} />
+              : <NavLink key={item.key} item={item} active={isActive(item.href)} />)}
             {variant === "client" && CLIENT_NAV.map((item) => {
               if (item.key === "cases" && caseItems.length !== 1) {
                 return <Dropdown key="cases" label={<><NavIcon name="casesOpen" /> Case Studies</>} items={caseItems} active={Boolean(pathname?.startsWith("/case-studies"))} />;
@@ -179,7 +181,10 @@ export default function NavCore({ variant, displayName, username, organisation, 
           </nav>
           <div className="ml-auto flex items-center gap-1">
             {variant === "public" ? (
-              <a href="/login" className="hit-expand hidden min-h-10 items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[12px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white min-[900px]:inline-flex"><NavIcon name="login" /> Admin Login</a>
+              <>
+                <a href={LOGIN.href} className="hit-expand hidden min-h-10 items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[12px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:inline-flex"><NavIcon name="login" /> {LOGIN.label}</a>
+                <a href={LOGIN.href} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#0B0B0C] px-3 text-[12px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:hidden"><NavIcon name="login" /> {LOGIN.label}</a>
+              </>
             ) : (
               <>
                 <div ref={accountRef} className="relative hidden min-[900px]:block">
@@ -231,8 +236,12 @@ export default function NavCore({ variant, displayName, username, organisation, 
         <div className="space-y-1">
           {variant === "public" && (
             <>
-              {PUBLIC_NAV.map((item) => <MobileLink key={item.key} item={item} />)}
-              <a href={ADMIN_LOGIN.href} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold text-[var(--h-muted)]"><NavIcon name="login" /> Admin Login</a>
+              <MobileLink item={PUBLIC_NAV[0]} />
+              <details className="rounded-xl">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-[14px] font-semibold"><span className="flex items-center gap-2"><NavIcon name="casesOpen" /> Case Studies</span><ChevronDown className="size-4" /></summary>
+                <div className="pl-3">{caseItems.map((item) => <MobileCaseLink key={item.href} item={item} />)}</div>
+              </details>
+              <a href={LOGIN.href} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold text-[var(--h-muted)]"><NavIcon name="login" /> {LOGIN.label}</a>
             </>
           )}
           {variant === "client" && (
