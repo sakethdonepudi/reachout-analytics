@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Navbar from "@/components/site/navbar";
 import TelanganaDashboard from "@/components/case-studies/telangana/telangana-dashboard";
 import { requirePageSession } from "@/lib/require-session";
 import { caseAllowed } from "@/lib/session-scope";
@@ -33,7 +32,6 @@ export default async function TelanganaCaseStudyPage({ searchParams }: { searchP
 
   return (
     <>
-      <Navbar />
       <h1 className="sr-only">BRS · Telangana</h1>
       <CaseStudyTabs
         initialTab={view === "social" ? "social" : "polls"}

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
-import Navbar from "@/components/site/navbar";
 import PartyCard from "@/components/case-studies/shared/party-card";
 import StateMap from "@/components/case-studies/shared/state-map";
 import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl } from "@/lib/cases";
@@ -69,7 +68,6 @@ export default async function CaseStudyPage({ params, searchParams }: { params: 
 
   return (
     <>
-      <Navbar />
       <h1 className="sr-only">{c ? `${c.party} · ${c.stateName}` : upcoming!.title}</h1>
       <CaseStudyTabs
         initialTab={view === "social" ? "social" : "polls"}

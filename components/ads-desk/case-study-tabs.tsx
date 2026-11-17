@@ -85,8 +85,8 @@ export default function CaseStudyTabs({
 
   return (
     <>
-      <div className="pt-16">
-        <div className="sticky top-16 z-30 border-b border-[#EAEAEA] bg-white/90 backdrop-blur-md">
+      <div className="case-study-top-spacer pt-16">
+        <div className="case-study-switch-bar sticky top-16 z-30 border-b border-[#EAEAEA] bg-white/90 backdrop-blur-md">
           <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-center px-4 sm:px-6 lg:px-10">
             <div
               role="tablist"

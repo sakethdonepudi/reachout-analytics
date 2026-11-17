@@ -235,7 +235,7 @@ export default function TelanganaDashboard({ aggregates, history }: { aggregates
   return (
     <div className="app-chrome relative min-h-0 bg-white text-[var(--p-ink)]">
 
-      <section className="relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-0 sm:px-6 xl:flex xl:h-[calc(100svh-9.5rem)] xl:min-h-[600px] xl:flex-col xl:overflow-hidden xl:px-6">
+      <section className="case-study-viewport relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-0 sm:px-6 xl:flex xl:h-[calc(100svh-9.5rem)] xl:min-h-[600px] xl:flex-col xl:overflow-hidden xl:px-6">
         <CaseStudySplit
           storageKey="telangana"
           controlsWidth={288}

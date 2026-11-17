@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Navbar from "@/components/site/navbar";
 import TamilNaduDashboard from "@/components/case-studies/tamil-nadu/tamil-nadu-dashboard";
 import { requirePageSession } from "@/lib/require-session";
 import { redirect } from "next/navigation";
@@ -43,7 +42,6 @@ export default async function TamilNaduCaseStudyPage({ searchParams }: { searchP
 
   return (
     <>
-      <Navbar />
       <h1 className="sr-only">AIADMK · Tamil Nadu</h1>
       <CaseStudyTabs
         initialTab={view === "social" ? "social" : "polls"}

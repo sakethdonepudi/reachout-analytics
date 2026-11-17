@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Navbar from "@/components/site/navbar";
 import SiteFooter from "@/components/site/site-footer";
 import { CASES, caseUrl } from "@/lib/cases";
 import { PartyMark } from "@/components/site/party-mark";
@@ -33,7 +32,6 @@ export default async function CaseStudiesIndex() {
 
   return (
     <>
-      <Navbar />
       <main className="min-h-screen bg-white pt-28 text-[var(--p-ink)] sm:pt-32">
         <div className="mx-auto max-w-6xl px-6 pb-24 sm:px-10">
           <TickRule />
