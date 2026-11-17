@@ -33,15 +33,12 @@ export default function WorkShowcase() {
           {CASES.map((item, index) => (
             <Reveal key={item.slug} delay={Math.min(index, 6) * 40} className="h-full">
               <PrecisionCardLink href={caseUrl(item.slug)} label={`Open ${item.party} · ${item.stateName} case study`} className="h-full p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <PartyMark party={item.party} size="md" />
-                    <div className="min-w-0">
-                      <p className="font-display text-[16px] font-semibold leading-tight text-[var(--p-ink)]">{item.party} · {item.stateName}</p>
-                      <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-[var(--p-muted)]">{yearFor(item.slug, item.title)}</p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <PartyMark party={item.party} size="md" />
+                  <div className="min-w-0">
+                    <p className="font-display text-[16px] font-semibold leading-tight text-[var(--p-ink)]">{item.party} · {item.stateName}</p>
+                    <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-[var(--p-muted)]">{yearFor(item.slug, item.title)}</p>
                   </div>
-                  <span className="rounded-full border border-[var(--p-line)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--p-muted)]">{item.badge}</span>
                 </div>
                 <p className="mt-4 line-clamp-2 text-[13px] leading-relaxed text-[var(--p-ink-2)]">{item.summary}</p>
                 <span className="mt-5 flex items-center justify-between border-t border-[var(--p-line)] pt-3 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[var(--p-ink)]">

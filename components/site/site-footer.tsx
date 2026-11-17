@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Logo } from "@/components/site/brand";
-import { CASES, UPCOMING } from "@/lib/cases";
 
 export default function SiteFooter() {
   const year = new Date().getFullYear();
@@ -10,15 +9,12 @@ export default function SiteFooter() {
         <div>
           <Logo variant="light" className="h-8 w-[132px]" />
           <p className="mt-4 font-display text-[15px] font-semibold tracking-[-0.01em] text-[#0B0B0C]">Political Analysis</p>
-          <p className="mt-1 max-w-[30ch] text-[12.5px] leading-relaxed text-[#6B6B6B]">Election intelligence and campaign analytics.</p>
         </div>
 
         <div>
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#6B6B6B]">Experience</p>
           <ul className="mt-3 space-y-2 text-[12.5px] text-[#555]">
             <li>Since 2023</li>
-            <li>{CASES.length} state campaigns</li>
-            <li>Upcoming: {UPCOMING.map((item) => item.title).join(", ")}</li>
           </ul>
         </div>
 
