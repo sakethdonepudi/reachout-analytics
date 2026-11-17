@@ -133,10 +133,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
   function isActive(href: string): boolean {
     if (href === "/") return pathname === "/";
     if (href === "/dashboard") return pathname === "/dashboard";
-    if (href === "/services") return pathname === "/services";
-    if (href === "/services/research-content") return pathname === "/services/research-content";
     if (href === "/case-studies") return Boolean(pathname?.startsWith("/case-studies"));
-    if (href === "/about") return pathname === "/about";
     return pathname === href;
   }
 

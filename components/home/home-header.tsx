@@ -69,9 +69,6 @@ export default function HomeHeader({
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     if (href === "/case-studies") return Boolean(pathname?.startsWith("/case-studies"));
-    if (href === "/services") return pathname === "/services";
-    if (href === "/services/research-content") return pathname === "/services/research-content";
-    if (href === "/about") return pathname === "/about";
     return pathname === href;
   };
 

@@ -3,11 +3,7 @@ import { Logo } from "@/components/site/brand";
 
 const links = [
   ["/", "Home"],
-  ["/services", "Services"],
-  ["/services/research-content", "Research"],
   ["/case-studies", "Case Studies"],
-  ["/about", "About Us"],
-  ["/#contact", "Contact"],
 ] as const;
 
 export default function PublicNavbarStatic() {

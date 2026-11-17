@@ -18,14 +18,10 @@ export type NavIconName =
 
 export type NavItem = { key: string; label: string; href: string; icon: NavIconName };
 
-/** Public order. The homepage and the other public pages share this list. */
+/** Signed-out and static navigation. The workspace is login first. */
 export const PUBLIC_NAV: NavItem[] = [
   { key: "home", label: "Home", href: "/", icon: "home" },
-  { key: "services", label: "Services", href: "/services", icon: "services" },
-  { key: "research", label: "Research", href: "/services/research-content", icon: "research" },
-  { key: "cases", label: "Case Studies", href: "/case-studies", icon: "casesLocked" },
-  { key: "about", label: "About Us", href: "/about", icon: "about" },
-  { key: "contact", label: "Contact", href: "/#contact", icon: "contact" },
+  { key: "cases", label: "Case Studies", href: "/case-studies", icon: "casesOpen" },
 ];
 
 /** Signed-in clients see the case dropdown second. */

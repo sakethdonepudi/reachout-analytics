@@ -60,7 +60,6 @@ export function NavPartyMark({ party }: { party: PartyId }) {
       decoding="async"
       draggable={false}
       className="size-6 shrink-0 object-contain"
-      style={{ filter: "grayscale(1) contrast(1.1)" }}
     />
   );
 }
