@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/site/brand";
+import { CASES, UPCOMING } from "@/lib/cases";
 
 export default function SiteFooter() {
   const year = new Date().getFullYear();
@@ -15,13 +16,14 @@ export default function SiteFooter() {
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#6B6B6B]">Experience</p>
           <ul className="mt-3 space-y-2 text-[12.5px] text-[#555]">
             <li>Since 2023</li>
+            <li>{CASES.length} state campaigns</li>
+            <li>Upcoming: {UPCOMING.map((item) => item.title).join(", ")}</li>
           </ul>
         </div>
 
         <nav aria-label="Footer" className="flex flex-wrap items-start gap-x-6 gap-y-2 lg:flex-col lg:items-end">
           <Link href="/" className="inline-flex min-h-10 items-center text-[12.5px] font-medium text-[#555] transition-colors hover:text-[#0B0B0C]">Home</Link>
           <Link href="/case-studies" className="inline-flex min-h-10 items-center text-[12.5px] font-medium text-[#555] transition-colors hover:text-[#0B0B0C]">Case Studies</Link>
-          <a href="https://www.reachoutanalytics.com" className="inline-flex min-h-10 items-center text-[12.5px] font-medium text-[#555] transition-colors hover:text-[#0B0B0C]">Main website</a>
         </nav>
       </div>
       <div className="border-t border-[#EAEAEA]">
