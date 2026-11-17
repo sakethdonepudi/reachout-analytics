@@ -58,15 +58,26 @@ export async function middleware(request: NextRequest) {
     ?? request.cookies.get(DEV_COOKIE)?.value;
   const session = await sessionFromCookie(token, process.env.ADMIN_SESSION_SECRET || "");
 
-  const authPath = pathname === "/login"
-    || pathname === "/setup"
+  // The old marketing routes now live on the main website. Signed-out and
+  // signed-in visitors both return to the public home.
+  if (pathname === "/services" || pathname.startsWith("/services/") || pathname === "/research" || pathname === "/about" || pathname === "/contact") {
+    return applyCommon(NextResponse.redirect(new URL("/", request.url)), nonce, false);
+  }
+
+  // The owner never sees the public home.
+  if (session?.role === "owner" && pathname === "/") {
+    return applyCommon(NextResponse.redirect(new URL("/dashboard", request.url)), nonce, false);
+  }
+
+  const publicPath = pathname === "/" || pathname === "/login";
+  const authPath = pathname === "/setup"
     || pathname === "/api/setup"
     || pathname === "/account/password"
     || pathname === "/account/security/enroll"
     || pathname.startsWith("/api/auth/")
     || pathname.startsWith("/api/account/");
 
-  if (!session && !authPath) {
+  if (!session && !publicPath && !authPath) {
     if (pathname.startsWith("/api/")) {
       return applyCommon(NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 }), nonce, true);
     }
@@ -79,12 +90,6 @@ export async function middleware(request: NextRequest) {
 
   if (session && pathname === "/login") {
     return applyCommon(NextResponse.redirect(new URL(roleHome(session.role), request.url)), nonce, false);
-  }
-
-  // The app is a private workspace. The old public marketing routes now live
-  // on the main website.
-  if (session && (pathname === "/services" || pathname.startsWith("/services/") || pathname === "/research" || pathname === "/about" || pathname === "/contact")) {
-    return applyCommon(NextResponse.redirect(new URL("/", request.url)), nonce, false);
   }
 
   if (pathname === "/campaigns" || pathname.startsWith("/meta-ads") || pathname === "/data") {
