@@ -42,6 +42,14 @@ export const EXPERIENCE_ORGANISATIONS: ExperienceOrganisation[] = [
     opticalHeight: 28,
   },
   {
+    name: "Mercedes-Benz",
+    alt: "Mercedes-Benz logo",
+    src: "/logos/experience/mercedes-benz.svg",
+    width: 1400,
+    height: 354,
+    opticalHeight: 26,
+  },
+  {
     name: "EY",
     alt: "EY logo",
     src: "/logos/experience/ey.svg",

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ArrowRight, ChartNoAxesCombined } from "lucide-react";
 import CaseOrbit, { type OrbitCase } from "@/components/home/case-orbit";
 
@@ -25,13 +24,13 @@ export default function PrecisionHero({ cases }: { cases: OrbitCase[] }) {
           <p className="mt-7 max-w-[34ch] text-[18px] leading-relaxed text-[#6B6B6B] sm:text-[20px]">
             Election intelligence from statewide vote share down to every district and assembly.
           </p>
-          <Link
-            href="/case-studies"
+          <a
+            href="#work"
             className="motion-cta group mt-9 flex min-h-14 w-full items-center justify-center gap-3 rounded-[14px] border-[1.5px] border-[#0B0B0C] px-7 text-[15px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 sm:inline-flex sm:w-auto"
           >
             Explore case studies
             <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-1" />
-          </Link>
+          </a>
         </div>
 
         <div className="mt-12 w-full lg:mt-0 lg:justify-self-end">

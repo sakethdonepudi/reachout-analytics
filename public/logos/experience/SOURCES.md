@@ -11,6 +11,7 @@ sponsorship, endorsement or a current client relationship.
 | `ibm.svg` | IBM | [Wikimedia Commons — IBM rgb logo](https://commons.wikimedia.org/wiki/File:IBM_rgb_logo.svg) |
 | `visa.svg` | Visa | [Wikimedia Commons — Visa Inc. logo (2021–present)](https://commons.wikimedia.org/wiki/File:Visa_Inc._logo_(2021%E2%80%93present).svg) |
 | `aon.svg` | Aon | [Wikimedia Commons — Aon Corporation logo](https://commons.wikimedia.org/wiki/File:Aon_Corporation_logo.svg) |
+| `mercedes-benz.svg` | Mercedes-Benz | [Wikimedia Commons — Mercedes-Benz logo 2010](https://commons.wikimedia.org/wiki/File:Mercedes-Benz_Logo_2010.svg) |
 | `ey.svg` | EY | [Wikimedia Commons — EY logo 2019](https://commons.wikimedia.org/wiki/File:EY_logo_2019.svg) |
 | `dr-reddys.svg` | Dr. Reddy’s Laboratories | [Wikipedia — Dr. Reddy's Laboratories logo](https://en.wikipedia.org/wiki/File:Dr._Reddy%27s_Laboratories_logo.svg) |
 | `capgemini.svg` | Capgemini | [Wikimedia Commons — Capgemini 201x logo](https://commons.wikimedia.org/wiki/File:Capgemini_201x_logo.svg) |
@@ -24,10 +25,9 @@ sponsorship, endorsement or a current client relationship.
 
 ## Deliberately omitted
 
-The source material also names **Benz**, **Mestek** and **Shriram** in the
-training list. Those names do not identify a single legal entity or verified
-mark with enough confidence for this grid, so no substitute artwork has been
-published.
+The source material also names **Mestek** and **Shriram** in the training
+list. Those names do not identify a single legal entity or verified mark with
+enough confidence for this grid, so no substitute artwork has been published.
 
 ## Usage
 
