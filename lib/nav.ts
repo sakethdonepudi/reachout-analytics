@@ -44,7 +44,6 @@ export const OWNER_NAV: NavItem[] = [
 ];
 
 export const ADMIN_LOGIN: NavItem = { key: "login", label: "Admin Login", href: "/login", icon: "login" };
-export const CASE_DASHBOARD: NavItem = { key: "case-dashboard", label: "Case studies dashboard", href: "/dashboard/case-studies", icon: "database" };
 export const ADS_DESK: NavItem = { key: "ads", label: "Ads Desk", href: "/dashboard", icon: "ads" };
 
 export const ACCOUNT_ITEMS = {

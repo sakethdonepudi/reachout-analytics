@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { announceOpening } from "@/lib/use-navigate";
 import { broadcastLogout } from "@/lib/session-channel";
 import { NavIcon, NavPartyMark } from "@/components/site/nav-icon";
-import { ACCOUNT_ITEMS, ADMIN_LOGIN, CASE_DASHBOARD, CLIENT_NAV, OWNER_NAV, PUBLIC_NAV, type NavItem } from "@/lib/nav";
+import { ACCOUNT_ITEMS, ADMIN_LOGIN, CLIENT_NAV, OWNER_NAV, PUBLIC_NAV, type NavItem } from "@/lib/nav";
 import type { PartyId } from "@/lib/parties";
 
 type CaseItem = { slug: string; title: string; state: string; party: PartyId; year: number; draft: boolean };
@@ -176,7 +176,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
               return <NavLink key={item.key} item={item} active={isActive(item.href)} />;
             })}
             {variant === "owner" && OWNER_NAV.map((item) => item.key === "cases"
-              ? <Dropdown key="cases" label={<><NavIcon name="casesOpen" /> Case Studies</>} items={caseItems} footer={{ ...CASE_DASHBOARD, icon: <NavIcon name="database" /> }} active={Boolean(pathname?.startsWith("/case-studies")) || pathname === "/dashboard/case-studies"} />
+              ? <Dropdown key="cases" label={<><NavIcon name="casesOpen" /> Case Studies</>} items={caseItems}  active={Boolean(pathname?.startsWith("/case-studies"))} />
               : <NavLink key={item.key} item={item} active={isActive(item.href)} />)}
             {underline && <span className="nav-underline" style={{ transform: `translateX(${underline.left}px)`, width: underline.width }} aria-hidden />}
           </nav>
@@ -263,7 +263,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
               <MobileLink item={OWNER_NAV[0]} />
               <details className="rounded-xl">
                 <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-[14px] font-semibold"><span className="flex items-center gap-2"><NavIcon name="casesOpen" /> Case Studies</span><ChevronDown className="size-4" /></summary>
-                <div className="pl-3">{caseItems.map((item) => <MobileCaseLink key={item.href} item={item} />)}<MobileLink item={CASE_DASHBOARD} /></div>
+                <div className="pl-3">{caseItems.map((item) => <MobileCaseLink key={item.href} item={item} />)}</div>
               </details>
               <MobileLink item={ACCOUNT_ITEMS.users} />
               <MobileLink item={ACCOUNT_ITEMS.sessions} />

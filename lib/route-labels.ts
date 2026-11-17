@@ -14,7 +14,6 @@ const ROUTE_LABELS: [string, string][] = [
   ["/services", "Opening Services"],
   ["/about", "Opening About"],
   ["/case-studies", "Opening Case Studies"],
-  ["/dashboard/case-studies", "Opening Case Studies"],
   ["/dashboard", "Opening Dashboard"],
   ["/account/users", "Opening Users"],
   ["/account/sessions", "Opening Sessions"],

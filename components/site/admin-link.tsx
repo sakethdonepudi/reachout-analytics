@@ -26,7 +26,7 @@ export default function AdminLink({ className: classNameProp, icon = false }: { 
     return <a href="/login" aria-label="Admin login" className={className}>{content}</a>;
   }
   return (
-    <Link href="/dashboard/case-studies" aria-label="Admin dashboard" className={className}>
+    <Link href="/dashboard" aria-label="Admin dashboard" className={className}>
       {content}
     </Link>
   );
