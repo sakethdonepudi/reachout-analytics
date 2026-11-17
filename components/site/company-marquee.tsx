@@ -73,15 +73,18 @@ export default function CompanyExperience({ id, className }: { id?: string; clas
   }, [onScreen]);
 
   return (
-    <section ref={ref} id={id} aria-labelledby={headingId} className={cn("company-marquee pointer-events-auto relative z-10 scroll-mt-24 overflow-hidden border-t border-[var(--r-line)] bg-[var(--r-bg)] py-12 sm:py-[72px]", onScreen && "is-live", className)}>
+    <section ref={ref} id={id} aria-labelledby={headingId} className={cn("company-marquee pointer-events-auto relative z-10 scroll-mt-24 overflow-hidden border-t border-[#EAEAEA] bg-white py-20 sm:py-24", onScreen && "is-live", className)}>
       <div className="mx-auto max-w-6xl px-6 sm:px-10">
-        <p className="company-eyebrow">Experience</p>
-        <h2 id={headingId} className="mt-2 font-display text-[clamp(30px,4vw,48px)] font-semibold tracking-[-0.03em] text-[var(--r-navy)]">Company experience</h2>
-        <p className="mt-2 text-[14px] text-[var(--r-muted)]">Organisations our team has worked with.</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="company-eyebrow">Experience</p>
+          <span className="rounded-full border border-[#EAEAEA] px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">Since 2023</span>
+        </div>
+        <h2 id={headingId} className="mt-2 font-display text-[clamp(30px,4vw,48px)] font-semibold tracking-[-0.03em] text-[#0B0B0C]">Company experience</h2>
+        <p className="mt-2 text-[14px] text-[#6B6B6B]">Organisations our team has worked with.</p>
       </div>
-      <div className="company-rows mt-8">
+      <div className="company-rows mt-10">
         <CompanyRow direction="left" items={rowOne} eager={hasEntered} />
-        <CompanyRow direction="right" items={rowTwo} eager={hasEntered} second />
+        <CompanyRow direction="right" items={rowTwo} eager={false} second />
       </div>
     </section>
   );

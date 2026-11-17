@@ -4,6 +4,7 @@ import HomeHeader from "@/components/home/home-header";
 import PrecisionHero from "@/components/home/precision-hero";
 import Experience from "@/components/site/experience";
 import WorkShowcase from "@/components/site/work-showcase";
+import CompanyExperience from "@/components/site/company-marquee";
 import SiteFooter from "@/components/site/site-footer";
 import { COOKIE, LEGACY_COOKIE, getSessionByToken } from "@/lib/auth";
 import { CASES } from "@/lib/cases";
@@ -24,6 +25,7 @@ export default async function Home() {
         <PrecisionHero cases={cases} />
         <Experience />
         <WorkShowcase />
+        <CompanyExperience />
         <SiteFooter />
       </main>
     </>
