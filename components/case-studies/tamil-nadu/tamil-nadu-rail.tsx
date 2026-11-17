@@ -1,23 +1,17 @@
 "use client";
 
-import { memo, startTransition, useMemo, useRef, useState } from "react";
-import { useSlidingUnderline } from "@/components/ui/use-sliding-underline";
+import { useMemo } from "react";
 import { Maximize2 } from "lucide-react";
 import { TN_COLOR, TN_GROUPS, TN_SURVEY_GROUPS, TN_LABEL, TN_FULL, TN_SEAT_GROUPS, tnPct, type TnGroup, type TnSeatGroup, type TnShares, type TnYear } from "@/lib/tamil-nadu/model";
-import type { TnExitPollView, TnOpinionPollView, TnSocial } from "@/lib/tamil-nadu/view-data";
+import type { TnExitPollView, TnOpinionPollView } from "@/lib/tamil-nadu/view-data";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
 import { cn } from "@/lib/utils";
-import SocialPanel from "@/components/ads-desk/social-panel";
-
-const MemoSocialPanel = memo(SocialPanel);
 
 export type TnTab = "change" | "share" | "seats";
 const TABS: { id: TnTab; label: string }[] = [
   { id: "change", label: "Change" }, { id: "share", label: "Share" }, { id: "seats", label: "Seats" },
 ];
-export type TnView = "polls" | "social";
-
 export type TnScopeResult = {
   label: string;
   baselineYear: TnYear;
@@ -102,26 +96,14 @@ function DisplayPartyCell({ group, compact }: { group: DisplayGroup; compact: bo
 }
 
 export default function TamilNaduRail({
-  scope, tab, onTab, onExpand, theme, selectedYear, isStatewide, opinionPoll, exitPoll, social, actualShares,
-  onViewChange, panelWidth = 500, owner = false, socialRegions,
+  scope, tab, onTab, onExpand, theme, selectedYear, isStatewide, opinionPoll, exitPoll, actualShares,
+  panelWidth = 500, owner = false,
 }: {
   scope: TnScopeResult; tab: TnTab; onTab: (t: TnTab) => void; onExpand: () => void;
   theme: "light" | "dark"; selectedYear: TnYear | "2026"; isStatewide: boolean;
-  opinionPoll: OpinionPollView; exitPoll: TnExitPollView; social: TnSocial; socialRegions?: TnSocial[]; actualShares: TnShares | null;
-  onViewChange?: (view: TnView) => void; panelWidth?: number; owner?: boolean;
+  opinionPoll: OpinionPollView; exitPoll: TnExitPollView; actualShares: TnShares | null;
+  panelWidth?: number; owner?: boolean;
 }) {
-  const [view, setView] = useState<TnView>("polls");
-  const [openedSocial, setOpenedSocial] = useState(false);
-  const viewTabsRef = useRef<HTMLDivElement>(null);
-  const viewUnderline = useSlidingUnderline(viewTabsRef, view);
-  const socialViews = useMemo(() => socialRegions ?? [social], [socialRegions, social]);
-  const selectView = (next: TnView) => {
-    onViewChange?.(next);
-    startTransition(() => {
-      setView(next);
-      if (next === "social") setOpenedSocial(true);
-    });
-  };
   const reduced = usePrefersReducedMotion();
   const p = palette(theme);
   const compact = panelWidth < 430;
@@ -242,33 +224,21 @@ export default function TamilNaduRail({
   const actualTotal = seatTotal(scope.actualSeats);
 
   return (
-    <section aria-label="Tamil Nadu vote share" className="social-panel rounded-2xl border border-[var(--border-hairline)] bg-[var(--surface-panel)] p-3">
+    <section aria-label="Tamil Nadu vote share" className="social-panel rounded-2xl border border-[#E6E6E6] bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,.04)]">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="font-display text-lg font-semibold leading-tight">Tamil Nadu {selectedYear} · Vote Share</h2>
-          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+          <h2 className="font-display text-[22px] font-semibold leading-tight tracking-[-0.02em]">Tamil Nadu {selectedYear} · Vote Share</h2>
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6B6B6B]">
             {isStatewide ? "Statewide" : scope.label}
           </p>
         </div>
         <button type="button" onClick={onExpand} aria-label="Expand the vote-share analysis"
-          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-[10px] font-semibold text-muted-foreground transition-colors hover:border-teal/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60 sm:min-h-8">
+          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg border border-[#CFCFCF] px-2 py-1.5 text-[10px] font-semibold text-[#6B6B6B] transition-colors hover:border-[#0B0B0B] hover:text-[#0B0B0B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0B]/40 sm:min-h-8">
           <Maximize2 className="size-3" /> Expand
         </button>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <div ref={viewTabsRef} className={cn(segWrap, "relative grid min-w-0 flex-1 grid-cols-2")} role="tablist" aria-label="Comparison content">
-          <button type="button" role="tab" aria-selected={view === "polls"} data-tab-active={view === "polls" || undefined} onClick={() => selectView("polls")} className={segButton(view === "polls")}>
-            Polls
-          </button>
-          <button type="button" role="tab" aria-selected={view === "social"} data-tab-active={view === "social" || undefined} onClick={() => selectView("social")} className={segButton(view === "social")}>
-            Social Media
-          </button>
-          {viewUnderline && <span className="tab-underline" style={{ transform: `translateX(${viewUnderline.left}px)`, width: viewUnderline.width }} aria-hidden />}
-        </div>
-      </div>
-
-      <div hidden={view !== "polls"} style={{ contentVisibility: view === "polls" ? "visible" : "hidden" }}>
+      <div className="mt-2">
         <>
           {isStatewide ? (
             <div className="mt-2 overflow-x-auto rounded-lg border border-border/70">
@@ -394,11 +364,6 @@ export default function TamilNaduRail({
           </div>
         </>
       </div>
-      {openedSocial && (
-        <div hidden={view !== "social"} style={{ contentVisibility: view === "social" ? "visible" : "hidden" }}>
-          <MemoSocialPanel compact regions={socialViews} />
-        </div>
-      )}
       {selectedYear === "2026" && scope.currentValid === 0 && <p className="mt-1 text-[9px] text-muted-foreground">No valid 2026 estimate in this scope.</p>}
     </section>
   );

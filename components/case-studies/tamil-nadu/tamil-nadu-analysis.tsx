@@ -6,9 +6,8 @@ import {
   TN_COLOR, TN_GROUPS, TN_LABEL, TN_SEAT_GROUPS,
   type TnAggregates, type TnGroup, type TnSeatGroup, type TnShares, type TnYear,
 } from "@/lib/tamil-nadu/model";
-import type { TnEciActualView, TnExitPollView, TnForecaster, TnSocial } from "@/lib/tamil-nadu/view-data";
-import SocialPanel from "@/components/ads-desk/social-panel";
-import type { OpinionPollView, TnTab, TnView } from "@/components/case-studies/tamil-nadu/tamil-nadu-rail";
+import type { TnEciActualView, TnExitPollView, TnForecaster } from "@/lib/tamil-nadu/view-data";
+import type { OpinionPollView, TnTab } from "@/components/case-studies/tamil-nadu/tamil-nadu-rail";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
 import AnalysisShell from "@/components/case-studies/shared/analysis-shell";
@@ -93,7 +92,7 @@ const groupSum = (shares: TnShares | null | undefined, group: AnalysisGroup) => 
 const SERIES_OPACITY = { exit: 0.42, opinion: 0.72, actual: 1, survey: 0.58, baseline: 0.34 };
 
 export default function TamilNaduAnalysis({
-  open, onClose, data, theme, initialScope, defaultBaseline, opinionPoll, exitPoll, eciActual, social, socialRegions, forecasters, forecastActualSeats, initialView, initialTab, owner = false,
+  open, onClose, data, theme, initialScope, defaultBaseline, opinionPoll, exitPoll, eciActual, forecasters, forecastActualSeats, initialTab, owner = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -106,11 +105,8 @@ export default function TamilNaduAnalysis({
   opinionPoll: OpinionPollView;
   exitPoll: TnExitPollView;
   eciActual: TnEciActualView;
-  social: TnSocial;
-  socialRegions?: TnSocial[];
   forecasters: TnForecaster[];
   forecastActualSeats: number;
-  initialView: TnView;
   initialTab: TnTab;
   owner?: boolean;
 }) {
@@ -118,7 +114,6 @@ export default function TamilNaduAnalysis({
   const p = palette(theme);
   const [narrow, setNarrow] = useState(false);
   const [scope, setScope] = useState(initialScope);
-  const [view, setView] = useState<TnView>(initialView);
   const [chartMode, setChartMode] = useState<TnTab>(initialTab);
   const [visibleSeries, setVisibleSeries] = useState<string[]>(initialScope.startsWith("a:") || initialScope.startsWith("d:") ? ["survey", "baseline"] : opinionPoll.available ? ["exit", "opinion", "actual"] : ["exit", "actual"]);
   const [baselineYear, setBaselineYear] = useState<TnYear>(defaultBaseline);
@@ -139,10 +134,9 @@ export default function TamilNaduAnalysis({
   useEffect(() => {
     if (!open) return;
     setScope(initialScope);
-    setView(initialView);
     setChartMode(initialTab);
     setBaselineYear(defaultBaseline);
-  }, [open, initialScope, initialView, initialTab, defaultBaseline]);
+  }, [open, initialScope, initialTab, defaultBaseline]);
 
   const scopeRecord = useMemo(() => {
     if (scope.startsWith("a:")) return data.acs.find((a) => a.no === Number(scope.slice(2))) ?? data.acs[0];
@@ -593,23 +587,6 @@ export default function TamilNaduAnalysis({
     { id: "share", label: "Share" }, { id: "change", label: "Change" }, { id: "seats", label: "Seats" },
   ];
 
-  const headerTabs = (
-    <div className="report-tabs" role="tablist" aria-label="Analysis content">
-      {(["polls", "social"] as const).map((id) => (
-        <button
-          key={id}
-          type="button"
-          role="tab"
-          aria-selected={view === id}
-          onClick={() => setView(id)}
-          className="report-tab"
-        >
-          {id === "polls" ? "Polls" : "Social Media"}
-        </button>
-      ))}
-    </div>
-  );
-
   return (
     <AnalysisShell
       open={open}
@@ -619,12 +596,8 @@ export default function TamilNaduAnalysis({
       subtitle={scopeIsState
         ? `Statewide · Exit poll${opinionPoll.available ? ", opinion poll" : ""} and actual result`
         : `${scope.startsWith("a:") ? "Assembly" : "District"} · Survey estimate, ${baselineYear} result and actual availability`}
-      headerTabs={headerTabs}
       contentClassName="space-y-5"
     >
-      {view === "social" ? (
-<div className="space-y-3"><SocialPanel regions={socialRegions ?? [social]} /></div>
-      ) : (
         <>
           {/* ------------------------- polls overview ------------------------- */}
           <section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="Polls overview">
@@ -1068,7 +1041,6 @@ export default function TamilNaduAnalysis({
             </div>
           </section>
         </>
-      )}
     </AnalysisShell>
   );
 }
@@ -1088,6 +1060,3 @@ function SeriesLegend({ items }: { items: { label: string; opacity: number }[] }
   );
 }
 
-/* ------------------------------------------------------------------ *
- *  Social media view, kept as a readable table plus direct reach bars.
- * ------------------------------------------------------------------ */
