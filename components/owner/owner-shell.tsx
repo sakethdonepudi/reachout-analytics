@@ -90,11 +90,7 @@ export default function OwnerShell({ children, displayName, username }: { childr
       </nav>
 
       <div className={cn("shrink-0 border-t border-[#EAEAEA] p-2", collapsed && !mobile && "flex flex-col items-center")}>
-        <Link href="/" className={cn("flex min-h-10 items-center gap-2 rounded-lg px-3 text-[12px] font-medium text-[#6B6B6B] hover:bg-[#FAFAFA] hover:text-[#0B0B0C]", collapsed && !mobile && "justify-center px-0")} title="Main website">
-          <span className="grid size-7 place-items-center rounded-full border border-[#EAEAEA] text-[11px] font-bold" aria-hidden>↗</span>
-          {(!collapsed || mobile) && <span>Main website</span>}
-        </Link>
-        <div className={cn("mt-2 flex items-center gap-2 rounded-xl border border-[#EAEAEA] p-2", collapsed && !mobile && "justify-center border-0 p-0")}>
+        <div className={cn("flex items-center gap-2 rounded-xl border border-[#EAEAEA] p-2", collapsed && !mobile && "justify-center border-0 p-0")}>
           <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#0B0B0C] text-[10px] font-bold text-white">{initials(displayName)}</span>
           {(!collapsed || mobile) && <div className="min-w-0 flex-1"><p className="truncate text-[12px] font-semibold text-[#0B0B0C]">{displayName}</p><p className="truncate text-[10.5px] text-[#6B6B6B]">@{username}</p></div>}
           <button type="button" onClick={() => void signOut()} aria-label="Log out" title="Log out" className="grid size-8 shrink-0 place-items-center rounded-lg text-[#6B6B6B] hover:bg-[#F4F4F5] hover:text-[#0B0B0C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C]/40"><LogOut className="size-4" /></button>
