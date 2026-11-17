@@ -182,11 +182,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
 
         </div>
         <p className="mt-6 text-center text-[11.5px] text-[#6B6B6B]">ReachOut Analytics · Since 2023</p>
-        <div className="mt-1 flex items-center justify-center gap-2 text-[11.5px]">
-          <Link href="/" className="font-medium text-[#0B0B0C] underline decoration-dotted underline-offset-4">Back to home</Link>
-          <span className="text-[#C9C9C9]" aria-hidden>·</span>
-          <a href="https://www.reachoutanalytics.com" className="font-medium text-[#0B0B0C] underline decoration-dotted underline-offset-4">Main website</a>
-        </div>
+        <Link href="/" className="mt-1 block text-center text-[11.5px] font-medium text-[#0B0B0C] underline decoration-dotted underline-offset-4">Back to home</Link>
       </div>
       </main>
     </>
