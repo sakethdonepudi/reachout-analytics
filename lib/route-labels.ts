@@ -10,9 +10,6 @@ const CASE_LABELS: Record<string, string> = {
 
 const ROUTE_LABELS: [string, string][] = [
   ["/", "Opening Home"],
-  ["/services/research-content", "Opening Research"],
-  ["/services", "Opening Services"],
-  ["/about", "Opening About"],
   ["/case-studies", "Opening Case Studies"],
   ["/dashboard", "Opening Dashboard"],
   ["/account/users", "Opening Users"],

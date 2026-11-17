@@ -24,8 +24,7 @@ type Stop = { kind: "hero" | "case" | "final"; c?: CaseStudy; t: THREE.Vector3; 
 
 /**
  * Fixed full-screen 3D map of India driven by scroll:
- * home → zoom to each tour case → zoomed-out interactive map → pulls away as
- * the contact section (with the globe) comes in.
+ * home → zoom to each tour case → zoomed-out interactive map.
  */
 export default function IndiaMap() {
   const navigate = useNavigate();
@@ -216,17 +215,14 @@ export default function IndiaMap() {
     const distFor = (s: Stop) => (s.kind === "case" ? Math.max(s.dist, 165 / camera.aspect) : Math.max(s.dist, 1150 / camera.aspect));
 
     /* ---------- input ---------- */
-    let tTarget = 0, tCur = 0, contactP = 0, heroP = 0;
+    let tTarget = 0, tCur = 0;
     const readScroll = () => {
       const tour = document.getElementById("tour");
-      const contact = document.getElementById("contact");
       if (!tour) return;
       const tourTop = tour.getBoundingClientRect().top + scrollY;
       const travel = Math.max(1, tour.offsetHeight - vh);
       const progress = clamp((scrollY - (tourTop - 64)) / travel, 0, 1);
       tTarget = Math.min(progress * (N + 0.35), N);
-      heroP = progress;
-      contactP = contact ? clamp(1 - contact.getBoundingClientRect().top / vh, 0, 1) : 0;
     };
     addEventListener("scroll", readScroll, { passive: true });
     readScroll();
@@ -235,7 +231,7 @@ export default function IndiaMap() {
     const mouse = { x: 0, y: 0, sx: 0, sy: 0, px: -1, py: -1 };
     let userYaw = 0, yawVel = 0, drag: { x: number } | null = null, dragMoved = false, finalOn = false, hovered: string | null = null;
     const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-    const isUI = (el: EventTarget | null) => !!(el as HTMLElement)?.closest?.("[data-ui],header,#top,#contact");
+    const isUI = (el: EventTarget | null) => !!(el as HTMLElement)?.closest?.("[data-ui],header,#top");
     const onMove = (e: PointerEvent) => {
       const rect = stage.getBoundingClientRect();
       mouse.x = ((e.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1;
@@ -289,27 +285,25 @@ export default function IndiaMap() {
       const s = Math.max(0, Math.min(sRaw, N));
       const S = STOPS[s] ?? STOPS[N];
       const mobile = vw <= 720;
-      const cE = ease(contactP);
 
       /* camera */
       tgt.lerpVectors(A.t, B.t, f);
       let dist = lerp(distFor(A), distFor(B), f);
       if (A.kind === "case" && B.kind === "case") dist += Math.sin(Math.PI * f) * 170;
-      dist *= 1 + cE * 3.2; // pull away into space as the contact page arrives
       let phi = lerp(A.phi, B.phi, f), theta = lerp(A.theta, B.theta, f);
       const heroW = A.kind === "hero" ? 1 - f : 0, finalW = B.kind === "final" ? f : 0;
-      finalOn = finalW > 0.9 && contactP < 0.15;
+      finalOn = finalW > 0.9;
       if (!drag) { userYaw += yawVel; yawVel *= 0.92; }
       if (!finalOn) userYaw *= 0.94;
       mouse.sx += (mouse.x - mouse.sx) * fr(0.05); mouse.sy += (mouse.y - mouse.sy) * fr(0.05);
-      theta += heroW * Math.sin(time * 0.18) * 0.14 + finalW * (userYaw + Math.sin(time * 0.12) * 0.06) + mouse.sx * 0.06 - cE * 0.25;
-      phi = clamp(phi + mouse.sy * 0.04 - cE * 0.45, 0.12, 1.25);
+      theta += heroW * Math.sin(time * 0.18) * 0.14 + finalW * (userYaw + Math.sin(time * 0.12) * 0.06) + mouse.sx * 0.06;
+      phi = clamp(phi + mouse.sy * 0.04, 0.12, 1.25);
       camera.position.set(tgt.x + dist * Math.sin(phi) * Math.sin(theta), tgt.y + dist * Math.cos(phi), tgt.z + dist * Math.sin(phi) * Math.cos(theta));
       camera.lookAt(tgt);
       const offOf = (st: Stop) => (st.kind === "case" ? 0.16 : st.offX ?? 0);
       const k = lerp(A.kind === "case" ? 1 : 0, B.kind === "case" ? 1 : 0, f);
-      const ox = lerp(offOf(A), offOf(B), f) * (1 - cE);
-      camera.setViewOffset(vw, vh, mobile ? 0 : ox * vw, mobile ? (k * 0.2 + finalW * 0.12 * (1 - cE)) * vh : 0, vw, vh);
+      const ox = lerp(offOf(A), offOf(B), f);
+      camera.setViewOffset(vw, vh, mobile ? 0 : ox * vw, mobile ? (k * 0.2 + finalW * 0.12) * vh : 0, vw, vh);
 
       /* live case */
       const active = S.kind === "case" ? S.c! : null;
@@ -350,14 +344,12 @@ export default function IndiaMap() {
       if (PN) { particles.rotation.y = time * 0.012; particles.position.y = Math.sin(time * 0.3) * 4; }
 
       /* the map now lives inside its own section, so it is never blurred by the page above it */
-      const op = (1 - cE * 0.9).toFixed(2);
-      if (canvas.style.opacity !== op) canvas.style.opacity = op;
-      if (railRef.current) { const ra = stageVisible ? clamp(1 - contactP * 2, 0, 1) : 0; railRef.current.style.opacity = String(ra); railRef.current.style.pointerEvents = ra > 0.5 ? "auto" : "none"; }
+      if (canvas.style.opacity !== "1") canvas.style.opacity = "1";
+      if (railRef.current) { railRef.current.style.opacity = stageVisible ? "1" : "0"; railRef.current.style.pointerEvents = stageVisible ? "auto" : "none"; }
 
       /* card */
       let cardA = 0;
       if (S.kind === "case") cardA = clamp(1 - (Math.abs(tCur - s) - 0.2) / 0.12, 0, 1);
-      cardA *= 1 - clamp(contactP * 4, 0, 1);
       const card = cardRef.current;
       const slug = active && cardA > 0 ? active.slug : lastCardSlug;
       if (slug !== lastCardSlug) { lastCardSlug = slug; setCardCase(CASES.find((c) => c.slug === slug) ?? null); }
@@ -386,7 +378,7 @@ export default function IndiaMap() {
       if (leaderRef.current) leaderRef.current.style.opacity = String(cardA);
 
       /* final UI + pins */
-      const fA = clamp((tCur - (N - 0.3)) / 0.25, 0, 1) * (1 - clamp(contactP * 3, 0, 1));
+      const fA = clamp((tCur - (N - 0.3)) / 0.25, 0, 1);
       CASES.forEach((c) => {
         const p = pinRefs.current[c.slug];
         if (!p) return;

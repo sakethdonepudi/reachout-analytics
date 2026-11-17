@@ -303,7 +303,6 @@ button { min-width: 40px; }
 .hit-expand::after { content: ""; position: absolute; inset: -4px; }
 main table a { display: inline-flex; min-height: 40px; align-items: center; }
 nav[aria-label="Footer"] a,
-#contact a,
 .footer-link { display: inline-flex; min-height: 40px; align-items: center; }
 @media (max-width: 767px) {
   .hit-expand { min-height: 44px; }
@@ -1930,38 +1929,6 @@ tr[data-highlight="true"] { background: var(--r-hl); }
   .campaign-cards { display: block; }
 }
 
-/* Precision contact section */
-.precision-contact { background: #ffffff; }
-.precision-contact .report-card {
-  background: #ffffff;
-  border: 1px solid var(--p-line);
-  border-radius: 16px;
-  box-shadow: var(--p-shadow);
-}
-.precision-contact input,
-.precision-contact textarea {
-  border: 1px solid #CFCFCF !important;
-  border-radius: 10px;
-  background: #ffffff;
-  color: var(--p-ink);
-}
-.precision-contact input:focus,
-.precision-contact textarea:focus {
-  border-color: #0B0B0C !important;
-  box-shadow: 0 0 0 3px rgba(11, 11, 12, .08);
-  outline: none;
-}
-.precision-contact .report-card .border-dashed { border-color: var(--p-line); }
-
-/* Company marquee on white, grayscale until hover */
-.company-marquee { background: #ffffff !important; border-top: 1px solid var(--p-line); }
-.company-eyebrow { color: var(--p-muted) !important; }
-.company-marquee h2 { color: var(--p-ink) !important; }
-.company-tile { background: #ffffff !important; border: 1px solid var(--p-line); }
-.company-logo { filter: grayscale(1); opacity: .62; transition: filter 200ms var(--ease-out), opacity 200ms var(--ease-out); }
-.company-tile:hover .company-logo,
-.company-tile:focus-visible .company-logo { filter: none; opacity: 1; }
-
 /* Precision auth pages */
 .auth-shell { background: #ffffff; position: relative; overflow: hidden; }
 .auth-shell::before {
@@ -2033,10 +2000,6 @@ tr[data-highlight="true"] { background: var(--r-hl); }
 .precision-public .bg-card\/70 { background: var(--p-bg-alt) !important; }
 .precision-public .bg-card,
 .precision-public .bg-elevated { background: #ffffff !important; }
-.precision-public #data-analytics,
-.precision-public #research-content,
-.precision-public #enquiry { background: #ffffff !important; }
-.precision-public #enquiry { background: var(--p-bg-alt) !important; }
 .precision-public .service-card-icon {
   color: var(--p-ink) !important;
   border-color: var(--p-line) !important;
@@ -2092,12 +2055,6 @@ tr[data-highlight="true"] { background: var(--r-hl); }
 
 /* Precision about hero */
 .precision-hero-band > div[aria-hidden] { display: none !important; }
-.precision-hero-band a[href="/#contact"] {
-  background: #0B0B0C !important;
-  color: #fff !important;
-  box-shadow: none !important;
-  border-radius: 10px;
-}
 .about-page .about-eyebrow { color: var(--p-muted) !important; }
 .about-page .about-visual { filter: grayscale(1); opacity: .92; }
 .about-page .text-\[color\:var\(--about-lime\)\] { color: var(--p-muted) !important; }

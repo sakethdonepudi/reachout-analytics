@@ -107,7 +107,7 @@ export const CONTACT = {
   email: "hr@reachoutanalytics.com",
   phone: "+91 93901 07086",
   address: "Pillar no. 1677, Unit No. 402, 4th Floor, Westend Mall, Rd Number 36, Jubilee Hills, Hyderabad, Telangana 500081",
-  linkedin: "https://www.linkedin.com/company/reachout-analytics-private-limited/about/",
+  linkedin: "https://www.linkedin.com/company/reachout-analytics-private-limited/",
   instagram: "https://www.instagram.com/reachout_analytics_pvt_ltd/",
 };
 
