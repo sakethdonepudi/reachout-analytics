@@ -32,10 +32,6 @@ export const PUBLIC_NAV: NavItem[] = [
 export const CLIENT_NAV: NavItem[] = [
   { key: "home", label: "Home", href: "/", icon: "home" },
   { key: "cases", label: "Case Studies", href: "/case-studies", icon: "casesOpen" },
-  { key: "services", label: "Services", href: "/services", icon: "services" },
-  { key: "research", label: "Research", href: "/services/research-content", icon: "research" },
-  { key: "about", label: "About Us", href: "/about", icon: "about" },
-  { key: "contact", label: "Contact", href: "/#contact", icon: "contact" },
 ];
 
 export const OWNER_NAV: NavItem[] = [
@@ -47,6 +43,7 @@ export const ADMIN_LOGIN: NavItem = { key: "login", label: "Admin Login", href: 
 export const ADS_DESK: NavItem = { key: "ads", label: "Ads Desk", href: "/dashboard", icon: "ads" };
 
 export const ACCOUNT_ITEMS = {
+  account: { key: "account", label: "Account", href: "/account/security", icon: "security" as NavIconName },
   users: { key: "users", label: "Users", href: "/account/users", icon: "users" as NavIconName },
   sessions: { key: "sessions", label: "Sessions", href: "/account/sessions", icon: "sessions" as NavIconName },
   security: { key: "security", label: "Security", href: "/account/security", icon: "security" as NavIconName },

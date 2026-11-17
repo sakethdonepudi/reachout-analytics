@@ -218,14 +218,8 @@ export default function NavCore({ variant, displayName, username, organisation, 
                           <MenuLink item={ACCOUNT_ITEMS.security} />
                         </>
                       )}
-                      {variant === "client" && (
-                        <>
-                          <MenuLink item={ACCOUNT_ITEMS.security} />
-                          <MenuLink item={ACCOUNT_ITEMS.sessions} />
-                          <MenuLink item={ACCOUNT_ITEMS.password} />
-                        </>
-                      )}
-                      <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-left text-[12px] font-medium text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)]"><NavIcon name="logout" /> Sign out</button>
+                      {variant === "client" && <MenuLink item={ACCOUNT_ITEMS.account} />}
+                      <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-left text-[12px] font-medium text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)]"><NavIcon name="logout" /> {variant === "client" ? "Log out" : "Sign out"}</button>
                     </div>
                   )}
                 </div>
@@ -253,9 +247,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
               </details>
               {CLIENT_NAV.slice(2).map((item) => <MobileLink key={item.key} item={item} />)}
               <div className="my-1 h-px bg-[var(--h-border)]/20" />
-              <MobileLink item={ACCOUNT_ITEMS.security} />
-              <MobileLink item={ACCOUNT_ITEMS.sessions} />
-              <MobileLink item={ACCOUNT_ITEMS.password} />
+              <MobileLink item={ACCOUNT_ITEMS.account} />
             </>
           )}
           {variant === "owner" && (
@@ -270,7 +262,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
               <MobileLink item={ACCOUNT_ITEMS.security} />
             </>
           )}
-          {variant !== "public" && <button type="button" onClick={() => void signOut()} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-[14px] font-medium text-[var(--h-muted)]"><NavIcon name="logout" /> Sign out</button>}
+          {variant !== "public" && <button type="button" onClick={() => void signOut()} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-[14px] font-medium text-[var(--h-muted)]"><NavIcon name="logout" /> {variant === "client" ? "Log out" : "Sign out"}</button>}
         </div>
       </Sheet>
     </>

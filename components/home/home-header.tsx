@@ -104,7 +104,7 @@ export default function HomeHeader({
                     <div role="menu" data-open={casesOpen} aria-hidden={!casesOpen} className="home-menu absolute left-0 top-[calc(100%+8px)] z-[var(--z-dropdown)] max-h-[70vh] w-72 overflow-y-auto rounded-xl border border-[#E6E6E6] bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,.08)]">
                       {Object.entries(grouped).map(([state, rows]) => (
                         <div key={state} className="mb-1 last:mb-0">
-                          <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8A8A8A]">{state}</p>
+                          <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">{state}</p>
                           {rows.map((row) => (
                             <Link key={row.slug} href={`/case-studies/${row.slug}`} role="menuitem" onClick={() => setCasesOpen(false)} className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
                               <NavPartyMark party={row.party} />
@@ -139,17 +139,16 @@ export default function HomeHeader({
                   <span className="sr-only">Account menu</span>
                   <span className="grid size-7 place-items-center rounded-full bg-[#0B0B0C] text-[10px] font-bold text-white">{(displayName ?? "You").split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")}</span>
                   <span className="max-w-[110px] truncate">{displayName ?? "Account"}</span>
-                  <span className="text-[9.5px] tabular-nums text-[#8A8A8A]">{idleLabel(remainingMs)}</span>
+                  <span className="text-[9.5px] tabular-nums text-[#6B6B6B]">{idleLabel(remainingMs)}</span>
                 </button>
                 <div role="menu" data-open={accountOpen} aria-hidden={!accountOpen} className="home-menu absolute right-0 top-[calc(100%+8px)] z-[var(--z-dropdown)] w-60 rounded-xl border border-[#E6E6E6] bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,.08)]">
+                  <p className="px-2 pb-0.5 text-[12px] font-semibold text-[#0B0B0C]">{displayName ?? "Account"}</p>
                   <p className="px-2 pb-1 text-[11px] text-[#6B6B6B]">Signs out in {idleLabel(remainingMs)}</p>
-                  {[ACCOUNT_ITEMS.security, ACCOUNT_ITEMS.sessions, ACCOUNT_ITEMS.password].map((item) => (
-                    <Link key={item.key} href={item.href} role="menuitem" onClick={() => setAccountOpen(false)} className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
-                      <NavIcon name={item.icon} /> {item.label}
-                    </Link>
-                  ))}
+                  <Link href={ACCOUNT_ITEMS.account.href} role="menuitem" onClick={() => setAccountOpen(false)} className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
+                    <NavIcon name={ACCOUNT_ITEMS.account.icon} /> {ACCOUNT_ITEMS.account.label}
+                  </Link>
                   <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
-                    <LogOut className="size-4" /> Sign out
+                    <LogOut className="size-4" /> Log out
                   </button>
                 </div>
               </div>
@@ -167,7 +166,7 @@ export default function HomeHeader({
           {role === "client" ? (
             <>
               <MobileLink item={CLIENT_NAV[0]} />
-              <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8A8A8A]">Case Studies</p>
+              <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">Case Studies</p>
               {cases.map((row) => (
                 <Link key={row.slug} href={`/case-studies/${row.slug}`} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#0B0B0C]">
                   <NavPartyMark party={row.party} />
@@ -176,10 +175,10 @@ export default function HomeHeader({
               ))}
               {CLIENT_NAV.slice(2).map((item) => <MobileLink key={item.key} item={item} />)}
               <div className="my-1 h-px bg-[#E6E6E6]" />
-              {[ACCOUNT_ITEMS.security, ACCOUNT_ITEMS.sessions, ACCOUNT_ITEMS.password].map((item) => <MobileLink key={item.key} item={item} />)}
+              <MobileLink item={ACCOUNT_ITEMS.account} />
               <p className="px-3 pt-2 text-[11px] text-[#6B6B6B]">Signs out in {idleLabel(remainingMs)}</p>
               <button type="button" onClick={() => void signOut()} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-[14px] font-medium text-[#0B0B0C]">
-                <LogOut className="size-4" /> Sign out
+                <LogOut className="size-4" /> Log out
               </button>
             </>
           ) : (
