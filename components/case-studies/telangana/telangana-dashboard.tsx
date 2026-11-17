@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Check, ChevronDown, RotateCcw, Search } from "lucide-react";
-import { PartyIdentity } from "@/components/site/party-mark";
+import PartyCard from "@/components/case-studies/shared/party-card";
 import { cn } from "@/lib/utils";
 import {
   NO_DATA_COLOR, PARTIES, PARTY_COLOR, PARTY_LABEL, leaderOf, shadeHex, weightedShares,
@@ -33,7 +33,7 @@ const TelanganaAnalysis = dynamic(() => import("./telangana-analysis"), {
 
 type Tab = "change" | "share" | "seats";
 
-const LABEL = "text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
+const LABEL = "text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6B6B6B]";
 
 type Option = { value: string; label: string; hint?: string };
 
@@ -233,35 +233,33 @@ export default function TelanganaDashboard({ aggregates, history }: { aggregates
   const isStatewide = !district && !currentAc;
 
   return (
-    <div className="app-chrome relative min-h-screen bg-white text-[var(--p-ink)]">
+    <div className="app-chrome relative min-h-0 bg-white text-[var(--p-ink)]">
 
-      <section className="relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-24 sm:pt-28 lg:flex lg:h-[100svh] lg:min-h-[760px] lg:flex-col lg:overflow-hidden lg:px-6 lg:pt-20">
+      <section className="relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-0 sm:px-6 xl:flex xl:h-[calc(100svh-9.5rem)] xl:min-h-[600px] xl:flex-col xl:overflow-hidden xl:px-6">
         <CaseStudySplit
           storageKey="telangana"
-          controlsWidth={250}
-          defaultPanelWidth={420}
-          minPanelWidth={340}
-          maxPanelWidth={620}
+          controlsWidth={288}
+          defaultPanelWidth={440}
+          minPanelWidth={400}
+          maxPanelWidth={460}
           minMapWidth={320}
           controlsLabel="Telangana map controls"
           panelLabel="Telangana comparison"
           onResizeEnd={() => setFitKey((key) => key + 1)}
-          className="lg:flex-1"
+          className="xl:flex-1"
           controls={(
             <div className="relative z-30 lg:min-h-0">
               <Link href="/case-studies"
-                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-[var(--surface-panel)] px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#CFCFCF] bg-white px-3 py-1.5 text-[12.5px] text-[#6B6B6B] transition-colors hover:border-[#0B0B0B] hover:text-[#0B0B0B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
                 <ArrowLeft className="size-3.5" /> Back to Case Studies
               </Link>
 
-              <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Telangana</p>
-              <h1 className="mt-1 font-display text-[clamp(27px,3.2vw,40px)] font-semibold leading-[1.02] tracking-[-0.03em]">ReachOut&apos;s Election Intelligence</h1>
-              <PartyIdentity party="BRS" state="Telangana" size="sm" className="mt-3" />
+              <PartyCard party="BRS" state="Telangana" className="mt-4" />
 
               <div className="mt-5 space-y-3 pb-2">
                 <div>
                   <span className={LABEL}>Election year</span>
-                  <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-border p-0.5" role="group" aria-label="Election year">
+                  <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-[#E6E6E6] p-0.5" role="group" aria-label="Election year">
                     {ELECTION_YEARS.map((y) => (
                       <button key={y} type="button" aria-pressed={year === y} onClick={() => setYear(y)}
                         className={cn("min-h-10 rounded-md px-2 py-1.5 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60",

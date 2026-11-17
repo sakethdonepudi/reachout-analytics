@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import Navbar from "@/components/site/navbar";
-import { PartyIdentity } from "@/components/site/party-mark";
+import PartyCard from "@/components/case-studies/shared/party-card";
 import StateMap from "@/components/case-studies/shared/state-map";
 import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl } from "@/lib/cases";
 import { requirePageSession } from "@/lib/require-session";
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const c = caseBySlug(slug);
   const u = UPCOMING.find((x) => x.slug === slug);
-  const title = `${c?.title ?? u?.title ?? "Case study"} — ReachOut Analytics`;
+  const title = c ? `${c.party} · ${c.stateName} | ReachOut Analytics` : `${u?.title ?? "Case study"} | ReachOut Analytics`;
   const description = c?.summary ?? "We're preparing for this election cycle. Get in touch to discuss how data can shape your campaign.";
   return {
     title,
@@ -54,8 +54,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function CaseStudyPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CaseStudyPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ view?: string }> }) {
   const { slug } = await params;
+  const view = (await searchParams).view;
   const session = await requirePageSession(`/case-studies/${slug}`);
   if (!(await caseAllowed(session, slug))) redirect("/no-access");
   const social = await socialForCase(slug, session.role === "owner");
@@ -69,31 +70,33 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
   return (
     <>
       <Navbar />
-      <CaseStudyTabs social={<main className="min-h-screen bg-background pt-12 text-foreground"><div className="mx-auto max-w-6xl px-6 pb-24 sm:px-10"><SocialPanel regions={social} /></div></main>}>
-      <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
-        <div className="relative mx-auto max-w-6xl px-6 pb-24 pt-24 sm:px-10">
-          <CaseBackLink className="report-link tap inline-flex items-center gap-2 text-[12.5px]">
+      <h1 className="sr-only">{c ? `${c.party} · ${c.stateName}` : upcoming!.title}</h1>
+      <CaseStudyTabs
+        initialTab={view === "social" ? "social" : "polls"}
+        party={c?.party}
+        stateName={c?.stateName}
+        social={<SocialPanel regions={social} />}
+      >
+      <main className="app-chrome relative min-h-0 overflow-hidden bg-white text-[var(--p-ink)]">
+        <div className="relative mx-auto max-w-6xl px-6 pb-16 pt-0 sm:px-10">
+          <CaseBackLink className="tap inline-flex items-center gap-2 rounded-full border border-[#CFCFCF] bg-white px-3 py-1.5 text-[12.5px] text-[#6B6B6B] transition-colors hover:border-[#0B0B0B] hover:text-[#0B0B0B]">
             <ArrowLeft className="size-4" /> Back to case studies
           </CaseBackLink>
 
           <div className={`mt-8 grid items-start gap-6 ${c ? "lg:grid-cols-[320px_minmax(0,1fr)]" : ""}`}>
             {c && <StateMap stateCode={c.state} stateName={c.stateName} year={yearFor(c.slug)} party={c.party} />}
             <div>
-              <span className="rounded-full border border-[#E6E6E6] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#555]">
-                {c ? `Case study · ${c.badge}` : "Upcoming"}
-              </span>
-              <h1 className="mt-6 font-display text-[clamp(44px,6vw,84px)] font-semibold leading-[0.98] tracking-[-0.035em]">
-                {c?.title ?? upcoming!.title}
-              </h1>
-              {c && (
-                <div className="mt-5 flex flex-wrap items-center gap-4">
-                  <p className="flex items-center gap-2 text-muted-foreground">
+              {c ? (
+                <>
+                  <PartyCard party={c.party} state={c.stateName} className="max-w-[320px]" />
+                  <p className="mt-5 flex items-center gap-2 text-muted-foreground">
                     <MapPin className="size-4 text-[#0B0B0C]" /> {c.region}
                   </p>
-                  <PartyIdentity party={c.party} state={c.stateName} size="sm" />
-                </div>
+                </>
+              ) : (
+                <span className="rounded-full border border-[#E6E6E6] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#555]">Upcoming</span>
               )}
-              <p className="mt-8 max-w-xl text-xl leading-relaxed text-foreground/80">
+              <p className={c ? "mt-6 max-w-xl text-xl leading-relaxed text-foreground/80" : "mt-6 max-w-xl text-xl leading-relaxed text-foreground/80"}>
                 {c?.summary ?? "We're preparing for this election cycle. Get in touch to discuss how data can shape your campaign."}
               </p>
             </div>
@@ -118,9 +121,6 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
               </div>
             </>
           )}
-
-          <section className="mt-16"><SocialPanel regions={social} /></section>
-
 
           {c && (
             <div className="mt-16 flex items-center justify-end border-t border-border pt-10">

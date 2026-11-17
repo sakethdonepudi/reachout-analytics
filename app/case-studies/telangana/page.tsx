@@ -11,11 +11,11 @@ import { getClientHistory } from "@/lib/telangana/history-server";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Telangana — ReachOut's Election Intelligence",
+  title: "BRS · Telangana | ReachOut Analytics",
   description:
     "Interactive Telangana assembly election history: 2014, 2018 and 2023 actual winners, the 2028 prediction, survey-round projections and swing analysis across 119 constituencies.",
   openGraph: {
-    title: "Telangana — ReachOut's Election Intelligence",
+    title: "BRS · Telangana | ReachOut Analytics",
     description: "Interactive Telangana assembly election history: 2014, 2018 and 2023 actual winners, the 2028 prediction, survey-round projections and swing analysis across 119 constituencies.",
     images: [{ url: "https://reachout-analytics.vercel.app/og/telangana.png", width: 1200, height: 630, alt: "BRS · Telangana case study" }],
   },
@@ -24,7 +24,8 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function TelanganaCaseStudyPage() {
+export default async function TelanganaCaseStudyPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+  const view = (await searchParams).view;
   const session = await requirePageSession("/case-studies/telangana");
   if (!(await caseAllowed(session, "telangana"))) redirect("/no-access");
   const social = await socialForCase("telangana", session.role === "owner");
@@ -33,7 +34,13 @@ export default async function TelanganaCaseStudyPage() {
   return (
     <>
       <Navbar />
-      <CaseStudyTabs social={<main className="min-h-screen bg-background pt-16 text-foreground"><div className="mx-auto max-w-6xl px-6 pb-24 sm:px-10"><SocialPanel regions={social} /></div></main>}>
+      <h1 className="sr-only">BRS · Telangana</h1>
+      <CaseStudyTabs
+        initialTab={view === "social" ? "social" : "polls"}
+        party="BRS"
+        stateName="Telangana"
+        social={<SocialPanel regions={social} />}
+      >
         <TelanganaDashboard aggregates={TELANGANA_DATA} history={history} />
       </CaseStudyTabs>
     </>
