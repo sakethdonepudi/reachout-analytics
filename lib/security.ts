@@ -41,6 +41,7 @@ export function securityHeaders(nonce: string): Record<string, string> {
     "Cross-Origin-Opener-Policy": "same-origin",
     "Cross-Origin-Resource-Policy": "same-origin",
     "X-Frame-Options": "DENY",
+    "X-Robots-Tag": "noindex, nofollow",
   };
 }
 

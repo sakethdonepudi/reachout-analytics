@@ -49,6 +49,7 @@ export const metadata: Metadata = {
   title: "ReachOut Analytics - Winning Elections with Data",
   description:
     "India's political analytics and campaign strategy experts. Voter insights, election predictions and digital boosting across India.",
+  robots: { index: false, follow: false, googleBot: { index: false, follow: false, noimageindex: true } },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Check, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Logo } from "@/components/site/brand";
@@ -113,8 +112,8 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
       <div className="relative w-full max-w-[420px]">
         <div className="mb-7 flex justify-center"><Logo /></div>
         <div className="auth-card">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--p-muted)]">Secure access</p>
-          <h1 className="type-h1 mt-2">{step === "totp" ? "Enter your code" : "Sign in"}</h1>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6B6B6B]">Political Analysis</p>
+          <h1 className="type-h1 mt-2">{step === "totp" ? "Enter your code" : "Sign in to continue"}</h1>
           <p className="type-small mt-2 text-[var(--text-muted)]">
             {step === "totp" ? `Open your authenticator app for ${username}.` : "Use your workspace username and password."}
           </p>
@@ -179,10 +178,10 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
             </form>
           )}
 
-          <div className="mt-5 flex items-center text-[12px] text-[var(--text-muted)]">
-            <Link href="/" className="footer-link hover:text-[var(--text-primary)]">Back to site</Link>
-          </div>
+
         </div>
+        <p className="mt-6 text-center text-[11.5px] text-[#6B6B6B]">ReachOut Analytics · Since 2023</p>
+        <a href="https://www.reachoutanalytics.com" className="mt-1 block text-center text-[11.5px] font-medium text-[#0B0B0C] underline decoration-dotted underline-offset-4">Back to main website</a>
       </div>
       </main>
     </>

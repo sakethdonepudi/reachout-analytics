@@ -50,17 +50,45 @@ export async function middleware(request: NextRequest) {
   const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
     const target = request.nextUrl.clone();
-    target.pathname = pathname.replace(/^\/admin/, "/dashboard/case-studies");
+    target.pathname = pathname.replace(/^\/admin/, "/dashboard");
     return applyCommon(NextResponse.redirect(target, 301), nonce, false);
   }
   const isProduction = process.env.NODE_ENV === "production";
   const token = request.cookies.get(isProduction ? PROD_COOKIE : DEV_COOKIE)?.value
     ?? request.cookies.get(DEV_COOKIE)?.value;
   const session = await sessionFromCookie(token, process.env.ADMIN_SESSION_SECRET || "");
+
+  const authPath = pathname === "/login"
+    || pathname === "/setup"
+    || pathname === "/api/setup"
+    || pathname === "/account/password"
+    || pathname === "/account/security/enroll"
+    || pathname.startsWith("/api/auth/")
+    || pathname.startsWith("/api/account/");
+
+  if (!session && !authPath) {
+    if (pathname.startsWith("/api/")) {
+      return applyCommon(NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 }), nonce, true);
+    }
+    const login = request.nextUrl.clone();
+    login.pathname = "/login";
+    login.search = "";
+    login.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+    return applyCommon(NextResponse.redirect(login), nonce, false);
+  }
+
+  if (session && pathname === "/login") {
+    return applyCommon(NextResponse.redirect(new URL(roleHome(session.role), request.url)), nonce, false);
+  }
+
+  // The app is a private workspace. The old public marketing routes now live
+  // on the main website.
+  if (session && (pathname === "/services" || pathname.startsWith("/services/") || pathname === "/research" || pathname === "/about" || pathname === "/contact")) {
+    return applyCommon(NextResponse.redirect(new URL("/", request.url)), nonce, false);
+  }
+
   if (pathname === "/campaigns" || pathname.startsWith("/meta-ads") || pathname === "/data") {
-    const destination = session?.role === "owner"
-      ? (pathname === "/data" ? "/dashboard/case-studies" : "/dashboard")
-      : session?.role === "client" ? "/case-studies" : "/login";
+    const destination = session?.role === "owner" ? "/dashboard" : "/";
     return applyCommon(NextResponse.redirect(new URL(destination, request.url)), nonce, false);
   }
   if (pathname === "/setup" && !process.env.SETUP_TOKEN) {

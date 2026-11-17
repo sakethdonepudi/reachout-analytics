@@ -46,7 +46,7 @@ eq("data client", canAccess("client", "/api/data/summary"), false);
 eq("template public", rolesForPath("/api/data/template"), null);
 eq("home public", rolesForPath("/"), null);
 eq("owner home", roleHome("owner"), "/dashboard");
-eq("client home", roleHome("client"), "/case-studies");
+eq("client home", roleHome("client"), "/");
 
 console.log("\n3. Password login");
 eq("equal passwords detected", passwordsAreEqual("same-pass", "same-pass"), true);
