@@ -43,7 +43,7 @@ export default function MappingEditor({ cases }: { cases: CaseRow[] }) {
         {message && <span role="status" className="text-[11.5px] text-[var(--text-muted)]">{message}</span>}
       </div>
       <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-[520px] border-collapse text-left text-[12px]">
+        <table className="owner-table w-full min-w-[520px] border-collapse text-left text-[12px]">
           <thead className="bg-[var(--surface-raised)] text-[9.5px] uppercase tracking-[0.08em] text-[var(--text-muted)]"><tr><th className="px-2 py-2">Region key</th><th className="px-2 py-2">Case study</th><th className="px-2 py-2">Status</th></tr></thead>
           <tbody>{keys.map((key) => {
             const mapped = mapping[key] ?? "";

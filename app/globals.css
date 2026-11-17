@@ -2191,3 +2191,24 @@ tr[data-highlight="true"] { background: var(--r-hl); }
     .case-split-panel { justify-content: safe center; }
   }
 }
+
+/* Owner dashboard tables stay light; case-study data tables keep their navy header. */
+.owner-table thead { background: #FAFAFA !important; color: #555555 !important; }
+.owner-table thead th,
+.owner-table thead td { color: #555555 !important; background: transparent !important; }
+.owner-table tbody tr { border-top-color: #EAEAEA; }
+
+/* Owner chrome: sidebar layouts use the width that the top navbar used. */
+[data-owner-content] main { padding-top: 1.5rem; }
+[data-owner-content] main.auth-shell { padding-top: 0; }
+[data-owner-content] .auth-shell { min-height: calc(100svh - 3.5rem); }
+[data-owner-content] .case-study-top-spacer { padding-top: 0; }
+[data-owner-content] .case-study-switch-bar { top: 0; }
+@media (max-width: 1023px) {
+  [data-owner-content] .case-study-switch-bar { top: 3.5rem; }
+  [data-owner-content] .auth-shell { min-height: calc(100svh - 3.5rem); }
+}
+@media (min-width: 1024px) {
+  [data-owner-content] .case-study-viewport { height: calc(100svh - 5.5rem); }
+  [data-owner-content] .auth-shell { min-height: calc(100svh - 1.5rem); }
+}

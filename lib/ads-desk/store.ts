@@ -183,3 +183,28 @@ export async function rebuildActiveSummaries(): Promise<number> {
   invalidateAdsCache();
   return summaries.length;
 }
+
+export type AdsTopCampaign = {
+  id: string;
+  name: string;
+  regionKey: string;
+  accountId: string;
+  results: number;
+  spend: number;
+  impressions: number;
+};
+
+/** Top campaigns for the dashboard. Reads the per-campaign rows, never the full blob. */
+export async function getTopCampaigns(versionId: string, limit = 10): Promise<AdsTopCampaign[]> {
+  const database = await db();
+  if (!database) return [];
+  await ensureIndexes(database);
+  return database.collection<AdsTopCampaign>("ads_campaigns")
+    .find(
+      { versionId, results: { $gt: 0 } },
+      { projection: { _id: 0, id: 1, name: 1, regionKey: 1, accountId: 1, results: 1, spend: 1, impressions: 1 } },
+    )
+    .sort({ results: -1 })
+    .limit(limit)
+    .toArray();
+}

@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { requireRecentAuth } from "@/lib/auth";
 import { requireCsrf } from "@/lib/csrf";
 import { prepareImportId, insertRowsRaw, finalizeImport, isConfigured } from "@/lib/poll-store";
 import type { Row, PollType } from "@/lib/poll-data";
@@ -11,7 +11,7 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   const csrf = requireCsrf(req);
   if (csrf) return csrf;
-  const auth = await requireAdmin(req);
+  const auth = await requireRecentAuth(req);
   if ("deny" in auth) return auth.deny;
   if (!(await isConfigured())) return Response.json({ ok: false, error: "Database not configured" }, { status: 503 });
 

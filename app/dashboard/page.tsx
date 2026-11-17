@@ -1,31 +1,35 @@
-import Navbar from "@/components/site/navbar";
-import AdsDesk from "@/components/ads-desk/ads-desk";
-import { requirePageSession } from "@/lib/require-session";
-import { getActiveVersion, listVersions } from "@/lib/ads-desk/store";
-import { unmappedRegions } from "@/lib/ads-desk/mapping";
-import { withOwnerLinks } from "@/lib/ads-desk/owner-view";
-import { getClientLinks } from "@/lib/ads-desk/settings";
+import { Suspense } from "react";
+import { getDashboardAnalytics, getDashboardShell } from "@/lib/dashboard/data";
+import OwnerDashboard from "@/components/owner/owner-dashboard";
+import MetaAnalytics, { AnalyticsSkeleton } from "@/components/owner/meta-analytics";
 
+export const metadata = { title: "Dashboard | ReachOut Analytics" };
 export const dynamic = "force-dynamic";
 
+async function AnalyticsSection() {
+  const data = await getDashboardAnalytics();
+  return <MetaAnalytics data={data} />;
+}
+
 export default async function DashboardPage() {
-  await requirePageSession("/dashboard", ["owner"]);
-  const [active, versions, unmapped, clientLinks] = await Promise.all([getActiveVersion(), listVersions(12), unmappedRegions(), getClientLinks()]);
+  const shell = await getDashboardShell();
   return (
-    <>
-      <Navbar />
-      <main className="app-chrome min-h-screen bg-white pt-24 text-[var(--p-ink)] sm:pt-28">
-        <div className="mx-auto w-full max-w-[1280px] px-4 pb-24 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="type-micro text-[var(--accent-brass-strong)]">Owner home</p>
-              <h1 className="font-display text-[clamp(28px,4vw,44px)] font-semibold tracking-[-0.03em]">Ads Desk</h1>
-            </div>
-            <a href="/dashboard/case-studies" className="footer-link text-[12px] font-semibold text-[var(--accent-brass-strong)]">Case studies dashboard</a>
+    <main className="min-h-0 bg-[#FAFAFA] px-4 py-6 text-[#0B0B0C] sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1440px]">
+        <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6B6B6B]">Owner control centre</p>
+            <h1 className="mt-1 font-display text-[clamp(28px,4vw,40px)] font-semibold tracking-[-0.03em] text-[#0B0B0C]">Dashboard</h1>
+            <p className="mt-1 text-[12.5px] text-[#6B6B6B]">Upload poll data, publish the Meta report, and watch the last published numbers.</p>
           </div>
-          <div className="mt-5"><AdsDesk data={active ? withOwnerLinks(active.data) : null} versions={versions.map((version) => ({ _id: version._id, uploadedAt: version.uploadedAt, uploadedBy: version.uploadedBy, sha256: version.sha256, fileName: version.fileName, status: version.status, takenAt: version.takenAt }))} defaultRegion="tn2026" unmapped={unmapped} clientLinks={clientLinks} /></div>
-        </div>
-      </main>
-    </>
+          {shell.version && <p className="text-[11.5px] text-[#6B6B6B]">Report uploaded {new Date(shell.version.uploadedAt).toLocaleString("en-IN")} · version {shell.version.number}</p>}
+        </header>
+        <OwnerDashboard shell={shell}>
+          <Suspense fallback={<AnalyticsSkeleton />}>
+            <AnalyticsSection />
+          </Suspense>
+        </OwnerDashboard>
+      </div>
+    </main>
   );
 }
