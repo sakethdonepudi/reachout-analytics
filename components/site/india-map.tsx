@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, X } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import * as THREE from "three";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 import { rafLoop } from "@/lib/raf-loop";
-import { CASES, UPCOMING, caseUrl, type CaseStudy } from "@/lib/cases";
+import { CASES, caseUrl, type CaseStudy } from "@/lib/cases";
 import { PartyMark } from "@/components/site/party-mark";
 import STATES from "@/lib/data/india-states.json";
 import { cn } from "@/lib/utils";
@@ -36,23 +36,12 @@ export default function IndiaMap() {
   const leaderRef = useRef<SVGSVGElement>(null);
   const leaderPath = useRef<SVGPathElement>(null);
   const leaderDot = useRef<SVGCircleElement>(null);
-  const finalRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
   const pinRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const selectedRef = useRef<string | null>(null);
-  const chipHoverRef = useRef<string | null>(null);
-
   const [cardCase, setCardCase] = useState<CaseStudy | null>(null);
-  const [cardIsFinal, setCardIsFinal] = useState(false);
-  const [selected, setSelectedState] = useState<string | null>(null);
   const [activeStop, setActiveStop] = useState(0);
   const [tip, setTip] = useState<{ name: string; sub?: string } | null>(null);
-
-  const setSelected = (id: string | null) => {
-    selectedRef.current = id;
-    setSelectedState(id);
-  };
 
   const stopsCount = TOUR.length + 2;
   const scrollToStop = (i: number) => {
@@ -258,8 +247,13 @@ export default function IndiaMap() {
     const onUp = () => { drag = null; };
     const onClick = (e: MouseEvent) => {
       if (!stage.contains(e.target as Node) || !finalOn || dragMoved || isUI(e.target)) return;
-      if (hovered) { const c = CASES.find((c) => c.state === hovered); if (c) { navigate.prefetch(caseUrl(c.slug)); setSelected(selectedRef.current === c.slug ? null : c.slug); return; } }
-      setSelected(null);
+      if (hovered) {
+        const c = CASES.find((item) => item.state === hovered);
+        if (c) {
+          navigate.prefetch(caseUrl(c.slug));
+          navigate.push(caseUrl(c.slug), { cover: { title: c.title, eyebrow: c.label, subtitle: c.region } });
+        }
+      }
     };
     addEventListener("pointermove", onMove);
     addEventListener("pointerdown", onDown);
@@ -276,7 +270,7 @@ export default function IndiaMap() {
     /* ---------- loop ---------- */
     const tgt = new THREE.Vector3(), tmp = new THREE.Vector3();
     const project = (v: THREE.Vector3) => { tmp.copy(v).project(camera); return { x: ((tmp.x + 1) / 2) * vw, y: ((1 - tmp.y) / 2) * vh }; };
-    let rendered = false, last = performance.now(), lastCardSlug: string | null = null, lastFinal = false, lastStop = -1, lastTip = "";
+    let rendered = false, last = performance.now(), lastCardSlug: string | null = null, lastStop = -1, lastTip = "";
 
     let stageVisible = true;
     const frame = (now: number) => {
@@ -318,14 +312,13 @@ export default function IndiaMap() {
       camera.setViewOffset(vw, vh, mobile ? 0 : ox * vw, mobile ? (k * 0.2 + finalW * 0.12 * (1 - cE)) * vh : 0, vw, vh);
 
       /* live case */
-      const sel = selectedRef.current;
-      const active = S.kind === "case" ? S.c! : finalOn && sel ? CASES.find((c) => c.slug === sel) ?? null : null;
+      const active = S.kind === "case" ? S.c! : null;
       if (finalOn && mouse.px >= 0 && !drag) {
         ndc.set(mouse.x, -mouse.y); ray.setFromCamera(ndc, camera);
         const hit = ray.intersectObjects(pickables, false)[0];
         hovered = hit ? (hit.object.userData.id as string) : null;
       } else hovered = null;
-      const hoverState = finalOn ? chipHoverRef.current ?? hovered : null;
+      const hoverState = finalOn ? hovered : null;
       document.body.style.cursor = finalOn && hovered ? (CASES.some((c) => c.state === hovered) ? "pointer" : "grab") : "";
 
       for (const id in states) {
@@ -364,13 +357,10 @@ export default function IndiaMap() {
       /* card */
       let cardA = 0;
       if (S.kind === "case") cardA = clamp(1 - (Math.abs(tCur - s) - 0.2) / 0.12, 0, 1);
-      else if (finalOn && sel) cardA = 1;
       cardA *= 1 - clamp(contactP * 4, 0, 1);
       const card = cardRef.current;
       const slug = active && cardA > 0 ? active.slug : lastCardSlug;
       if (slug !== lastCardSlug) { lastCardSlug = slug; setCardCase(CASES.find((c) => c.slug === slug) ?? null); }
-      const isFinal = S.kind === "final";
-      if (isFinal !== lastFinal) { lastFinal = isFinal; setCardIsFinal(isFinal); }
       if (card && active && cardA > 0) {
         const mm = markers[active.slug].m;
         const mp = project(tmp.set(mm.position.x, mm.position.y + 4, mm.position.z));
@@ -397,16 +387,10 @@ export default function IndiaMap() {
 
       /* final UI + pins */
       const fA = clamp((tCur - (N - 0.3)) / 0.25, 0, 1) * (1 - clamp(contactP * 3, 0, 1));
-      if (finalRef.current) {
-        finalRef.current.style.opacity = String(fA);
-        finalRef.current.style.transform = `translateY(${(1 - fA) * 30}px)`;
-        finalRef.current.style.pointerEvents = fA > 0.5 ? "auto" : "none";
-        finalRef.current.style.visibility = fA > 0.01 ? "visible" : "hidden";
-      }
       CASES.forEach((c) => {
         const p = pinRefs.current[c.slug];
         if (!p) return;
-        const show = fA > 0.5 && sel !== c.slug && !mobile;
+        const show = fA > 0.5 && !mobile;
         p.style.opacity = String(show ? fA : 0);
         p.style.pointerEvents = show ? "auto" : "none";
         if (show) {
@@ -500,11 +484,7 @@ export default function IndiaMap() {
             <div className="mb-3 flex items-center justify-between">
               <span className="rounded-full border border-[#E6E6E6] bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8A8A8A]">{cardCase.badge}</span>
               <div className="flex items-center gap-2">
-                {cardIsFinal ? (
-                  <button data-close onClick={() => setSelected(null)} className="grid size-6 place-items-center rounded-full bg-[var(--r-bg)] text-[var(--r-muted)] hover:text-[var(--r-ink)]" aria-label="Close"><X className="size-3.5" /></button>
-                ) : (
-                  tourIndex >= 0 && <span className="text-[10px] font-semibold tracking-[0.16em] text-[var(--r-muted)]">{String(tourIndex + 1).padStart(2, "0")} / {String(TOUR.length).padStart(2, "0")}</span>
-                )}
+                {tourIndex >= 0 && <span className="text-[10px] font-semibold tracking-[0.16em] text-[var(--r-muted)]">{String(tourIndex + 1).padStart(2, "0")} / {String(TOUR.length).padStart(2, "0")}</span>}
               </div>
             </div>
             <div className="mb-2.5 flex items-center gap-3">
@@ -541,39 +521,8 @@ export default function IndiaMap() {
         ))}
       </nav>
 
-      {/* zoomed-out panel */}
-      <div ref={finalRef} data-ui className="invisible absolute bottom-6 left-4 right-4 z-20 rounded-[16px] border border-[#E6E6E6] bg-white p-5 opacity-0 shadow-[0_10px_30px_rgba(0,0,0,.08)] sm:bottom-10 sm:left-[5vw] sm:right-auto sm:max-w-[470px]">
-        <div className="text-[11px] font-bold uppercase tracking-[0.26em] text-[#6B6B6B]">Coverage</div>
-        <h2 className="mt-3 font-display text-[clamp(28px,3.4vw,46px)] font-semibold leading-[1.02] tracking-[-0.03em] text-[#0B0B0C]">
-          Seven states. <span className="font-serif font-normal italic text-[#555]">One instrument.</span>
-        </h2>
-        <p className="mb-4 mt-2 max-w-[34ch] text-[14px] leading-relaxed text-[#555]">Select a state to open its case study.</p>
-        <div className="mb-4 flex flex-wrap gap-1.5">
-          {CASES.map((c) => (
-            <button
-              key={c.slug}
-              onClick={() => setSelected(selected === c.slug ? null : c.slug)}
-              onMouseEnter={() => { chipHoverRef.current = c.state; navigate.prefetch(caseUrl(c.slug)); }}
-              onMouseLeave={() => (chipHoverRef.current = null)}
-              onFocus={() => navigate.prefetch(caseUrl(c.slug))}
-              className={cn(
-                "flex min-h-10 items-center gap-1.5 rounded-full border border-[#E6E6E6] bg-white px-3 py-1.5 text-[12.5px] font-semibold text-[#0B0B0C] transition hover:border-[#0B0B0C]",
-                selected === c.slug && "border-[#0B0B0C] bg-[#0B0B0C] text-white",
-              )}
-            >
-              <i className={cn("size-1.5 rounded-full bg-[#0B0B0C]", selected === c.slug && "bg-white")} />
-              {c.party} · {c.label}
-            </button>
-          ))}
-        </div>
-        <div className="mb-4 hidden flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-[#6B6B6B] sm:flex">
-          Next up:
-          {UPCOMING.map((u) => (
-            <a key={u.slug} href={caseUrl(u.slug)} className="inline-flex min-h-10 items-center rounded-md border border-dashed border-[#CFCFCF] px-2.5 py-1 font-semibold text-[#555] transition hover:border-[#0B0B0C] hover:text-[#0B0B0C]">{u.title}</a>
-          ))}
-        </div>
-        <p className="hidden text-[10.5px] uppercase tracking-[0.16em] text-[#6B6B6B] sm:block">Drag to rotate · Select a state</p>
-      </div>
+      {/* small interaction hint */}
+      <p className="pointer-events-none absolute bottom-6 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#6B6B6B]">Drag to rotate · Select a state</p>
 
       {/* labels over markers in the zoomed-out view */}
       {CASES.map((c) => (
@@ -581,7 +530,7 @@ export default function IndiaMap() {
           key={c.slug}
           ref={(el) => { pinRefs.current[c.slug] = el; }}
           data-ui
-          onClick={() => setSelected(c.slug)}
+          onClick={() => { navigate.prefetch(caseUrl(c.slug)); navigate.push(caseUrl(c.slug), { cover: { title: c.title, eyebrow: c.label, subtitle: c.region } }); }}
           className="glass absolute left-0 top-0 z-20 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold opacity-0 transition-opacity"
           style={{ pointerEvents: "none" }}
         >

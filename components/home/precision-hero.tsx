@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChartNoAxesCombined } from "lucide-react";
 import CaseOrbit, { type OrbitCase } from "@/components/home/case-orbit";
 
 export default function PrecisionHero({ cases }: { cases: OrbitCase[] }) {
@@ -7,6 +7,10 @@ export default function PrecisionHero({ cases }: { cases: OrbitCase[] }) {
     <section className="pointer-events-auto relative z-10 bg-white pt-16">
       <div className="hero-stack mx-auto flex min-h-[calc(100svh-64px)] max-w-[1440px] flex-col px-6 pb-16 pt-12 sm:px-10 lg:grid lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)] lg:items-center lg:gap-16 lg:px-16 lg:pb-[9vh] lg:pt-[2vh]">
         <div className="w-full max-w-[560px]">
+          <span className="mb-5 flex w-fit items-center gap-2 rounded-full border border-[#EAEAEA] px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#0B0B0C]">
+            <ChartNoAxesCombined className="size-3.5" strokeWidth={1.8} aria-hidden />
+            Political Analysis
+          </span>
           <h1 className="font-display text-[#0B0B0C]">
             <span className="block whitespace-nowrap text-[clamp(48px,6vw,96px)] font-extrabold leading-[0.92] tracking-[-0.045em]">
               Find the
@@ -19,7 +23,7 @@ export default function PrecisionHero({ cases }: { cases: OrbitCase[] }) {
             See the detail.
           </p>
           <p className="mt-7 max-w-[34ch] text-[18px] leading-relaxed text-[#6B6B6B] sm:text-[20px]">
-            Explore data from statewide trends down to individual districts.
+            Election intelligence from statewide vote share down to every district and assembly.
           </p>
           <Link
             href="/case-studies"

@@ -171,12 +171,11 @@ export default function CaseOrbit({ cases }: { cases: OrbitCase[] }) {
                     width={party.width}
                     height={party.height}
                     className="max-h-full max-w-[62%] object-contain"
-                    style={{ filter: "grayscale(1) contrast(1.1)" }}
                     draggable={false}
                   />
                 </span>
                 <span className={position.featured ? "mt-1 block px-3" : "sr-only"}>
-                  <span className="block text-[clamp(11px,1.35vw,17px)] font-semibold leading-tight text-[#0B0B0C]">{item.party} · {item.stateName}</span>
+                  <span className="block whitespace-nowrap text-[clamp(11px,1.35vw,17px)] font-semibold leading-tight text-[#0B0B0C]">{item.party} · {item.stateName}</span>
                   <span className="case-disc-view mt-1 block text-[clamp(9px,1vw,13px)] text-[#6B6B6B] underline underline-offset-2" />
                 </span>
               </span>
