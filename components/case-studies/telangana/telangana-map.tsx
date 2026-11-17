@@ -690,8 +690,8 @@ export default function TelanganaMap({ acs, district, ac, year, theme, fitKey = 
           el.style.fontWeight = String(selected || hoveredLabel ? Math.max(size.weight, 600) : size.weight);
           const fs = size.px;
           const text = el.textContent ?? "";
-          const w = Math.max(36, text.length * fs * 0.56 + 8), hh = fs + 5;
-          if (!selected && !hoveredLabel && placed.some((b) => Math.abs(b.x - px) < (b.w + w) / 2 && Math.abs(b.y - pz) < (b.h + hh) / 2)) { el.style.display = "none"; return; }
+          const w = Math.max(36, text.length * fs * 0.62 + 12), hh = fs + 7;
+          if (!selected && !hoveredLabel && placed.some((b) => Math.abs(b.x - px) < (b.w + w) / 2 + 2 && Math.abs(b.y - pz) < (b.h + hh) / 2 + 1)) { el.style.display = "none"; return; }
           placed.push({ x: px, y: pz, w, h: hh });
           el.style.display = "";
           el.style.transform = `translate(-50%,-50%) translate(${px.toFixed(1)}px, ${pz.toFixed(1)}px)`;

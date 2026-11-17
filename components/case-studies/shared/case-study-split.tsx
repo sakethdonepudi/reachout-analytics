@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
-import { GripVertical } from "lucide-react";
+import { GripVertical, SlidersHorizontal } from "lucide-react";
+import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 /* =====================================================================
@@ -58,6 +59,7 @@ export default function CaseStudySplit({
   const [width, setWidth] = useState(defaultPanelWidth);
   const [measured, setMeasured] = useState(defaultPanelWidth);
   const [dragging, setDragging] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const widthRef = useRef(width);
   widthRef.current = width;
   const dragRef = useRef<{ startX: number; startWidth: number; pointerId: number } | null>(null);
@@ -205,7 +207,8 @@ export default function CaseStudySplit({
   }, []);
 
   const gridStyle = {
-    gridTemplateColumns: `${controlsWidth}px minmax(0, 1fr) ${GRIP_WIDTH}px ${width}px`,
+    "--controls-width": `${controlsWidth}px`,
+    "--panel-width": `${width}px`,
   } as CSSProperties;
 
   const visiblePanelHeight = panelMetrics.viewport > 0
@@ -217,18 +220,28 @@ export default function CaseStudySplit({
   return (
     <div
       ref={rootRef}
-      className={cn("relative flex flex-col lg:grid lg:h-full lg:min-h-0", dragging && "select-none", className)}
+      className={cn("case-split", dragging && "select-none", className)}
       style={gridStyle}
       data-resizing={dragging || undefined}
     >
+      <div className="mb-3 flex items-center justify-between min-[900px]:hidden">
+        <button
+          type="button"
+          onClick={() => setFiltersOpen(true)}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#CFCFCF] bg-white px-4 text-[12px] font-semibold text-[#0B0B0C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C]/50"
+        >
+          <SlidersHorizontal className="size-3.5" aria-hidden /> Filters
+        </button>
+      </div>
+
       <aside
         aria-label={controlsLabel}
-        className="relative z-30 min-w-0 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-1 lg:[scrollbar-width:thin]"
+        className="case-split-controls relative z-30 hidden min-w-0 min-[900px]:block xl:pr-1 xl:[scrollbar-width:thin]"
       >
         {controls}
       </aside>
 
-      <div className="relative z-0 mt-4 h-[52svh] min-h-[360px] min-w-0 overflow-hidden rounded-2xl border border-border bg-card lg:mt-0 lg:h-full lg:min-h-0 lg:rounded-none lg:border-0 lg:bg-transparent">
+      <div className="case-split-map relative z-0 mt-4 h-[52svh] min-h-[360px] min-w-0 overflow-hidden rounded-2xl border border-border bg-card xl:rounded-none xl:border-0 xl:bg-transparent">
         {map}
       </div>
 
@@ -249,7 +262,7 @@ export default function CaseStudySplit({
         onPointerCancel={(event) => { onPointerUp(event); }}
         onKeyDown={onKeyDown}
         onDoubleClick={() => finish(defaultPanelWidth)}
-        className="split-grip group relative z-30 hidden cursor-col-resize touch-none select-none items-center justify-center focus-visible:outline-none lg:flex"
+        className="split-grip group relative z-30 hidden cursor-col-resize touch-none select-none items-center justify-center focus-visible:outline-none xl:flex"
       >
         <span
           aria-hidden
@@ -264,10 +277,14 @@ export default function CaseStudySplit({
       <section
         ref={panelRef}
         aria-label={panelLabel}
-        className="relative z-20 mt-4 min-w-0 lg:mt-0 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:py-0.5 lg:pr-1 lg:[scrollbar-width:thin]"
+        className="case-split-panel relative z-20 mt-4 min-w-0 xl:py-0.5 xl:pr-1 xl:[scrollbar-width:thin]"
       >
         <div ref={panelContentRef}>{panel(measured)}</div>
       </section>
+
+      <Sheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filters" description="Narrow the map and the comparison.">
+        <div className="pb-4">{controls}</div>
+      </Sheet>
     </div>
   );
 }

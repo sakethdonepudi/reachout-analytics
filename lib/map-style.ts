@@ -8,9 +8,9 @@ export type MapTheme = "light";
 /** Shared visual hierarchy for both state maps. */
 export const MAP_STYLE = {
   label: {
-    district: { size: 14, mobile: 13, weight: 600 },
-    assembly: { size: 12, mobile: 11, weight: 500 },
-    selectedAssembly: { size: 13, mobile: 12, weight: 600 },
+    district: { size: 12, mobile: 11, weight: 600 },
+    assembly: { size: 10.5, mobile: 10, weight: 500 },
+    selectedAssembly: { size: 12, mobile: 11, weight: 600 },
     halo: { light: "rgba(255,255,255,.92)" },
     backing: { light: "rgba(255,255,255,.52)" },
   },

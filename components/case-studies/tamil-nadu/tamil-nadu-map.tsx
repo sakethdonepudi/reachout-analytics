@@ -528,8 +528,8 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         const p = new THREE.Vector3(x, (u.kind === "district" ? DEPTH : DEPTH + AC_DEPTH) + u.y, z).project(camera);
         const sx = (p.x * 0.5 + 0.5) * rect.width, sy = (-p.y * 0.5 + 0.5) * rect.height;
         const size = parseFloat(u.label.style.fontSize || "9");
-        const w = Math.max(18, (u.label.textContent?.length ?? 4) * size * 0.55 + 8), h = size + 5;
-        const box = { l: sx - w / 2, r: sx + w / 2, t: sy - h / 2, b: sy + h / 2 };
+        const w = Math.max(20, (u.label.textContent?.length ?? 4) * size * 0.62 + 10), h = size + 7;
+        const box = { l: sx - w / 2 - 2, r: sx + w / 2 + 2, t: sy - h / 2 - 1, b: sy + h / 2 + 1 };
         const collides = boxes.some((b) => box.l < b.r && box.r > b.l && box.t < b.b && box.b > b.t);
         if (collides && !(u.kind === "ac" && u.no === live.current.acNo)) { u.label.style.visibility = "hidden"; continue; }
         boxes.push(box); u.label.style.visibility = "visible";
