@@ -126,13 +126,32 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
     });
   }, [region]);
 
-  if (!regions.length || !region) return <section className="social-panel report-card p-4 text-[13px] text-[var(--r-muted)]">Social data not uploaded yet.</section>;
+  if (!regions.length || !region) {
+    return (
+      <section className="space-y-4" aria-label="Social media" aria-busy="true">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <div key={index} className="report-card p-4">
+              <div className="h-2.5 w-20 animate-pulse rounded-full bg-[#F0F0F0]" />
+              <div className="mt-3 h-8 w-24 animate-pulse rounded-md bg-[#F4F4F4]" />
+            </div>
+          ))}
+        </div>
+        <div className="report-card p-4">
+          <div className="h-3 w-32 animate-pulse rounded-full bg-[#F0F0F0]" />
+          <div className="mt-4 space-y-2">
+            {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-9 animate-pulse rounded-lg bg-[#F7F7F7]" />)}
+          </div>
+        </div>
+        <p className="text-[12px] text-[#6B6B6B]">Social data not uploaded yet.</p>
+      </section>
+    );
+  }
 
   const owner = region.totals.spend != null;
   const totalImpressions = region.totals.impressions;
+  const totalResults = region.accounts.reduce((sum, account) => sum + (account.results ?? account.campaigns.reduce((value, campaign) => value + (campaign.results ?? 0), 0)), 0);
   const ctr = rate(region.totals.clicks, totalImpressions);
-  const engagementRate = rate(region.totals.engagements, totalImpressions);
-  const cpm = region.totals.spend != null && totalImpressions > 0 ? (region.totals.spend / totalImpressions) * 1000 : 0;
   const totalAccounts = rows.length;
 
   const filteredRows = expanded && query.trim() ? rows.filter((row) => row.name.toLowerCase().includes(query.trim().toLowerCase())) : rows;
@@ -263,11 +282,10 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
         )}
 
         <div className="social-stats mt-4">
-          <StatCard label="Reach" value={region.totals.reach} note={`${number(region.totals.campaigns)} campaigns · ${number(region.totals.accounts)} accounts`} tooltip={REACH_CAVEAT} />
           <StatCard label="Impressions" value={region.totals.impressions} note={`CTR ${percent(ctr)}`} />
-          <StatCard label={region.viewsLabel ?? "Views"} value={region.totals.views} note="Video views in the report" />
-          <StatCard label="Engagement rate" value={percent(engagementRate)} note={`${indianUnits(region.totals.engagements)} engagements`} exact={percent(engagementRate)} />
-          {owner && <StatCard label="Spend" value={region.totals.spend ?? 0} note={`CPM ${money(cpm)}`} />}
+          <StatCard label="Reach" value={region.totals.reach} note={`${number(region.totals.campaigns)} campaigns · ${number(region.totals.accounts)} accounts`} tooltip={REACH_CAVEAT} />
+          <StatCard label="Clicks" value={region.totals.clicks} note={`CTR ${percent(ctr)}`} />
+          <StatCard label="Results" value={totalResults} note="Campaign results in the report" />
         </div>
         <p className="social-caveat">{REACH_CAVEAT}</p>
 
@@ -359,7 +377,6 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
                 <div className="report-stat"><p className="report-stat-label">Reach</p><p className="report-stat-value !text-[18px]">{indianUnits(openAccount.reach)}</p></div>
                 <div className="report-stat"><p className="report-stat-label">Clicks</p><p className="report-stat-value !text-[18px]">{indianUnits(openAccount.clicks)}</p></div>
                 <div className="report-stat"><p className="report-stat-label">Results</p><p className="report-stat-value !text-[18px]">{indianUnits(openAccount.results)}</p></div>
-                {owner && <div className="report-stat"><p className="report-stat-label">Spend</p><p className="report-stat-value !text-[18px]">{indianUnits(openAccount.spend)}</p></div>}
               </div>
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <label className="relative min-w-0 flex-1">
