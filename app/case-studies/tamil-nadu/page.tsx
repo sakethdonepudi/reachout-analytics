@@ -4,6 +4,8 @@ import { requirePageSession } from "@/lib/require-session";
 import { redirect } from "next/navigation";
 import { AMI_EXIT_POLL, ECI_ACTUAL, TN_OPINION_POLL } from "@/lib/tamil-nadu/comparison";
 import { socialForCase } from "@/lib/ads-desk/mapping";
+import { caseBySlug, resolveCaseTab, tabsForCase } from "@/lib/cases";
+import { getSegments, getReasons } from "@/lib/case-data/store";
 import { getTamilNaduAggregates } from "@/lib/tamil-nadu/aggregates-server";
 import { buildAdsSocial } from "@/lib/ads-desk/client-dto";
 import { TVK_ACTUAL_SEATS, TVK_FORECASTERS } from "@/lib/tamil-nadu/forecasters";
@@ -25,9 +27,12 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function TamilNaduCaseStudyPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  const view = (await searchParams).view;
+export default async function TamilNaduCaseStudyPage({ searchParams }: { searchParams: Promise<{ view?: string; expand?: string; reason?: string; campaign?: string }> }) {
+  const { view, expand, reason, campaign } = await searchParams;
+  const tabs = tabsForCase(caseBySlug("tamil-nadu"));
+  const initialTab = resolveCaseTab(view, tabs);
   const session = await requirePageSession("/case-studies/tamil-nadu");
+  const [segments, reasons] = await Promise.all([getSegments("tamil-nadu"), getReasons("tamil-nadu")]);
   const socialRegions = await socialForCase("tamil-nadu", session.role === "owner");
   const aggregates = await getTamilNaduAggregates();
   const caseData: TnCaseData = {
@@ -44,13 +49,16 @@ export default async function TamilNaduCaseStudyPage({ searchParams }: { searchP
     <>
       <h1 className="sr-only">AIADMK · Tamil Nadu</h1>
       <CaseStudyTabs
-        initialTab={view === "social" ? "social" : "polls"}
+        tabs={tabs}
+        initialTab={initialTab}
         party="AIADMK"
         stateName="Tamil Nadu"
-        social={<SocialPanel regions={socialRegions} />}
-      >
-        <TamilNaduDashboard caseData={caseData} aggregates={aggregates} owner={session.role === "owner"} />
-      </CaseStudyTabs>
+        panels={{
+          exit: <TamilNaduDashboard caseData={caseData} aggregates={aggregates} owner={session.role === "owner"} pollType="exit" segments={segments} reasons={reasons} initialExpanded={expand === "1"} initialReason={reason ?? null} />,
+          opinion: <TamilNaduDashboard caseData={caseData} aggregates={aggregates} owner={session.role === "owner"} pollType="opinion" segments={segments} reasons={reasons} initialExpanded={expand === "1"} initialReason={reason ?? null} />,
+          social: <SocialPanel regions={socialRegions} campaign={campaign ?? null} />,
+        }}
+      />
     </>
   );
 }

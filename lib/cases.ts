@@ -4,8 +4,32 @@
 
 import type { PartyId } from "@/lib/parties";
 
+export type CaseTab = "exit" | "opinion" | "social";
+
+export const DEFAULT_CASE_TABS: CaseTab[] = ["opinion", "social"];
+
+export function tabsForCase(item: CaseStudy | null | undefined): CaseTab[] {
+  return item?.tabs?.length ? item.tabs : DEFAULT_CASE_TABS;
+}
+
+/** Map the legacy views onto a tab this state actually has. */
+export function resolveCaseTab(view: string | undefined, tabs: CaseTab[]): CaseTab {
+  const first = tabs[0] ?? "opinion";
+  if (view === "social" && tabs.includes("social")) return "social";
+  if (view === "exit" && tabs.includes("exit")) return "exit";
+  if (view === "opinion" && tabs.includes("opinion")) return "opinion";
+  if (view === "polls" || view === "overview") {
+    const firstPoll = tabs.find((tab) => tab !== "social");
+    return firstPoll ?? first;
+  }
+  if (view && (tabs as string[]).includes(view)) return view as CaseTab;
+  return first;
+}
+
 export type CaseStudy = {
   slug: string;
+  /** Tabs shown on the case-study page, in order. */
+  tabs?: CaseTab[];
   /** true = the camera stops here while scrolling (in this order) */
   tour?: boolean;
   /** state id on the map (svg-maps ids: ap, tn, gj, as, tg, br, ka, …) */
@@ -30,35 +54,35 @@ export type CaseStudy = {
 
 export const CASES: CaseStudy[] = [
   {
-    slug: "north-east-elections", tour: true, state: "as", x: 495, y: 262, theta: -0.45,
+    slug: "north-east-elections", tabs: ["opinion", "social"], tour: true, state: "as", x: 495, y: 262, theta: -0.45,
     label: "North East", badge: "North East", title: "North East Elections", region: "Assam & the North-Eastern states",
     party: "BJP", stateName: "Assam",
     summary: "Constituency-level voter surveys and sentiment tracking across the North-East.",
     tags: ["Voter Surveys", "Sentiment Tracking", "Predictions"],
   },
   {
-    slug: "tamil-nadu", tour: true, state: "tn", x: 250, y: 563, theta: 0.4, pinDx: 34,
+    slug: "tamil-nadu", tabs: ["exit", "opinion", "social"], tour: true, state: "tn", x: 250, y: 563, theta: 0.4, pinDx: 34,
     label: "Tamil Nadu", badge: "Tamil Nadu", title: "Tamil Nadu", region: "Chennai, Tamil Nadu",
     party: "AIADMK", stateName: "Tamil Nadu",
     summary: "Real-time voter insights and campaign strategy for AIADMK in Tamil Nadu.",
     tags: ["Voter Insights", "Campaign Strategy", "Digital Boosting"],
   },
   {
-    slug: "telangana", tour: true, state: "tg", x: 219, y: 467, theta: -0.12, pinDx: -40,
+    slug: "telangana", tabs: ["opinion", "social"], tour: true, state: "tg", x: 219, y: 467, theta: -0.12, pinDx: -40,
     label: "Telangana", badge: "Telangana", title: "Telangana", region: "Telangana",
     party: "BRS", stateName: "Telangana",
     summary: "2014–2028 assembly history: actual winners for 2014, 2018 and 2023, the 2028 prediction, swing statistics and district drilldown across 119 constituencies.",
     tags: ["Voter Insights", "Analytics", "Surveys"],
   },
   {
-    slug: "andhra-pradesh-2024", tour: true, state: "ap", x: 260, y: 495, theta: -0.25, pinDx: 44,
+    slug: "andhra-pradesh-2024", tabs: ["exit", "opinion", "social"], tour: true, state: "ap", x: 260, y: 495, theta: -0.25, pinDx: 44,
     label: "Andhra Pradesh", badge: "Andhra Pradesh · 2024", title: "Andhra Pradesh 2024", region: "Andhra Pradesh",
     party: "TDP", stateName: "Andhra Pradesh",
     summary: "High-accuracy election predictions and seat-level strategy for TDP.",
     tags: ["Election Predictions", "Booth Analytics", "Digital Boosting"],
   },
   {
-    slug: "gujarat", tour: true, state: "gj", x: 92, y: 341, theta: 0.45,
+    slug: "gujarat", tabs: ["opinion", "social"], tour: true, state: "gj", x: 92, y: 341, theta: 0.45,
     label: "Gujarat", badge: "Gujarat", title: "Gujarat", region: "Gujarat",
     party: "BJP", stateName: "Gujarat",
     summary: "Data-driven voter research and campaign analytics across Gujarat.",
@@ -66,14 +90,14 @@ export const CASES: CaseStudy[] = [
   },
   // Shown in the zoomed-out map (not camera stops)
   {
-    slug: "bihar", state: "br", x: 355, y: 282,
+    slug: "bihar", tabs: ["opinion", "social"], state: "br", x: 355, y: 282,
     label: "Bihar", badge: "Bihar", title: "Bihar", region: "Bihar",
     party: "JD(U)", stateName: "Bihar",
     summary: "Political analytics and campaign intelligence for JD(U) in Bihar.",
     tags: ["Campaign Intelligence", "Surveys"],
   },
   {
-    slug: "karnataka-2023", state: "ka", x: 197, y: 560, pinDx: -38,
+    slug: "karnataka-2023", tabs: ["opinion", "social"], state: "ka", x: 197, y: 560, pinDx: -38,
     label: "Karnataka", badge: "Karnataka · 2023", title: "Karnataka 2023", region: "Karnataka",
     party: "INC", stateName: "Karnataka",
     summary: "Election analytics and voter research for the 2023 Karnataka elections.",

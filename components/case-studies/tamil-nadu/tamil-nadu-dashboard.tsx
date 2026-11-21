@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Check, ChevronDown, RotateCcw, Search } from "lucide-react";
@@ -13,6 +14,7 @@ import TamilNaduRail, { type TnScopeResult, type TnTab } from "./tamil-nadu-rail
 import CaseBackLink from "@/components/site/case-back-link";
 import CaseStudySplit from "@/components/case-studies/shared/case-study-split";
 import type { TnCaseData } from "@/lib/tamil-nadu/view-data";
+import type { PollSegment, VoteShareReason } from "@/lib/case-data/types";
 import type { MapTheme } from "./tamil-nadu-map";
 
 const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
@@ -92,8 +94,10 @@ function SearchSelect({ label, value, options, placeholder, onChange, disabled =
   );
 }
 
-export default function TamilNaduDashboard({ caseData, aggregates, owner = false }: { caseData: TnCaseData; aggregates: TnAggregates; owner?: boolean }) {
+export default function TamilNaduDashboard({ caseData, aggregates, owner = false, pollType = "opinion", segments = [], reasons = [], initialExpanded = false, initialReason = null }: { caseData: TnCaseData; aggregates: TnAggregates; owner?: boolean; pollType?: "exit" | "opinion"; segments?: PollSegment[]; reasons?: VoteShareReason[]; initialExpanded?: boolean; initialReason?: string | null }) {
   const theme = "light" as const;
+  const router = useRouter();
+  const pathname = usePathname();
   const opinionPoll = caseData.opinionPoll;
   const data = aggregates;
   const [district, setDistrict] = useState<string | null>(null);
@@ -101,8 +105,10 @@ export default function TamilNaduDashboard({ caseData, aggregates, owner = false
   const [year, setYear] = useState<TnYearOrCurrent>("2026");
   const [tab, setTab] = useState<TnTab>("share");
   const [fitKey, setFitKey] = useState(0);
-  const [chartOpen, setChartOpen] = useState(false);
+  const [chartOpen, setChartOpen] = useState(initialExpanded);
   const expandFocus = useRef<HTMLElement | null>(null);
+
+  useEffect(() => { setChartOpen(initialExpanded); }, [initialExpanded]);
 
   const acs = data?.acs ?? [];
   const districts = data?.districts ?? [];
@@ -112,14 +118,19 @@ export default function TamilNaduDashboard({ caseData, aggregates, owner = false
   const baseline = currentAc?.historical[baselineYear] ?? currentDistrict?.historical[baselineYear] ?? data?.statewide.historical[baselineYear] ?? null;
   const currentSurvey = currentAc?.survey ?? currentDistrict?.survey ?? null;
   const isStatewide = !district && !currentAc;
-  const estimatedShares = isStatewide ? caseData.opinionPoll.shares ?? {} : currentSurvey?.shares ?? {};
-  const estimatedValid = isStatewide ? caseData.opinionPoll.denominator ?? 0 : currentSurvey?.valid ?? 0;
+  const activePollShares = pollType === "exit" ? caseData.exitPoll.shares ?? {} : caseData.opinionPoll.shares ?? {};
+  const estimatedShares = isStatewide ? activePollShares : currentSurvey?.shares ?? {};
+  const estimatedValid = isStatewide
+    ? (pollType === "exit" ? (Object.keys(activePollShares).length ? 1 : 0) : caseData.opinionPoll.denominator ?? 0)
+    : currentSurvey?.valid ?? 0;
   const currentLeader = tnLeader(estimatedShares);
   const emptySeats = TN_SEAT_GROUPS.reduce((o, g) => (o[g] = 0, o), {} as Record<TnSeatGroup, number>);
   const opinionSeats = currentAc
     ? emptySeats
-    : currentDistrict?.originalSeats ?? caseData.opinionPoll.seats ?? data?.statewide.originalSeats ?? emptySeats;
-  const opinionCall = currentAc ? currentAc.original?.leader ?? currentAc.surveyLeader ?? null : null;
+    : pollType === "exit"
+      ? emptySeats
+      : currentDistrict?.originalSeats ?? caseData.opinionPoll.seats ?? data?.statewide.originalSeats ?? emptySeats;
+  const opinionCall = pollType === "exit" ? null : currentAc ? currentAc.original?.leader ?? currentAc.surveyLeader ?? null : null;
   const actualSeats = currentAc
     ? { ...emptySeats, ...(currentAc.actual2026.winner ? { [currentAc.actual2026.winner]: 1 } : {}) }
     : currentDistrict?.actualSeats ?? caseData.actual.seats ?? emptySeats;
@@ -140,10 +151,10 @@ export default function TamilNaduDashboard({ caseData, aggregates, owner = false
       baselineAvailable: !!baseline?.available,
       currentValid: estimatedValid,
       presence: data?.presence ?? { "2011": {}, "2016": {}, "2021": {} } as Record<TnYear, Record<TnGroup, boolean>>,
-      opinionSeats, opinionCall, actualSeats, currentLabel: "Estimated vote share",
+      opinionSeats, opinionCall, actualSeats, currentLabel: pollType === "exit" ? "Exit poll estimate" : "Opinion poll estimate",
       surveyLeader: currentLeader,
     };
-  }, [baseline, baselineYear, currentLeader, estimatedShares, estimatedValid, data?.presence, opinionSeats, opinionCall, actualSeats, scopeLabel]);
+  }, [baseline, baselineYear, currentLeader, estimatedShares, estimatedValid, data?.presence, opinionSeats, opinionCall, actualSeats, scopeLabel, pollType]);
 
   const districtOptions: Option[] = useMemo(() => [{ value: "", label: "All Tamil Nadu" }, ...districts.map((d) => ({ value: d.name, label: d.name, hint: `${d.acs.length} ACs` }))], [districts]);
   const assemblyOptions: Option[] = useMemo(() => {
@@ -159,8 +170,23 @@ export default function TamilNaduDashboard({ caseData, aggregates, owner = false
     if (a) { setDistrict(a.district); setAcNo(no); }
   }, [acs]);
   const resetToState = useCallback(() => { setDistrict(null); setAcNo(null); }, []);
-  const openAnalysis = useCallback(() => { expandFocus.current = document.activeElement as HTMLElement | null; setChartOpen(true); }, []);
-  const closeAnalysis = useCallback(() => { setChartOpen(false); requestAnimationFrame(() => expandFocus.current?.focus()); }, []);
+  const analysisUrl = useCallback((open: boolean) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("view", pollType);
+    if (open) params.set("expand", "1");
+    else { params.delete("expand"); params.delete("reason"); }
+    return `${pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+  }, [pathname, pollType]);
+  const openAnalysis = useCallback(() => {
+    expandFocus.current = document.activeElement as HTMLElement | null;
+    setChartOpen(true);
+    router.push(analysisUrl(true), { scroll: false });
+  }, [analysisUrl, router]);
+  const closeAnalysis = useCallback(() => {
+    setChartOpen(false);
+    requestAnimationFrame(() => expandFocus.current?.focus());
+    router.push(analysisUrl(false), { scroll: false });
+  }, [analysisUrl, router]);
 
   const legend = useMemo(() => {
     if (year === "2026") return TN_SURVEY_GROUPS.map((g) => ({ key: g, label: g === "NOTA" ? "Others & NOTA" : TN_LABEL[g], colour: TN_COLOR[g] }));
@@ -225,7 +251,7 @@ export default function TamilNaduDashboard({ caseData, aggregates, owner = false
             </div>
           )}
           panel={(panelWidth) => (
-            <TamilNaduRail scope={scope} tab={tab} onTab={setTab} onExpand={openAnalysis} theme={theme === "light" ? "light" : "dark"} selectedYear={year} isStatewide={isStatewide} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} actualShares={caseData.actual.shares} panelWidth={panelWidth} owner={owner} />
+            <TamilNaduRail scope={scope} tab={tab} onTab={setTab} onExpand={openAnalysis} theme={theme === "light" ? "light" : "dark"} selectedYear={year} isStatewide={isStatewide} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} actualShares={caseData.actual.shares} panelWidth={panelWidth} owner={owner} pollType={pollType} />
           )}
         />
       </section>
@@ -233,7 +259,7 @@ export default function TamilNaduDashboard({ caseData, aggregates, owner = false
 
       {chartOpen && (
         <TamilNaduAnalysis open={chartOpen} onClose={closeAnalysis} data={data} theme={theme === "light" ? "light" : "dark"}
-          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} onSelectAc={selectAc} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} eciActual={caseData.actual} forecasters={caseData.forecasters} forecastActualSeats={caseData.forecastActualSeats} initialTab={tab} owner={owner} />
+          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} onSelectAc={selectAc} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} eciActual={caseData.actual} forecasters={caseData.forecasters} forecastActualSeats={caseData.forecastActualSeats} initialTab={tab} owner={owner} pollType={pollType} segments={segments} reasons={reasons} initialReason={initialReason} />
       )}
     </div>
   );

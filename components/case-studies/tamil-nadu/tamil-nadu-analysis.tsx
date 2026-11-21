@@ -11,6 +11,8 @@ import type { OpinionPollView, TnTab } from "@/components/case-studies/tamil-nad
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import EChart from "@/components/case-studies/telangana/echart";
 import AnalysisShell from "@/components/case-studies/shared/analysis-shell";
+import TamilNaduBreakdown from "@/components/case-studies/tamil-nadu/tamil-nadu-breakdown";
+import type { PollSegment, VoteShareReason } from "@/lib/case-data/types";
 import { cn } from "@/lib/utils";
 
 const BASELINES: TnYear[] = ["2011", "2016", "2021"];
@@ -92,7 +94,7 @@ const groupSum = (shares: TnShares | null | undefined, group: AnalysisGroup) => 
 const SERIES_OPACITY = { exit: 0.42, opinion: 0.72, actual: 1, survey: 0.58, baseline: 0.34 };
 
 export default function TamilNaduAnalysis({
-  open, onClose, data, theme, initialScope, defaultBaseline, opinionPoll, exitPoll, eciActual, forecasters, forecastActualSeats, initialTab, owner = false,
+  open, onClose, data, theme, initialScope, defaultBaseline, opinionPoll, exitPoll, eciActual, forecasters, forecastActualSeats, initialTab, owner = false, pollType = "opinion", segments = [], reasons = [], initialReason = null,
 }: {
   open: boolean;
   onClose: () => void;
@@ -109,9 +111,16 @@ export default function TamilNaduAnalysis({
   forecastActualSeats: number;
   initialTab: TnTab;
   owner?: boolean;
+  pollType?: "exit" | "opinion";
+  segments?: PollSegment[];
+  reasons?: VoteShareReason[];
+  initialReason?: string | null;
 }) {
   const reduced = usePrefersReducedMotion();
   const p = palette(theme);
+  const activePollShares = pollType === "exit" ? exitPoll.shares : opinionPoll.shares;
+  const activePollLabel = pollType === "exit" ? "Exit Poll" : "Opinion Poll";
+  const activePollOpacity = pollType === "exit" ? SERIES_OPACITY.exit : SERIES_OPACITY.opinion;
   const [narrow, setNarrow] = useState(false);
   const [scope, setScope] = useState(initialScope);
   const [chartMode, setChartMode] = useState<TnTab>(initialTab);
@@ -188,8 +197,7 @@ export default function TamilNaduAnalysis({
     const actualShares = eciActual.shares;
     if (scopeIsState) {
       return [
-        { key: "exit", label: "Exit Poll", shares: exitPoll.shares, opacity: SERIES_OPACITY.exit },
-        ...(opinionPoll.available ? [{ key: "opinion", label: "Opinion Poll", shares: opinionPoll.shares, opacity: SERIES_OPACITY.opinion }] : []),
+        { key: pollType, label: activePollLabel, shares: activePollShares, opacity: activePollOpacity },
         { key: "actual", label: "Actual Result", shares: actualShares, opacity: SERIES_OPACITY.actual },
       ];
     }
@@ -197,7 +205,7 @@ export default function TamilNaduAnalysis({
       { key: "survey", label: "Survey Estimate", shares: currentShares, opacity: SERIES_OPACITY.survey },
       { key: "baseline", label: `${baselineYear} Result`, shares: baselineAvailable ? baselineShares : null, opacity: SERIES_OPACITY.baseline },
     ];
-  }, [scopeIsState, opinionPoll.available, opinionPoll.shares, currentShares, baselineYear, baselineAvailable, baselineShares]);
+  }, [scopeIsState, pollType, activePollLabel, activePollShares, activePollOpacity, currentShares, baselineYear, baselineAvailable, baselineShares]);
 
   const overviewSeries = useMemo(
     () => allOverviewSeries.filter((series) => visibleSeries.includes(series.key)),
@@ -244,16 +252,11 @@ export default function TamilNaduAnalysis({
   const changeChartOption = useMemo(() => {
     const series = (scopeIsState
       ? [
-          { key: "exit", label: "Exit Poll − Actual", opacity: SERIES_OPACITY.exit, value: (group: AnalysisGroup) => {
-              const exit = groupSum(exitPoll.shares, group);
+          { key: pollType, label: `${activePollLabel} − Actual`, opacity: activePollOpacity, value: (group: AnalysisGroup) => {
+              const poll = groupSum(activePollShares, group);
               const actual = groupSum(eciActual.shares, group);
-              return exit == null || actual == null ? null : (exit - actual) * 100;
+              return poll == null || actual == null ? null : (poll - actual) * 100;
             } },
-          ...(opinionPoll.available ? [{ key: "opinion", label: "Opinion Poll − Actual", opacity: SERIES_OPACITY.opinion, value: (group: AnalysisGroup) => {
-              const opinion = groupSum(opinionPoll.shares, group);
-              const actual = groupSum(eciActual.shares, group);
-              return opinion == null || actual == null ? null : (opinion - actual) * 100;
-            } }] : []),
         ]
       : [
           { key: "survey", label: `Survey − ${baselineYear}`, opacity: SERIES_OPACITY.survey, value: (group: AnalysisGroup) => {
@@ -305,13 +308,10 @@ export default function TamilNaduAnalysis({
         markLine: { silent: true, symbol: "none", label: { show: false }, lineStyle: { color: p.axis, width: 1 }, data: [{ xAxis: 0 }] },
       })),
     };
-  }, [scopeIsState, opinionPoll.available, opinionPoll.shares, data.presence, baselineYear, baselineAvailable, currentShares, baselineShares, p, reduced, narrow, visibleSeries, eciActual, exitPoll]);
+  }, [scopeIsState, pollType, activePollLabel, activePollShares, activePollOpacity, data.presence, baselineYear, baselineAvailable, currentShares, baselineShares, p, reduced, narrow, visibleSeries, eciActual]);
 
   const allChangeLegend = scopeIsState
-    ? [
-        { key: "exit", label: "Exit Poll − Actual", opacity: SERIES_OPACITY.exit },
-        ...(opinionPoll.available ? [{ key: "opinion", label: "Opinion Poll − Actual", opacity: SERIES_OPACITY.opinion }] : []),
-      ]
+    ? [{ key: pollType, label: `${activePollLabel} − Actual`, opacity: activePollOpacity }]
     : [{ key: "survey", label: `Survey − ${baselineYear}`, opacity: SERIES_OPACITY.survey }];
   const changeLegend = allChangeLegend.filter((item) => visibleSeries.includes(item.key));
 
@@ -584,8 +584,10 @@ export default function TamilNaduAnalysis({
   if (!open) return null;
 
   const modeTabs: { id: TnTab; label: string }[] = [
-    { id: "share", label: "Share" }, { id: "change", label: "Change" }, { id: "seats", label: "Seats" },
+    { id: "share", label: "Share" }, { id: "change", label: "Change" },
+    ...(pollType === "exit" ? [] : [{ id: "seats" as TnTab, label: "Seats" }]),
   ];
+  const activeMode: TnTab = pollType === "exit" && chartMode === "seats" ? "share" : chartMode;
 
   return (
     <AnalysisShell
@@ -594,7 +596,7 @@ export default function TamilNaduAnalysis({
       eyebrow="2026 analysis"
       title={`${scopeName} · Vote share`}
       subtitle={scopeIsState
-        ? `Statewide · Exit poll${opinionPoll.available ? ", opinion poll" : ""} and actual result`
+        ? `Statewide · ${activePollLabel} and actual result`
         : `${scope.startsWith("a:") ? "Assembly" : "District"} · Survey estimate, ${baselineYear} result and actual availability`}
       contentClassName="space-y-5"
     >
@@ -619,11 +621,11 @@ export default function TamilNaduAnalysis({
                     <button
                       key={mode.id}
                       type="button"
-                      aria-pressed={chartMode === mode.id}
+                      aria-pressed={activeMode === mode.id}
                       onClick={() => selectChartMode(mode.id)}
                       className={cn(
                         "rounded-lg border px-2 py-1.5 text-left text-[10px] font-semibold transition-colors",
-                        chartMode === mode.id ? "border-[var(--a-brass)]/50 bg-[var(--a-brass-soft)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)] hover:text-[var(--a-ink)]",
+                        activeMode === mode.id ? "border-[var(--a-brass)]/50 bg-[var(--a-brass-soft)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)] hover:text-[var(--a-ink)]",
                       )}
                     >
                       {mode.label}
@@ -633,7 +635,7 @@ export default function TamilNaduAnalysis({
 
                 <span className="mt-3 block text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--a-muted)]">Series</span>
                 <div className="mt-1 grid gap-1">
-                  {chartMode === "seats" ? (
+                  {activeMode === "seats" ? (
                     [{ label: "Estimated", opacity: 0.55 }, { label: "Actual 2026", opacity: 1 }].map((item) => (
                       <div key={item.label} className="flex items-center gap-1.5 rounded-lg border border-[var(--a-border)] px-2 py-1.5 text-[10px] font-medium text-[var(--a-ink)]">
                         <span className="h-2 w-4 rounded-sm" style={{ background: "#64748b", opacity: item.opacity }} />
@@ -641,7 +643,7 @@ export default function TamilNaduAnalysis({
                       </div>
                     ))
                   ) : (
-                    (chartMode === "share" ? allOverviewSeries : allChangeLegend).map((series) => {
+                    (activeMode === "share" ? allOverviewSeries : allChangeLegend).map((series) => {
                       const active = visibleSeries.includes(series.key);
                       return (
                         <button
@@ -665,7 +667,7 @@ export default function TamilNaduAnalysis({
                   )}
                 </div>
 
-                {chartMode !== "seats" && (
+                {activeMode !== "seats" && (
                   <button
                     type="button"
                     onClick={() => setVisibleSeries(scopeSeriesKeys)}
@@ -678,22 +680,22 @@ export default function TamilNaduAnalysis({
 
               <div className="min-w-0 rounded-xl border border-[var(--a-border)] bg-[var(--a-panel-2)] p-2">
                 <p className="mb-1 px-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--a-muted)]">
-                  {chartMode === "share" ? "Vote share" : chartMode === "change" ? "Signed change (percentage points)" : "Seat counts"}
+                  {activeMode === "share" ? "Vote share" : activeMode === "change" ? "Signed change (percentage points)" : "Seat counts"}
                 </p>
-                <div key={chartMode} className="analysis-chart-enter">
-                  {chartMode === "share" && (
+                <div key={activeMode} className="analysis-chart-enter">
+                  {activeMode === "share" && (
                     <>
                       <SeriesLegend items={overviewSeries.map((series) => ({ label: series.label, opacity: series.opacity }))} />
                       <EChart option={shareChartOption} height={340} reduced={reduced} ariaLabel={`Grouped vote share for ${scopeName}`} />
                     </>
                   )}
-                  {chartMode === "change" && (
+                  {activeMode === "change" && (
                     <>
                       <SeriesLegend items={changeLegend} />
                       <EChart option={changeChartOption} height={340} reduced={reduced} ariaLabel={`Signed change for ${scopeName}`} />
                     </>
                   )}
-                  {chartMode === "seats" && (
+                  {activeMode === "seats" && (
                     <>
                       <SeriesLegend items={[{ label: "Opinion poll", opacity: 0.55 }, { label: "Actual 2026", opacity: 1 }]} />
                       <EChart option={seatChartOption} height={340} reduced={reduced} ariaLabel={`Opinion poll and actual seats for ${scopeName}`} />
@@ -702,7 +704,7 @@ export default function TamilNaduAnalysis({
                 </div>
               </div>
 
-              <div className="min-w-0 overflow-x-auto rounded-xl border border-[var(--a-border)] lg:col-span-2 xl:col-span-1">
+              <div className="min-w-0 overflow-x-auto rounded-xl border border-[var(--a-border)] lg:col-span-2 xl:col-span-1" tabIndex={0} role="region" aria-label="Vote-share comparison table">
                 <table className="w-full min-w-[280px] border-collapse text-[9px]">
                   <caption className="sr-only">{scopeName} vote-share comparison</caption>
                   <thead>
@@ -710,8 +712,7 @@ export default function TamilNaduAnalysis({
                       <th scope="col" className="px-2 py-2 text-left font-semibold">Party</th>
                       {scopeIsState ? (
                         <>
-                          <th scope="col" className="px-1.5 py-2 text-right font-semibold">Exit Poll</th>
-                          <th scope="col" title={opinionPoll.available ? undefined : "No opinion-poll dataset is available"} className="px-1.5 py-2 text-right font-semibold">Opinion Poll</th>
+                          <th scope="col" className="px-1.5 py-2 text-right font-semibold">{activePollLabel}</th>
                           <th scope="col" className="border-l border-[var(--a-border)] px-1.5 py-2 text-right font-semibold">Actual Result</th>
                         </>
                       ) : (
@@ -732,8 +733,7 @@ export default function TamilNaduAnalysis({
                         </th>
                         {scopeIsState ? (
                           <>
-                            <td className="px-1.5 py-1.5 text-right tabular-nums">{pct(groupSum(exitPoll.shares, group))}</td>
-                            <td className="px-1.5 py-1.5 text-right tabular-nums">{pct(opinionPoll.available ? groupSum(opinionPoll.shares, group) : null)}</td>
+                            <td className="px-1.5 py-1.5 text-right tabular-nums">{pct(groupSum(activePollShares, group))}</td>
                             <td className="border-l border-[var(--a-border)] px-1.5 py-1.5 text-right tabular-nums">{pct(groupSum(eciActual.shares, group))}</td>
                           </>
                         ) : (
@@ -753,6 +753,8 @@ export default function TamilNaduAnalysis({
             </div>
           </section>
 
+          <TamilNaduBreakdown pollType={pollType} scope={scope} scopeName={scopeName} segments={segments} reasons={reasons} owner={owner} initialReason={initialReason} />
+
           {/* ------------------------ forecaster comparison ------------------------ */}
           {scopeIsState && (
             <section className="analysis-panel rounded-2xl p-4 sm:p-5" aria-label="Forecaster comparison">
@@ -767,7 +769,7 @@ export default function TamilNaduAnalysis({
 
               {forecasters.length ? (
                 <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]">
-                  <div className="min-w-0 overflow-x-auto rounded-xl border border-[var(--a-border)]">
+                  <div className="min-w-0 overflow-x-auto rounded-xl border border-[var(--a-border)]" tabIndex={0} role="region" aria-label="Comparison table">
                     <table className="w-full min-w-[300px] border-collapse text-[9px] sm:min-w-[540px] sm:text-[10px]">
                       <caption className="sr-only">Forecaster comparison for TVK seat projections</caption>
                       <thead>
@@ -947,7 +949,7 @@ export default function TamilNaduAnalysis({
                 </select>
               </label>
             </div>
-            <div className="mt-3 max-h-80 overflow-auto rounded-xl border border-[var(--a-border)]">
+            <div className="mt-3 max-h-80 overflow-auto rounded-xl border border-[var(--a-border)]" tabIndex={0} role="region" aria-label="District table">
               <table className="w-full min-w-[680px] border-collapse text-[10px]">
                 <caption className="sr-only">District estimated shares and opinion poll seats</caption>
                 <thead className="sticky top-0 z-10 bg-[var(--a-panel)]">
@@ -1012,7 +1014,7 @@ export default function TamilNaduAnalysis({
               <div><h3 className="font-display text-[18px] font-semibold leading-tight text-[var(--a-ink)]">Assembly comparison</h3><p className="mt-0.5 text-[10.5px] text-[var(--a-muted)]">Estimated shares and calls · 234 assemblies</p></div>
               <span className="text-[10px] text-[var(--a-muted)]">{data.acs.length} assemblies</span>
             </div>
-            <div className="mt-3 max-h-[360px] overflow-auto rounded-xl border border-[var(--a-border)]">
+            <div className="mt-3 max-h-[360px] overflow-auto rounded-xl border border-[var(--a-border)]" tabIndex={0} role="region" aria-label="Assembly table">
               <table className="w-full min-w-[660px] border-collapse text-[10px]">
                 <caption className="sr-only">Assembly estimated shares and calls</caption>
                 <thead className="sticky top-0 z-10 bg-[var(--a-panel)]">

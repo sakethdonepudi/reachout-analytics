@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import PartyCard from "@/components/case-studies/shared/party-card";
 import StateMap from "@/components/case-studies/shared/state-map";
-import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl } from "@/lib/cases";
+import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl, resolveCaseTab, tabsForCase } from "@/lib/cases";
 import { requirePageSession } from "@/lib/require-session";
 import SocialPanel from "@/components/ads-desk/social-panel";
 import CaseStudyTabs from "@/components/ads-desk/case-study-tabs";
 import CaseBackLink from "@/components/site/case-back-link";
+import NotUploaded from "@/components/case-studies/shared/not-uploaded";
 import { socialForCase } from "@/lib/ads-desk/mapping";
 import { caseAllowed } from "@/lib/session-scope";
 import { redirect } from "next/navigation";
@@ -55,11 +56,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function CaseStudyPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ view?: string }> }) {
   const { slug } = await params;
-  const view = (await searchParams).view;
+  const { view } = await searchParams;
   const session = await requirePageSession(`/case-studies/${slug}`);
   if (!(await caseAllowed(session, slug))) redirect("/no-access");
   const social = await socialForCase(slug, session.role === "owner");
   const c = caseBySlug(slug);
+  const tabs = tabsForCase(c);
+  const initialTab = resolveCaseTab(view, tabs);
   const upcoming = UPCOMING.find((u) => u.slug === slug);
   if (!c && !upcoming) notFound();
 
@@ -70,11 +73,13 @@ export default async function CaseStudyPage({ params, searchParams }: { params: 
     <>
       <h1 className="sr-only">{c ? `${c.party} · ${c.stateName}` : upcoming!.title}</h1>
       <CaseStudyTabs
-        initialTab={view === "social" ? "social" : "polls"}
+        tabs={tabs}
+        initialTab={initialTab}
         party={c?.party}
         stateName={c?.stateName}
-        social={<SocialPanel regions={social} />}
-      >
+        panels={{
+          ...(tabs.includes("exit") ? { exit: <NotUploaded label="Exit poll data" owner={session.role === "owner"} /> } : {}),
+          opinion: (
       <main className="app-chrome relative min-h-0 overflow-hidden bg-white text-[var(--p-ink)]">
         <div className="relative mx-auto max-w-6xl px-6 pb-16 pt-0 sm:px-10">
           <CaseBackLink className="tap inline-flex items-center gap-2 rounded-full border border-[#CFCFCF] bg-white px-3 py-1.5 text-[12.5px] text-[#6B6B6B] transition-colors hover:border-[#0B0B0B] hover:text-[#0B0B0B]">
@@ -130,7 +135,10 @@ export default async function CaseStudyPage({ params, searchParams }: { params: 
           )}
         </div>
       </main>
-      </CaseStudyTabs>
+          ),
+          social: <SocialPanel regions={social} />,
+        }}
+      />
     </>
   );
 }

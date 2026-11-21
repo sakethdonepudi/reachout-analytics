@@ -68,7 +68,7 @@ function MetricText({ value, label }: { value: number; label: string }) {
   return <span className="tabular-nums whitespace-nowrap" title={exactNumber(value)}>{indianUnits(value)} {label}</span>;
 }
 
-export default function SocialPanel({ regions, compact = false }: { regions: AdsSocialView[]; compact?: boolean }) {
+export default function SocialPanel({ regions, compact = false, campaign }: { regions: AdsSocialView[]; compact?: boolean; campaign?: string | null }) {
   const [active, setActive] = useState(0);
   const [metric, setMetric] = useState<Metric>("impressions");
   const [expanded, setExpanded] = useState(false);
@@ -259,6 +259,12 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
 
   const campaignsHref = (row: AccountRow) => row.href ?? row.allAdsetsHref ?? null;
 
+  useEffect(() => {
+    if (!campaign) return;
+    const target = document.getElementById(`campaign-${campaign}`);
+    target?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [campaign]);
+
   return (
     <section className={cn("social-panel report-card", compact && "social-compact")} aria-label="Social media" style={{ borderLeft: `3px solid ${region.band}` }}>
       <div className="social-inner p-4">
@@ -288,6 +294,13 @@ export default function SocialPanel({ regions, compact = false }: { regions: Ads
           <StatCard label="Results" value={totalResults} note="Campaign results in the report" />
         </div>
         <p className="social-caveat">{REACH_CAVEAT}</p>
+
+        {campaign && (
+          <div id={`campaign-${campaign}`} className="mt-3 rounded-lg border border-[#F59E0B]/50 bg-[#FFFBEB] px-3 py-2 text-[11.5px] text-[#92400E]" role="status">
+            <b className="font-semibold">Related campaign {campaign}</b>
+            <span className="ml-1">is linked from the opinion-poll explanation above.</span>
+          </div>
+        )}
 
         <div className="social-chart report-card mt-4 p-3" ref={chartRef}>
           <div className="social-chart-head">

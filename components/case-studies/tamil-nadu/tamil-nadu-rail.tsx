@@ -97,13 +97,17 @@ function DisplayPartyCell({ group, compact }: { group: DisplayGroup; compact: bo
 
 export default function TamilNaduRail({
   scope, tab, onTab, onExpand, theme, selectedYear, isStatewide, opinionPoll, exitPoll, actualShares,
-  panelWidth = 500, owner = false,
+  panelWidth = 500, owner = false, pollType = "opinion",
 }: {
   scope: TnScopeResult; tab: TnTab; onTab: (t: TnTab) => void; onExpand: () => void;
   theme: "light" | "dark"; selectedYear: TnYear | "2026"; isStatewide: boolean;
   opinionPoll: OpinionPollView; exitPoll: TnExitPollView; actualShares: TnShares | null;
-  panelWidth?: number; owner?: boolean;
+  panelWidth?: number; owner?: boolean; pollType?: "exit" | "opinion";
 }) {
+  const visibleTabs = pollType === "exit" ? TABS.filter((item) => item.id !== "seats") : TABS;
+  const activeTab: TnTab = pollType === "exit" && tab === "seats" ? "share" : tab;
+  const pollColumnLabel = pollType === "exit" ? "Exit Poll" : "Opinion Poll";
+  const activePollShares = pollType === "exit" ? exitPoll.shares : opinionPoll.shares;
   const reduced = usePrefersReducedMotion();
   const p = palette(theme);
   const compact = panelWidth < 430;
@@ -241,15 +245,14 @@ export default function TamilNaduRail({
       <div className="mt-2">
         <>
           {isStatewide ? (
-            <div className="mt-2 overflow-x-auto rounded-lg border border-border/70">
+            <div className="mt-2 overflow-x-auto rounded-lg border border-border/70" tabIndex={0} role="region" aria-label="Vote-share comparison table">
               <table className={cn("w-full table-fixed border-collapse", compact ? "min-w-0 text-[8.5px]" : "min-w-0 text-[9.5px]")}>
                 <caption className="sr-only">Tamil Nadu vote-share comparison</caption>
-                <colgroup><col className="w-[34%]" /><col className="w-[22%]" /><col className="w-[22%]" /><col className="w-[22%]" /></colgroup>
+                <colgroup><col className="w-[44%]" /><col className="w-[28%]" /><col className="w-[28%]" /></colgroup>
                 <thead>
                   <tr className="border-b border-border/70 text-left text-[8px] tracking-wide text-muted-foreground">
                     <th scope="col" className={cn("px-1.5 text-left font-semibold", compact ? "py-1" : "py-1.5")}>Party</th>
-                    <th scope="col" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Exit Poll</th>
-                    <th scope="col" title={opinionPoll.available ? undefined : "No opinion-poll dataset is available"} className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Opinion Poll</th>
+                    <th scope="col" className={cn("px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>{pollColumnLabel}</th>
                     <th scope="col" className={cn("border-l border-border/60 px-1 text-right font-semibold", compact ? "py-1" : "py-1.5")}>Actual Result</th>
                   </tr>
                 </thead>
@@ -257,8 +260,7 @@ export default function TamilNaduRail({
                   {displayGroups.map((group) => (
                     <tr key={group.key} className="border-t border-border/50">
                       <th scope="row" className={cn("px-1.5 text-left font-medium", rowPad)}><DisplayPartyCell group={group} compact={compact} /></th>
-                      <td className={cn("px-1 text-right tabular-nums", rowPad)}>{tnPct(sumShares(exitPoll.shares, group.groups))}</td>
-                      <td className={cn("px-1 text-right tabular-nums", rowPad)}>{tnPct(opinionPoll.available ? sumShares(opinionPoll.shares, group.groups) : null)}</td>
+                      <td className={cn("px-1 text-right tabular-nums", rowPad)}>{tnPct(sumShares(activePollShares, group.groups))}</td>
                       <td className={cn("border-l border-border/60 px-1 text-right tabular-nums", rowPad)}>{tnPct(sumShares(actualShares, group.groups))}</td>
                     </tr>
                   ))}
@@ -266,7 +268,7 @@ export default function TamilNaduRail({
               </table>
             </div>
           ) : (
-            <div className="mt-2 overflow-x-auto rounded-lg border border-border/70">
+            <div className="mt-2 overflow-x-auto rounded-lg border border-border/70" tabIndex={0} role="region" aria-label="Vote-share comparison table">
               <table className={cn("w-full table-fixed border-collapse", compact ? "min-w-0 text-[8.5px]" : "min-w-0 text-[9.5px]")}>
                 <caption className="sr-only">{scope.label} local survey estimate, {baselineLabel} historical result, statewide opinion availability and local actual availability.</caption>
                 <colgroup><col className="w-[30%]" /><col className="w-[19%]" /><col className="w-[17%]" /><col className="w-[17%]" /><col className="w-[17%]" /></colgroup>
@@ -294,28 +296,28 @@ export default function TamilNaduRail({
             </div>
           )}
 
-          <div className={cn(segWrap, "mt-2 grid w-full grid-cols-3")} role="tablist" aria-label="Comparison views">
-            {TABS.map((t) => (
-              <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => onTab(t.id)} className={segButton(tab === t.id)}>
+          <div className={cn(segWrap, "mt-2 grid w-full", visibleTabs.length === 2 ? "grid-cols-2" : "grid-cols-3")} role="tablist" aria-label="Comparison views">
+            {visibleTabs.map((t) => (
+              <button key={t.id} type="button" role="tab" aria-selected={activeTab === t.id} onClick={() => onTab(t.id)} className={segButton(activeTab === t.id)}>
                 {t.label}
               </button>
             ))}
           </div>
 
           <div className="pt-2">
-            {tab === "change" && (
+            {activeTab === "change" && (
               <>
                 <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Estimated minus {baselineLabel} (pp)</p>
                 <EChart option={changeOption} height={chartHeight} reduced={reduced} ariaLabel={`Signed percentage-point change from ${baselineLabel} to the 2026 estimate for ${scope.label}`} />
               </>
             )}
-            {tab === "share" && (
+            {activeTab === "share" && (
               <>
                 <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Estimated vote share</p>
                 <EChart option={shareOption} height={chartHeight} reduced={reduced} ariaLabel={`2026 estimated vote share for ${scope.label}`} />
               </>
             )}
-            {tab === "seats" && (
+            {activeTab === "seats" && (
               <div className="space-y-2">
                 <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Opinion poll seats · actual shown separately</p>
                 {scope.opinionCall && <p className="text-[9px] text-muted-foreground">Opinion poll call: {TN_LABEL[scope.opinionCall] ?? scope.opinionCall}</p>}
