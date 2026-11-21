@@ -146,11 +146,10 @@ export default function CaseOrbit({ cases }: { cases: OrbitCase[] }) {
             <Link
               key={item.slug}
               href={`/case-studies/${item.slug}`}
+              prefetch={false}
               ref={(node) => { anchorRefs.current[index] = node; }}
               aria-label={`Open ${item.party} · ${item.stateName} case study`}
               data-featured={position.featured || undefined}
-              onMouseEnter={() => router.prefetch(`/case-studies/${item.slug}`)}
-              onFocus={() => router.prefetch(`/case-studies/${item.slug}`)}
               onKeyDown={(event) => {
                 if (event.key === "ArrowRight" || event.key === "ArrowDown") { event.preventDefault(); moveFocus(active + 1); }
                 if (event.key === "ArrowLeft" || event.key === "ArrowUp") { event.preventDefault(); moveFocus(active - 1); }

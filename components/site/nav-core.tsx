@@ -83,7 +83,7 @@ function Dropdown({ label, items, footer, active, align = "left" }: {
       </button>
       <div role="menu" aria-hidden={!open} data-open={open} data-align={align} className={cn("nav-menu site-group absolute top-[calc(100%+8px)] z-[var(--z-dropdown)] w-64 rounded-2xl p-1.5 text-[var(--h-ink)]", align === "right" ? "right-0" : "left-0")}>
           {items.map((item) => (
-            <Link key={item.href + item.label} href={item.href} role="menuitem" onClick={() => setOpen(false)} className={cn("flex min-h-10 items-start gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium transition-colors hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45", item.active && "site-group-inset")}>
+            <Link key={item.href + item.label} href={item.href} prefetch={false} role="menuitem" onClick={() => setOpen(false)} className={cn("flex min-h-10 items-start gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium transition-colors hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45", item.active && "site-group-inset")}>
               {item.party ? <NavPartyMark party={item.party} /> : item.icon}
               <span className="min-w-0"><span className="block">{item.label}</span>{item.hint && <span className="mt-0.5 block text-[10px] font-normal text-[var(--h-muted)]">{item.hint}</span>}</span>
             </Link>

@@ -11,7 +11,7 @@ export function PrecisionCard({ children, className }: { children: ReactNode; cl
 
 export function PrecisionCardLink({ href, children, className, label }: { href: string; children: ReactNode; className?: string; label?: string }) {
   return (
-    <Link href={href} aria-label={label} className={cn(base, "block hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--p-ink)] focus-visible:ring-offset-2", className)}>
+    <Link href={href} prefetch={false} aria-label={label} className={cn(base, "block hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--p-ink)] focus-visible:ring-offset-2", className)}>
       {children}
       <CornerBrackets className="opacity-0 transition-opacity duration-200 group-hover:opacity-100" inset={-5} />
     </Link>

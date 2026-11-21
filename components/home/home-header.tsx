@@ -103,7 +103,7 @@ export default function HomeHeader({
                         <div key={state} className="mb-1 last:mb-0">
                           <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">{state}</p>
                           {rows.map((row) => (
-                            <Link key={row.slug} href={`/case-studies/${row.slug}`} role="menuitem" onClick={() => setCasesOpen(false)} className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
+                            <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} role="menuitem" onClick={() => setCasesOpen(false)} className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
                               <NavPartyMark party={row.party} />
                               <span>{row.stateName} · {row.party}</span>
                             </Link>
@@ -170,7 +170,7 @@ export default function HomeHeader({
               <MobileLink item={CLIENT_NAV[0]} />
               <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">Case Studies</p>
               {cases.map((row) => (
-                <Link key={row.slug} href={`/case-studies/${row.slug}`} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#0B0B0C]">
+                <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#0B0B0C]">
                   <NavPartyMark party={row.party} />
                   <span>{row.stateName} · {row.party}</span>
                 </Link>
@@ -188,7 +188,7 @@ export default function HomeHeader({
               <MobileLink item={PUBLIC_NAV[0]} />
               <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">Case Studies</p>
               {cases.map((row) => (
-                <Link key={row.slug} href={`/case-studies/${row.slug}`} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#0B0B0C]">
+                <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#0B0B0C]">
                   <NavPartyMark party={row.party} />
                   <span>{row.stateName} · {row.party}</span>
                 </Link>
