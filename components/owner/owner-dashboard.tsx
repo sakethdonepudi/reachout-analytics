@@ -5,6 +5,7 @@ import PollUploadCard from "@/components/owner/poll-upload-card";
 import MetaAdsCard from "@/components/owner/meta-ads-card";
 import MetaAnalytics from "@/components/owner/meta-analytics";
 import StateHealth from "@/components/owner/state-health";
+import SurveyUploadCard from "@/components/owner/survey-upload-card";
 import type { DashboardShell } from "@/lib/dashboard/data";
 
 export default function OwnerDashboard({ shell, children }: { shell: DashboardShell; children: ReactNode }) {
@@ -22,6 +23,7 @@ export default function OwnerDashboard({ shell, children }: { shell: DashboardSh
         <PollUploadCard initialSlug={uploadSlug} />
         <MetaAdsCard versions={shell.versions} unmapped={shell.unmapped} cases={shell.cases} activeId={shell.activeId} />
       </div>
+      <SurveyUploadCard />
       {children}
       <StateHealth states={shell.states} onUpload={startUpload} />
     </div>
