@@ -35,10 +35,12 @@ async function sessionFromCookie(token: string | undefined, secret: string): Pro
   }
 }
 
-function applyCommon(response: Response, nonce: string, protectedPath: boolean) {
+function applyCommon(response: Response, nonce: string, protectedPath: boolean, hasCsrf: boolean) {
   for (const [key, value] of Object.entries(securityHeaders(nonce))) response.headers.set(key, value);
   if (protectedPath) for (const [key, value] of Object.entries(PROTECTED_HEADERS)) response.headers.set(key, value);
-  if (!response.headers.get("Set-Cookie")?.includes(`${CSRF_COOKIE}=`)) {
+  /* Keep the double-submit token stable for the session. Rotating it on every
+     response races with client fetches and rejects valid requests. */
+  if (!hasCsrf && !response.headers.get("Set-Cookie")?.includes(`${CSRF_COOKIE}=`)) {
     const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
     response.headers.append("Set-Cookie", `${CSRF_COOKIE}=${createCsrfToken()}; Path=/; SameSite=Lax; Max-Age=43200${secure}`);
   }
@@ -47,11 +49,12 @@ function applyCommon(response: Response, nonce: string, protectedPath: boolean) 
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hasCsrf = Boolean(request.cookies.get(CSRF_COOKIE));
   const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
     const target = request.nextUrl.clone();
     target.pathname = pathname.replace(/^\/admin/, "/dashboard");
-    return applyCommon(NextResponse.redirect(target, 301), nonce, false);
+    return applyCommon(NextResponse.redirect(target, 301), nonce, false, hasCsrf);
   }
   const isProduction = process.env.NODE_ENV === "production";
   const token = request.cookies.get(isProduction ? PROD_COOKIE : DEV_COOKIE)?.value
@@ -61,12 +64,12 @@ export async function middleware(request: NextRequest) {
   // The old marketing routes now live on the main website. Signed-out and
   // signed-in visitors both return to the public home.
   if (pathname === "/services" || pathname.startsWith("/services/") || pathname === "/research" || pathname === "/about" || pathname === "/contact") {
-    return applyCommon(NextResponse.redirect(new URL("/", request.url)), nonce, false);
+    return applyCommon(NextResponse.redirect(new URL("/", request.url)), nonce, false, hasCsrf);
   }
 
   // The owner never sees the public home.
   if (session?.role === "owner" && pathname === "/") {
-    return applyCommon(NextResponse.redirect(new URL("/dashboard", request.url)), nonce, false);
+    return applyCommon(NextResponse.redirect(new URL("/dashboard", request.url)), nonce, false, hasCsrf);
   }
 
   const publicPath = pathname === "/" || pathname === "/login";
@@ -79,25 +82,25 @@ export async function middleware(request: NextRequest) {
 
   if (!session && !publicPath && !authPath) {
     if (pathname.startsWith("/api/")) {
-      return applyCommon(NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 }), nonce, true);
+      return applyCommon(NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 }), nonce, true, hasCsrf);
     }
     const login = request.nextUrl.clone();
     login.pathname = "/login";
     login.search = "";
     login.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
-    return applyCommon(NextResponse.redirect(login), nonce, false);
+    return applyCommon(NextResponse.redirect(login), nonce, false, hasCsrf);
   }
 
   if (session && pathname === "/login") {
-    return applyCommon(NextResponse.redirect(new URL(roleHome(session.role), request.url)), nonce, false);
+    return applyCommon(NextResponse.redirect(new URL(roleHome(session.role), request.url)), nonce, false, hasCsrf);
   }
 
   if (pathname === "/campaigns" || pathname.startsWith("/meta-ads") || pathname === "/data") {
     const destination = session?.role === "owner" ? "/dashboard" : "/";
-    return applyCommon(NextResponse.redirect(new URL(destination, request.url)), nonce, false);
+    return applyCommon(NextResponse.redirect(new URL(destination, request.url)), nonce, false, hasCsrf);
   }
   if (pathname === "/setup" && !process.env.SETUP_TOKEN) {
-    return applyCommon(NextResponse.rewrite(new URL("/_not-found", request.url)), nonce, false);
+    return applyCommon(NextResponse.rewrite(new URL("/_not-found", request.url)), nonce, false, hasCsrf);
   }
   const roles = rolesForPath(pathname);
   const protectedPath = roles !== null;
@@ -108,6 +111,7 @@ export async function middleware(request: NextRequest) {
         NextResponse.json({ ok: false, error: message }, { status }),
         nonce,
         protectedPath,
+        hasCsrf,
       );
     }
     const target = status === 401
@@ -119,7 +123,7 @@ export async function middleware(request: NextRequest) {
           return login;
         })()
       : new URL("/no-access", request.url);
-    return applyCommon(NextResponse.redirect(target), nonce, protectedPath);
+    return applyCommon(NextResponse.redirect(target), nonce, protectedPath, hasCsrf);
   };
 
   if (roles) {
@@ -130,7 +134,7 @@ export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  return applyCommon(response, nonce, protectedPath);
+  return applyCommon(response, nonce, protectedPath, hasCsrf);
 }
 
 export const config = {
