@@ -14,7 +14,8 @@ import TamilNaduRail, { type TnScopeResult, type TnTab } from "./tamil-nadu-rail
 import CaseBackLink from "@/components/site/case-back-link";
 import CaseStudySplit from "@/components/case-studies/shared/case-study-split";
 import type { TnCaseData } from "@/lib/tamil-nadu/view-data";
-import type { PollSegment, VoteShareReason } from "@/lib/case-data/types";
+import type { SurveyData } from "@/lib/survey/types";
+import SurveyDashboard from "@/components/case-studies/survey-dashboard/survey-dashboard";
 import type { MapTheme } from "./tamil-nadu-map";
 
 const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
@@ -23,10 +24,7 @@ const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
 });
 const MemoTamilNaduMap = memo(TamilNaduMap);
 
-const TamilNaduAnalysis = dynamic(() => import("./tamil-nadu-analysis"), {
-  ssr: false,
-  loading: () => <div className="fixed inset-0 z-[var(--z-analysis)] grid place-items-center bg-background text-sm text-muted-foreground">Opening analysis…</div>,
-});
+
 
 type Option = { value: string; label: string; hint?: string };
 const LABEL = "text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6B6B6B]";
@@ -94,7 +92,7 @@ function SearchSelect({ label, value, options, placeholder, onChange, disabled =
   );
 }
 
-export default function TamilNaduDashboard({ caseData, aggregates, owner = false, pollType = "opinion", segments = [], reasons = [], initialExpanded = false, initialReason = null }: { caseData: TnCaseData; aggregates: TnAggregates; owner?: boolean; pollType?: "exit" | "opinion"; segments?: PollSegment[]; reasons?: VoteShareReason[]; initialExpanded?: boolean; initialReason?: string | null }) {
+export default function TamilNaduDashboard({ caseData, aggregates, owner = false, pollType = "opinion", survey = null, surveyPeriod = null, surveyProfile = null, initialExpanded = false }: { caseData: TnCaseData; aggregates: TnAggregates; owner?: boolean; pollType?: "exit" | "opinion"; survey?: SurveyData | null; surveyPeriod?: string | null; surveyProfile?: string | null; initialExpanded?: boolean }) {
   const theme = "light" as const;
   const router = useRouter();
   const pathname = usePathname();
@@ -173,8 +171,10 @@ export default function TamilNaduDashboard({ caseData, aggregates, owner = false
   const analysisUrl = useCallback((open: boolean) => {
     const params = new URLSearchParams(window.location.search);
     params.set("view", pollType);
-    if (open) params.set("expand", "1");
-    else { params.delete("expand"); params.delete("reason"); }
+    if (open) {
+      params.set("expand", "1");
+      params.set("period", pollType === "exit" ? "ex" : "op");
+    } else { params.delete("expand"); params.delete("reason"); params.delete("period"); params.delete("profile"); }
     return `${pathname}${params.toString() ? `?${params.toString()}` : ""}`;
   }, [pathname, pollType]);
   const openAnalysis = useCallback(() => {
@@ -257,10 +257,7 @@ export default function TamilNaduDashboard({ caseData, aggregates, owner = false
       </section>
 
 
-      {chartOpen && (
-        <TamilNaduAnalysis open={chartOpen} onClose={closeAnalysis} data={data} theme={theme === "light" ? "light" : "dark"}
-          initialScope={currentAc ? `a:${currentAc.no}` : district ? `d:${district}` : "state"} defaultBaseline={baselineYear} onSelectDistrict={selectDistrict} onSelectAc={selectAc} opinionPoll={opinionPoll} exitPoll={caseData.exitPoll} eciActual={caseData.actual} forecasters={caseData.forecasters} forecastActualSeats={caseData.forecastActualSeats} initialTab={tab} owner={owner} pollType={pollType} segments={segments} reasons={reasons} initialReason={initialReason} />
-      )}
+      <SurveyDashboard open={chartOpen} onClose={closeAnalysis} data={survey} stateName="Tamil Nadu" view={pollType} initialPeriod={surveyPeriod ?? (pollType === "exit" ? "ex" : "op")} initialProfile={surveyProfile ?? undefined} owner={owner} />
     </div>
   );
 }

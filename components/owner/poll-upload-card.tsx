@@ -10,13 +10,9 @@ import { PARTIES } from "@/lib/parties";
 import { PartyMark } from "@/components/site/party-mark";
 import { useReauth } from "@/components/auth/reauth-provider";
 import { validateSheet, type Row, type SheetValidation } from "@/lib/poll-data";
-import { parseDatasetWorkbook, type DatasetKind } from "@/lib/case-data/workbooks";
-import { validateSegments, validateReasons } from "@/lib/case-data/schema";
 import { cn } from "@/lib/utils";
 
 type PollType = "opinion" | "exit";
-type Dataset = "vote" | DatasetKind;
-type Aux = { raw: Record<string, unknown>[]; rows: number; errors: string[]; warnings: string[] };
 type Parsed = { rows: Row[]; headers: string[]; validation: SheetValidation; opinionRows: number; exitRows: number };
 type TgPreview = { ok: boolean; rows?: number; error?: string; hashMatches?: boolean; warnings?: string[]; expectedHash?: string; uploadedHash?: string };
 type HistoryRow = { at: string; filename: string; inserted: number; counts?: { total?: number }; outcome?: string };
@@ -74,8 +70,6 @@ export default function PollUploadCard({ initialSlug = null }: { initialSlug?: s
   const input = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [slug, setSlug] = useState<string | null>(null);
-  const [dataset, setDataset] = useState<Dataset>("vote");
-  const [aux, setAux] = useState<Aux | null>(null);
   const [pollType, setPollType] = useState<PollType>("exit");
   const [parsed, setParsed] = useState<Parsed | null>(null);
   const [tgPreview, setTgPreview] = useState<TgPreview | null>(null);
@@ -102,7 +96,7 @@ export default function PollUploadCard({ initialSlug = null }: { initialSlug?: s
     return () => { alive = false; };
   }, [slug, refreshKey]);
 
-  const resetPreview = () => { setParsed(null); setAux(null); setTgPreview(null); setWrongState(null); setConfirmedMismatch(false); setError(""); setSuccess(null); };
+  const resetPreview = () => { setParsed(null); setTgPreview(null); setWrongState(null); setConfirmedMismatch(false); setError(""); setSuccess(null); };
 
   const loadFile = useCallback(async (next: File | null) => {
     if (!next) return;
@@ -113,14 +107,6 @@ export default function PollUploadCard({ initialSlug = null }: { initialSlug?: s
     setBusy("parse");
     try {
       const buffer = await next.arrayBuffer();
-      if (dataset !== "vote") {
-        const workbook = parseDatasetWorkbook(dataset, buffer);
-        if (workbook.error) { setFile(null); setError(workbook.error); return; }
-        const parsedRows = dataset === "segments" ? validateSegments(workbook.rows, slug ?? "") : validateReasons(workbook.rows, slug ?? "");
-        setAux({ raw: workbook.rows, rows: parsedRows.rows.length, errors: parsedRows.errors, warnings: parsedRows.warnings });
-        if (parsedRows.errors.length) setError(parsedRows.errors[0]);
-        return;
-      }
       const sheets = parseFile(buffer);
       const rows = sheets.exit.length ? sheets.exit : sheets.opinion;
       const type: PollType = sheets.exit.length ? "exit" : "opinion";
@@ -132,7 +118,7 @@ export default function PollUploadCard({ initialSlug = null }: { initialSlug?: s
       setFile(null);
       setError("That workbook could not be read. Check it opens in Excel and try again.");
     } finally { setBusy(""); }
-  }, [slug, dataset]);
+  }, [slug]);
 
   // Telangana uses the strict October importer. Preview it on the server.
   useEffect(() => {
@@ -165,23 +151,8 @@ export default function PollUploadCard({ initialSlug = null }: { initialSlug?: s
   const validation = parsed?.validation ?? null;
   const errors = validation?.issues.filter((issue) => issue.severity === "error") ?? [];
   const warnings = validation?.issues.filter((issue) => issue.severity === "warning") ?? [];
-  const valid = dataset !== "vote"
-    ? Boolean(aux && aux.rows > 0 && aux.errors.length === 0)
-    : slug === "telangana" ? Boolean(tgPreview?.ok) : Boolean(validation && validation.total > 0 && errors.length === 0);
-  const canUpload = Boolean(file && slug && valid && !busy && (dataset !== "vote" || !wrongState || confirmedMismatch));
-
-  function chooseDataset(next: Dataset) {
-    setDataset(next);
-    setFile(null);
-    setParsed(null);
-    setAux(null);
-    setTgPreview(null);
-    setWrongState(null);
-    setConfirmedMismatch(false);
-    setError("");
-    setSuccess(null);
-    if (input.current) input.current.value = "";
-  }
+  const valid = slug === "telangana" ? Boolean(tgPreview?.ok) : Boolean(validation && validation.total > 0 && errors.length === 0);
+  const canUpload = Boolean(file && slug && valid && !busy && (!wrongState || confirmedMismatch));
 
   function chooseState(next: string) {
     setSlug(next);
@@ -222,29 +193,6 @@ export default function PollUploadCard({ initialSlug = null }: { initialSlug?: s
     if (!file || !slug || !canUpload) return;
     setBusy("upload"); setError(""); setSuccess(null);
     try {
-      if (dataset !== "vote") {
-        if (!aux) throw new Error("Choose a workbook first.");
-        let response = await fetch("/api/data/datasets/import", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dataset, state: slug, rows: aux.raw }),
-        });
-        if (response.status === 403) {
-          const payload = await response.json().catch(() => ({}));
-          if (payload.code === "reauth_required") {
-            if (!(await requestReauth())) throw new Error("Re-authentication is needed to upload data.");
-            response = await fetch("/api/data/datasets/import", {
-              method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ dataset, state: slug, rows: aux.raw }),
-            });
-          }
-        }
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !payload.ok) throw new Error(typeof payload.error === "string" ? payload.error : "The dataset could not be uploaded.");
-        setSuccess({ rows: Number(payload.rows ?? 0), skipped: 0, slug });
-        setRefreshKey((value) => value + 1);
-        router.refresh();
-        return;
-      }
       if (slug === "telangana") {
         const form = new FormData(); form.append("file", file); form.append("confirm", "1");
         let response = await fetch("/api/admin/telangana/import", { method: "POST", body: form });
@@ -282,28 +230,17 @@ export default function PollUploadCard({ initialSlug = null }: { initialSlug?: s
         <FileSpreadsheet className="size-5 shrink-0 text-[#6B6B6B]" aria-hidden />
       </div>
 
-
-
-      <div className="mt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6B6B6B]">Dataset</p>
-        <div className="mt-1 inline-flex flex-wrap rounded-full bg-[#F4F4F5] p-1" role="group" aria-label="Dataset">
-          {([["vote", "Vote share"], ["segments", "Segments"], ["reasons", "Reasons"]] as const).map(([id, label]) => (
-            <button key={id} type="button" onClick={() => chooseDataset(id)} aria-pressed={dataset === id} className={cn("min-h-8 rounded-full px-3 text-[11.5px] font-semibold transition-colors", dataset === id ? "bg-white text-[#0B0B0C] shadow-[0_1px_2px_rgba(0,0,0,0.06)]" : "text-[#6B6B6B] hover:text-[#0B0B0C]")}>{label}</button>
-          ))}
-        </div>
-      </div>
-
       <label
         onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={(event) => { event.preventDefault(); setDragging(false); void loadFile(event.dataTransfer.files?.[0] ?? null); }}
         className={cn("mt-4 flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-4 py-5 text-center transition-colors focus-within:ring-2 focus-within:ring-[#0B0B0C]/40", dragging ? "border-[#0B0B0C] bg-[#F4F4F5]" : "border-[#CFCFCF] bg-[#FAFAFA] hover:border-[#0B0B0C]")}
       >
-        <span className="sr-only">Choose an Excel or CSV {dataset === "vote" ? "poll workbook" : `${dataset} workbook`}</span>
+        <span className="sr-only">Choose an Excel or CSV poll workbook</span>
         <Upload className="size-5 text-[#6B6B6B]" aria-hidden />
-        <span className="mt-2 text-[13px] font-semibold text-[#0B0B0C]">{file ? file.name : `Drop a ${dataset === "vote" ? "poll" : dataset} workbook here or choose a file`}</span>
+        <span className="mt-2 text-[13px] font-semibold text-[#0B0B0C]">{file ? file.name : "Drop a workbook here or choose a file"}</span>
         <span className="mt-1 text-[11.5px] text-[#6B6B6B]">.xlsx, .xls or .csv, up to {MAX_MB} MB</span>
-        <input ref={input} type="file" accept=".xlsx,.xls,.csv" className="sr-only" aria-label={dataset === "vote" ? "Poll workbook" : `${dataset} workbook`} onChange={(event) => void loadFile(event.target.files?.[0] ?? null)} />
+        <input ref={input} type="file" accept=".xlsx,.xls,.csv" className="sr-only" aria-label="Poll workbook" onChange={(event) => void loadFile(event.target.files?.[0] ?? null)} />
       </label>
 
       {file && (
@@ -323,7 +260,7 @@ export default function PollUploadCard({ initialSlug = null }: { initialSlug?: s
         </div>
       )}
 
-      {dataset === "vote" && file && differentPoll && slug !== "telangana" && (
+      {file && differentPoll && slug !== "telangana" && (
         <div className="mt-3 inline-flex rounded-full bg-[#F4F4F5] p-1" role="group" aria-label="Poll type">
           {(["exit", "opinion"] as const).map((type) => (
             <button key={type} type="button" onClick={() => setPollType(type)} aria-pressed={pollType === type} className={cn("min-h-8 rounded-full px-3 text-[11.5px] font-semibold", pollType === type ? "bg-white text-[#0B0B0C] shadow-[0_1px_2px_rgba(0,0,0,0.06)]" : "text-[#6B6B6B]")}>{type === "exit" ? "Exit poll" : "Opinion poll"}</button>
@@ -352,27 +289,7 @@ export default function PollUploadCard({ initialSlug = null }: { initialSlug?: s
         </div>
       )}
 
-      {dataset !== "vote" && file && slug && aux && (
-        <div className="mt-4 rounded-xl border border-[#EAEAEA] p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[12px] font-semibold text-[#0B0B0C]">Preview · {dataset === "segments" ? "Segments" : "Reasons"}</p>
-            <a href={`/api/data/datasets/template?dataset=${dataset}`} className="inline-flex min-h-9 items-center gap-1.5 text-[11.5px] font-semibold text-[#0B0B0C] underline-offset-4 hover:underline"><Download className="size-3.5" aria-hidden />Download template</a>
-          </div>
-          <p className="mt-1 text-[11.5px] text-[#6B6B6B]">{aux.rows.toLocaleString("en-IN")} rows · {aux.errors.length} errors · {aux.warnings.length} warnings</p>
-          {aux.raw.length > 0 && (
-            <div className="mt-2 overflow-x-auto rounded-lg border border-[#EAEAEA]">
-              <table className="owner-table w-full min-w-[560px] border-collapse text-left text-[11px]">
-                <thead className="bg-[#FAFAFA] text-[9px] uppercase tracking-[0.08em] text-[#6B6B6B]"><tr>{Object.keys(aux.raw[0]).slice(0, 8).map((header) => <th key={header} className="px-2 py-1.5 font-semibold">{header}</th>)}</tr></thead>
-                <tbody>{aux.raw.slice(0, 3).map((row, index) => <tr key={index} className="border-t border-[#EAEAEA]">{Object.keys(aux.raw[0]).slice(0, 8).map((header) => <td key={header} className="max-w-[160px] truncate px-2 py-1.5">{String(row[header] ?? "")}</td>)}</tr>)}</tbody>
-              </table>
-            </div>
-          )}
-          {aux.errors.length > 0 && <ul className="mt-2 max-h-36 space-y-1 overflow-y-auto text-[11.5px] text-[#B42318]">{aux.errors.slice(0, 20).map((issue, index) => <li key={index}>{issue}</li>)}</ul>}
-          {!aux.errors.length && aux.warnings.length > 0 && <p className="mt-2 text-[11.5px] text-[#92400E]">{aux.warnings.length} warning{aux.warnings.length === 1 ? "" : "s"}. Errors must be fixed before upload.</p>}
-        </div>
-      )}
-
-      {dataset === "vote" && file && slug && (parsed || tgPreview) && (
+      {file && slug && (parsed || tgPreview) && (
         <div className="mt-4 rounded-xl border border-[#EAEAEA] p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[12px] font-semibold text-[#0B0B0C]">Preview</p>
@@ -399,13 +316,11 @@ export default function PollUploadCard({ initialSlug = null }: { initialSlug?: s
         </div>
       )}
 
-      {dataset === "vote" && last && <p className="mt-3 text-[11.5px] text-[#6B6B6B]">Last upload: {new Date(last.at).toLocaleString("en-IN")} · {last.filename} · {Number(last.counts?.total ?? last.inserted).toLocaleString("en-IN")} rows</p>}
+      {last && <p className="mt-3 text-[11.5px] text-[#6B6B6B]">Last upload: {new Date(last.at).toLocaleString("en-IN")} · {last.filename} · {Number(last.counts?.total ?? last.inserted).toLocaleString("en-IN")} rows</p>}
 
       <button type="button" onClick={() => void upload()} disabled={!canUpload} className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0B0B0C] px-5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
         {busy === "upload" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Upload className="size-4" aria-hidden />}
-        {dataset === "vote"
-          ? selected ? `Upload to ${selected.stateName}` : "Choose a state to upload"
-          : dataset === "segments" ? "Upload segments" : "Upload reasons"}
+        {selected ? `Upload to ${selected.stateName}` : "Choose a state to upload"}
       </button>
     </section>
   );

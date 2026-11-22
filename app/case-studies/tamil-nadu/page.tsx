@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 import { AMI_EXIT_POLL, ECI_ACTUAL, TN_OPINION_POLL } from "@/lib/tamil-nadu/comparison";
 import { socialForCase } from "@/lib/ads-desk/mapping";
 import { caseBySlug, resolveCaseTab, tabsForCase } from "@/lib/cases";
-import { getSegments, getReasons } from "@/lib/case-data/store";
+import { getSurveyCached } from "@/lib/survey/store";
+import { pickSurveyPeriod, surveyForRole } from "@/lib/survey/dto";
+import { surveyExitView, surveyOpinionView } from "@/lib/survey/tn-view";
 import { getTamilNaduAggregates } from "@/lib/tamil-nadu/aggregates-server";
 import { buildAdsSocial } from "@/lib/ads-desk/client-dto";
 import { TVK_ACTUAL_SEATS, TVK_FORECASTERS } from "@/lib/tamil-nadu/forecasters";
@@ -27,17 +29,21 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function TamilNaduCaseStudyPage({ searchParams }: { searchParams: Promise<{ view?: string; expand?: string; reason?: string; campaign?: string }> }) {
-  const { view, expand, reason, campaign } = await searchParams;
+export default async function TamilNaduCaseStudyPage({ searchParams }: { searchParams: Promise<{ view?: string; expand?: string; reason?: string; campaign?: string; period?: string; profile?: string }> }) {
+  const { view, expand, campaign, period, profile } = await searchParams;
   const tabs = tabsForCase(caseBySlug("tamil-nadu"));
   const initialTab = resolveCaseTab(view, tabs);
   const session = await requirePageSession("/case-studies/tamil-nadu");
-  const [segments, reasons] = await Promise.all([getSegments("tamil-nadu"), getReasons("tamil-nadu")]);
+  const surveyRecord = await getSurveyCached("tamil-nadu");
+  const surveyPeriod = surveyRecord ? pickSurveyPeriod(surveyRecord.data, period ?? (view === "exit" ? "ex" : "op")) : null;
+  const survey = surveyRecord ? surveyForRole(surveyRecord.data, session.role === "owner", { period: surveyPeriod, profile }) : null;
   const socialRegions = await socialForCase("tamil-nadu", session.role === "owner");
   const aggregates = await getTamilNaduAggregates();
+  const surveyOpinion = surveyRecord ? surveyOpinionView(surveyRecord.data, "op", "Tamil Nadu") : null;
+  const surveyExit = surveyRecord ? surveyExitView(surveyRecord.data, "ex", "Tamil Nadu") : null;
   const caseData: TnCaseData = {
-    exitPoll: AMI_EXIT_POLL,
-    opinionPoll: TN_OPINION_POLL,
+    exitPoll: surveyExit ?? AMI_EXIT_POLL,
+    opinionPoll: surveyOpinion ?? TN_OPINION_POLL,
     actual: ECI_ACTUAL,
     social: socialRegions[0] ?? buildAdsSocial(null, "", session.role === "owner"),
     socialRegions,
@@ -54,9 +60,9 @@ export default async function TamilNaduCaseStudyPage({ searchParams }: { searchP
         party="AIADMK"
         stateName="Tamil Nadu"
         panels={{
-          exit: <TamilNaduDashboard caseData={caseData} aggregates={aggregates} owner={session.role === "owner"} pollType="exit" segments={segments} reasons={reasons} initialExpanded={expand === "1"} initialReason={reason ?? null} />,
-          opinion: <TamilNaduDashboard caseData={caseData} aggregates={aggregates} owner={session.role === "owner"} pollType="opinion" segments={segments} reasons={reasons} initialExpanded={expand === "1"} initialReason={reason ?? null} />,
-          social: <SocialPanel regions={socialRegions} campaign={campaign ?? null} />,
+          exit: <TamilNaduDashboard caseData={caseData} aggregates={aggregates} owner={session.role === "owner"} pollType="exit" survey={survey} surveyPeriod={surveyPeriod} surveyProfile={profile ?? null} initialExpanded={expand === "1"} />,
+          opinion: <TamilNaduDashboard caseData={caseData} aggregates={aggregates} owner={session.role === "owner"} pollType="opinion" survey={survey} surveyPeriod={surveyPeriod} surveyProfile={profile ?? null} initialExpanded={expand === "1"} />,
+          social: <SocialPanel regions={socialRegions} campaign={campaign ?? null} period={period ?? null} />,
         }}
       />
     </>
