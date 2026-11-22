@@ -12,6 +12,7 @@ const number = (value: number) => new Intl.NumberFormat("en-IN", { maximumFracti
 const money = (value: number) => `₹${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value)}`;
 const compactMoney = (value: number) => `₹${indianUnits(value)}`;
 const REACH_CAVEAT = "Reach is summed per campaign; one person can count more than once.";
+const SURVEY_PERIODS: Record<string, string> = { pre: "Pre-poll", op: "Opinion poll", ex: "Exit poll", post: "Post-poll" };
 
 type Metric = "impressions" | "reach" | "engagements";
 type CampaignSort = "impressions" | "reach" | "clicks" | "results";
@@ -68,7 +69,7 @@ function MetricText({ value, label }: { value: number; label: string }) {
   return <span className="tabular-nums whitespace-nowrap" title={exactNumber(value)}>{indianUnits(value)} {label}</span>;
 }
 
-export default function SocialPanel({ regions, compact = false, campaign }: { regions: AdsSocialView[]; compact?: boolean; campaign?: string | null }) {
+export default function SocialPanel({ regions, compact = false, campaign, period }: { regions: AdsSocialView[]; compact?: boolean; campaign?: string | null; period?: string | null }) {
   const [active, setActive] = useState(0);
   const [metric, setMetric] = useState<Metric>("impressions");
   const [expanded, setExpanded] = useState(false);
@@ -82,7 +83,13 @@ export default function SocialPanel({ regions, compact = false, campaign }: { re
   const [campaignLoading, setCampaignLoading] = useState(false);
   const [campaignError, setCampaignError] = useState("");
   const [campaignQuery, setCampaignQuery] = useState("");
+  const metaRef = useRef<HTMLDivElement>(null);
   const [campaignSort, setCampaignSort] = useState<CampaignSort>("impressions");
+  useEffect(() => {
+    if (!period) return;
+    const timer = window.setTimeout(() => metaRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }), 150);
+    return () => window.clearTimeout(timer);
+  }, [period]);
   const [retryKey, setRetryKey] = useState(0);
   const [chartGrown, setChartGrown] = useState(false);
   const [chartStagger, setChartStagger] = useState(true);
@@ -126,9 +133,16 @@ export default function SocialPanel({ regions, compact = false, campaign }: { re
     });
   }, [region]);
 
+  const periodNotice = period ? (
+    <div className="mt-3 rounded-lg border border-[#EAEAEA] bg-[#FAFAFA] px-3 py-2 text-[11.5px] text-[#555]" role="status">
+      Opened from the <b className="font-semibold text-[#0B0B0B]">{SURVEY_PERIODS[period] ?? period}</b> survey period. Campaigns below come from the Ads Desk.
+    </div>
+  ) : null;
+
   if (!regions.length || !region) {
     return (
       <section className="space-y-4" aria-label="Social media" aria-busy="true">
+        {periodNotice}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }, (_, index) => (
             <div key={index} className="report-card p-4">
@@ -295,6 +309,8 @@ export default function SocialPanel({ regions, compact = false, campaign }: { re
         </div>
         <p className="social-caveat">{REACH_CAVEAT}</p>
 
+        {periodNotice}
+
         {campaign && (
           <div id={`campaign-${campaign}`} className="mt-3 rounded-lg border border-[#F59E0B]/50 bg-[#FFFBEB] px-3 py-2 text-[11.5px] text-[#92400E]" role="status">
             <b className="font-semibold">Related campaign {campaign}</b>
@@ -323,7 +339,7 @@ export default function SocialPanel({ regions, compact = false, campaign }: { re
           <p className="social-chart-caption">Top 10 of {number(totalAccounts)} accounts by {metric}.</p>
         </div>
 
-        <div className="social-accounts-head">
+        <div className="social-accounts-head scroll-mt-28" id="meta-ads" ref={metaRef}>
           <h3 className="social-accounts-title">Accounts</h3>
           <div className="social-accounts-actions">
             {expanded && <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search accounts" aria-label="Search accounts" className="social-search" />}
