@@ -39,6 +39,7 @@ export function parseSurveyHtml(source: string, state: string): SurveyData {
     regions: Array.isArray(data.regions) ? data.regions as string[] : Object.keys((data.actual as Record<string, unknown>) ?? {}),
     periods,
     actual: data.actual as SurveyData["actual"],
+    base: data.base as SurveyData["base"],
     ads: data.ads as SurveyData["ads"],
     n_total: Number(data.n_total ?? 0),
     geo: data.geo,

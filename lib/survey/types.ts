@@ -46,6 +46,8 @@ export type SurveyData = {
   periods: Record<string, SurveyPeriod>;
   periodCatalog?: Array<{ key: string; label: string }>;
   actual: Record<string, SurveyShare>;
+  /** 2021 alliance baseline by region, used by the zone swing table. */
+  base?: Record<string, SurveyShare>;
   ads: SurveyAdsSummary;
   n_total: number;
   geo?: unknown;

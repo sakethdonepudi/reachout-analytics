@@ -24,7 +24,9 @@
     "test:e2e": "tsx tests/e2e/login-matrix.spec.ts",
     "test:e2e:prod": "tsx tests/e2e/login-matrix.spec.ts --prod",
     "qa:visual": "tsx tests/e2e/visual-qa.ts",
-    "seed:survey": "tsx --conditions react-server scripts/seed-survey.ts"
+    "seed:survey": "tsx --conditions react-server scripts/seed-survey.ts",
+    "test:tn-map": "tsx --conditions react-server scripts/tn-map.test.ts",
+    "seed:tn-map": "tsx --conditions react-server scripts/seed-tn-map.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",

@@ -49,6 +49,7 @@ const base = z.object({
   regions: z.array(z.string()).optional(),
   periods: z.record(z.string(), period),
   actual: z.record(z.string(), z.record(z.string(), z.number())),
+  base: z.record(z.string(), z.record(z.string(), z.number())).optional(),
   ads: z.record(z.string(), z.unknown()),
   n_total: z.number(),
   geo: z.unknown().optional(),
