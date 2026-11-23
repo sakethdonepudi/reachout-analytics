@@ -3,7 +3,6 @@ import { requireRecentAuth } from "@/lib/auth";
 import { requireCsrf } from "@/lib/csrf";
 import { audit } from "@/lib/audit";
 import { parseSurveyHtml } from "@/lib/survey/parse";
-import { parseSurveyWorkbook } from "@/lib/survey/excel";
 import { publishSurvey } from "@/lib/survey/store";
 import { SURVEY_STATES, type SurveyData } from "@/lib/survey/types";
 
@@ -20,25 +19,19 @@ export async function POST(req: NextRequest) {
   const file = form?.get("file");
   const state = String(form?.get("state") ?? "");
   const confirm = String(form?.get("confirm") ?? "") === "1";
-  if (!(file instanceof File)) return Response.json({ ok: false, error: "Choose a survey dashboard HTML or Excel file." }, { status: 400 });
+  if (!(file instanceof File)) return Response.json({ ok: false, error: "Choose a survey dashboard HTML file." }, { status: 400 });
   if (!SURVEY_STATES[state]) return Response.json({ ok: false, error: "Choose Tamil Nadu or Andhra Pradesh." }, { status: 400 });
   if (file.size > 4 * 1024 * 1024) return Response.json({ ok: false, error: "That file is larger than 4 MB." }, { status: 400 });
 
   try {
-    let data: SurveyData;
-    if (/\.xlsx?$/i.test(file.name)) {
-      data = parseSurveyWorkbook(Buffer.from(await file.arrayBuffer()), state);
-    } else if (/\.html?$/i.test(file.name)) {
-      data = parseSurveyHtml(await file.text(), state);
-    } else {
-      return Response.json({ ok: false, error: "Choose the survey dashboard .html or .xlsx file." }, { status: 400 });
-    }
+    if (!/\.html?$/i.test(file.name)) return Response.json({ ok: false, error: "Choose the survey dashboard .html file." }, { status: 400 });
+    const data: SurveyData = parseSurveyHtml(await file.text(), state);
     const preview = {
-      periods: Object.entries(data.periods).map(([key, period]) => ({ key, label: period.label, n: period.n, from: period.from, to: period.to })),
+      periods: Object.entries(data.periods).map(([key, period]) => ({ key, label: period.label, n: period.n, from: period.from, to: period.to, months: Object.values(period.months ?? {}).map((month) => month.label) })),
       n_total: data.n_total,
       state,
       stateName: SURVEY_STATES[state].name,
-      source: /\.xlsx?$/i.test(file.name) ? "excel" : "html",
+      source: "html",
     };
     if (!confirm) return Response.json({ ok: true, preview }, { headers: { "Cache-Control": "private, no-store" } });
     const version = await publishSurvey(state, file.name, data);

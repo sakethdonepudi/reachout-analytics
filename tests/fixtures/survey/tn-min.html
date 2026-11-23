@@ -4,7 +4,9 @@
 <body>
 <!-- Trimmed copy of the TN dashboard payload shape. The Result period keeps
      dist as an array of district seat rows, which is the regression this
-     fixture covers. No real survey data or ad spend is included. -->
+     fixture covers. The months and profile keys are synthetic and exist so
+     the passthrough tests can rename a month and add a profile.
+     No real survey data or ad spend is included. -->
 <script>
 window.TN_DATA={
   "parties":["TVK","DMK+","AIADMK+","NTK","Others"],
@@ -14,8 +16,11 @@ window.TN_DATA={
       "label":"Opinion poll","n":40,"nw":40,"from":"01 Mar 2026","to":"31 Mar 2026",
       "expected":{"Chennai":{"TVK":50,"DMK+":20,"AIADMK+":20,"NTK":5,"Others":5},"Tamil Nadu":{"TVK":45,"DMK+":25,"AIADMK+":22,"NTK":5,"Others":3}},
       "seats":{"TVK":2,"DMK+":1,"AIADMK+":1,"NTK":0,"Others":0,"zones":{"Chennai":{"TVK":2,"DMK+":1,"AIADMK+":1,"NTK":0,"Others":0,"acs":3}},"hit":2},
-      "demo":{"zone":{"label":"Zone","cov":"40 of 40 responses","rows":[{"g":"Chennai","n":40,"v":[50,20,20,5,5]}]}},
-      "weighted":true
+      "demo":{"zone":{"label":"Zone","cov":"40 of 40 responses","rows":[{"g":"Chennai","n":40,"v":[50,20,20,5,5]}]},"religion":{"label":"Religion","rows":[{"g":"Hindu","n":30,"v":[45,25,22,5,3]}]}},
+      "weighted":true,
+      "months":{
+        "2026-03":{"label":"Mar 2026","n":10,"nw":10,"from":"01 Mar 2026","to":"15 Mar 2026","expected":{"Tamil Nadu":{"TVK":44,"DMK+":26,"AIADMK+":22,"NTK":5,"Others":3}},"seats":{"TVK":2,"DMK+":1,"AIADMK+":0,"hit":2},"demo":{"age":{"label":"Age","rows":[{"g":"18-25","n":10,"v":[44,26,22,5,3]}]}}},
+        "2026-04":{"label":"Apr 2026","n":30,"nw":30,"from":"01 Apr 2026","to":"30 Apr 2026","expected":{"Tamil Nadu":{"TVK":46,"DMK+":25,"AIADMK+":22,"NTK":5,"Others":2}},"seats":{"TVK":2,"DMK+":1,"AIADMK+":1,"hit":2},"sub":{"2026-04a":{"label":"1-15 Apr","n":20,"nw":20,"from":"01 Apr 2026","to":"15 Apr 2026","expected":{"Tamil Nadu":{"TVK":47,"DMK+":24,"AIADMK+":22,"NTK":5,"Others":2}},"seats":{"TVK":2,"DMK+":1,"AIADMK+":0,"hit":2},"demo":{"age":{"label":"Age","rows":[{"g":"18-25","n":20,"v":[47,24,22,5,2]}]}}}}}}
     },
     "ex":{
       "label":"Exit poll","n":20,"nw":10,"from":"01 Apr 2026","to":"02 Apr 2026",
@@ -35,7 +40,7 @@ window.TN_DATA={
     }
   },
   "actual":{"Tamil Nadu":{"TVK":34.1,"DMK+":32.2,"AIADMK+":28.1,"NTK":3.6,"Others":2}},
-  "ads":{"label":"Meta ads","range":"01 Mar to 02 Apr 2026","total":{"n":2,"reach":1000,"impr":2000,"views":1500,"clicks":20,"eng":90}},
+  "ads":{"label":"Meta ads","range":"01 Mar to 02 Apr 2026","total":{"n":2,"reach":1000,"impr":2000,"views":1500,"clicks":20,"eng":90},"accounts":[],"camps":{},"periods":{}},
   "n_total":60
 };
 </script>

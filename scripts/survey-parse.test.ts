@@ -1,7 +1,8 @@
 /**
  * Survey upload regression tests.
  *
- * The trimmed fixture is committed, so CI covers the district-seat array shape.
+ * The trimmed fixture is committed, so CI covers the district-seat array shape
+ * and the passthrough rules for new months, sub-periods and profile keys.
  * The two real dashboard files contain ad spend and are never committed: point
  * SURVEY_TN_HTML and SURVEY_AP_HTML at local copies to run the full check.
  * When either variable is missing that file is skipped, which keeps CI green.
@@ -11,8 +12,10 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { parseSurveyHtml } from "../lib/survey/parse";
-import { parseSurveyWorkbook, surveyDataToWorkbook } from "../lib/survey/excel";
 import type { SurveyDistrictSeat } from "../lib/survey/types";
+import { buildSurveyMap } from "../lib/tamil-nadu/survey-map";
+import { surveySlots } from "../lib/survey/tn-shared";
+import { canonicalDistrictName, splitAcLabel } from "../lib/tamil-nadu/aliases";
 
 let passed = 0;
 const check = (name: string, fn: () => void) => {
@@ -38,10 +41,18 @@ check("Result dist stays an array of district rows", () => {
   assert.equal(first.TVK, 2);
   assert.equal(first["DMK+"], 1);
 });
-check("Excel round trip keeps the same dist array shape", () => {
-  const workbook = surveyDataToWorkbook(parsed, "tamil-nadu");
-  const back = parseSurveyWorkbook(workbook, "tamil-nadu");
-  assert.deepEqual(back.periods.rs.dist, parsed.periods.rs.dist);
+check("months and sub-periods are read from the fixture", () => {
+  assert.deepEqual(Object.keys(parsed.periods.op.months ?? {}), ["2026-03", "2026-04"]);
+  assert.deepEqual(Object.keys(parsed.periods.op.months?.["2026-04"]?.sub ?? {}), ["2026-04a"]);
+});
+check("renaming a month and adding a profile still parses", () => {
+  const source = fixture
+    .replace(/"2026-03"/g, '"2099-01"')
+    .replace(/"label":"Mar 2026"/g, '"label":"Jan 2099"')
+    .replace('"religion":{"label":"Religion"', '"newProfile":{"label":"New profile","rows":[{"g":"Test group","n":10,"v":[40,30,20,5,5]}]},"religion":{"label":"Religion"');
+  const next = parseSurveyHtml(source, "tamil-nadu");
+  assert.ok(next.periods.op.months?.["2099-01"]);
+  assert.ok(next.periods.op.demo?.newProfile);
 });
 
 console.log("\n2. Real dashboard files (local paths from env)");
@@ -68,6 +79,31 @@ for (const item of realFiles) {
     if (item.state === "andhra-pradesh-2024") {
       const years = data.periods.rd.months ?? {};
       assert.deepEqual(Object.keys(years), ["2024", "2025", "2026"]);
+    }
+    if (item.state === "tamil-nadu") {
+      assert.ok(data.base?.["Tamil Nadu"], "2021 baseline is kept for the swing table");
+      for (const period of ["op", "ex"] as const) {
+        for (const option of surveySlots(data, period)) {
+          const build = buildSurveyMap(data, period, option.key);
+          for (const row of build.slot.demo.dist?.rows ?? []) {
+            const mapped = build.districtRows.get(canonicalDistrictName(row.g));
+            assert.ok(mapped, `${period}/${option.key}: missing district ${row.g}`);
+            assert.equal(mapped.n, row.n, `${period}/${option.key}/${row.g} n`);
+            for (let index = 0; index < data.parties.length; index += 1) {
+              const party = data.parties[index];
+              const group = ({ TVK: "TVK", "DMK+": "DMK+INC+VCK", "AIADMK+": "AIADMK+BJP+PMK+AMMK", NTK: "NTK", Others: "Others" } as Record<string, string>)[party];
+              assert.ok(Math.abs(((mapped.shares as Record<string, number> | null)?.[group] ?? 0) * 100 - (row.v[index] ?? 0)) < 1e-9, `${period}/${option.key}/${row.g} ${party}`);
+            }
+          }
+          for (const row of build.slot.demo.ac?.rows ?? []) {
+            const { no } = splitAcLabel(row.g);
+            if (no == null) continue;
+            const mapped = build.acRows.get(no);
+            assert.ok(mapped, `${period}/${option.key}: missing AC ${row.g}`);
+            assert.equal(mapped.n, row.n, `${period}/${option.key}/${row.g} n`);
+          }
+        }
+      }
     }
   });
 }

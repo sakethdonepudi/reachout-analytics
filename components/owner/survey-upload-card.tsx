@@ -7,7 +7,7 @@ import { useReauth } from "@/components/auth/reauth-provider";
 import { SURVEY_STATES } from "@/lib/survey/types";
 import { cn } from "@/lib/utils";
 
-type Period = { key: string; label: string; n: number; from: string; to: string };
+type Period = { key: string; label: string; n: number; from: string; to: string; months?: string[] };
 type Preview = { periods: Period[]; n_total: number; state: string; stateName: string };
 
 export default function SurveyUploadCard() {
@@ -24,7 +24,7 @@ export default function SurveyUploadCard() {
   async function send(next: File | null, confirm = false) {
     if (!next) return;
     setFile(next); setError(""); setPublished(null);
-    if (!/\.(html?|xlsx?)$/i.test(next.name)) { setError("Choose the survey dashboard .html or .xlsx file."); return; }
+    if (!/\.html?$/i.test(next.name)) { setError("Choose the survey dashboard .html file."); return; }
     setBusy(confirm ? "publish" : "parse"); if (!confirm) setPreview(null);
     const form = new FormData(); form.append("file", next); form.append("state", stateSlug); if (confirm) form.append("confirm", "1");
     try {
@@ -60,8 +60,8 @@ export default function SurveyUploadCard() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6B6B6B]">Survey dashboard</p>
-          <h2 id="survey-upload-title" className="mt-1 font-display text-[22px] font-semibold tracking-[-0.02em] text-[#0B0B0C]">HTML or Excel dashboard</h2>
-          <p className="mt-1 text-[12.5px] text-[#6B6B6B]">Preview the periods and publish the state survey dashboard from the source HTML or the matching Excel workbook.</p>
+          <h2 id="survey-upload-title" className="mt-1 font-display text-[22px] font-semibold tracking-[-0.02em] text-[#0B0B0C]">HTML survey dashboard</h2>
+          <p className="mt-1 text-[12.5px] text-[#6B6B6B]">Preview the periods and months, then publish the state survey dashboard from the source HTML.</p>
         </div>
         <FileUp className="size-5 shrink-0 text-[#6B6B6B]" aria-hidden />
       </div>
@@ -76,16 +76,14 @@ export default function SurveyUploadCard() {
       </div>
 
       <label onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); void send(event.dataTransfer.files?.[0] ?? null); }} className="mt-4 flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#CFCFCF] bg-[#FAFAFA] px-4 py-4 text-center transition-colors hover:border-[#0B0B0C] focus-within:ring-2 focus-within:ring-[#0B0B0C]/40">
-        <span className="sr-only">Choose the survey dashboard HTML or Excel file</span>
+        <span className="sr-only">Choose the survey dashboard HTML file</span>
         <Upload className="size-5 text-[#6B6B6B]" aria-hidden />
-        <span className="mt-2 text-[13px] font-semibold text-[#0B0B0C]">{file ? file.name : "Drop the survey dashboard HTML or Excel here"}</span>
-        <span className="mt-1 text-[11.5px] text-[#6B6B6B]">.html or .xlsx, up to 4 MB</span>
-        <input ref={input} type="file" accept=".html,text/html,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="sr-only" aria-label="Survey dashboard HTML or Excel" onChange={(event) => void send(event.target.files?.[0] ?? null)} />
+        <span className="mt-2 text-[13px] font-semibold text-[#0B0B0C]">{file ? file.name : "Drop the survey dashboard HTML here"}</span>
+        <span className="mt-1 text-[11.5px] text-[#6B6B6B]">.html, up to 4 MB</span>
+        <input ref={input} type="file" accept=".html,text/html" className="sr-only" aria-label="Survey dashboard HTML" onChange={(event) => void send(event.target.files?.[0] ?? null)} />
       </label>
 
-      <p className="mt-2 text-[11.5px] text-[#6B6B6B]">
-        Need the Excel layout? <a href={`/api/survey/template?state=${stateSlug}`} className="font-semibold text-[#0B0B0C] underline underline-offset-2">Download the template</a>. The Read me sheet lists every sheet and column.
-      </p>
+      <p className="mt-2 text-[11.5px] text-[#6B6B6B]">HTML only. The page fills its cards, months, sub-periods and profile tabs from the uploaded dashboard.</p>
 
       {busy === "parse" && <p role="status" className="mt-3 flex items-center gap-2 text-[12px] text-[#6B6B6B]"><Loader2 className="size-3.5 animate-spin" /> Reading the dashboard...</p>}
       {error && <p role="alert" className="mt-3 rounded-xl border border-[#B42318]/30 bg-[#FEF3F2] px-3 py-2 text-[12px] text-[#B42318]">{error}</p>}
@@ -96,7 +94,7 @@ export default function SurveyUploadCard() {
           <p className="text-[12px] font-semibold text-[#0B0B0C]">Preview · {preview.stateName}</p>
           <p className="mt-1 text-[11.5px] text-[#6B6B6B]">{new Intl.NumberFormat("en-IN").format(preview.n_total)} responses · {preview.periods.length} periods</p>
           <ul className="mt-2 space-y-1 text-[11px] text-[#555]">
-            {preview.periods.map((period) => <li key={period.key}><b className="text-[#0B0B0C]">{period.label}</b>: {new Intl.NumberFormat("en-IN").format(period.n)} · {period.from || "—"} to {period.to || "—"}</li>)}
+            {preview.periods.map((period) => <li key={period.key}><b className="text-[#0B0B0C]">{period.label}</b>: {new Intl.NumberFormat("en-IN").format(period.n)} · {period.from || "—"} to {period.to || "—"}{period.months?.length ? <> · {period.months.join(", ")}</> : null}</li>)}
           </ul>
           <button type="button" onClick={() => void send(file, true)} disabled={busy !== ""} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#0B0B0C] px-4 text-[12px] font-semibold text-white disabled:opacity-40">{busy === "publish" ? <Loader2 className="size-3.5 animate-spin" /> : null}Publish survey dashboard</button>
         </div>
