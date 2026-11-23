@@ -145,6 +145,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
   const apiRef = useRef<{
     setSelection: (d: string | null, a: number | null, y: TnYearOrCurrent) => void;
     resetCamera: () => void;
+    zoomBy: (factor: number) => void;
   } | null>(null);
 
   useEffect(() => {
@@ -470,7 +471,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         const hostRect = host.getBoundingClientRect();
         const vw = Math.max(320, hostRect.width), vh = Math.max(320, hostRect.height);
         const wide = typeof window !== "undefined" && window.innerWidth > 1024;
-        let centerX = 0, centerZ = 0, dist = Math.max(1350, Math.min(2600, 2050 * (700 / Math.max(320, vw))));
+        let centerX = 0, centerZ = 0, dist = Math.max(1100, Math.min(2400, 1800 * (700 / Math.max(320, vw))));
         if (bounds) {
           centerX = (bounds.minx + bounds.maxx) / 2; centerZ = (bounds.minz + bounds.maxz) / 2;
           const W = Math.max(1, bounds.maxx - bounds.minx), H = Math.max(1, bounds.maxz - bounds.minz);
@@ -487,8 +488,11 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       },
       resetCamera: () => {
         const width = Math.max(280, host.getBoundingClientRect().width);
-        const dist = Math.max(1900, Math.min(4300, 2050 * (700 / width)));
+        const dist = Math.max(1100, Math.min(2600, 1800 * (700 / width)));
         startCamera({ tx: 0, tz: 0, ty: 0, dist, theta: 0, phi: 0.58 });
+      },
+      zoomBy: (factor: number) => {
+        startCamera({ ...camTarget, dist: Math.max(35, Math.min(3300, camTarget.dist * factor)) });
       },
     };
     apiRef.current?.setSelection(live.current.district, live.current.acNo, live.current.year);
@@ -604,6 +608,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
     };
     const onPointerDown = (e: PointerEvent) => {
       pointers.add(e.pointerId);
+      if (e.pointerType === "touch") { if (pointers.size > 1 && drag) drag.moved = true; if (pointers.size === 1) drag = null; return; }
       if (pointers.size > 1) { if (drag) drag.moved = true; return; }
       drag = { x: e.clientX, y: e.clientY, moved: false };
       canvas.setPointerCapture(e.pointerId); canvas.style.cursor = "grabbing";
@@ -619,19 +624,45 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
     };
     const onPointerCancel = (e: PointerEvent) => { pointers.delete(e.pointerId); drag = null; canvas.style.cursor = "grab"; };
     const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       const next = Math.max(35, Math.min(3300, camTarget.dist * (1 + e.deltaY * 0.0012)));
       startCamera({ ...camTarget, dist: next });
     };
+    let touchState: { startDist: number; startMidX: number; startMidY: number; dist: number; theta: number; phi: number } | null = null;
+    const touchDistance = (touches: TouchList) => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+    const touchMid = (touches: TouchList) => ({ x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 });
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length < 2) { touchState = null; return; }
+      e.preventDefault();
+      const mid = touchMid(e.touches);
+      touchState = { startDist: Math.max(1, touchDistance(e.touches)), startMidX: mid.x, startMidY: mid.y, dist: camTarget.dist, theta: cam.theta, phi: cam.phi };
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length < 2 || !touchState) return;
+      e.preventDefault();
+      const mid = touchMid(e.touches);
+      const scale = touchState.startDist / Math.max(1, touchDistance(e.touches));
+      cam.dist = Math.max(35, Math.min(3300, touchState.dist * scale));
+      cam.theta = Math.max(-0.6, Math.min(0.6, touchState.theta - (mid.x - touchState.startMidX) * 0.003));
+      cam.phi = Math.max(0.25, Math.min(1.1, touchState.phi + (mid.y - touchState.startMidY) * 0.002));
+      camTarget = { ...cam };
+    };
+    const onTouchEnd = () => { touchState = null; };
     const onLeave = () => { if (hoveredNo != null) setAcEmissive(hoveredNo, false); hoveredKey = null; hoveredNo = null; setTip(null); restoreSelectedAccent(); drag = null; pointers.clear(); canvas.style.cursor = "grab"; };
     canvas.addEventListener("pointermove", onPointerMove); canvas.addEventListener("pointerdown", onPointerDown);
     canvas.addEventListener("pointerup", onPointerUp); canvas.addEventListener("pointercancel", onPointerCancel);
     canvas.addEventListener("pointerleave", onLeave); canvas.addEventListener("wheel", onWheel, { passive: false });
+    canvas.addEventListener("touchstart", onTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", onTouchMove, { passive: false });
+    canvas.addEventListener("touchend", onTouchEnd); canvas.addEventListener("touchcancel", onTouchEnd);
     return () => {
       disposed = true; cancelAnimationFrame(raf); ro.disconnect();
       canvas.removeEventListener("pointermove", onPointerMove); canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointerup", onPointerUp); canvas.removeEventListener("pointercancel", onPointerCancel);
       canvas.removeEventListener("pointerleave", onLeave); canvas.removeEventListener("wheel", onWheel);
+      canvas.removeEventListener("touchstart", onTouchStart); canvas.removeEventListener("touchmove", onTouchMove);
+      canvas.removeEventListener("touchend", onTouchEnd); canvas.removeEventListener("touchcancel", onTouchEnd);
       labelRoot.innerHTML = ""; renderer.dispose();
     };
   }, [theme]);
@@ -644,9 +675,14 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
   return (
     <div className="relative h-full w-full">
       <div ref={hostRef} className="absolute inset-0">
-        <canvas ref={canvasRef} className="block h-full w-full touch-none" aria-label="3D map of Tamil Nadu districts and assembly constituencies" role="img" />
+        <canvas ref={canvasRef} className="block h-full w-full" style={{ touchAction: "pan-y pinch-zoom" }} aria-label="3D map of Tamil Nadu districts and assembly constituencies" role="img" />
         <div ref={labelRef} className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden />
       </div>
+      <div className="absolute right-2 top-2 z-10 flex flex-col overflow-hidden rounded-lg border border-[#D5D8DE] bg-white/95 shadow-sm">
+        <button type="button" aria-label="Zoom in" onClick={() => apiRef.current?.zoomBy(0.8)} className="grid size-8 place-items-center text-[18px] font-semibold text-[#0B0B0C] hover:bg-[#F4F4F5]">+</button>
+        <button type="button" aria-label="Zoom out" onClick={() => apiRef.current?.zoomBy(1.25)} className="grid size-8 place-items-center border-t border-[#EAEAEA] text-[18px] font-semibold text-[#0B0B0C] hover:bg-[#F4F4F5]">−</button>
+      </div>
+      <p className="pointer-events-none absolute bottom-2 left-2 z-10 rounded bg-white/80 px-2 py-1 text-[9px] text-[#6B6B6B]">Ctrl + scroll to zoom</p>
       {tip && <div className="pointer-events-none fixed z-[var(--z-dropdown)] max-w-[240px] rounded-lg border border-border bg-card/95 px-2.5 py-2 text-[10px] shadow-xl" style={{ left: Math.min(tip.x + 12, window.innerWidth - 255), top: Math.max(8, tip.y - 12) }}>
         <div className="font-semibold" style={{ color: tip.color }}>{tip.title}</div>
         <div className="text-[9px] text-muted-foreground">{tip.sub}</div>

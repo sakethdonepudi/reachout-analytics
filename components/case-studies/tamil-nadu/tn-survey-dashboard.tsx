@@ -337,7 +337,7 @@ export default function TnSurveyDashboard({
                   </div>
                 )}
               </div>
-              <div className="mt-2 h-[430px] overflow-hidden rounded-xl border border-[#EAEAEA] bg-[#FBFAF7] sm:h-[500px]">
+              <div className="mt-2 h-[360px] overflow-hidden rounded-xl border border-[#EAEAEA] bg-[#FBFAF7] sm:h-[440px]">
                 <TamilNaduMap
                   acs={mapBuild?.acs ?? []}
                   districts={mapBuild?.districts ?? []}
