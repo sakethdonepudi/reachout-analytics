@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import { surveySchema } from "./schema";
-import { SURVEY_STATES, type SurveyData, type SurveyDemoRow, type SurveyPeriod, type SurveyShare } from "./types";
+import { SURVEY_STATES, type SurveyData, type SurveyDemoRow, type SurveyDistrictSeat, type SurveyPeriod, type SurveyShare } from "./types";
 
 /* Excel round trip for the survey dashboards. The workbook is a flat export
    of the JSON shape so a survey team can rebuild a dashboard without touching
@@ -14,6 +14,7 @@ const SHEETS = {
   expected: "Expected",
   seats: "Seats",
   seatZones: "SeatZones",
+  districtSeats: "DistrictSeats",
   demographic: "Demographics",
   actual: "Actual",
   ads: "Ads",
@@ -30,6 +31,7 @@ export const SURVEY_EXCEL_COLUMNS: Record<string, string[]> = {
   [SHEETS.expected]: ["period", "region", "party", "pct"],
   [SHEETS.seats]: ["period", "party", "seats"],
   [SHEETS.seatZones]: ["period", "zone", "party", "seats", "acs"],
+  [SHEETS.districtSeats]: ["period", "district", "acs", "<party columns>"],
   [SHEETS.demographic]: ["period", "profile", "profile_label", "coverage", "group", "n", "<party columns>"],
   [SHEETS.actual]: ["region", "party", "pct"],
   [SHEETS.ads]: ["period", "label", "responses", "campaigns", "reach", "impressions", "views", "clicks", "engagement", "spend"],
@@ -83,6 +85,7 @@ export function parseSurveyWorkbook(buffer: Buffer, state: string): SurveyData {
   requireSheet(expectedRows, SHEETS.expected);
   const seatRows = sheetRows(workbook, SHEETS.seats);
   const seatZoneRows = sheetRows(workbook, SHEETS.seatZones);
+  const districtSeatRows = sheetRows(workbook, SHEETS.districtSeats);
   const demoRows = sheetRows(workbook, SHEETS.demographic);
   const actualRows = sheetRows(workbook, SHEETS.actual);
   requireSheet(actualRows, SHEETS.actual);
@@ -154,6 +157,21 @@ export function parseSurveyWorkbook(buffer: Buffer, state: string): SurveyData {
     zones[zone][party] = num(row.seats);
     if (row.acs !== "") zones[zone].acs = num(row.acs);
     periods[key].seats.zones = zones;
+  }
+
+  for (const row of districtSeatRows) {
+    const key = text(row.period).toLowerCase();
+    const district = text(row.district);
+    if (!key || !district) continue;
+    if (!periods[key]) throw new Error(`DistrictSeats has a row for an unknown period: ${key}.`);
+    const acs = num(row.acs, NaN);
+    if (!Number.isFinite(acs)) throw new Error(`DistrictSeats needs a numeric acs for ${district} in ${key}.`);
+    const entry: SurveyDistrictSeat = { d: district, acs };
+    for (const party of parties) {
+      if (row[party] === "" || row[party] == null) continue;
+      entry[party] = num(row[party]);
+    }
+    (periods[key].dist ??= []).push(entry);
   }
 
   for (const row of demoRows) {
@@ -237,6 +255,7 @@ export function surveyWorkbookTemplate(state: string): Buffer {
     ["Expected", "One row per period, region and party. Use the state name for the statewide row and percentage points (40.0, not 0.40)."],
     ["Seats", "One row per period and party with the projected seat total."],
     ["SeatZones", "One row per period, zone and party. Repeat acs on any party row for that zone."],
+    ["DistrictSeats", "One row per period and district: district name, acs count and one column per party with the projected seats. Used by the Tamil Nadu Result period."],
     ["Demographics", "One row per period, profile and group. Add one column per party, named exactly as in Meta parties."],
     ["Actual", "One row per region and party with the actual vote share in percentage points."],
     ["Ads", "One row per ads period (pre, op, ex, post or the state's own keys). Spend is owner-only and is stripped for clients."],
@@ -246,7 +265,11 @@ export function surveyWorkbookTemplate(state: string): Buffer {
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([SURVEY_EXCEL_COLUMNS[SHEETS.meta], ["state", meta.slug], ["n_total", ""], ["parties", parties.join(", ")], ["regions", ""], ["ads_label", ""], ["ads_range", ""], ["ads_as_of", ""], ["ads_note", ""]]), SHEETS.meta);
   for (const [key, headers] of Object.entries(SURVEY_EXCEL_COLUMNS)) {
     if (key === SHEETS.meta) continue;
-    const columns = key === SHEETS.demographic ? ["period", "profile", "profile_label", "coverage", "group", "n", ...parties] : headers;
+    const columns = key === SHEETS.demographic
+      ? ["period", "profile", "profile_label", "coverage", "group", "n", ...parties]
+      : key === SHEETS.districtSeats
+        ? ["period", "district", "acs", ...parties]
+        : headers;
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([columns]), key);
   }
 
@@ -274,6 +297,7 @@ export function surveyDataToWorkbook(data: SurveyData, state: string): Buffer {
   const expectedRows: unknown[][] = [SURVEY_EXCEL_COLUMNS[SHEETS.expected]];
   const seatRows: unknown[][] = [SURVEY_EXCEL_COLUMNS[SHEETS.seats]];
   const zoneRows: unknown[][] = [SURVEY_EXCEL_COLUMNS[SHEETS.seatZones]];
+  const districtRows: unknown[][] = [["period", "district", "acs", ...data.parties]];
   const demoRows: unknown[][] = [["period", "profile", "profile_label", "coverage", "group", "n", ...data.parties]];
   for (const [key, period] of Object.entries(data.periods)) {
     periodRows.push([key, period.label, period.n, period.nw ?? "", period.from ?? "", period.to ?? "", period.actual === undefined ? "" : period.actual ? "TRUE" : "FALSE", period.last ?? "", period.target ?? "", typeof period.seats.hit === "number" ? period.seats.hit : ""]);
@@ -292,6 +316,9 @@ export function surveyDataToWorkbook(data: SurveyData, state: string): Buffer {
         zoneRows.push([key, zone, party, row[party], party === data.parties.find((item) => typeof row[item] === "number") ? row.acs ?? "" : ""]);
       }
     }
+    for (const row of period.dist ?? []) {
+      districtRows.push([key, row.d, row.acs, ...data.parties.map((party) => (typeof row[party] === "number" ? row[party] : ""))]);
+    }
     for (const [profile, demo] of Object.entries(period.demo ?? {})) {
       for (const row of demo.rows) {
         demoRows.push([key, profile, demo.label, demo.cov ?? "", row.g, row.n, ...data.parties.map((_party, index) => row.v[index] ?? "")]);
@@ -302,6 +329,7 @@ export function surveyDataToWorkbook(data: SurveyData, state: string): Buffer {
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(expectedRows), SHEETS.expected);
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(seatRows), SHEETS.seats);
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(zoneRows), SHEETS.seatZones);
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(districtRows), SHEETS.districtSeats);
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(demoRows), SHEETS.demographic);
 
   const actualRows: unknown[][] = [SURVEY_EXCEL_COLUMNS[SHEETS.actual]];
