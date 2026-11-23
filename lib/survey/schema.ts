@@ -17,6 +17,14 @@ const demo = z.object({
   rows: z.array(demoRow),
 });
 
+/* The TN Result period publishes district seat rows as an array:
+   { d: "Chennai", acs: 22, TVK: 20, "DMK+": 2, "AIADMK+": 0 }. Only the
+   parties that won seats in that district are present, and they are numeric. */
+const districtSeat = z.object({
+  d: z.string(),
+  acs: z.number(),
+}).catchall(z.number());
+
 const period = z.object({
   label: z.string(),
   n: z.number(),
@@ -29,9 +37,11 @@ const period = z.object({
   actual: z.union([z.boolean(), z.record(z.string(), z.unknown())]).optional(),
   last: z.union([z.string(), z.number()]).optional(),
   target: z.union([z.string(), z.number()]).optional(),
-  dist: z.record(z.string(), z.unknown()).optional(),
+  dist: z.array(districtSeat).optional(),
   weighted: z.boolean().optional(),
-  months: z.record(z.string(), z.unknown()).optional(),
+  /* The source nests month/year and sub-round periods with the same shape. */
+  get months() { return z.record(z.string(), period).optional(); },
+  get sub() { return z.record(z.string(), period).optional(); },
 });
 
 const base = z.object({

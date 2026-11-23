@@ -3,6 +3,9 @@ export type SurveyShare = Record<string, number>;
 export type SurveyDemoRow = { g: string; n: number; v: number[] };
 export type SurveyDemo = { label: string; cov?: string; rows: SurveyDemoRow[] };
 
+/** One district row in the TN Result period: district, ACs and seats per party. */
+export type SurveyDistrictSeat = { d: string; acs: number } & Record<string, number | string>;
+
 /** Labels kept when only one profile's rows are sent to the browser. */
 export type SurveyDemoCatalog = Record<string, { label: string; cov?: string }>;
 
@@ -12,15 +15,16 @@ export type SurveyPeriod = {
   nw?: number;
   from?: string;
   to?: string;
-  dist?: Record<string, unknown>;
+  dist?: SurveyDistrictSeat[];
   expected: Record<string, SurveyShare>;
   seats: Record<string, unknown>;
   demo?: Record<string, SurveyDemo>;
   demoCatalog?: SurveyDemoCatalog;
-  actual?: boolean;
+  actual?: boolean | Record<string, SurveyShare>;
   weighted?: boolean;
-  months?: Record<string, unknown>;
-  subperiods?: Record<string, SurveyPeriod>;
+  months?: Record<string, SurveyPeriod>;
+  /** Sub-round periods nested under a month or year in the source file. */
+  sub?: Record<string, SurveyPeriod>;
   subperiodCatalog?: Array<{ key: string; label: string }>;
   subperiod?: string;
   last?: string;
