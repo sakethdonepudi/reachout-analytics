@@ -12,6 +12,7 @@ import { socialForCase } from "@/lib/ads-desk/mapping";
 import { caseBySlug, resolveCaseTab, tabsForCase } from "@/lib/cases";
 import { getSurveyCached } from "@/lib/survey/store";
 import { pickSurveyPeriod, surveyForRole } from "@/lib/survey/dto";
+import { socialPeriodFor } from "@/lib/survey/types";
 
 export const metadata: Metadata = {
   title: "TDP · Andhra Pradesh | ReachOut Analytics",
@@ -59,7 +60,7 @@ export default async function AndhraPradeshCaseStudyPage({ searchParams }: { sea
               <SurveyCasePanel data={survey} stateName="Andhra Pradesh" stateSlug="andhra-pradesh-2024" view="opinion" initialPeriod={surveyPeriod} initialProfile={profile} initialYear={year} owner={session.role === "owner"} />
             </main>
           ),
-          social: <SocialPanel regions={social} period={period ?? null} />,
+          social: <SocialPanel regions={social} period={socialPeriodFor(period)} />,
         }}
       />
     </>

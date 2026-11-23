@@ -52,3 +52,9 @@ export const SURVEY_STATES: Record<string, { slug: string; name: string; file: s
   "tamil-nadu": { slug: "tamil-nadu", name: "Tamil Nadu", file: "TN-2026-Survey-Dashboard-2.html" },
   "andhra-pradesh-2024": { slug: "andhra-pradesh-2024", name: "Andhra Pradesh", file: "AP_2024_Survey_Dashboard-4.html" },
 };
+
+/** Ads periods are pre/op/ex/post; the survey-only result periods map to post. */
+export function socialPeriodFor(period?: string | null) {
+  if (period === "rs" || period === "rd") return "post";
+  return period === "pre" || period === "op" || period === "ex" || period === "post" ? period : null;
+}

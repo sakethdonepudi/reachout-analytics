@@ -7,6 +7,7 @@ import { socialForCase } from "@/lib/ads-desk/mapping";
 import { caseBySlug, resolveCaseTab, tabsForCase } from "@/lib/cases";
 import { getSurveyCached } from "@/lib/survey/store";
 import { pickSurveyPeriod, surveyForRole } from "@/lib/survey/dto";
+import { socialPeriodFor } from "@/lib/survey/types";
 import { surveyExitView, surveyOpinionView } from "@/lib/survey/tn-view";
 import { getTamilNaduAggregates } from "@/lib/tamil-nadu/aggregates-server";
 import { buildAdsSocial } from "@/lib/ads-desk/client-dto";
@@ -62,7 +63,7 @@ export default async function TamilNaduCaseStudyPage({ searchParams }: { searchP
         panels={{
           exit: <TamilNaduDashboard caseData={caseData} aggregates={aggregates} owner={session.role === "owner"} pollType="exit" survey={survey} surveyPeriod={surveyPeriod} surveyProfile={profile ?? null} initialExpanded={expand === "1"} />,
           opinion: <TamilNaduDashboard caseData={caseData} aggregates={aggregates} owner={session.role === "owner"} pollType="opinion" survey={survey} surveyPeriod={surveyPeriod} surveyProfile={profile ?? null} initialExpanded={expand === "1"} />,
-          social: <SocialPanel regions={socialRegions} campaign={campaign ?? null} period={period ?? null} />,
+          social: <SocialPanel regions={socialRegions} campaign={campaign ?? null} period={socialPeriodFor(period)} />,
         }}
       />
     </>
