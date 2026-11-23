@@ -248,8 +248,11 @@ export default function TnSurveyDashboard({
             </button>
           ))}
           <button type="button" aria-pressed={view === "social"} onClick={() => openSocial()} className={cn("rounded-xl border-2 p-3 text-left transition-colors", view === "social" ? "border-[#1877F2] bg-[#002147] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#1877F2]" : "border-[#D5D8DE] bg-[#F7F8FA] text-[#0B0B0C] hover:border-[#9AA3AF]")}>
-            <p className="flex items-center gap-2 text-[12px] font-bold"><Megaphone className="size-4" /> Social Media</p>
-            <p className={cn("mt-1 text-[10px]", view === "social" ? "text-white/80" : "text-[#555]")}>Campaign reach, impressions and engagement across the survey periods.</p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="flex items-center gap-2 text-[12px] font-bold"><Megaphone className="size-4" /> Social Media</p>
+              <span className="flex items-center gap-1.5" aria-hidden><SocialIcons active={view === "social"} /></span>
+            </div>
+            <p className={cn("mt-1 text-[10px] font-semibold", view === "social" ? "text-white/80" : "text-[#555]")}>Ads · reach & engagement</p>
           </button>
         </div>
 
