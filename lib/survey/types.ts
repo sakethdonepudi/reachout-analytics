@@ -20,6 +20,9 @@ export type SurveyPeriod = {
   actual?: boolean;
   weighted?: boolean;
   months?: Record<string, unknown>;
+  subperiods?: Record<string, SurveyPeriod>;
+  subperiodCatalog?: Array<{ key: string; label: string }>;
+  subperiod?: string;
   last?: string;
   target?: string;
 };

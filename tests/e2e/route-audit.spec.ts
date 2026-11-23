@@ -158,6 +158,12 @@ async function clickTab(page: Page, name: RegExp) {
     await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=opinion&period=op`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1200);
     record("/case-studies/andhra-pradesh-2024", "Survey dashboard", "client", "Andhra Pradesh opinion content", await page.getByText(/Andhra Pradesh · Opinion poll/).isVisible().catch(() => false) ? "visible" : "missing", await page.getByText(/Andhra Pradesh · Opinion poll/).isVisible().catch(() => false));
+    await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=opinion&period=rd&profile=zone`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1600);
+    record("/case-studies/andhra-pradesh-2024", "Post-poll default year", "client", "year=2026 content", await page.getByText(/Post-poll .*2026/).first().isVisible().catch(() => false) ? "visible" : "missing", await page.getByText(/Post-poll .*2026/).first().isVisible().catch(() => false));
+    await page.getByRole("button", { name: "2024", exact: true }).click();
+    await page.waitForTimeout(1200);
+    record("/case-studies/andhra-pradesh-2024", "Post-poll year switch", "client", "year=2024", String(new URL(page.url()).searchParams.get("year")), new URL(page.url()).searchParams.get("year") === "2024");
     await page.goto(`${BASE}/case-studies/tamil-nadu?view=polls`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1000);
     record("/case-studies/tamil-nadu", "Legacy view=polls", "client", "first poll tab (Exit Poll)", await selectedTab(page), (await selectedTab(page)) === "Exit Poll");

@@ -22,8 +22,8 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function AndhraPradeshCaseStudyPage({ searchParams }: { searchParams: Promise<{ view?: string; period?: string; profile?: string }> }) {
-  const { view, period, profile } = await searchParams;
+export default async function AndhraPradeshCaseStudyPage({ searchParams }: { searchParams: Promise<{ view?: string; period?: string; profile?: string; year?: string }> }) {
+  const { view, period, profile, year } = await searchParams;
   const session = await requirePageSession("/case-studies/andhra-pradesh-2024");
   if (!(await caseAllowed(session, "andhra-pradesh-2024"))) redirect("/no-access");
   const tabs = tabsForCase(caseBySlug("andhra-pradesh-2024"));
@@ -31,7 +31,7 @@ export default async function AndhraPradeshCaseStudyPage({ searchParams }: { sea
   const social = await socialForCase("andhra-pradesh-2024", session.role === "owner");
   const record = await getSurveyCached("andhra-pradesh-2024");
   const surveyPeriod = record ? pickSurveyPeriod(record.data, period ?? (view === "exit" ? "ex" : "op")) : null;
-  const survey = record ? surveyForRole(record.data, session.role === "owner", { period: surveyPeriod, profile }) : null;
+  const survey = record ? surveyForRole(record.data, session.role === "owner", { period: surveyPeriod, profile, year }) : null;
   const c = caseBySlug("andhra-pradesh-2024");
 
   return (
@@ -46,7 +46,7 @@ export default async function AndhraPradeshCaseStudyPage({ searchParams }: { sea
           exit: (
             <main className="relative min-h-0 bg-white text-[var(--p-ink)]">
               <div className="mx-auto max-w-[1200px] px-4 pt-4 sm:px-6"><CaseBackLink className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#CFCFCF] bg-white px-3 py-1.5 text-[12.5px] text-[#6B6B6B]"><span aria-hidden>←</span> Back to Case Studies</CaseBackLink></div>
-              <SurveyCasePanel data={survey} stateName="Andhra Pradesh" stateSlug="andhra-pradesh-2024" view="exit" initialPeriod={surveyPeriod} initialProfile={profile} owner={session.role === "owner"} />
+              <SurveyCasePanel data={survey} stateName="Andhra Pradesh" stateSlug="andhra-pradesh-2024" view="exit" initialPeriod={surveyPeriod} initialProfile={profile} initialYear={year} owner={session.role === "owner"} />
             </main>
           ),
           opinion: (
@@ -56,7 +56,7 @@ export default async function AndhraPradeshCaseStudyPage({ searchParams }: { sea
                 <StateMap stateCode={c?.state ?? "ap"} stateName="Andhra Pradesh" year={2024} party="TDP" />
                 <div><PartyCard party="TDP" state="Andhra Pradesh" className="max-w-[320px]" /><p className="mt-4 max-w-xl text-[15px] leading-relaxed text-[#555]">Survey analysis of the Andhra Pradesh 2024 opinion, exit and post-poll rounds, with voter profiles, zone swing and seats by zone.</p></div>
               </div>
-              <SurveyCasePanel data={survey} stateName="Andhra Pradesh" stateSlug="andhra-pradesh-2024" view="opinion" initialPeriod={surveyPeriod} initialProfile={profile} owner={session.role === "owner"} />
+              <SurveyCasePanel data={survey} stateName="Andhra Pradesh" stateSlug="andhra-pradesh-2024" view="opinion" initialPeriod={surveyPeriod} initialProfile={profile} initialYear={year} owner={session.role === "owner"} />
             </main>
           ),
           social: <SocialPanel regions={social} period={period ?? null} />,

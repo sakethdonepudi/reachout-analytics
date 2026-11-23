@@ -52,6 +52,7 @@ export default function SurveyBody({
   initialProfile,
   onPeriodChange,
   onProfileChange,
+  onSubPeriodChange,
   onOpenSocial,
   owner = false,
   compact = false,
@@ -63,6 +64,7 @@ export default function SurveyBody({
   initialProfile?: string;
   onPeriodChange?: (period: string) => void;
   onProfileChange?: (profile: string) => void;
+  onSubPeriodChange?: (year: string) => void;
   onOpenSocial?: (period: string) => void;
   owner?: boolean;
   compact?: boolean;
@@ -78,6 +80,7 @@ export default function SurveyBody({
   const profiles = Object.keys(demoCatalog);
   const profile = initialProfile && demoMap[initialProfile] ? initialProfile : demoMap.age ? "age" : Object.keys(demoMap)[0] ?? "";
   const demo = demoMap[profile];
+  const subCatalog = current.subperiodCatalog ?? [];
   const parties = data.parties;
   const colours = coloursOf(stateName);
   const expected = current.expected[stateName] ?? Object.values(current.expected)[0] ?? {};
@@ -168,13 +171,25 @@ export default function SurveyBody({
             <h3 className="mt-0.5 font-display text-[20px] font-semibold tracking-[-0.02em] text-[var(--a-ink)]">{stateName} · {current.label}</h3>
             <p className="mt-1 text-[11px] text-[var(--a-muted)]">{int(current.n)} responses · {current.from || "—"} to {current.to || "—"}{current.nw ? ` · ${int(current.nw)} weighted` : ""}</p>
           </div>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Survey period">
-            {keys.map((key) => (
-              <button key={key} type="button" aria-pressed={period === key} onClick={() => onPeriodChange?.(key)}
-                className={cn("min-h-9 rounded-full border px-3 text-[10.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--a-brass)]/50", period === key ? "border-[var(--a-brass)]/50 bg-[var(--a-brass-soft)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)] hover:text-[var(--a-ink)]")}>
-                {(catalog.find((item) => item.key === key)?.label ?? periods[key]?.label ?? key).replace(/\s*\(.*/, "")}
-              </button>
-            ))}
+          <div className="flex flex-col items-end gap-1.5">
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Survey period">
+              {keys.map((key) => (
+                <button key={key} type="button" aria-pressed={period === key} onClick={() => onPeriodChange?.(key)}
+                  className={cn("min-h-9 rounded-full border px-3 text-[10.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--a-brass)]/50", period === key ? "border-[var(--a-brass)]/50 bg-[var(--a-brass-soft)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)] hover:text-[var(--a-ink)]")}>
+                  {(catalog.find((item) => item.key === key)?.label ?? periods[key]?.label ?? key).replace(/\s*\(.*/, "")}
+                </button>
+              ))}
+            </div>
+            {subCatalog.length > 1 && (
+              <div className="flex flex-wrap justify-end gap-1" role="group" aria-label="Post-poll year">
+                {subCatalog.map((item) => (
+                  <button key={item.key} type="button" aria-pressed={current.subperiod === item.key} onClick={() => onSubPeriodChange?.(item.key)}
+                    className={cn("min-h-7 rounded-full border px-2.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--a-brass)]/50", current.subperiod === item.key ? "border-[var(--a-brass)]/50 bg-[var(--a-brass-soft)] text-[var(--a-ink)]" : "border-[var(--a-border)] text-[var(--a-muted)] hover:text-[var(--a-ink)]")}>
+                    {item.label.replace(/\s*\(.*/, "")}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

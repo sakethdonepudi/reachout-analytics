@@ -11,6 +11,7 @@ export default function SurveyCasePanel({
   view,
   initialPeriod,
   initialProfile,
+  initialYear,
   owner = false,
 }: {
   data: SurveyData | null;
@@ -19,6 +20,7 @@ export default function SurveyCasePanel({
   view: "opinion" | "exit";
   initialPeriod?: string | null;
   initialProfile?: string | null;
+  initialYear?: string | null;
   owner?: boolean;
 }) {
   const router = useRouter();
@@ -34,12 +36,15 @@ export default function SurveyCasePanel({
     params.delete("profile");
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   }
-  function go(period: string, profile?: string) {
+  const activePeriod = initialPeriod ?? (view === "exit" ? "ex" : "op");
+  function go(period: string, profile?: string, year?: string) {
     const params = new URLSearchParams(window.location.search);
     params.set("view", view);
     params.set("period", period);
     if (profile) params.set("profile", profile);
     else params.delete("profile");
+    if (year) params.set("year", year);
+    else params.delete("year");
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   }
   return (
@@ -48,10 +53,11 @@ export default function SurveyCasePanel({
         data={data}
         stateSlug={stateSlug}
         stateName={stateName}
-        initialPeriod={initialPeriod ?? (view === "exit" ? "ex" : "op")}
+        initialPeriod={activePeriod}
         initialProfile={initialProfile ?? undefined}
         onPeriodChange={(period) => go(period)}
-        onProfileChange={(profile) => go(initialPeriod ?? (view === "exit" ? "ex" : "op"), profile)}
+        onProfileChange={(profile) => go(activePeriod, profile, activePeriod === "rd" ? initialYear ?? undefined : undefined)}
+        onSubPeriodChange={(year) => go(activePeriod, initialProfile ?? undefined, year)}
         onOpenSocial={openSocial}
         owner={owner}
       />
