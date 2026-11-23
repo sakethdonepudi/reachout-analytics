@@ -1,7 +1,5 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
-
 import { adsManagerCampaigns, adsManagerForCampaign } from "@/lib/ads-desk/links";
 import { getClientLinks } from "@/lib/ads-desk/settings";
 import type { SurveyData } from "./types";
@@ -47,19 +45,29 @@ export function tnSurveyForClient(data: SurveyData): SurveyData {
   };
 }
 
-function accountKey(id: string) { return createHash("sha256").update(id).digest("hex").slice(0, 12); }
+function safeAccountName(raw: unknown, rank: number, id: string, owner: boolean) {
+  const name = text(raw).trim();
+  if (owner) return name || id;
+  if (!name || /\d{10,20}/.test(name)) return `Ad account ${rank}`;
+  return name;
+}
 
-function accountRows(data: SurveyData, links: boolean, owner: boolean): { accounts: TnSocialAccount[]; campaignsByAccount: Map<string, TnSocialCampaign[]>; idByKey: Map<string, string> } {
+function accountRows(data: SurveyData, links: boolean, owner: boolean): { accounts: TnSocialAccount[]; campaignsByKey: Map<string, TnSocialCampaign[]>; idByKey: Map<string, string> } {
   const ads = record(data.ads);
   const sourceAccounts = Array.isArray(ads.accounts) ? ads.accounts as AnyRecord[] : [];
   const camps = record(ads.camps);
-  const campaignsByAccount = new Map<string, TnSocialCampaign[]>();
+  const rankById = new Map<string, number>();
+  [...sourceAccounts]
+    .sort((left, right) => number(right.reach) - number(left.reach) || sourceAccounts.indexOf(left) - sourceAccounts.indexOf(right))
+    .forEach((account, index) => rankById.set(text(account.acct), index + 1));
+  const campaignsByKey = new Map<string, TnSocialCampaign[]>();
   const idByKey = new Map<string, string>();
   const accounts = sourceAccounts.map((account) => {
     const id = text(account.acct);
+    const rank = rankById.get(id) ?? 0;
     const source = Array.isArray(camps[id]) ? camps[id] as AnyRecord[] : [];
-    const campaigns = source.map((campaign) => ({
-      id: text(campaign.id),
+    const campaigns: TnSocialCampaign[] = source.map((campaign) => ({
+      ...(owner ? { id: text(campaign.id) } : {}),
       name: text(campaign.name),
       period: text(campaign.per),
       status: text(campaign.st),
@@ -71,12 +79,12 @@ function accountRows(data: SurveyData, links: boolean, owner: boolean): { accoun
       engagements: number(campaign.eng),
       ...(links ? { href: adsManagerForCampaign(id, campaign.id) } : {}),
     }));
-    const key = accountKey(id);
-    campaignsByAccount.set(id, campaigns);
+    const key = `acct-${rank}`;
+    campaignsByKey.set(key, campaigns);
     idByKey.set(key, id);
     return {
       key,
-      name: text(account.acct_name) || (owner ? id : "Ad account"),
+      name: safeAccountName(account.acct_name, rank, id, owner),
       ...(owner ? { id, business: text(account.business) } : {}),
       campaignCount: number(account.n) || campaigns.length,
       reach: number(account.reach),
@@ -87,7 +95,7 @@ function accountRows(data: SurveyData, links: boolean, owner: boolean): { accoun
       ...(links ? { href: adsManagerCampaigns(id) } : {}),
     };
   });
-  return { accounts, campaignsByAccount, idByKey };
+  return { accounts, campaignsByKey, idByKey };
 }
 
 export async function tnSocialOverview(data: SurveyData, owner = false): Promise<TnSocialOverview> {
@@ -130,11 +138,10 @@ export async function tnSocialOverview(data: SurveyData, owner = false): Promise
 
 export async function tnSocialAccount(data: SurveyData, accountKey: string, owner = false): Promise<TnSocialFiltered | null> {
   const links = owner && await getClientLinks();
-  const { accounts, campaignsByAccount, idByKey } = accountRows(data, links, owner);
+  const { accounts, campaignsByKey } = accountRows(data, links, owner);
   const account = accounts.find((item) => item.key === accountKey || (owner && item.id === accountKey));
   if (!account) return null;
-  const id = idByKey.get(account.key) ?? account.id ?? "";
-  const campaigns = campaignsByAccount.get(id) ?? [];
+  const campaigns = campaignsByKey.get(account.key) ?? [];
   return {
     title: account.name,
     note: `${account.campaignCount} campaigns in ${account.name}.`,
@@ -158,9 +165,11 @@ function geoChildren(data: SurveyData, kind: string, place: string): string[] {
 
 export async function tnSocialFiltered(data: SurveyData, options: FilterOptions, owner = false): Promise<TnSocialFiltered> {
   const links = owner && await getClientLinks();
-  const { accounts, campaignsByAccount } = accountRows(data, links, owner);
+  const { accounts, campaignsByKey, idByKey } = accountRows(data, links, owner);
+  const accountBySourceId = new Map<string, TnSocialAccount>();
+  for (const account of accounts) accountBySourceId.set(idByKey.get(account.key) ?? account.id ?? "", account);
   const all: Array<TnSocialCampaign & { accountId: string }> = [];
-  for (const [accountId, campaigns] of campaignsByAccount) for (const campaign of campaigns) all.push({ ...campaign, accountId });
+  for (const account of accounts) for (const campaign of campaignsByKey.get(account.key) ?? []) all.push({ ...campaign, accountId: idByKey.get(account.key) ?? account.id ?? "" });
 
   const mode = options.match;
   const place = String(options.place ?? "").replace(/^\d+\s+/, "").trim();
@@ -194,10 +203,10 @@ export async function tnSocialFiltered(data: SurveyData, options: FilterOptions,
   }
 
   matched.sort((a, b) => b.reach - a.reach || b.clicks - a.clicks);
-  const limited = mode === "campaigns" ? matched.slice(0, 150) : matched.slice(0, 100);
+  const limited = (mode === "campaigns" ? matched.slice(0, 150) : matched.slice(0, 100)).map(({ accountId: _accountId, ...campaign }) => campaign);
   const byAccount = new Map<string, TnSocialAccount>();
   for (const campaign of matched) {
-    const account = accounts.find((item) => item.key === accountKey(campaign.accountId));
+    const account = accountBySourceId.get(campaign.accountId);
     if (!account) continue;
     const current = byAccount.get(account.key);
     if (current) {

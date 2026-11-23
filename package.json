@@ -8,7 +8,7 @@
     "start": "next start",
     "vercel-build": "npm run test:survey && npm run build && node scripts/publish-tamil-nadu-snapshot.mjs",
     "test": "tsx scripts/security.test.ts",
-    "test:security": "tsx --conditions react-server scripts/security.test.ts",
+    "test:security": "tsx --conditions react-server scripts/security.test.ts && tsx --conditions react-server scripts/social-privacy.test.ts",
     "check:security": "node scripts/security-check.mjs",
     "test:tamil-nadu-consistency": "tsx --conditions react-server scripts/tamil-nadu-consistency.test.ts",
     "test:accounts": "tsx --conditions react-server scripts/accounts.test.ts",

@@ -198,7 +198,7 @@ function CampaignTable({ title, campaigns, total }: { title: string; campaigns: 
           </thead>
           <tbody>
             {campaigns.map((campaign) => (
-              <tr key={campaign.id} className="border-t border-[#EAEAEA]">
+              <tr key={campaign.id ?? campaign.name} className="border-t border-[#EAEAEA]">
                 <th scope="row" className="px-3 py-1.5 text-left font-medium text-[#0B0B0C]">
                   {campaign.href ? <a href={campaign.href} target="_blank" rel="noopener" className="inline-flex items-center gap-1 text-[#002147] hover:underline">{campaign.name}<ArrowUpRight className="size-2.5" /></a> : campaign.name}
                 </th>

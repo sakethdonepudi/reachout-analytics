@@ -227,6 +227,19 @@ async function clickTab(page: Page, name: RegExp) {
     const clientAccounts = (clientSocial.overview?.accounts ?? []) as Array<Record<string, unknown>>;
     const clientPrivate = clientAccounts.length > 0 && clientAccounts.every((account) => !("id" in account) && !("business" in account) && !("href" in account));
     record("/case-studies/tamil-nadu", "Social account privacy", "client", "names only, no business or id", clientPrivate ? "clean" : "leaked", clientPrivate);
+    record("/case-studies/tamil-nadu", "Social payload ids", "client", "no 14-17 digit number", /\d{14,17}/.test(JSON.stringify(clientSocial)) ? "found" : "clean", !/\d{14,17}/.test(JSON.stringify(clientSocial)));
+    const unnamed = page.getByRole("button", { name: /^Ad account \d+/ }).first();
+    const unnamedVisible = await unnamed.isVisible().catch(() => false);
+    if (unnamedVisible) {
+      await unnamed.click();
+      await page.waitForTimeout(1600);
+      const rows = await page.locator("section[aria-label*='Campaigns'] tbody tr").count();
+      record("/case-studies/tamil-nadu", "Expand unnamed account", "client", "campaigns load", String(rows), rows > 0);
+    } else {
+      record("/case-studies/tamil-nadu", "Expand unnamed account", "client", "campaigns load", "not found", false);
+    }
+    const clientFiltered = await page.evaluate(async () => (await fetch("/api/survey/social?state=tamil-nadu&mode=filter&match=group&group=Vanniyar")).json());
+    record("/case-studies/tamil-nadu", "Filtered payload ids", "client", "no 14-17 digit number", /\d{14,17}/.test(JSON.stringify(clientFiltered)) ? "found" : "clean", !/\d{14,17}/.test(JSON.stringify(clientFiltered)));
     await page.goBack();
     await page.waitForTimeout(1400);
     record("/case-studies/tamil-nadu", "Back to survey", "client", "view=rs", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "rs");

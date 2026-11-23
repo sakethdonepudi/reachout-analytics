@@ -1,5 +1,5 @@
 export type TnSocialCampaign = {
-  id: string; name: string; period: string; status: string; start: string;
+  id?: string; name: string; period: string; status: string; start: string;
   reach: number; impressions: number; views: number; clicks: number; engagements: number;
   href?: string | null;
 };
