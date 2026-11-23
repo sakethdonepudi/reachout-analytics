@@ -134,6 +134,7 @@ async function clickTab(page: Page, name: RegExp) {
     record("/", "Client navbar", "client", "Home, Case Studies, user chip", await page.locator("header nav a, header nav button").allInnerTexts().then((items) => items.filter(Boolean).join(", ")), await page.getByRole("button", { name: /Account menu/ }).isVisible());
 
     for (const item of CASES) {
+      if (item.slug === "tamil-nadu") continue;
       await page.goto(`${BASE}/case-studies/${item.slug}`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(1200);
       const tabs = await tabTexts(page);
@@ -164,37 +165,61 @@ async function clickTab(page: Page, name: RegExp) {
     await page.getByRole("button", { name: "2024", exact: true }).click();
     await page.waitForTimeout(1200);
     record("/case-studies/andhra-pradesh-2024", "Post-poll year switch", "client", "year=2024", String(new URL(page.url()).searchParams.get("year")), new URL(page.url()).searchParams.get("year") === "2024");
-    await page.goto(`${BASE}/case-studies/tamil-nadu?view=polls`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1000);
-    record("/case-studies/tamil-nadu", "Legacy view=polls", "client", "first poll tab (Exit Poll)", await selectedTab(page), (await selectedTab(page)) === "Exit Poll");
-    await page.goto(`${BASE}/case-studies/tamil-nadu?view=nope`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1000);
-    record("/case-studies/tamil-nadu", "Invalid view fallback", "client", "Exit Poll", await selectedTab(page), (await selectedTab(page)) === "Exit Poll");
-
-    await page.goto(`${BASE}/case-studies/tamil-nadu?view=opinion`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1200);
-    await page.getByRole("button", { name: /Expand/ }).first().click();
-    await page.waitForTimeout(1600);
-    record("/case-studies/tamil-nadu", "Expand", "client", "expand=1 and survey dashboard", new URL(page.url()).search, new URL(page.url()).searchParams.get("expand") === "1" && await page.getByRole("heading", { name: /survey dashboard/i }).first().isVisible());
-    record("/case-studies/tamil-nadu", "Survey data", "client", "Raw vote profile and ads card", await page.getByText(/Raw .* vote % by voter profile/).isVisible() ? "visible" : "missing", await page.getByText(/Raw .* vote % by voter profile/).isVisible());
-    await page.getByRole("button", { name: "Result 2026" }).click();
-    await page.waitForTimeout(1000);
-    record("/case-studies/tamil-nadu", "Period switch", "client", "period=rs", String(new URL(page.url()).searchParams.get("period")), new URL(page.url()).searchParams.get("period") === "rs");
-    await page.getByRole("button", { name: "Opinion poll" }).click();
-    await page.waitForTimeout(1000);
+    await page.goto(`${BASE}/case-studies/tamil-nadu?view=op`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2200);
+    const tnCards = await Promise.all([/Opinion poll/, /Exit poll/, /Result 2026/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)));
+    record("/case-studies/tamil-nadu", "Period cards", "client", "Opinion, Exit, Result, Social", tnCards.join(", "), tnCards.every(Boolean));
+    record("/case-studies/tamil-nadu", "Header shares", "client", "TVK 40.0%", await page.getByText(/TVK 40\.0%/).first().isVisible().catch(() => false) ? "visible" : "missing", await page.getByText(/TVK 40\.0%/).first().isVisible().catch(() => false));
+    record("/case-studies/tamil-nadu", "Time slots", "client", "All months, Mar 2026, Apr 2026", (await page.getByRole("group", { name: "Survey time slot" }).innerText()).replace(/\n+/g, ", "), (await page.getByRole("button", { name: /^All months/ }).isVisible()) && (await page.getByRole("button", { name: /^Apr 2026/ }).isVisible()));
+    await page.getByRole("button", { name: /^Apr 2026/ }).click();
+    await page.waitForTimeout(900);
+    record("/case-studies/tamil-nadu", "Month switch", "client", "slot=2026-04", String(new URL(page.url()).searchParams.get("slot")), new URL(page.url()).searchParams.get("slot") === "2026-04");
+    const sub = page.getByRole("button", { name: /1.15 Apr/ }).first();
+    if (await sub.isVisible().catch(() => false)) {
+      await sub.click();
+      await page.waitForTimeout(900);
+    }
+    record("/case-studies/tamil-nadu", "Sub-period switch", "client", "slot=2026-04a", String(new URL(page.url()).searchParams.get("slot")), new URL(page.url()).searchParams.get("slot") === "2026-04a");
     await page.getByRole("tab", { name: "Age group" }).click();
     await page.waitForTimeout(900);
     record("/case-studies/tamil-nadu", "Profile tab", "client", "profile=age", String(new URL(page.url()).searchParams.get("profile")), new URL(page.url()).searchParams.get("profile") === "age");
-    await page.screenshot({ path: ".context/case-tabs/route-audit-expanded.png" });
-    await page.getByRole("button", { name: "Open Social Media" }).click();
+    await page.getByRole("tab", { name: "Community" }).click();
+    await page.waitForTimeout(900);
+    record("/case-studies/tamil-nadu", "Profile heat map", "client", "community table", await page.getByRole("region", { name: /Community table/ }).isVisible().catch(() => false) ? "visible" : "missing", await page.getByRole("region", { name: /Community table/ }).isVisible().catch(() => false));
+    const group = page.locator("button", { hasText: /^Vanniyar$/ }).first();
+    if (await group.isVisible().catch(() => false)) {
+      await group.click();
+      await page.waitForTimeout(1600);
+      record("/case-studies/tamil-nadu", "Group to social", "client", "view=social and match=group", `${new URL(page.url()).searchParams.get("view")}/${new URL(page.url()).searchParams.get("match")}`, new URL(page.url()).searchParams.get("view") === "social" && new URL(page.url()).searchParams.get("match") === "group");
+      record("/case-studies/tamil-nadu", "Group social no money", "client", "no currency", /₹|\bspend\b|\bINR\b/i.test(await page.locator("body").innerText()) ? "money found" : "clean", !/₹|\bspend\b|\bINR\b/i.test(await page.locator("body").innerText()));
+      await page.getByRole("button", { name: /Close . back to survey/ }).click();
+      await page.waitForTimeout(1400);
+    }
+    const target = page.getByRole("button", { name: "Target Campaign" }).first();
+    if (await target.isVisible().catch(() => false)) {
+      await target.click();
+      await page.waitForTimeout(1600);
+      record("/case-studies/tamil-nadu", "Target to social", "client", "view=social and match=target", `${new URL(page.url()).searchParams.get("view")}/${new URL(page.url()).searchParams.get("match")}`, new URL(page.url()).searchParams.get("view") === "social" && new URL(page.url()).searchParams.get("match") === "target");
+      await page.getByRole("button", { name: /Close . back to survey/ }).click();
+      await page.waitForTimeout(1400);
+    }
+    const assembly = page.getByRole("button", { name: "assembly", exact: true });
+    if (await assembly.isVisible().catch(() => false)) {
+      await assembly.click();
+      await page.waitForTimeout(500);
+      record("/case-studies/tamil-nadu", "Map detail toggle", "client", "assembly pressed", String(await assembly.getAttribute("aria-pressed")), (await assembly.getAttribute("aria-pressed")) === "true");
+    }
+    await page.getByRole("button", { name: /^Result 2026/ }).click();
     await page.waitForTimeout(1400);
-    record("/case-studies/tamil-nadu", "Ads card to social", "client", "view=social and period=op", `${new URL(page.url()).searchParams.get("view")}/${new URL(page.url()).searchParams.get("period")}`, new URL(page.url()).searchParams.get("view") === "social" && new URL(page.url()).searchParams.get("period") === "op");
+    record("/case-studies/tamil-nadu", "Result view", "client", "view=rs", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "rs");
+    record("/case-studies/tamil-nadu", "Result block", "client", "Result 2026 vs survey projections", await page.getByRole("heading", { name: "Result 2026 vs survey projections" }).isVisible().catch(() => false) ? "visible" : "missing", await page.getByRole("heading", { name: "Result 2026 vs survey projections" }).isVisible().catch(() => false));
+    await page.getByRole("button", { name: /^Social Media/ }).click();
+    await page.waitForTimeout(1600);
+    record("/case-studies/tamil-nadu", "Social view", "client", "view=social", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "social");
+    record("/case-studies/tamil-nadu", "Social no money", "client", "no currency", /₹|\bspend\b|\bINR\b/i.test(await page.locator("body").innerText()) ? "money found" : "clean", !/₹|\bspend\b|\bINR\b/i.test(await page.locator("body").innerText()));
     await page.goBack();
     await page.waitForTimeout(1400);
-    record("/case-studies/tamil-nadu", "Back to survey", "client", "view=opinion and expand=1", `${new URL(page.url()).searchParams.get("view")}/${new URL(page.url()).searchParams.get("expand")}`, new URL(page.url()).searchParams.get("view") === "opinion" && new URL(page.url()).searchParams.get("expand") === "1");
-    await page.getByRole("button", { name: "Close" }).click();
-    await page.waitForTimeout(800);
-    record("/case-studies/tamil-nadu", "Close analysis", "client", "expand removed", new URL(page.url()).search, !new URL(page.url()).searchParams.has("expand"));
+    record("/case-studies/tamil-nadu", "Back to survey", "client", "view=rs", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "rs");
     record("/case-studies/tamil-nadu", "Console and 404s", "client", "none", errors.length ? errors.join("; ") : "none", errors.length === 0);
     await context.close();
   }
@@ -212,14 +237,15 @@ async function clickTab(page: Page, name: RegExp) {
     for (const label of ["Dashboard", "Case Studies", "Users", "Security"]) {
       record("/dashboard", `Sidebar ${label}`, "owner", "link exists", `${await page.getByRole("link", { name: label }).count()}`, await page.getByRole("link", { name: label }).count() > 0);
     }
-    record("/dashboard", "Survey upload", "owner", "HTML dashboard and state picker", `${await page.getByRole("heading", { name: "HTML or Excel dashboard" }).count()}`, await page.getByRole("heading", { name: "HTML or Excel dashboard" }).isVisible().catch(() => false) && await page.getByRole("group", { name: "Survey state" }).isVisible().catch(() => false));
-    record("/dashboard", "Survey state", "owner", "Tamil Nadu and Andhra Pradesh", `${await page.getByRole("group", { name: "Survey state" }).innerText().then((text) => text.replace(/\n+/g, ", "))}`, await page.getByRole("button", { name: "Tamil Nadu" }).isVisible().catch(() => false));
+    record("/dashboard", "Survey upload", "owner", "HTML dashboard and state picker", `${await page.getByRole("heading", { name: "HTML survey dashboard" }).count()}`, await page.getByRole("heading", { name: "HTML survey dashboard" }).isVisible().catch(() => false) && await page.getByRole("group", { name: "Survey state" }).isVisible().catch(() => false));
+    record("/dashboard", "Survey state", "owner", "Tamil Nadu and Andhra Pradesh", `${await page.getByRole("group", { name: "Survey state" }).innerText().then((text) => text.replace(/\n+/g, ", "))}`, await page.getByRole("button", { name: "Tamil Nadu", exact: true }).isVisible().catch(() => false));
     await page.getByRole("link", { name: "Case Studies" }).click();
     await page.waitForTimeout(900);
     record("/case-studies", "Owner shell", "owner", "sidebar visible", `${new URL(page.url()).pathname}`, new URL(page.url()).pathname === "/case-studies" && await page.locator('[aria-label="Owner navigation"]').isVisible());
     await page.goto(`${BASE}/case-studies/tamil-nadu`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1000);
-    record("/case-studies/tamil-nadu", "Owner tabs", "owner", "Exit Poll, Opinion Poll, Social Media", (await tabTexts(page)).join(", "), JSON.stringify(await tabTexts(page)) === JSON.stringify(["Exit Poll", "Opinion Poll", "Social Media"]));
+    record("/case-studies/tamil-nadu", "Owner cards", "owner", "Opinion, Exit, Result, Social", (await Promise.all([/Opinion poll/, /Exit poll/, /Result 2026/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)))).join(", "), (await Promise.all([/Opinion poll/, /Exit poll/, /Result 2026/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)))).every(Boolean));
+    record("/case-studies/tamil-nadu", "Owner download", "owner", "button visible", String(await page.getByRole("button", { name: /Download data/ }).count()), await page.getByRole("button", { name: /Download data/ }).first().isVisible().catch(() => false));
     record("/case-studies/tamil-nadu", "Console and 404s", "owner", "none", errors.length ? errors.join("; ") : "none", errors.length === 0);
     await context.close();
   }
