@@ -90,6 +90,10 @@ export default function SurveyBody({
   const seats = current.seats as Record<string, unknown>;
   const seatParties = parties.filter((party) => typeof seats[party] === "number");
   const seatTotal = seatParties.reduce((sum, party) => sum + Number(seats[party] ?? 0), 0);
+  const accuracy = current.n > 0
+    ? 100 - parties.reduce((sum, party) => sum + Math.abs((expected[party] ?? 0) - (actual[party] ?? 0)), 0) / 2
+    : null;
+  const actualYear = stateName === "Tamil Nadu" ? "2026" : "2024";
   const zoneNames = Object.keys(current.expected).filter((name) => name !== stateName);
   const zoneSeats = (seats.zones as Record<string, Record<string, unknown>> | undefined) ?? {};
   const actualZones = data.actual;
@@ -193,11 +197,12 @@ export default function SurveyBody({
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <Kpi label="Responses" value={int(current.n)} note={`${int(current.nw ?? current.n)} weighted`} />
           <Kpi label="Leading party" value={labelOf(leading[0] ?? "—")} note={`${pct(expected[leading[0]] ?? 0)} · ${signed(lead)} lead`} />
           <Kpi label="Projected seats" value={int(seatTotal)} note={seatParties.map((party) => `${labelOf(party)} ${int(Number(seats[party] ?? 0))}`).join(" · ")} />
           <Kpi label="Seat call" value={typeof seats.hit === "number" ? int(seats.hit) : "—"} note={typeof seats.hit === "number" ? "Seats called correctly" : `${zoneNames.length} zones`} />
+          {accuracy != null && <Kpi label="Vote share accuracy" value={`${accuracy.toFixed(1)}%`} note={`Survey vs actual ${actualYear}`} />}
         </div>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(260px,0.55fr)]">
