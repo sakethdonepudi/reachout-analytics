@@ -16,6 +16,7 @@ import type { SurveyDistrictSeat } from "../lib/survey/types";
 import { buildSurveyMap } from "../lib/tamil-nadu/survey-map";
 import { surveySlots } from "../lib/survey/tn-shared";
 import { canonicalDistrictName, splitAcLabel } from "../lib/tamil-nadu/aliases";
+import { TN_2021_BASE } from "../lib/tamil-nadu/baseline";
 
 let passed = 0;
 const check = (name: string, fn: () => void) => {
@@ -44,6 +45,15 @@ check("Result dist stays an array of district rows", () => {
 check("months and sub-periods are read from the fixture", () => {
   assert.deepEqual(Object.keys(parsed.periods.op.months ?? {}), ["2026-03", "2026-04"]);
   assert.deepEqual(Object.keys(parsed.periods.op.months?.["2026-04"]?.sub ?? {}), ["2026-04a"]);
+});
+check("swing rows exist for every slot even without a stored baseline", () => {
+  for (const period of ["op", "ex"] as const) {
+    for (const option of surveySlots(parsed, period)) {
+      const build = buildSurveyMap(parsed, period, option.key);
+      const rows = parsed.regions.filter((region) => (parsed.base?.[region] ?? TN_2021_BASE[region]) && build.slot.expected[region]);
+      assert.ok(rows.length > 0, `${period}/${option.key} has no swing rows`);
+    }
+  }
 });
 check("renaming a month and adding a profile still parses", () => {
   const source = fixture
@@ -82,6 +92,13 @@ for (const item of realFiles) {
     }
     if (item.state === "tamil-nadu") {
       assert.ok(data.base?.["Tamil Nadu"], "2021 baseline is kept for the swing table");
+      for (const period of ["op", "ex"] as const) {
+        for (const option of surveySlots(data, period)) {
+          const build = buildSurveyMap(data, period, option.key);
+          const rows = data.regions.filter((region) => (data.base?.[region] ?? TN_2021_BASE[region]) && build.slot.expected[region]);
+          assert.ok(rows.length > 0, `${period}/${option.key} has no swing rows`);
+        }
+      }
       for (const period of ["op", "ex"] as const) {
         for (const option of surveySlots(data, period)) {
           const build = buildSurveyMap(data, period, option.key);

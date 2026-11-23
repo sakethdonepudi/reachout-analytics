@@ -12,6 +12,7 @@ import TnProfileTable, { TN_PARTY_COLORS, weightedAiadminAverage } from "./tn-pr
 import type { SurveyData, SurveyPeriod, SurveyShare } from "@/lib/survey/types";
 import { accuracyAgainst, surveySlots } from "@/lib/survey/tn-shared";
 import type { TnSerializedMap, TnSwingPayload } from "@/lib/survey/tn-view-dto";
+import { TN_2021_BASE } from "@/lib/tamil-nadu/baseline";
 import { canonicalDistrictName } from "@/lib/tamil-nadu/aliases";
 import { cn } from "@/lib/utils";
 
@@ -428,28 +429,30 @@ function SwingSection({ data, swing, parties, period, slot, onPeriod, onSlot }: 
   const sources = swing.sources[period] ?? [];
   const source = sources.find((item) => item.key === slot) ?? sources[0];
   const slots = sources;
+  if (!source) return <Section title="Zone: 2021 → 2026 (swing)" className="mt-3"><p className="mt-2 text-[12px] text-[#6B6B6B]">No swing data in this upload.</p></Section>;
   return (
-    <Section title="Zone: 2021 to 2026 (swing)" note={source.label} className="mt-3">
+    <Section title="Zone: 2021 → 2026 (swing)" note={source.label} className="mt-3">
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {(["op", "ex"] as const).map((key) => <button key={key} type="button" aria-pressed={period === key} onClick={() => onPeriod(key)} className={cn("min-h-7 rounded-full border px-2.5 text-[10px] font-semibold", period === key ? "border-[#002147] bg-[#002147] text-white" : "border-[#D5D8DE] text-[#555]")}>{data.periods[key]?.label.replace(/\s*\(.*/, "") ?? key}</button>)}
         <select aria-label="Swing month" value={slot} onChange={(event) => onSlot(event.target.value)} className="min-h-7 rounded-full border border-[#D5D8DE] bg-white px-2 text-[10px] font-semibold text-[#555]">
           {slots.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
         </select>
       </div>
+      <p className="mt-1 text-[12px] leading-relaxed text-[#555]">Each cell shows the actual 2021 % (ECI, alliance totals) → the survey&apos;s {period === "ex" ? "2026 share" : "expected 2026 %"} (swing in percentage points). The Tamil Nadu row also shows the actual 2026 result. Zones with fewer than 30 located answers are left out.</p>
       <div className="mt-2 overflow-x-auto rounded-xl border border-[#EAEAEA]">
-        <table className="w-full min-w-[760px] border-collapse text-[9.5px]">
-          <thead className="bg-[#FAFAFA] text-left text-[8px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">Zone</th>{parties.map((party) => <th key={party} className="px-2 py-2 text-center">{party} 21→26</th>)}</tr></thead>
+        <table className="w-full min-w-[900px] border-collapse text-[13px]">
+          <thead className="bg-[#FAFAFA] text-left text-[11px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-3 py-2">Zone</th>{parties.map((party) => <th key={party} className="px-3 py-2 text-center">{party} 21→26</th>)}</tr></thead>
           <tbody>
             {data.regions.map((region) => {
-              const before = data.base?.[region];
+              const before = data.base?.[region] ?? TN_2021_BASE[region];
               const after = source.expected[region];
               if (!before || !after) return null;
               return (
                 <tr key={region} className={cn("border-t border-[#EAEAEA]", region === state && "font-bold")}>
-                  <th scope="row" className="px-2 py-1.5 text-left">{data.zonelabels?.[region] ?? region}</th>
+                  <th scope="row" className="px-3 py-2 text-left">{data.zonelabels?.[region] ?? region}</th>
                   {parties.map((party) => {
                     const swing = (after[party] ?? 0) - (before[party] ?? 0);
-                    return <td key={party} className="px-2 py-1.5 text-center tabular-nums">{pct(before[party])} → {pct(after[party])} <span className={cn("ml-1 rounded px-1 py-0.5 text-[8px] font-bold", swing > 0 ? "bg-[#DCFCE7] text-[#15803D]" : swing < 0 ? "bg-[#FEE2E2] text-[#B91C1C]" : "text-[#6B6B6B]")}>({signed(swing)})</span>{region === state && data.actual[region]?.[party] != null && <span className="mt-0.5 block text-[8px] font-bold text-[#B91C1C]">Actual 2026: {pct(data.actual[region][party])}</span>}</td>;
+                    return <td key={party} className="px-3 py-2 text-center tabular-nums">{pct(before[party])} → {pct(after[party])} <span className={cn("ml-1 rounded px-1 py-0.5 text-[10.5px] font-bold", swing > 0 ? "bg-[#DCFCE7] text-[#15803D]" : swing < 0 ? "bg-[#FEE2E2] text-[#B91C1C]" : "text-[#6B6B6B]")}>({signed(swing)})</span>{region === state && data.actual[region]?.[party] != null && <span className="mt-0.5 block text-[10.5px] font-bold text-[#B91C1C]">Actual 2026: {pct(data.actual[region][party])}</span>}</td>;
                   })}
                 </tr>
               );
