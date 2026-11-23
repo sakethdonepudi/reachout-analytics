@@ -58,13 +58,16 @@ function seatTotal(seats: Record<string, unknown>, parties: string[]) {
   return seatParties(seats, parties).reduce((sum, party) => sum + Number(seats[party] ?? 0), 0);
 }
 
-function Kpi({ label, value, note }: { label: string; value: string; note?: string }) {
+
+function SocialIcons({ active }: { active: boolean }) {
+  const opacity = active ? 0.95 : 0.8;
   return (
-    <div className="rounded-xl border border-[#EAEAEA] bg-white p-3">
-      <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">{label}</p>
-      <p className="mt-1 font-display text-[21px] font-semibold leading-none tracking-[-0.02em] text-[#0B0B0C]">{value}</p>
-      {note && <p className="mt-1 text-[9.5px] leading-tight text-[#6B6B6B]">{note}</p>}
-    </div>
+    <>
+      <svg viewBox="0 0 24 24" className="size-4" fill="#1877F2" opacity={opacity}><path d="M13.5 22v-8h2.7l.4-3.1h-3.1V8.9c0-.9.3-1.5 1.6-1.5h1.7V4.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H7.4V14h2.7v8h3.4Z"/></svg>
+      <svg viewBox="0 0 24 24" className="size-4" fill="#C13584" opacity={opacity}><circle cx="12" cy="12" r="4.1" fill="none" stroke="#C13584" strokeWidth="2"/><circle cx="17.6" cy="6.4" r="1.2" fill="#C13584"/><rect x="3.5" y="3.5" width="17" height="17" rx="4.5" fill="none" stroke="#C13584" strokeWidth="2"/></svg>
+      <svg viewBox="0 0 24 24" className="size-4" fill="#FF0000" opacity={opacity}><rect x="2.5" y="5.2" width="19" height="13.6" rx="3.2"/><path d="M10 9.2v5.6l4.8-2.8L10 9.2Z" fill="#fff"/></svg>
+      <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="#15803D" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}><path d="M4 16.5 10 10l3.5 3.5L20 7"/><path d="M14.5 7H20v5.5"/></svg>
+    </>
   );
 }
 
@@ -125,8 +128,6 @@ export default function TnSurveyDashboard({
   const expected = slot.expected[STATE] ?? {};
   const actual = data.actual[STATE] ?? {};
   const seats = period.seats ?? {};
-  const totalSeats = seatTotal(seats, parties);
-  const hit = typeof seats.hit === "number" ? seats.hit : null;
   const leadParty = leaderOf(expected, parties);
   const accuracy = view === "rs" ? null : accuracyAgainst(expected, actual, parties);
   const slotN = slot.n;
@@ -286,16 +287,26 @@ export default function TnSurveyDashboard({
         )}
 
         {view === "social" ? (
-          <div className="mt-4"><TnSocialMedia stateSlug="tamil-nadu" initialFilter={initialSocialFilter} onClose={closeSocial} /></div>
+          <div className="mt-4"><TnSocialMedia stateSlug="tamil-nadu" initialFilter={initialSocialFilter} onClose={closeSocial} owner={owner} /></div>
         ) : (
           <>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-              <Kpi label="Responses" value={int(slotN)} note={`${int(period.nw ?? slotN)} weighted`} />
-              <Kpi label="Leading party" value={leadParty ?? "—"} note={`${pct(expected[leadParty ?? ""])} · ${signed((expected[leadParty ?? ""] ?? 0) - (expected[[...parties].sort((a, b) => (expected[b] ?? 0) - (expected[a] ?? 0))[1] ?? ""] ?? 0))} lead`} />
-              <Kpi label="Projected seats" value={int(totalSeats)} note={seatParties(seats, parties).map((party) => `${party} ${int(Number(seats[party] ?? 0))}`).join(" · ")} />
-              <Kpi label="Seat call" value={hit == null ? "—" : int(hit)} note={hit == null ? "No seat call" : "Seats called correctly"} />
-              {accuracy != null ? <Kpi label="Vote share accuracy" value={`${accuracy.toFixed(1)}%`} note="Survey vs actual 2026" /> : <Kpi label="Majority" value={int(MAJORITY)} note="TVK short by 10 seats" />}
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              {parties.map((party) => {
+                const value = view === "rs" ? (actual[party] ?? 0) : (expected[party] ?? 0);
+                const perParty = view === "rs" ? null : Math.max(0, 100 - Math.abs(value - (actual[party] ?? 0)));
+                return (
+                  <div key={party} className="rounded-xl border border-[#EAEAEA] bg-white p-3" style={{ borderTopColor: colour(party), borderTopWidth: 3 }}>
+                    <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[#555]"><span className="size-2 rounded-sm" style={{ background: colour(party) }} />{party} · {view === "rs" ? "actual" : view === "ex" ? "share" : "expected"}</p>
+                    <p className="mt-1 font-display text-[26px] font-semibold leading-none tracking-[-0.02em] text-[#0B0B0C]">{value.toFixed(2)}%</p>
+                    {view !== "rs" && <p className="mt-1 text-[10px] font-semibold text-[#B91C1C]">Actual 2026: {(actual[party] ?? 0).toFixed(2)}%</p>}
+                    {perParty != null && <p className="mt-0.5 text-[10px] font-semibold text-[#15803D]">Accuracy {perParty.toFixed(1)}%</p>}
+                  </div>
+                );
+              })}
             </div>
+            {view !== "rs" && (
+              <p className="mt-2 text-[12px] leading-relaxed text-[#555]"><b className="text-[#0B0B0C]">Note:</b> actual vs prediction, overall vote-share accuracy <b className="text-[#15803D]">{accuracy?.toFixed(1)}%</b> against the actual 2026 result ({parties.map((party) => `${party} ${(actual[party] ?? 0).toFixed(2)}%`).join(", ")}).</p>
+            )}
 
             <div className="mt-2 rounded-xl border border-[#EAEAEA] bg-white p-3">
               <div className="flex h-3 w-full overflow-hidden rounded-full bg-[#F1F1F1]" role="img" aria-label={`Vote share bar for ${slot.label}`}>
@@ -306,11 +317,7 @@ export default function TnSurveyDashboard({
                 <span className="ml-auto text-[#15803D]">Lead key: {leadParty} ahead by {signed((expected[leadParty ?? ""] ?? 0) - (expected[[...parties].sort((a, b) => (expected[b] ?? 0) - (expected[a] ?? 0))[1] ?? ""] ?? 0))}</span>
               </div>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-[#EAEAEA] bg-[#FAFAFA] px-3 py-2 text-[10px]">
-              <span className="font-semibold text-[#0B0B0C]">{slot.label}</span>
-              {parties.slice(0, 3).map((party) => <span key={party} className="inline-flex items-center gap-1"><span className="size-2 rounded-sm" style={{ background: colour(party) }} />{party} {pct(expected[party])}</span>)}
-              {accuracy != null && <span className="ml-auto text-[#15803D]"><b>accuracy {accuracy.toFixed(1)}%</b></span>}
-            </div>
+
 
             <section className="mt-3 rounded-2xl border border-[#EAEAEA] bg-white p-3 sm:p-4" aria-label="Tamil Nadu map">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -457,27 +464,52 @@ function SwingSection({ data, swing, parties, period, slot, onPeriod, onSlot }: 
 function SeatsByZone({ data, parties, seats, periodKey, slotLabel }: { data: SurveyData; parties: string[]; seats: Record<string, unknown>; periodKey: string; slotLabel: string }) {
   const zones = (seats.zones as Record<string, Record<string, unknown>> | undefined) ?? {};
   const actualZones = (data.periods.rs?.seats?.zones as Record<string, Record<string, unknown>> | undefined) ?? {};
+  const actualSeats = data.periods.rs?.seats ?? {};
   const projected = seatTotal(seats, parties);
-  const seatParty = parties.filter((party) => typeof seats[party] === "number");
+  const summaryParties = ["TVK", "DMK+", "AIADMK+", "NTK"];
+  const actualParties = ["TVK", "DMK+", "AIADMK+"];
+  const hit = typeof seats.hit === "number" ? seats.hit : null;
+  const leader = leaderOf(data.periods.rs?.expected?.[STATE], parties);
+  const majorityParty = leader && Number(actualSeats[leader] ?? 0) >= MAJORITY ? `${leader} majority` : "hung";
+  const zoneRows = Object.entries(zones).map(([zone, row]) => ({ zone, row }));
   return (
-    <Section title={`Seats by zone · 2026 projection · ${slotLabel}`} note={`${projected} of 234 · majority ${MAJORITY}`} className="mt-3">
-      <p className="mt-1 text-[10px] text-[#555]">Projection: {seatParty.map((party) => `${party} ${int(Number(seats[party] ?? 0))}`).join(" · ")}. Actual 2026: TVK 108 · DMK+ 73 · AIADMK+ 53.</p>
+    <Section title={`Seats by zone · 2026 projection · ${slotLabel}`} note={`${projected} of 234 seats · majority ${MAJORITY} · ${majorityParty}`} className="mt-3">
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {summaryParties.map((party) => (
+          <div key={party} className="rounded-xl border border-[#EAEAEA] p-3">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[#555]"><span className="size-2 rounded-sm" style={{ background: colour(party) }} />{party}</p>
+            <p className="mt-1 font-display text-[24px] font-semibold leading-none tabular-nums text-[#0B0B0C]">{int(Number(seats[party] ?? 0))}</p>
+            <p className="mt-1 text-[10px] text-[#6B6B6B]">projected · actual {int(Number(actualSeats[party] ?? 0))}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-[12px] text-[#555]">Projection: {summaryParties.map((party) => `${party} ${int(Number(seats[party] ?? 0))}`).join(" · ")} of 234. Actual 2026: TVK 108 · DMK+ 73 · AIADMK+ 53.</p>
+      {hit != null && <p className="mt-1 text-[12px] font-semibold text-[#0B0B0C]">The projected winner matches the actual winner in {int(hit)} of 234 ACs ({((hit / 234) * 100).toFixed(1)}%).</p>}
       <div className="mt-2 overflow-x-auto rounded-xl border border-[#EAEAEA]">
-        <table className="w-full min-w-[560px] border-collapse text-[9.5px]">
-          <thead className="bg-[#FAFAFA] text-left text-[8px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">Zone</th><th className="px-2 py-2 text-right">ACs</th>{seatParty.map((party) => <th key={party} className="px-2 py-2 text-right">{party}</th>)}{["TVK", "DMK+", "AIADMK+"].map((party) => <th key={party} className="px-2 py-2 text-right">Actual {party}</th>)}</tr></thead>
+        <table className="w-full min-w-[720px] border-collapse text-[13px]">
+          <thead className="bg-[#FAFAFA] text-left text-[11px] uppercase tracking-wide text-[#6B6B6B]">
+            <tr><th rowSpan={2} className="px-3 py-2">Zone</th><th rowSpan={2} className="px-3 py-2 text-right">ACs</th><th colSpan={4} className="px-3 py-2 text-center">Projected</th><th colSpan={3} className="px-3 py-2 text-center">Actual 2026</th></tr>
+            <tr>{summaryParties.map((party) => <th key={party} className="px-3 py-2 text-right">{party}</th>)}{actualParties.map((party) => <th key={party} className="px-3 py-2 text-right">{party}</th>)}</tr>
+          </thead>
           <tbody>
-            {Object.entries(zones).map(([zone, row]) => (
+            {zoneRows.map(({ zone, row }) => (
               <tr key={zone} className="border-t border-[#EAEAEA]">
-                <th scope="row" className="px-2 py-1.5 text-left">{data.zonelabels?.[zone] ?? zone}</th>
-                <td className="px-2 py-1.5 text-right tabular-nums">{int(Number(row.acs ?? 0))}</td>
-                {seatParty.map((party) => <td key={party} className="px-2 py-1.5 text-right tabular-nums">{int(Number(row[party] ?? 0))}</td>)}
-                {["TVK", "DMK+", "AIADMK+"].map((party) => <td key={party} className="px-2 py-1.5 text-right tabular-nums">{int(Number(actualZones[zone]?.[party] ?? 0))}</td>)}
+                <th scope="row" className="px-3 py-2 text-left font-semibold">{data.zonelabels?.[zone] ?? zone}</th>
+                <td className="px-3 py-2 text-right tabular-nums">{int(Number(row.acs ?? 0))}</td>
+                {summaryParties.map((party) => <td key={party} className="px-3 py-2 text-right tabular-nums">{int(Number(row[party] ?? 0))}</td>)}
+                {actualParties.map((party) => <td key={party} className="px-3 py-2 text-right tabular-nums">{int(Number(actualZones[zone]?.[party] ?? 0))}</td>)}
               </tr>
             ))}
+            <tr className="border-t-2 border-[#0B0B0C] font-bold">
+              <th scope="row" className="px-3 py-2 text-left">Tamil Nadu</th>
+              <td className="px-3 py-2 text-right tabular-nums">234</td>
+              {summaryParties.map((party) => <td key={party} className="px-3 py-2 text-right tabular-nums">{int(Number(seats[party] ?? 0))}</td>)}
+              {actualParties.map((party) => <td key={party} className="px-3 py-2 text-right tabular-nums">{int(Number(actualSeats[party] ?? 0))}</td>)}
+            </tr>
           </tbody>
         </table>
       </div>
-      <p className="mt-1 text-[9px] text-[#6B6B6B]">{periodKey === "rs" ? "Actual seats by zone." : "Projected winner calls compared with the actual 2026 winners."}</p>
+      <p className="mt-1 text-[10px] text-[#6B6B6B]">{periodKey === "rs" ? "Actual seats by zone." : "Projected winner calls compared with the actual 2026 winners."}</p>
     </Section>
   );
 }
