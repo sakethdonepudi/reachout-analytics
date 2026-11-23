@@ -170,6 +170,12 @@ async function clickTab(page: Page, name: RegExp) {
     const tnCards = await Promise.all([/Opinion poll/, /Exit poll/, /Result 2026/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)));
     record("/case-studies/tamil-nadu", "Period cards", "client", "Opinion, Exit, Result, Social", tnCards.join(", "), tnCards.every(Boolean));
     record("/case-studies/tamil-nadu", "Header shares", "client", "TVK 40.0%", await page.getByText(/TVK 40\.0%/).first().isVisible().catch(() => false) ? "visible" : "missing", await page.getByText(/TVK 40\.0%/).first().isVisible().catch(() => false));
+    const partyCards = ["TVK · expected", "DMK+ · expected", "AIADMK+ · expected", "NTK · expected", "Others · expected"];
+    const partyBody = await page.locator("body").innerText();
+    record("/case-studies/tamil-nadu", "Party cards", "client", "5 expected cards", partyCards.filter((label) => partyBody.includes(label)).length + " / 5", partyCards.every((label) => partyBody.includes(label)));
+    record("/case-studies/tamil-nadu", "Party card note", "client", "overall accuracy note", partyBody.includes("actual vs prediction, overall vote-share accuracy") ? "visible" : "missing", partyBody.includes("actual vs prediction, overall vote-share accuracy"));
+    record("/case-studies/tamil-nadu", "Swing rows", "client", "6 rows", String(await page.locator("section[aria-label^='Zone:'] tbody tr").count()), await page.locator("section[aria-label^='Zone:'] tbody tr").count() === 6);
+    record("/case-studies/tamil-nadu", "Seat total line", "client", "115 of 234 ACs", partyBody.includes("The projected winner matches the actual winner in 115 of 234 ACs") ? "visible" : "missing", partyBody.includes("The projected winner matches the actual winner in 115 of 234 ACs"));
     record("/case-studies/tamil-nadu", "Time slots", "client", "All months, Mar 2026, Apr 2026", (await page.getByRole("group", { name: "Survey time slot" }).innerText()).replace(/\n+/g, ", "), (await page.getByRole("button", { name: /^All months/ }).isVisible()) && (await page.getByRole("button", { name: /^Apr 2026/ }).isVisible()));
     await page.getByRole("button", { name: /^Apr 2026/ }).click();
     await page.waitForTimeout(900);
@@ -217,6 +223,10 @@ async function clickTab(page: Page, name: RegExp) {
     await page.waitForTimeout(1600);
     record("/case-studies/tamil-nadu", "Social view", "client", "view=social", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "social");
     record("/case-studies/tamil-nadu", "Social no money", "client", "no currency", /₹|\bspend\b|\bINR\b/i.test(await page.locator("body").innerText()) ? "money found" : "clean", !/₹|\bspend\b|\bINR\b/i.test(await page.locator("body").innerText()));
+    const clientSocial = await page.evaluate(async () => (await fetch("/api/survey/social?state=tamil-nadu")).json());
+    const clientAccounts = (clientSocial.overview?.accounts ?? []) as Array<Record<string, unknown>>;
+    const clientPrivate = clientAccounts.length > 0 && clientAccounts.every((account) => !("id" in account) && !("business" in account) && !("href" in account));
+    record("/case-studies/tamil-nadu", "Social account privacy", "client", "names only, no business or id", clientPrivate ? "clean" : "leaked", clientPrivate);
     await page.goBack();
     await page.waitForTimeout(1400);
     record("/case-studies/tamil-nadu", "Back to survey", "client", "view=rs", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "rs");
@@ -246,6 +256,9 @@ async function clickTab(page: Page, name: RegExp) {
     await page.waitForTimeout(1000);
     record("/case-studies/tamil-nadu", "Owner cards", "owner", "Opinion, Exit, Result, Social", (await Promise.all([/Opinion poll/, /Exit poll/, /Result 2026/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)))).join(", "), (await Promise.all([/Opinion poll/, /Exit poll/, /Result 2026/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)))).every(Boolean));
     record("/case-studies/tamil-nadu", "Owner download", "owner", "button visible", String(await page.getByRole("button", { name: /Download data/ }).count()), await page.getByRole("button", { name: /Download data/ }).first().isVisible().catch(() => false));
+    const ownerSocial = await page.evaluate(async () => (await fetch("/api/survey/social?state=tamil-nadu")).json());
+    const ownerAccounts = (ownerSocial.overview?.accounts ?? []) as Array<Record<string, unknown>>;
+    record("/case-studies/tamil-nadu", "Owner social identity", "owner", "id and business visible", ownerAccounts.length > 0 && ownerAccounts.every((account) => "id" in account && "business" in account) ? "visible" : "missing", ownerAccounts.length > 0 && ownerAccounts.every((account) => "id" in account && "business" in account));
     record("/case-studies/tamil-nadu", "Console and 404s", "owner", "none", errors.length ? errors.join("; ") : "none", errors.length === 0);
     await context.close();
   }
