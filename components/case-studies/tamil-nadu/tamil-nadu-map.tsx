@@ -45,6 +45,10 @@ type Props = {
   acNo: number | null;
   year: TnYearOrCurrent;
   theme: MapTheme;
+  /** District fills, or every assembly constituency at once. */
+  mode?: "district" | "assembly";
+  /** Optional tooltip override, used by the uploaded survey map. */
+  tooltip?: (payload: { kind: "district" | "ac"; name: string; no?: number; district?: string }) => { sub: string; value: string; color?: string } | null;
   /** Increment after a split resize to refit without changing selection. */
   fitKey?: number;
   onSelectDistrict: (name: string) => void;
@@ -126,14 +130,14 @@ function blendColor(blend: BlendInfo, t: number): THREE.Color {
   return gradientColor(blend.color1, blend.color2, blend.p1, t);
 }
 
-export default function TamilNaduMap({ acs, districts, district, acNo, year, theme, fitKey = 0, onSelectDistrict, onSelectAc, onReset }: Props) {
+export default function TamilNaduMap({ acs, districts, district, acNo, year, theme, mode = "district", tooltip, fitKey = 0, onSelectDistrict, onSelectAc, onReset }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [tip, setTip] = useState<{ x: number; y: number; title: string; sub: string; value: string; color: string } | null>(null);
-  const live = useRef({ acs, districts, district, acNo, year, theme, onSelectDistrict, onSelectAc, onReset });
-  live.current = { acs, districts, district, acNo, year, theme, onSelectDistrict, onSelectAc, onReset };
+  const live = useRef({ acs, districts, district, acNo, year, theme, mode, tooltip, onSelectDistrict, onSelectAc, onReset });
+  live.current = { acs, districts, district, acNo, year, theme, mode, tooltip, onSelectDistrict, onSelectAc, onReset };
   const acByNo = useMemo(() => new Map(acs.map((a) => [a.no, a])), [acs]);
   const acRef = useRef(acByNo); acRef.current = acByNo;
   const districtByName = useMemo(() => new Map(districts.map((d) => [d.name, d])), [districts]);
@@ -423,13 +427,14 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         showAccent(activeAC?.no ?? null, !!activeAC);
         const mobileState = typeof window !== "undefined" && window.innerWidth < 640;
         const mobileLabels = new Set([...districtsUnits.keys()].sort((aKey, bKey) => (districtRef.current.get(bKey)?.survey.valid ?? 0) - (districtRef.current.get(aKey)?.survey.valid ?? 0)).slice(0, 10));
+        const assembly = live.current.mode === "assembly";
         for (const [name, u] of districtsUnits) {
           const selected = !!activeD && name === activeD.name;
           const acLayerGroup = acLayer.get(name); if (acLayerGroup) acLayerGroup.visible = !!activeD && selected;
           const blend = blendForDistrict(districtRef.current.get(canonicalDistrict(name)), y);
           applyGradient(u, blend);
           startUnit(u, activeD ? 0 : 1, activeD ? 0 : 0.9, 0, activeD ? selected : true);
-          u.label.style.opacity = activeD ? (selected && !activeAC ? "1" : "0") : (mobileState && !mobileLabels.has(name) ? "0" : "1");
+          u.label.style.opacity = activeD ? (selected && !activeAC ? "1" : "0") : assembly ? "0" : (mobileState && !mobileLabels.has(name) ? "0" : "1");
           const size = labelSize(selected ? "district" : "district", mobileState);
           u.label.style.fontSize = `${size.px}px`; u.label.style.fontWeight = String(size.weight);
         }
@@ -437,12 +442,14 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
           const blend = blendForAc(acRef.current.get(no), y);
           const acSelected = !!activeAC && no === activeAC.no;
           const inSelectedDistrict = !!activeD && canonicalDistrict(u.mesh.userData.district) === activeD.name;
-          const visible = !!activeD && (activeAC ? acSelected : inSelectedDistrict);
+          const visible = assembly
+            ? activeAC ? acSelected : activeD ? inSelectedDistrict : true
+            : !!activeD && (activeAC ? acSelected : inSelectedDistrict);
           applyGradient(u, blend);
           u.cap.emissive.set(acSelected && blend.first ? blend.color1 : "#000000");
           u.cap.emissiveIntensity = acSelected ? MAP_STYLE.surface.selectedEmissive : 0;
-          startUnit(u, visible ? 1 : 0, 0, activeD ? (acSelected ? SELECTED_LIFT : AC_LIFT) : 0, visible);
-          u.label.style.opacity = visible ? "1" : "0";
+          startUnit(u, visible ? 1 : 0, 0, activeD || assembly ? (acSelected ? SELECTED_LIFT : AC_LIFT) : 0, visible);
+          u.label.style.opacity = visible && (activeD || acSelected || !assembly) ? "1" : "0";
           const acSize = labelSize(acSelected ? "selectedAssembly" : "assembly", mobileState);
           u.label.style.fontSize = `${acSize.px}px`; u.label.style.fontWeight = String(acSize.weight);
         }
@@ -463,7 +470,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         const hostRect = host.getBoundingClientRect();
         const vw = Math.max(320, hostRect.width), vh = Math.max(320, hostRect.height);
         const wide = typeof window !== "undefined" && window.innerWidth > 1024;
-        let centerX = 0, centerZ = 0, dist = 2050;
+        let centerX = 0, centerZ = 0, dist = Math.max(1350, Math.min(2600, 2050 * (700 / Math.max(320, vw))));
         if (bounds) {
           centerX = (bounds.minx + bounds.maxx) / 2; centerZ = (bounds.minz + bounds.maxz) / 2;
           const W = Math.max(1, bounds.maxx - bounds.minx), H = Math.max(1, bounds.maxz - bounds.minz);
@@ -585,11 +592,13 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         if (kind === "district") {
           showAccent(live.current.acNo, true);
           const blend = blendForDistrict(districtRef.current.get(canonicalDistrict(data.district)), live.current.year);
-          setTip({ x: e.clientX, y: e.clientY, title: canonicalDistrict(data.district), sub: live.current.year === "2026" ? "2026 estimated vote share" : `${live.current.year} result`, value: tipValue(blend), color: blend.color });
+          const custom = live.current.tooltip?.({ kind: "district", name: canonicalDistrict(data.district) });
+          setTip({ x: e.clientX, y: e.clientY, title: canonicalDistrict(data.district), sub: custom?.sub ?? (live.current.year === "2026" ? "2026 estimated vote share" : `${live.current.year} result`), value: custom?.value ?? tipValue(blend), color: custom?.color ?? blend.color });
         } else {
           showAccent(data.no as number, data.no === live.current.acNo);
           const a = acRef.current.get(data.no as number); const blend = blendForAc(a, live.current.year);
-          setTip({ x: e.clientX, y: e.clientY, title: a?.name ?? `AC ${data.no}`, sub: `${canonicalDistrict(data.district)} · ${live.current.year === "2026" ? "estimated vote share" : live.current.year}`, value: tipValue(blend), color: blend.color });
+          const custom = live.current.tooltip?.({ kind: "ac", name: a?.name ?? `AC ${data.no}`, no: data.no as number, district: canonicalDistrict(data.district) });
+          setTip({ x: e.clientX, y: e.clientY, title: a?.name ?? `AC ${data.no}`, sub: custom?.sub ?? `${canonicalDistrict(data.district)} · ${live.current.year === "2026" ? "estimated vote share" : live.current.year}`, value: custom?.value ?? tipValue(blend), color: custom?.color ?? blend.color });
         }
       } else setTip((t) => t ? { ...t, x: e.clientX, y: e.clientY } : t);
     };
@@ -630,7 +639,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
   useEffect(() => {
     if (!ready) return;
     apiRef.current?.setSelection(district, acNo, year);
-  }, [ready, district, acNo, year, acs, districts, fitKey]);
+  }, [ready, district, acNo, year, acs, districts, fitKey, mode]);
 
   return (
     <div className="relative h-full w-full">
