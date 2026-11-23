@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   const data = record.data;
   const parties = data.parties;
   const map = await getActiveTnMap();
-  const social = await tnSocialOverview(data);
+  const social = await tnSocialOverview(data, true);
   const workbook = XLSX.utils.book_new();
   const sheet = (name: string, rows: unknown[][]) => XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), name);
 

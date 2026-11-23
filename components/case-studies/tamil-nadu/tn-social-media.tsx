@@ -23,7 +23,7 @@ function Stat({ label, value, note }: { label: string; value: string; note?: str
   );
 }
 
-export default function TnSocialMedia({ stateSlug, initialFilter, onClose }: { stateSlug: string; initialFilter?: SocialFilter | null; onClose?: () => void }) {
+export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner = false }: { stateSlug: string; initialFilter?: SocialFilter | null; onClose?: () => void; owner?: boolean }) {
   const [overview, setOverview] = useState<TnSocialOverview | null>(null);
   const [filtered, setFiltered] = useState<TnSocialFiltered | null>(null);
   const [account, setAccount] = useState<TnSocialFiltered | null>(null);
@@ -61,7 +61,7 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose }: { s
   async function toggleAccount(id: string) {
     if (openAccount === id) { setOpenAccount(null); return; }
     setOpenAccount(id);
-    if (account?.accounts[0]?.id === id) return;
+    if (account?.accounts[0]?.key === id) return;
     try {
       const response = await fetch(`/api/survey/social?state=${stateSlug}&mode=account&account=${encodeURIComponent(id)}`);
       const payload = await response.json().catch(() => ({}));
@@ -82,7 +82,7 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose }: { s
     : overview?.totals;
 
   return (
-    <div className="space-y-4">
+    <section className="space-y-4" aria-label="Social media">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-[22px] font-semibold tracking-[-0.02em] text-[#0B0B0C]">{filtered ? filtered.title : "Social Media"}</h2>
@@ -141,15 +141,15 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose }: { s
               </thead>
               <tbody>
                 {(active.accounts ?? []).map((item) => (
-                  <tr key={item.id} className="border-t border-[#EAEAEA] align-top">
+                  <tr key={item.key} className="border-t border-[#EAEAEA] align-top">
                     <th scope="row" className="px-3 py-2 text-left font-semibold text-[#0B0B0C]">
                       {filtered ? item.name : (
-                        <button type="button" onClick={() => void toggleAccount(item.id)} className="inline-flex items-center gap-1 text-left hover:text-[#1f6fd1]">
-                          {openAccount === item.id ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+                        <button type="button" onClick={() => void toggleAccount(item.key)} className="inline-flex items-center gap-1 text-left hover:text-[#1f6fd1]">
+                          {openAccount === item.key ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
                           {item.name}
                         </button>
                       )}
-                      <span className="mt-0.5 block text-[8.5px] font-normal text-[#6B6B6B]">{item.business || "Ad account"} · {item.id}</span>
+                      {owner && item.id && <span className="mt-0.5 block text-[8.5px] font-normal text-[#6B6B6B]">{item.business || "Ad account"} · {item.id}</span>}
                     </th>
                     <td className="px-2 py-2 text-right tabular-nums">{number(item.campaignCount)}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{number(item.reach)}</td>
@@ -165,12 +165,12 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose }: { s
         </section>
       )}
 
-      {!filtered && openAccount && account?.accounts[0]?.id === openAccount && (
+      {!filtered && openAccount && account?.accounts[0]?.key === openAccount && (
         <CampaignTable title={`Campaigns · ${account.accounts[0].name}`} campaigns={account.campaigns} total={account.totalMatching} />
       )}
 
       {filtered && <CampaignTable title={`Top ${Math.min(100, filtered.campaigns.length)} campaigns`} campaigns={filtered.campaigns} total={filtered.totalMatching} />}
-    </div>
+    </section>
   );
 }
 

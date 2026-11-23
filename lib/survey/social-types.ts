@@ -4,7 +4,10 @@ export type TnSocialCampaign = {
   href?: string | null;
 };
 export type TnSocialAccount = {
-  id: string; name: string; business: string;
+  key: string;
+  name: string;
+  id?: string;
+  business?: string;
   campaignCount: number; reach: number; impressions: number; views: number; clicks: number; engagements: number;
   href?: string | null;
 };
