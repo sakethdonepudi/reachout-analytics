@@ -11,7 +11,10 @@ export async function requirePageSession(returnTo: string, allowed: Role[] = ["o
   const jar = await cookies();
   const token = jar.get(COOKIE)?.value ?? (COOKIE !== LEGACY_COOKIE ? jar.get(LEGACY_COOKIE)?.value : undefined);
   const session = await getSessionByToken(token);
-  if (!session) redirect(`/login?next=${encodeURIComponent(returnTo)}`);
+  if (!session) {
+    const reason = token ? "&reason=expired" : "";
+    redirect(`/login?next=${encodeURIComponent(returnTo)}${reason}`);
+  }
   if (!allowed.includes(session.role)) redirect(roleHome(session.role));
   return session;
 }

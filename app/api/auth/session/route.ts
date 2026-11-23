@@ -1,10 +1,14 @@
 import type { NextRequest } from "next/server";
-import { getSession, sessionIsRecent } from "@/lib/auth";
+import { clearSessionCookie, getSession, sessionIsRecent } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const session = await getSession(req);
-  if (!session) return Response.json({ ok: false }, { status: 401, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
+  if (!session) {
+    const response = Response.json({ ok: false }, { status: 401, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
+    clearSessionCookie(response);
+    return response;
+  }
   return Response.json({ ok: true, role: session.role, subject: session.sub, userId: session.userId, displayName: session.displayName, recent: sessionIsRecent(session) }, { headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
 }

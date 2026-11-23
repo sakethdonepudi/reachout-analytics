@@ -267,7 +267,11 @@ export async function heartbeat(sid: string | undefined): Promise<boolean> {
 
 export async function requireRole(req: NextRequest, roles: Role[]): Promise<{ session: Session } | { deny: Response }> {
   const session = await getSession(req);
-  if (!session) return { deny: Response.json({ ok: false, error: "Not authenticated" }, { status: 401, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } }) };
+  if (!session) {
+    const response = Response.json({ ok: false, error: "Not authenticated" }, { status: 401, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
+    clearSessionCookie(response);
+    return { deny: response };
+  }
   if (!roles.includes(session.role)) {
     await audit({ action: "role_denied", role: session.role, ip: req.headers.get("x-forwarded-for")?.split(",")[0].trim() });
     return { deny: Response.json({ ok: false, error: "Forbidden" }, { status: 403, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } }) };

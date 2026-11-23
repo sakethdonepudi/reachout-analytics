@@ -7,10 +7,12 @@ import { roleHome } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ reason?: string }> }) {
+  const { reason } = await searchParams;
   const jar = await cookies();
   const session = await getSessionByToken(jar.get(COOKIE)?.value ?? jar.get(LEGACY_COOKIE)?.value);
-  if (session) redirect(roleHome(session.role));
+  const stopped = reason === "expired" || reason === "idle";
+  if (session && !stopped) redirect(roleHome(session.role));
   const nonce = (await headers()).get("x-nonce") ?? undefined;
-  return <LoginPageClient turnstileEnabled={turnstileConfigured()} nonce={nonce} />;
+  return <LoginPageClient turnstileEnabled={turnstileConfigured()} nonce={nonce} expired={reason === "expired"} />;
 }

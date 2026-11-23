@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { rolesForPath, roleHome, type Role } from "@/lib/access";
+import { rolesForPath, type Role } from "@/lib/access";
 import { CSRF_COOKIE, createCsrfToken } from "@/lib/csrf";
 import { PROTECTED_HEADERS, securityHeaders } from "@/lib/security";
 
@@ -35,6 +35,14 @@ async function sessionFromCookie(token: string | undefined, secret: string): Pro
   }
 }
 
+function clearAuthCookies(response: Response) {
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  for (const name of [PROD_COOKIE, DEV_COOKIE, "ro_auth_loop"]) {
+    response.headers.append("Set-Cookie", `${name}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`);
+  }
+  return response;
+}
+
 function applyCommon(response: Response, nonce: string, protectedPath: boolean, hasCsrf: boolean) {
   for (const [key, value] of Object.entries(securityHeaders(nonce))) response.headers.set(key, value);
   if (protectedPath) for (const [key, value] of Object.entries(PROTECTED_HEADERS)) response.headers.set(key, value);
@@ -67,12 +75,15 @@ export async function middleware(request: NextRequest) {
     return applyCommon(NextResponse.redirect(new URL("/", request.url)), nonce, false, hasCsrf);
   }
 
-  // The owner never sees the public home.
-  if (session?.role === "owner" && pathname === "/") {
-    return applyCommon(NextResponse.redirect(new URL("/dashboard", request.url)), nonce, false, hasCsrf);
-  }
-
   const publicPath = pathname === "/" || pathname === "/login";
+  const reason = request.nextUrl.searchParams.get("reason");
+
+  // Never bounce /login on the cookie signature alone. The server checks the
+  // session against Mongo and decides whether to show the form.
+  if (pathname === "/login" && (reason === "expired" || reason === "idle")) {
+    const response = applyCommon(NextResponse.next(), nonce, false, hasCsrf);
+    return clearAuthCookies(response);
+  }
   const authPath = pathname === "/setup"
     || pathname === "/api/setup"
     || pathname === "/account/password"
@@ -82,17 +93,24 @@ export async function middleware(request: NextRequest) {
 
   if (!session && !publicPath && !authPath) {
     if (pathname.startsWith("/api/")) {
-      return applyCommon(NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 }), nonce, true, hasCsrf);
+      const response = applyCommon(NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 }), nonce, true, hasCsrf);
+      return token ? clearAuthCookies(response) : response;
+    }
+    const loopCount = Number(request.cookies.get("ro_auth_loop")?.value ?? 0);
+    if (token && loopCount >= 2) {
+      const rewrite = NextResponse.rewrite(new URL("/login?reason=expired", request.url));
+      return clearAuthCookies(applyCommon(rewrite, nonce, false, hasCsrf));
     }
     const login = request.nextUrl.clone();
     login.pathname = "/login";
     login.search = "";
     login.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
-    return applyCommon(NextResponse.redirect(login), nonce, false, hasCsrf);
-  }
-
-  if (session && pathname === "/login") {
-    return applyCommon(NextResponse.redirect(new URL(roleHome(session.role), request.url)), nonce, false, hasCsrf);
+    if (token) login.searchParams.set("reason", "expired");
+    const response = applyCommon(NextResponse.redirect(login), nonce, false, hasCsrf);
+    if (token) {
+      response.headers.append("Set-Cookie", `ro_auth_loop=${loopCount + 1}; Path=/; HttpOnly; SameSite=Strict; Max-Age=60${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
+    }
+    return token ? clearAuthCookies(response) : response;
   }
 
   if (pathname === "/campaigns" || pathname.startsWith("/meta-ads") || pathname === "/data") {
@@ -134,6 +152,9 @@ export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
+  if (session && request.cookies.get("ro_auth_loop")) {
+    response.headers.append("Set-Cookie", `ro_auth_loop=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
+  }
   return applyCommon(response, nonce, protectedPath, hasCsrf);
 }
 

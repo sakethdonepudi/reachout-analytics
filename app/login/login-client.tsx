@@ -11,7 +11,7 @@ import { useNavigate } from "@/lib/use-navigate";
 import { useDelayedFlag } from "@/lib/use-delayed-flag";
 import { shakeElement } from "@/lib/shake";
 
-function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; nonce?: string }) {
+function LoginClient({ turnstileEnabled, nonce, expired = false }: { turnstileEnabled: boolean; nonce?: string; expired?: boolean }) {
   const search = useSearchParams();
   const navigate = useNavigate();
   const [step, setStep] = useState<"password" | "totp">("password");
@@ -119,8 +119,8 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
             {step === "totp" ? `Open your authenticator app for ${username}.` : "Use your workspace username and password."}
           </p>
 
-          {idle && step === "password" && (
-            <p role="status" className="mt-4 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-raised)] px-3 py-2 text-[12.5px] text-[var(--text-muted)]">Signed out after 10 minutes of inactivity.</p>
+          {(expired || idle) && step === "password" && (
+            <p role="status" className="mt-4 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-raised)] px-3 py-2 text-[12.5px] text-[var(--text-muted)]">{expired ? "Your session ended. Please sign in again." : "Signed out after 10 minutes of inactivity."}</p>
           )}
 
           {error && (
@@ -189,7 +189,7 @@ function LoginClient({ turnstileEnabled, nonce }: { turnstileEnabled: boolean; n
   );
 }
 
-export default function LoginPageClient(props: { turnstileEnabled: boolean; nonce?: string }) {
+export default function LoginPageClient(props: { turnstileEnabled: boolean; nonce?: string; expired?: boolean }) {
   return (
     <Suspense fallback={<main className="grid min-h-[100svh] place-items-center bg-[var(--surface-canvas)] text-sm text-[var(--text-muted)]">Loading sign in…</main>}>
       <LoginClient {...props} />
