@@ -408,15 +408,18 @@ export default function TnSurveyDashboard({
             )}
 
             <Section title="Method & caveats" className="mt-3">
-              <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-[#555]">
+              <ul className="mt-2 space-y-1.5 text-[13px] leading-relaxed text-[#555]">
                 <li><b className="text-[#0B0B0C]">Data:</b> WPForms online surveys run through Meta ads. Opinion poll = the five TN Opinion Poll 2026 zone forms, 28 Mar to 7 May 2026, with a 2021-vote question. Exit poll = the seven TN Election Poll 2026 forms, mostly 23 to 29 Apr 2026. Polling day was 23 Apr 2026 and results were declared on 4 May 2026.</li>
                 <li><b className="text-[#0B0B0C]">Opinion map:</b> the opinion and exit maps use the survey&apos;s deduplicated responses (n 67,211 for the opinion poll), so the header, map and profile tables always agree. The raw workbook was used to check the district shares.</li>
                 <li><b className="text-[#0B0B0C]">Target Campaign flag:</b> shown under the AIADMK+ % in any profile row where AIADMK+ is below its weighted average for that table. It opens the matching campaigns in Social Media without any commercial figures.</li>
                 <li><b className="text-[#0B0B0C]">Accuracy:</b> overall = 100 minus half the sum of the absolute gaps between survey % and actual 2026 %. Per party = 100 minus the gap in percentage points.</li>
+                <li><b className="text-[#0B0B0C]">Late answers:</b> 87 exit-poll answers arrived after the result (up to 7 Oct 2026); they are kept so the total stays at 31,316.</li>
                 <li><b className="text-[#0B0B0C]">Parties:</b> TVK; DMK+ = DMK, INC, VCK and allies; AIADMK+ = AIADMK, BJP, PMK, AMMK; NTK; Others. NOTA is shown in Others.</li>
                 <li><b className="text-[#0B0B0C]">Expected % (opinion poll):</b> answers are weighted by the respondent&apos;s 2021 vote so the sample matches the actual 2021 ECI result in each zone, and zones are weighted by their 2021 votes. Exit poll figures are plain shares.</li>
                 <li><b className="text-[#0B0B0C]">Raw %:</b> profile tables are unweighted shares of respondents. Groups under 30 answers are hidden.</li>
                 <li><b className="text-[#0B0B0C]">Seat projection:</b> each AC&apos;s own survey shares plus the statewide shift, floored at 0; the party ahead wins. ACs with no answers take their zone&apos;s figure. Actual 2026: TVK 108, DMK+ 73, AIADMK+ 53.</li>
+                <li><b className="text-[#0B0B0C]">Zones:</b> the five opinion-poll zones; each AC takes the zone its answers were filed under, and districts follow the 2026 ECI grouping. Exit-poll answers without an AC or district count only in the statewide figure.</li>
+                <li><b className="text-[#0B0B0C]">2021 base:</b> official ECI AC results (alliance totals summed per zone). TVK did not contest in 2021, so its base is 0 and its swing equals its 2026 share.</li>
                 <li><b className="text-[#0B0B0C]">Ads:</b> every Tamil Nadu campaign in the uploaded dashboard, grouped into survey periods. Commercial figures are never sent to the browser.</li>
               </ul>
             </Section>
@@ -534,39 +537,39 @@ function ResultSection({ data, parties }: { data: SurveyData; parties: string[] 
   const seatRow = (label: string, seats: Record<string, unknown>, extra = false) => (
     <tr className={cn("border-t border-[#EAEAEA]", extra && "font-bold")}>
       <th scope="row" className="px-2 py-1.5 text-left">{label}</th>
-      {["TVK", "DMK+", "AIADMK+"].map((party) => <td key={party} className="px-2 py-1.5 text-right tabular-nums">{int(Number(seats[party] ?? 0))}{!extra && <span className="ml-1 text-[8px] text-[#6B6B6B]">({signed(Number(seats[party] ?? 0) - Number(rsSeats[party] ?? 0)).replace("pp", "")})</span>}</td>)}
+      {["TVK", "DMK+", "AIADMK+"].map((party) => <td key={party} className="px-2 py-1.5 text-right tabular-nums">{int(Number(seats[party] ?? 0))}{!extra && <span className="ml-1 text-[10.5px] text-[#6B6B6B]">({signed(Number(seats[party] ?? 0) - Number(rsSeats[party] ?? 0)).replace("pp", "")})</span>}</td>)}
       <td className="px-2 py-1.5 text-right tabular-nums">{extra ? "234 / 234" : `${int(Number(seats.hit ?? 0))} / 234`}</td>
     </tr>
   );
   return (
     <Section title="Result 2026 vs survey projections" note="Actual: ECI result declared 4 May 2026" className="mt-3">
-      <p className="mt-1 text-[10px] text-[#555]">Actual: TVK won 108 seats with {pct(actual.TVK)} of the vote; DMK+ 73 ({pct(actual["DMK+"])}); AIADMK+ 53 ({pct(actual["AIADMK+"])}); NTK 0 ({pct(actual.NTK)}). Chips show survey minus actual.</p>
+      <p className="mt-1 text-[12px] text-[#555]">Actual: TVK won 108 seats with {pct(actual.TVK)} of the vote; DMK+ 73 ({pct(actual["DMK+"])}); AIADMK+ 53 ({pct(actual["AIADMK+"])}); NTK 0 ({pct(actual.NTK)}). Chips show survey minus actual.</p>
       <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {["TVK", "DMK+", "AIADMK+"].map((party) => <div key={party} className="rounded-xl border border-[#EAEAEA] p-3"><p className="flex items-center gap-1.5 text-[10px] font-semibold text-[#555]"><span className="size-2 rounded-sm" style={{ background: colour(party) }} />{party}</p><p className="mt-0.5 text-[22px] font-semibold tabular-nums">{int(Number(rsSeats[party] ?? 0))}</p><p className="text-[9px] text-[#6B6B6B]">seats · {pct(actual[party])} votes</p></div>)}
-        <div className="rounded-xl border border-[#EAEAEA] p-3"><p className="text-[10px] font-semibold text-[#555]">Majority</p><p className="mt-0.5 text-[22px] font-semibold tabular-nums">118</p><p className="text-[9px] text-[#6B6B6B]">TVK short by {MAJORITY - Number(rsSeats.TVK ?? 0)}</p></div>
+        {["TVK", "DMK+", "AIADMK+"].map((party) => <div key={party} className="rounded-xl border border-[#EAEAEA] p-3"><p className="flex items-center gap-1.5 text-[12px] font-semibold text-[#555]"><span className="size-2 rounded-sm" style={{ background: colour(party) }} />{party}</p><p className="mt-0.5 text-[22px] font-semibold tabular-nums">{int(Number(rsSeats[party] ?? 0))}</p><p className="text-[11px] text-[#6B6B6B]">seats · {pct(actual[party])} votes</p></div>)}
+        <div className="rounded-xl border border-[#EAEAEA] p-3"><p className="text-[10px] font-semibold text-[#555]">Majority</p><p className="mt-0.5 text-[22px] font-semibold tabular-nums">118</p><p className="text-[11px] text-[#6B6B6B]">TVK short by {MAJORITY - Number(rsSeats.TVK ?? 0)}</p></div>
       </div>
       <h4 className="mt-3 text-[12px] font-semibold text-[#0B0B0C]">Vote share</h4>
       <div className="mt-1 overflow-x-auto rounded-xl border border-[#EAEAEA]">
-        <table className="w-full min-w-[640px] border-collapse text-[9.5px]">
-          <thead className="bg-[#FAFAFA] text-left text-[8px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">Source</th>{parties.map((party) => <th key={party} className="px-2 py-2 text-right">{party}</th>)}<th className="px-2 py-2 text-right">MAPE (4 parties)</th></tr></thead>
+        <table className="w-full min-w-[640px] border-collapse text-[13px]">
+          <thead className="bg-[#FAFAFA] text-left text-[11px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">Source</th>{parties.map((party) => <th key={party} className="px-2 py-2 text-right">{party}</th>)}<th className="px-2 py-2 text-right">MAPE (4 parties)</th></tr></thead>
           <tbody>
             {[{ label: "Opinion poll · expected", shares: op }, { label: "Exit poll · share", shares: ex }, { label: "Actual 2026", shares: actual, extra: true }].map((row) => (
-              <tr key={row.label} className={cn("border-t border-[#EAEAEA]", row.extra && "font-bold")}><th scope="row" className="px-2 py-1.5 text-left">{row.label}</th>{parties.map((party) => <td key={party} className="px-2 py-1.5 text-right tabular-nums">{pct(row.shares[party])}{!row.extra && <span className="ml-1 text-[8px] text-[#6B6B6B]">({signed((row.shares[party] ?? 0) - (actual[party] ?? 0))})</span>}</td>)}<td className="px-2 py-1.5 text-right tabular-nums">{row.extra ? "—" : `${mape(row.shares)}%`}</td></tr>
+              <tr key={row.label} className={cn("border-t border-[#EAEAEA]", row.extra && "font-bold")}><th scope="row" className="px-2 py-1.5 text-left">{row.label}</th>{parties.map((party) => <td key={party} className="px-2 py-1.5 text-right tabular-nums">{pct(row.shares[party])}{!row.extra && <span className="ml-1 text-[10.5px] text-[#6B6B6B]">({signed((row.shares[party] ?? 0) - (actual[party] ?? 0))})</span>}</td>)}<td className="px-2 py-1.5 text-right tabular-nums">{row.extra ? "—" : `${mape(row.shares)}%`}</td></tr>
             ))}
           </tbody>
         </table>
       </div>
       <h4 className="mt-3 text-[12px] font-semibold text-[#0B0B0C]">Seats</h4>
       <div className="mt-1 overflow-x-auto rounded-xl border border-[#EAEAEA]">
-        <table className="w-full min-w-[560px] border-collapse text-[9.5px]">
-          <thead className="bg-[#FAFAFA] text-left text-[8px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">Source</th>{["TVK", "DMK+", "AIADMK+"].map((party) => <th key={party} className="px-2 py-2 text-right">{party}</th>)}<th className="px-2 py-2 text-right">ACs with the right winner</th></tr></thead>
+        <table className="w-full min-w-[560px] border-collapse text-[13px]">
+          <thead className="bg-[#FAFAFA] text-left text-[11px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">Source</th>{["TVK", "DMK+", "AIADMK+"].map((party) => <th key={party} className="px-2 py-2 text-right">{party}</th>)}<th className="px-2 py-2 text-right">ACs with the right winner</th></tr></thead>
           <tbody>{seatRow("Opinion poll projection", opSeats)}{seatRow("Exit poll projection", exSeats)}{seatRow("Actual 2026", rsSeats, true)}</tbody>
         </table>
       </div>
       <h4 className="mt-3 text-[12px] font-semibold text-[#0B0B0C]">Actual seats by zone</h4>
       <div className="mt-1 overflow-x-auto rounded-xl border border-[#EAEAEA]">
-        <table className="w-full min-w-[520px] border-collapse text-[9.5px]">
-          <thead className="bg-[#FAFAFA] text-left text-[8px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">Zone</th><th className="px-2 py-2 text-right">ACs</th>{["TVK", "DMK+", "AIADMK+"].map((party) => <th key={party} className="px-2 py-2 text-right">{party}</th>)}<th className="px-2 py-2 text-right">Top</th></tr></thead>
+        <table className="w-full min-w-[520px] border-collapse text-[13px]">
+          <thead className="bg-[#FAFAFA] text-left text-[11px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">Zone</th><th className="px-2 py-2 text-right">ACs</th>{["TVK", "DMK+", "AIADMK+"].map((party) => <th key={party} className="px-2 py-2 text-right">{party}</th>)}<th className="px-2 py-2 text-right">Top</th></tr></thead>
           <tbody>
             {Object.entries(actualZones).map(([zone, row]) => {
               const top = ["TVK", "DMK+", "AIADMK+"].sort((a, b) => Number(row[b] ?? 0) - Number(row[a] ?? 0))[0];
@@ -577,8 +580,8 @@ function ResultSection({ data, parties }: { data: SurveyData; parties: string[] 
       </div>
       <h4 className="mt-3 text-[12px] font-semibold text-[#0B0B0C]">Actual seats by district</h4>
       <div className="mt-1 max-h-[420px] overflow-auto rounded-xl border border-[#EAEAEA]">
-        <table className="w-full min-w-[520px] border-collapse text-[9.5px]">
-          <thead className="sticky top-0 bg-[#FAFAFA] text-left text-[8px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">District</th><th className="px-2 py-2 text-right">ACs</th>{["TVK", "DMK+", "AIADMK+"].map((party) => <th key={party} className="px-2 py-2 text-right">{party}</th>)}<th className="px-2 py-2 text-right">Top</th></tr></thead>
+        <table className="w-full min-w-[520px] border-collapse text-[13px]">
+          <thead className="sticky top-0 bg-[#FAFAFA] text-left text-[11px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">District</th><th className="px-2 py-2 text-right">ACs</th>{["TVK", "DMK+", "AIADMK+"].map((party) => <th key={party} className="px-2 py-2 text-right">{party}</th>)}<th className="px-2 py-2 text-right">Top</th></tr></thead>
           <tbody>
             {districts.map((row) => {
               const top = ["TVK", "DMK+", "AIADMK+"].sort((a, b) => Number(row[b] ?? 0) - Number(row[a] ?? 0))[0];

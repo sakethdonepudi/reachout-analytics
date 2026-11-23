@@ -83,7 +83,7 @@ ok("malicious ids produce no link", validMetaId("12345\"><script>alert(1)</scrip
 const invalid = parseAdsDeskHtml(replaceOnce(html, "\"123456789012345\"", "\"abc\""));
 const invalidOwner = JSON.stringify(buildAdsSocial(invalid, "tn2026", true));
 ok("invalid account ids produce no link", !/adsmanager|billing_hub|act=/.test(invalidOwner));
-const dataPages = ["components/case-studies/tamil-nadu/tamil-nadu-dashboard.tsx", "components/case-studies/telangana/telangana-dashboard.tsx", "components/case-studies/shared/analysis-shell.tsx"];
+const dataPages = ["components/case-studies/tamil-nadu/tn-survey-dashboard.tsx", "components/case-studies/tamil-nadu/tn-profile-table.tsx", "components/case-studies/tamil-nadu/tn-social-media.tsx", "components/case-studies/telangana/telangana-dashboard.tsx", "components/case-studies/shared/analysis-shell.tsx"];
 ok("data pages have no decorative classes", dataPages.every((file) => !/radial-gradient|backdrop-blur|glow/i.test(readFileSync(file, "utf8"))));
 
 (async () => {

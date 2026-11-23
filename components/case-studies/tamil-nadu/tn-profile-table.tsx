@@ -55,15 +55,15 @@ export default function TnProfileTable({ demo, parties, profileKey, periodKey, s
 
   return (
     <div>
-      <p className="text-[11.5px] leading-relaxed text-[#6B6B6B]">
+      <p className="text-[12.5px] leading-relaxed text-[#6B6B6B]">
         {isV21
           ? "Cross-tabulation: each row is how people who voted for that alliance in 2021 say they will vote in 2026. Row % - each row adds up to 100%."
           : `Coverage: ${demo.cov ?? "answers recorded for this profile"}.`}
       </p>
-      <div className="mt-2 max-h-[430px] overflow-auto rounded-xl border border-[#EAEAEA]" tabIndex={0} role="region" aria-label={`${demo.label} table`}>
-        <table className="w-full min-w-[640px] border-collapse text-[10px]">
+      <div className="mt-2 max-h-[520px] overflow-auto rounded-xl border border-[#EAEAEA]" tabIndex={0} role="region" aria-label={`${demo.label} table`}>
+        <table className="w-full min-w-[760px] border-collapse text-[13px]">
           <thead className="sticky top-0 z-10 bg-[#FAFAFA]">
-            <tr className="text-left text-[8px] uppercase tracking-wide text-[#6B6B6B]">
+            <tr className="text-left text-[11px] uppercase tracking-wide text-[#6B6B6B]">
               <th className="sticky left-0 z-20 bg-[#FAFAFA] px-2 py-2 font-semibold">{isV21 ? "2021 voted / 2026 vote" : demo.label}</th>
               {parties.map((party, index) => (
                 <th key={party} className="px-1.5 py-2 text-center font-semibold">
@@ -87,7 +87,7 @@ export default function TnProfileTable({ demo, parties, profileKey, periodKey, s
               const dmkFlag = periodKey === "op" && parties[leader] === "DMK+" && !tie;
               return (
                 <tr key={row.g} className={cn("border-t border-[#EAEAEA]", dmkFlag && "shadow-[inset_3px_0_0_#e52020]")}>
-                  <th scope="row" className="sticky left-0 z-10 bg-white px-2 py-1.5 text-left font-semibold text-[#1f2937]">
+                  <th scope="row" className="sticky left-0 z-10 bg-white px-3 py-2 text-left font-semibold text-[#1f2937]">
                     {clickableGroup ? (
                       <button type="button" onClick={() => onGroup(row.g)} className="text-left underline decoration-[#B8B8B8] decoration-dotted underline-offset-2 hover:text-[#0B0B0C]" title={`Open campaigns for ${row.g}`}>
                         {row.g}
@@ -99,10 +99,10 @@ export default function TnProfileTable({ demo, parties, profileKey, periodKey, s
                     const isLead = index === leader && !tie;
                     const target = parties[index] === "AIADMK+" && value < average;
                     return (
-                      <td key={index} className={cn("min-w-[74px] px-1 py-1.5 text-center tabular-nums", isLead && "font-extrabold ring-2 ring-inset ring-[#0B0B0C]")} style={{ background: `color-mix(in srgb, ${colourOf(parties[index])} ${alpha}%, white)` }}>
+                      <td key={index} className={cn("min-w-[86px] px-1.5 py-2 text-center tabular-nums", isLead && "font-extrabold ring-2 ring-inset ring-[#0B0B0C]")} style={{ background: `color-mix(in srgb, ${colourOf(parties[index])} ${alpha}%, white)` }}>
                         <span>{pct(value)}</span>
                         {target && (
-                          <button type="button" onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })} className="mx-auto mt-1 block rounded-full border border-[#e52020] bg-white px-1.5 py-0.5 text-[8px] font-bold text-[#e52020] hover:bg-[#FEF2F2]">
+                          <button type="button" onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })} className="mx-auto mt-1 block rounded-full border border-[#e52020] bg-white px-1.5 py-0.5 text-[10px] font-bold text-[#e52020] hover:bg-[#FEF2F2]">
                             Target Campaign
                           </button>
                         )}
@@ -112,9 +112,9 @@ export default function TnProfileTable({ demo, parties, profileKey, periodKey, s
                   <td className="whitespace-nowrap px-2 py-1.5 text-left font-semibold">
                     <span className="mr-1 inline-block size-1.5 rounded-sm align-middle" style={{ background: colourOf(parties[leader]) }} />
                     {tie ? "Tie" : parties[leader]}
-                    {dmkFlag && <span className="ml-1 rounded-full border border-[#e52020] px-1 py-0.5 text-[7.5px] font-bold text-[#e52020]">Need Target promotion</span>}
+                    {dmkFlag && <span className="ml-1 rounded-full border border-[#e52020] px-1 py-0.5 text-[9.5px] font-bold text-[#e52020]">Need Target promotion</span>}
                     {geo && (
-                      <button type="button" onClick={() => onCampaigns({ kind: profileKey, place: row.g })} className="ml-1 rounded-full border border-[#1f6fd1] px-1.5 py-0.5 text-[7.5px] font-bold text-[#1f6fd1] hover:bg-[#EFF6FF]">
+                      <button type="button" onClick={() => onCampaigns({ kind: profileKey, place: row.g })} className="ml-1 rounded-full border border-[#1f6fd1] px-1.5 py-0.5 text-[9.5px] font-bold text-[#1f6fd1] hover:bg-[#EFF6FF]">
                         Campaigns
                       </button>
                     )}
@@ -134,7 +134,7 @@ export default function TnProfileTable({ demo, parties, profileKey, periodKey, s
           )}
         </table>
       </div>
-      <p className="mt-1 text-[9.5px] text-[#6B6B6B]">{slotLabel} · groups under 30 answers are hidden. {int(demo.rows.reduce((sum, row) => sum + row.n, 0))} answers in this table.</p>
+      <p className="mt-1 text-[12px] text-[#6B6B6B]">{slotLabel} · groups under 30 answers are hidden. {int(demo.rows.reduce((sum, row) => sum + row.n, 0))} answers in this table.</p>
     </div>
   );
 }
