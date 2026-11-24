@@ -107,17 +107,34 @@ export async function tnSocialOverview(data: SurveyData, owner = false): Promise
   const ads = record(data.ads);
   const totalsSource = record(ads.total);
   const { accounts } = accountRows(data, links, owner);
+  const allCampaigns = Object.values(record(ads.camps)).flatMap((value) => Array.isArray(value) ? value.map(record) : []);
+  const periodMetrics = (key: string) => {
+    const match = allCampaigns.filter((campaign) => {
+      const period = text(campaign.per).toLowerCase();
+      if (key === "pre") return period.includes("pre");
+      if (key === "op") return period.includes("opinion");
+      if (key === "ex") return period.includes("exit");
+      if (key === "post") return period.includes("post");
+      return false;
+    });
+    return {
+      impressions: match.reduce((sum, campaign) => sum + number(campaign.impr), 0),
+      views: match.reduce((sum, campaign) => sum + number(campaign.views), 0),
+      engagements: match.reduce((sum, campaign) => sum + number(campaign.eng), 0),
+    };
+  };
   const periods = Object.entries(record(ads.periods)).map(([key, value]) => {
     const item = record(value);
+    const metrics = periodMetrics(key);
     return {
       key,
       label: text(item.label) || key,
       campaigns: number(item.n),
       reach: number(item.reach),
-      impressions: number(item.impr),
-      views: number(item.views),
+      impressions: number(item.impr) || metrics.impressions,
+      views: number(item.views) || metrics.views,
       clicks: number(item.clicks),
-      engagements: number(item.eng),
+      engagements: number(item.eng) || metrics.engagements,
       ...(item.responses != null ? { responses: number(item.responses) } : {}),
     };
   });
