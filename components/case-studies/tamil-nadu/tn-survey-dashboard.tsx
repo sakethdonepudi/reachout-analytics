@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ArrowDownToLine, ArrowLeft, ChevronDown, Megaphone, RotateCcw } from "lucide-react";
@@ -9,41 +8,49 @@ import PartyCard from "@/components/case-studies/shared/party-card";
 import TnSocialMedia from "./tn-social-media";
 import type { SocialFilter } from "@/lib/survey/social-types";
 import TnProfileTable, { TN_PARTY_COLORS, weightedAiadminAverage } from "./tn-profile-table";
-import type { SurveyData, SurveyPeriod, SurveyShare } from "@/lib/survey/types";
-import { accuracyAgainst, surveySlots } from "@/lib/survey/tn-shared";
-import type { TnSerializedMap, TnSwingPayload } from "@/lib/survey/tn-view-dto";
+import type { SurveyDemo, SurveyShare } from "@/lib/survey/types";
+import type { TnClientModel, TnSerializedMap, TnSlotModel, TnSwingPayload } from "@/lib/survey/tn-view-model";
 import { TN_2021_BASE } from "@/lib/tamil-nadu/baseline";
 import { canonicalDistrictName } from "@/lib/tamil-nadu/aliases";
+import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import { cn } from "@/lib/utils";
 
 const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
   ssr: false,
-  loading: () => <div className="grid h-full min-h-[420px] w-full place-items-center text-[12px] text-[#6B6B6B]">Loading map...</div>,
+  loading: () => <div className="grid h-full min-h-[420px] w-full place-items-center text-[14px] text-[#6B6B6B]">Loading map...</div>,
 });
 
 const int = (value: number) => new Intl.NumberFormat("en-IN").format(Math.round(value));
 const pct = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? "—" : `${value.toFixed(1)}%`);
+const pct2 = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? "—" : `${value.toFixed(2)}%`);
 const signed = (value: number) => `${Math.abs(value) < 0.05 ? "0.0" : value > 0 ? "+" : ""}${value.toFixed(1)}pp`;
 const COLOR = TN_PARTY_COLORS;
 const colour = (party: string) => COLOR[party] ?? "#64748B";
 const STATE = "Tamil Nadu";
 const GROUP_KEY: Record<string, string> = { TVK: "TVK", "DMK+": "DMK+INC+VCK", "AIADMK+": "AIADMK+BJP+PMK+AMMK", NTK: "NTK", Others: "Others" };
 const MAJORITY = 118;
-
 const PROFILE_ORDER: Record<string, string[]> = {
   op: ["age", "caste", "prof", "zone", "dist", "ac", "v21", "app"],
   ex: ["zone", "dist", "ac", "v21", "age", "caste", "prof", "form", "religion", "app"],
 };
 
-type SearchState = { view: string; slot: string; profile: string };
+type SearchState = { view: "op" | "ex" | "social"; slot: string; profile: string };
 
-function searchFrom(state: SearchState) {
+function searchFrom(state: SearchState, filter?: SocialFilter | null) {
   const params = new URLSearchParams();
   params.set("view", state.view);
-  if (state.view === "op" || state.view === "ex") params.set("slot", state.slot || "all");
-  else params.delete("slot");
+  if (state.view !== "social") params.set("slot", state.slot || "all");
   if (state.profile) params.set("profile", state.profile);
-  return params;
+  if (filter) {
+    params.set("match", filter.match);
+    if (filter.kind) params.set("kind", filter.kind);
+    if (filter.place) params.set("place", filter.place);
+    if (filter.label) params.set("label", filter.label);
+    if (filter.value) params.set("value", filter.value);
+    if (filter.average) params.set("average", filter.average);
+    if (filter.group) params.set("group", filter.group);
+  }
+  return params.toString();
 }
 
 function leaderOf(shares: SurveyShare | null | undefined, parties: string[]) {
@@ -59,125 +66,313 @@ function seatTotal(seats: Record<string, unknown>, parties: string[]) {
   return seatParties(seats, parties).reduce((sum, party) => sum + Number(seats[party] ?? 0), 0);
 }
 
+function CountUp({ value, decimals = 0, suffix = "" }: { value: number; decimals?: number; suffix?: string }) {
+  const reduced = usePrefersReducedMotion();
+  const [shown, setShown] = useState(reduced ? value : 0);
+  const previous = useRef(reduced ? value : 0);
+  useEffect(() => {
+    if (reduced) { setShown(value); previous.current = value; return; }
+    const from = previous.current;
+    const started = performance.now();
+    let frame = 0;
+    const step = (now: number) => {
+      const t = Math.min(1, (now - started) / 260);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setShown(from + (value - from) * eased);
+      if (t < 1) frame = requestAnimationFrame(step);
+      else previous.current = value;
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [reduced, value]);
+  return <>{shown.toFixed(decimals)}{suffix}</>;
+}
 
 function SocialIcons({ active }: { active: boolean }) {
   const opacity = active ? 0.95 : 0.8;
   return (
     <>
-      <svg viewBox="0 0 24 24" className="size-4" fill="#1877F2" opacity={opacity}><path d="M13.5 22v-8h2.7l.4-3.1h-3.1V8.9c0-.9.3-1.5 1.6-1.5h1.7V4.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H7.4V14h2.7v8h3.4Z"/></svg>
-      <svg viewBox="0 0 24 24" className="size-4" fill="#C13584" opacity={opacity}><circle cx="12" cy="12" r="4.1" fill="none" stroke="#C13584" strokeWidth="2"/><circle cx="17.6" cy="6.4" r="1.2" fill="#C13584"/><rect x="3.5" y="3.5" width="17" height="17" rx="4.5" fill="none" stroke="#C13584" strokeWidth="2"/></svg>
-      <svg viewBox="0 0 24 24" className="size-4" fill="#FF0000" opacity={opacity}><rect x="2.5" y="5.2" width="19" height="13.6" rx="3.2"/><path d="M10 9.2v5.6l4.8-2.8L10 9.2Z" fill="#fff"/></svg>
-      <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="#15803D" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}><path d="M4 16.5 10 10l3.5 3.5L20 7"/><path d="M14.5 7H20v5.5"/></svg>
+      <svg viewBox="0 0 24 24" className="size-5" fill="#1877F2" opacity={opacity}><path d="M13.5 22v-8h2.7l.4-3.1h-3.1V8.9c0-.9.3-1.5 1.6-1.5h1.7V4.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H7.4V14h2.7v8h3.4Z"/></svg>
+      <svg viewBox="0 0 24 24" className="size-5" fill="#C13584" opacity={opacity}><circle cx="12" cy="12" r="4.1" fill="none" stroke="#C13584" strokeWidth="2"/><circle cx="17.6" cy="6.4" r="1.2" fill="#C13584"/><rect x="3.5" y="3.5" width="17" height="17" rx="4.5" fill="none" stroke="#C13584" strokeWidth="2"/></svg>
+      <svg viewBox="0 0 24 24" className="size-5" fill="#FF0000" opacity={opacity}><rect x="2.5" y="5.2" width="19" height="13.6" rx="3.2"/><path d="M10 9.2v5.6l4.8-2.8L10 9.2Z" fill="#fff"/></svg>
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="#15803D" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}><path d="M4 16.5 10 10l3.5 3.5L20 7"/><path d="M14.5 7H20v5.5"/></svg>
     </>
   );
 }
 
 function Section({ title, note, children, className }: { title: string; note?: string; children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLElement>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setSeen(true); observer.disconnect(); } }, { threshold: 0.08 });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
   return (
-    <section className={cn("rounded-2xl border border-[#EAEAEA] bg-white p-4 sm:p-5", className)} aria-label={title}>
+    <section ref={ref} className={cn("tn-reveal scroll-mt-24 rounded-2xl border border-[#EAEAEA] bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.035)] sm:p-6", seen && "tn-reveal-in", className)} aria-label={title}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-display text-[17px] font-semibold leading-tight text-[#0B0B0C]">{title}</h3>
-        {note && <p className="text-[10px] text-[#6B6B6B]">{note}</p>}
+        <h3 className="font-display text-[23px] font-semibold leading-tight tracking-[-0.02em] text-[#0B0B0C]">{title}</h3>
+        {note && <p className="text-[13px] text-[#6B6B6B]">{note}</p>}
       </div>
       {children}
     </section>
   );
 }
 
+function VoteShareHero({ expected, parties, slotKey }: { expected: SurveyShare; parties: string[]; slotKey: string }) {
+  const reduced = usePrefersReducedMotion();
+  const [grown, setGrown] = useState(reduced);
+  useEffect(() => {
+    if (reduced) { setGrown(true); return; }
+    setGrown(false);
+    const frame = requestAnimationFrame(() => requestAnimationFrame(() => setGrown(true)));
+    return () => cancelAnimationFrame(frame);
+  }, [reduced, slotKey]);
+  const ranked = [...parties].sort((a, b) => (expected[b] ?? 0) - (expected[a] ?? 0));
+  const lead = ranked[0];
+  const runner = ranked[1];
+  const margin = (expected[lead] ?? 0) - (expected[runner] ?? 0);
+  return (
+    <div className="rounded-2xl border border-[#EAEAEA] bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.035)] sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="size-4 rounded-full ring-2 ring-white" style={{ background: colour(lead) }} />
+          <div>
+            <p className="font-display text-[22px] font-semibold leading-none tracking-[-0.02em] text-[#0B0B0C]">{lead} leads by {margin.toFixed(1)} pts</p>
+            <p className="mt-1 text-[13px] text-[#6B6B6B]">Runner-up {runner} {pct(expected[runner])}</p>
+          </div>
+        </div>
+        <p className="text-[13px] font-semibold text-[#6B6B6B]">2026 vote share</p>
+      </div>
+      <div className="mt-4 flex h-10 w-full overflow-hidden rounded-full bg-[#F1F1F1] ring-1 ring-inset ring-black/5" role="img" aria-label="Vote share distribution">
+        {parties.map((party) => {
+          const value = Math.max(0, expected[party] ?? 0);
+          return (
+            <span key={party} title={`${party} ${pct(expected[party])}`} className="flex min-w-0 items-center justify-center overflow-hidden whitespace-nowrap text-[12px] font-bold text-white transition-[width] duration-300 ease-out" style={{ width: grown ? `${value}%` : "0%", background: colour(party), textShadow: "0 1px 2px rgba(0,0,0,.45)" }}>
+              {value >= 8 ? `${party} ${value.toFixed(1)}%` : ""}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function TnSurveyDashboard({
-  data,
+  model,
   owner,
   initialView,
   initialSlot,
   initialProfile,
   initialSocialFilter,
-  map,
-  swing,
 }: {
-  data: SurveyData;
+  model: TnClientModel;
   owner: boolean;
-  initialView: "op" | "ex" | "rs" | "social";
+  initialView: "op" | "ex" | "social";
   initialSlot?: string | null;
   initialProfile?: string | null;
   initialSocialFilter?: SocialFilter | null;
-  map: TnSerializedMap | null;
-  swing: TnSwingPayload;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [view, setView] = useState(initialView);
+  const [view, setView] = useState<"op" | "ex" | "social">(initialView);
+  const [socialMounted, setSocialMounted] = useState(initialView === "social");
   const [slotKey, setSlotKey] = useState(initialSlot ?? "all");
   const [profileKey, setProfileKey] = useState(initialProfile ?? "");
+  const [socialFilter, setSocialFilter] = useState<SocialFilter | null>(initialSocialFilter ?? null);
   const [district, setDistrict] = useState<string | null>(null);
   const [acNo, setAcNo] = useState<number | null>(null);
   const [mapMode, setMapMode] = useState<"district" | "assembly">("district");
-  const [swingPeriod, setSwingPeriod] = useState<"op" | "ex">("op");
-  const [swingSlot, setSwingSlot] = useState("all");
   const [downloading, setDownloading] = useState(false);
-
-  useEffect(() => {
-    setView(initialView);
-    setSlotKey(initialSlot ?? "all");
-    setProfileKey(initialProfile ?? "");
-  }, [initialView, initialSlot, initialProfile]);
+  const [mapMounted, setMapMounted] = useState(false);
+  const [mapLoading, setMapLoading] = useState(false);
+  const [lazyLoading, setLazyLoading] = useState(false);
+  const [slowLoad, setSlowLoad] = useState(false);
+  const [lazyProfiles, setLazyProfiles] = useState<Record<string, SurveyDemo>>({});
+  const mapCache = useRef(new Map<string, TnSerializedMap>([[`${initialView === "ex" ? "ex" : "op"}:${initialSlot ?? "all"}`, model.initialMap]]));
+  const mapInflight = useRef(new Map<string, Promise<TnSerializedMap | null>>());
+  const profileCache = useRef(new Map<string, SurveyDemo>());
+  const prefetched = useRef(new Set<string>());
+  const fetchedProfile = useRef(new Set<string>());
 
   const periodKey = view === "social" ? "op" : view;
-  const period = data.periods[periodKey] ?? data.periods.op;
-  const mapBuild = map;
-  const slot = mapBuild?.slot ?? { key: "all", label: period?.label ?? "", periodKey, slotKey: "all", n: period?.n ?? 0, from: period?.from ?? "", to: period?.to ?? "", demo: {}, expected: period?.expected ?? {}, seats: period?.seats ?? {} };
-  const parties = data.parties;
+  const slots = model.slots[periodKey] ?? [];
+  const slot: TnSlotModel = slots.find((item) => item.key === slotKey) ?? slots[0];
+  const mapKey = `${periodKey}:${slot.key}`;
+  const map = mapCache.current.get(mapKey) ?? model.initialMap;
+  const parties = model.parties;
   const expected = slot.expected[STATE] ?? {};
-  const actual = data.actual[STATE] ?? {};
-  const seats = period.seats ?? {};
+  const actual = model.actual[STATE] ?? {};
+  const seats = slot.seats ?? {};
   const leadParty = leaderOf(expected, parties);
-  const accuracy = view === "rs" ? null : accuracyAgainst(expected, actual, parties);
-  const slotN = slot.n;
-  const subPeriodMonth = period.months?.[slotKey] ? slotKey : Object.entries(period.months ?? {}).find(([, month]) => month.sub?.[slotKey])?.[0] ?? null;
-  const subPeriodRow = subPeriodMonth ? Object.entries(period.months?.[subPeriodMonth]?.sub ?? {}) : [];
   const profiles = useMemo(() => {
-    const demos = slot.demo ?? {};
     const catalog = slot.demoCatalog ?? {};
-    const available = new Set([...Object.keys(demos), ...Object.keys(catalog)]);
-    const order = ({ op: ["age", "caste", "prof", "zone", "dist", "ac", "v21", "app"], ex: ["zone", "dist", "ac", "v21", "age", "caste", "prof", "form", "religion", "app"] } as Record<string, string[]>)[periodKey] ?? [];
-    const keys = order.filter((key) => available.has(key));
-    for (const key of available) if (!keys.includes(key)) keys.push(key);
+    const order = PROFILE_ORDER[periodKey] ?? [];
+    const keys = order.filter((key) => catalog[key]);
+    for (const key of Object.keys(catalog)) if (!keys.includes(key)) keys.push(key);
     return keys;
-  }, [periodKey, slot.demo, slot.demoCatalog]);
+  }, [periodKey, slot.demoCatalog]);
   const activeProfile = profiles.includes(profileKey) ? profileKey : profiles[0] ?? "";
-  const demo = activeProfile ? slot.demo[activeProfile] : null;
+  const demo = slot.profiles[activeProfile] ?? lazyProfiles[`${mapKey}:${activeProfile}`] ?? (activeProfile === "ac" ? undefined : null);
   const average = demo ? weightedAiadminAverage(demo.rows, parties) : 0;
 
-  const navigate = useCallback((next: Partial<SearchState> & { filter?: SocialFilter | null }) => {
+  const setState = useCallback((next: SearchState, filter?: SocialFilter | null, replace = false) => {
+    const query = searchFrom(next, filter);
+    const url = `${window.location.pathname}?${query}`;
+    if (replace) window.history.replaceState(null, "", url);
+    else window.history.pushState(null, "", url);
+    setView(next.view);
+    setSlotKey(next.slot);
+    setProfileKey(next.profile);
+    setSocialFilter(filter ?? null);
+  }, []);
+
+  const navigate = useCallback((next: Partial<SearchState> & { filter?: SocialFilter | null }, replace = false) => {
     const state: SearchState = {
       view: next.view ?? view,
       slot: next.slot ?? slotKey,
       profile: next.profile ?? profileKey,
     };
-    const params = searchFrom(state);
-    if (next.filter) {
-      params.set("match", next.filter.match);
-      if (next.filter.kind) params.set("kind", next.filter.kind);
-      if (next.filter.place) params.set("place", next.filter.place);
-      if (next.filter.label) params.set("label", next.filter.label);
-      if (next.filter.value) params.set("value", next.filter.value);
-      if (next.filter.average) params.set("average", next.filter.average);
-      if (next.filter.group) params.set("group", next.filter.group);
-    }
-    const y = window.scrollY;
-    try { sessionStorage.setItem("ro:tn-survey-scroll", JSON.stringify({ view: state.view, slot: state.slot, profile: state.profile, y })); } catch { /* storage can be blocked */ }
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [pathname, profileKey, router, slotKey, view]);
+    const filter = next.filter === undefined ? socialFilter : next.filter;
+    try { sessionStorage.setItem("ro:tn-survey-scroll", JSON.stringify({ ...state, y: window.scrollY })); } catch { /* storage can be blocked */ }
+    setState(state, filter, replace);
+  }, [profileKey, setState, slotKey, socialFilter, view]);
+
+  useEffect(() => {
+    const onPop = () => {
+      const params = new URLSearchParams(window.location.search);
+      const nextView = params.get("view") === "social" ? "social" : params.get("view") === "ex" ? "ex" : "op";
+      setView(nextView);
+      setSlotKey(params.get("slot") ?? "all");
+      setProfileKey(params.get("profile") ?? "");
+      setSocialFilter(params.get("match") ? {
+        match: params.get("match") as SocialFilter["match"],
+        kind: params.get("kind") ?? undefined,
+        place: params.get("place") ?? undefined,
+        label: params.get("label") ?? undefined,
+        value: params.get("value") ?? undefined,
+        average: params.get("average") ?? undefined,
+        group: params.get("group") ?? undefined,
+      } : null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const fetchMap = useCallback(async (period: "op" | "ex", key: string) => {
+    const cacheKey = `${period}:${key}`;
+    const cached = mapCache.current.get(cacheKey);
+    if (cached) return cached;
+    const existing = mapInflight.current.get(cacheKey);
+    if (existing) return existing;
+    const request = fetch(`/api/survey/tn/map?state=tamil-nadu&period=${period}&slot=${encodeURIComponent(key)}`, { headers: { "Cache-Control": "max-age=300" } })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!payload.ok) return null;
+        const next = payload.map as TnSerializedMap;
+        mapCache.current.set(cacheKey, next);
+        return next;
+      })
+      .catch(() => null)
+      .finally(() => { mapInflight.current.delete(cacheKey); });
+    mapInflight.current.set(cacheKey, request);
+    return request;
+  }, []);
+
+  useEffect(() => {
+    if (view === "social") setSocialMounted(true);
+  }, [view]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const start = () => { if (!cancelled) setMapMounted(true); };
+    const idle = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    if (typeof idle === "function") idle(start, { timeout: 400 });
+    else globalThis.setTimeout(start, 60);
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (view === "social") return;
+    const cacheKey = `${view}:${slotKey}`;
+    const cached = mapCache.current.get(cacheKey);
+    if (cached) { setMapLoading(false); return; }
+    let cancelled = false;
+    setMapLoading(true);
+    void fetchMap(view, slotKey).then((next) => {
+      if (!cancelled && next) { mapCache.current.set(cacheKey, next); setMapLoading(false); }
+      else if (!cancelled) setMapLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [fetchMap, slotKey, view]);
+
+  const prefetchProfile = useCallback((key: string) => {
+    if (key !== "ac") return;
+    const cacheKey = `${mapKey}:ac`;
+    if (profileCache.current.has(cacheKey)) return;
+    fetchedProfile.current.add(cacheKey);
+    void fetch(`/api/survey/tn/profile?state=tamil-nadu&period=${periodKey}&slot=${encodeURIComponent(slot.key)}&profile=ac`, { headers: { "Cache-Control": "max-age=300" } })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (payload.ok) { profileCache.current.set(cacheKey, payload.demo as SurveyDemo); setLazyProfiles((current) => ({ ...current, [cacheKey]: payload.demo as SurveyDemo })); }
+      })
+      .catch(() => {});
+  }, [mapKey, periodKey, slot.key]);
+
+  const prefetch = useCallback((period: "op" | "ex", key: string) => {
+    const cacheKey = `${period}:${key}`;
+    if (prefetched.current.has(cacheKey) || mapCache.current.has(cacheKey)) return;
+    prefetched.current.add(cacheKey);
+    void fetchMap(period, key);
+  }, [fetchMap]);
+
+  useEffect(() => {
+    if (view === "social" || !profiles.includes("ac")) return;
+    const cacheKey = `${mapKey}:ac`;
+    if (profileCache.current.has(cacheKey)) { setLazyProfiles((current) => ({ ...current, [cacheKey]: profileCache.current.get(cacheKey)! })); return; }
+    if (activeProfile !== "ac" || lazyProfiles[cacheKey]) return;
+    let cancelled = false;
+    setLazyLoading(true);
+    void fetch(`/api/survey/tn/profile?state=tamil-nadu&period=${periodKey}&slot=${encodeURIComponent(slot.key)}&profile=ac`, { headers: { "Cache-Control": "max-age=300" } })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (cancelled || !payload.ok) return;
+        profileCache.current.set(cacheKey, payload.demo as SurveyDemo);
+        setLazyProfiles((current) => ({ ...current, [cacheKey]: payload.demo as SurveyDemo }));
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLazyLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeProfile, lazyProfiles, mapKey, periodKey, profiles, slot.key, view]);
+
+  useEffect(() => {
+    if (!mapLoading && !lazyLoading) { setSlowLoad(false); return; }
+    const timer = window.setTimeout(() => setSlowLoad(true), 200);
+    return () => window.clearTimeout(timer);
+  }, [lazyLoading, mapLoading]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      for (const item of slots) prefetch(periodKey, item.key);
+    }, 700);
+    return () => window.clearTimeout(id);
+  }, [periodKey, prefetch, slots]);
 
   const openSocial = useCallback((filter?: SocialFilter) => {
-    if (!filter) { navigate({ view: "social" }); return; }
-    navigate({ view: "social", filter });
+    navigate({ view: "social", filter: filter ?? null });
   }, [navigate]);
 
   const closeSocial = useCallback(() => {
-    let saved = { view: "op", slot: "all", profile: "", y: 0 };
-    try { saved = { ...saved, ...JSON.parse(sessionStorage.getItem("ro:tn-survey-scroll") ?? "{}") }; } catch { /* storage can be blocked */ }
-    navigate({ view: saved.view, slot: saved.slot, profile: saved.profile });
-    requestAnimationFrame(() => window.scrollTo({ top: saved.y }));
+    let saved: SearchState | null = null;
+    let y = 0;
+    try {
+      const raw = JSON.parse(sessionStorage.getItem("ro:tn-survey-scroll") ?? "null") as (SearchState & { y?: number }) | null;
+      saved = raw; y = raw?.y ?? 0;
+    } catch { saved = null; }
+    if (saved && saved.view !== "social") navigate(saved, true);
+    else if (window.history.length > 1) window.history.back();
+    else navigate({ view: "op", slot: "all", profile: "" }, true);
+    requestAnimationFrame(() => window.scrollTo({ top: y }));
   }, [navigate]);
 
   async function download() {
@@ -199,148 +394,101 @@ export default function TnSurveyDashboard({
     }
   }
 
-  const periodCards = (["op", "ex", "rs"] as const).map((key) => {
-    const item = data.periods[key];
-    if (!item) return null;
-    const shares = key === "rs" ? data.actual[STATE] ?? {} : item.expected[STATE] ?? {};
-    const acc = key === "rs" ? null : accuracyAgainst(shares, actual, parties);
-    return {
-      key,
-      label: item.label.replace(/\s*\(.*/, ""),
-      shares,
-      accuracy: acc,
-    };
-  });
-
   return (
-    <main className="relative min-h-0 bg-white text-[var(--p-ink)]">
-      <div className="mx-auto w-full max-w-[1240px] px-4 pb-16 pt-4 sm:px-6">
+    <main className="relative min-h-0 bg-white text-[16px] text-[var(--p-ink)]">
+      <div className={cn("fixed left-0 top-0 z-50 h-0.5 bg-[#0B0B0C] transition-all duration-200", slowLoad ? "w-full opacity-100" : "w-0 opacity-0")} aria-hidden />
+      <div className="mx-auto w-full max-w-[1680px] px-4 pb-20 pt-20 sm:px-6 sm:pt-20 xl:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link href="/case-studies" className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#CFCFCF] bg-white px-3 py-1.5 text-[12px] text-[#6B6B6B] transition-colors hover:border-[#0B0B0C] hover:text-[#0B0B0C]">
-            <ArrowLeft className="size-3.5" /> Back to Case Studies
+          <Link href="/case-studies" className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#CFCFCF] bg-white px-3.5 py-1.5 text-[14px] text-[#6B6B6B] transition-colors hover:border-[#0B0B0C] hover:text-[#0B0B0C]">
+            <ArrowLeft className="size-4" /> Back to Case Studies
           </Link>
           {owner && (
-            <button type="button" onClick={() => void download()} disabled={downloading} className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[#0B0B0C] px-3 text-[11px] font-semibold text-[#0B0B0C] hover:bg-[#0B0B0C] hover:text-white disabled:opacity-50">
-              <ArrowDownToLine className="size-3.5" /> {downloading ? "Preparing..." : "Download data"}
+            <button type="button" onClick={() => void download()} disabled={downloading} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[13px] font-semibold text-[#0B0B0C] hover:bg-[#0B0B0C] hover:text-white disabled:opacity-50">
+              <ArrowDownToLine className="size-4" /> {downloading ? "Preparing..." : "Download data"}
             </button>
           )}
         </div>
 
-        <header className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <PartyCard party="AIADMK" state="Tamil Nadu" className="w-auto sm:min-w-[190px]" />
-            <div className="min-w-0">
-              <h1 className="font-display text-[20px] font-semibold leading-tight tracking-[-0.02em] text-[#0B0B0C] sm:text-[24px]">Tamil Nadu · Opinion, Exit & Result Survey Analysis</h1>
-              <p className="mt-1 text-[12px] text-[#555]">{int(data.n_total)} responses · Opinion poll {data.periods.op?.from ?? "—"} to {data.periods.op?.to ?? "—"} · Exit poll {data.periods.ex?.from ?? "—"} to {data.periods.ex?.to ?? "—"}</p>
-            </div>
-          </div>
-          <Link href="/case-studies/tamil-nadu" className="text-[11px] font-semibold text-[#6B6B6B] hover:text-[#0B0B0C]">Reset view</Link>
+        <header className="mt-5 flex flex-wrap items-center justify-between gap-4">
+          <PartyCard party="AIADMK" state="Tamil Nadu" className="w-auto min-w-[220px]" />
+          <p className="text-[16px] font-medium text-[#555]">{int(model.n_total)} responses</p>
         </header>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {periodCards.map((card) => card && (
-            <button key={card.key} type="button" aria-pressed={view === card.key} onClick={() => { setDistrict(null); setAcNo(null); navigate({ view: card.key, slot: "all", profile: "" }); }}
-              className={cn("rounded-xl border-2 p-3 text-left transition-colors", view === card.key ? "border-[#002147] bg-[#002147] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#002147]" : "border-[#D5D8DE] bg-[#F7F8FA] text-[#0B0B0C] hover:border-[#9AA3AF]")}>
-              <p className="text-[12px] font-bold">{card.label}</p>
-              <p className={cn("mt-1 text-[10px] font-semibold", view === card.key ? "text-white/90" : "text-[#555]")}>{parties.slice(0, 3).map((party) => `${party} ${pct(card.shares[party])}`).join(" · ")}</p>
-              {card.accuracy != null && <p className={cn("mt-1 text-[10px] font-bold", view === card.key ? "text-[#4ade80]" : "text-[#15803D]")}>accuracy {card.accuracy.toFixed(1)}%</p>}
-              {card.key === "rs" && <p className={cn("mt-1 text-[10px]", view === card.key ? "text-white/80" : "text-[#555]")}>TVK 108 · DMK+ 73 · AIADMK+ 53</p>}
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {model.cards.map((card) => (
+            <button key={card.key} type="button" aria-pressed={view === card.key} onMouseEnter={() => prefetch(card.key, "all")} onClick={() => { setDistrict(null); setAcNo(null); navigate({ view: card.key, slot: "all", profile: "", filter: null }); }}
+              className={cn("tn-card rounded-2xl border-2 p-4 text-left transition-all", view === card.key ? "border-[#002147] bg-[#002147] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#002147]" : "border-[#D5D8DE] bg-[#F7F8FA] text-[#0B0B0C] hover:-translate-y-0.5 hover:border-[#9AA3AF]")}>
+              <p className="text-[17px] font-bold">{card.label}</p>
+              <p className={cn("mt-1.5 text-[14px] font-semibold", view === card.key ? "text-white/90" : "text-[#555]")}>{parties.slice(0, 3).map((party) => `${party} ${pct(card.expected[party])}`).join(" · ")}</p>
+              <p className={cn("mt-1.5 text-[14px] font-bold", view === card.key ? "text-[#4ade80]" : "text-[#15803D]")}>accuracy {card.accuracy.toFixed(1)}%</p>
             </button>
           ))}
-          <button type="button" aria-pressed={view === "social"} onClick={() => openSocial()} className={cn("rounded-xl border-2 p-3 text-left transition-colors", view === "social" ? "border-[#1877F2] bg-[#002147] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#1877F2]" : "border-[#D5D8DE] bg-[#F7F8FA] text-[#0B0B0C] hover:border-[#9AA3AF]")}>
+          <button type="button" aria-pressed={view === "social"} onMouseEnter={() => { void fetch("/api/survey/social?state=tamil-nadu").catch(() => {}); }} onClick={() => openSocial()} className={cn("tn-card rounded-2xl border-2 p-4 text-left transition-all", view === "social" ? "border-[#1877F2] bg-[#002147] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#1877F2]" : "border-[#D5D8DE] bg-[#F7F8FA] text-[#0B0B0C] hover:-translate-y-0.5 hover:border-[#9AA3AF]")}>
             <div className="flex items-start justify-between gap-2">
-              <p className="flex items-center gap-2 text-[12px] font-bold"><Megaphone className="size-4" /> Social Media</p>
+              <p className="flex items-center gap-2 text-[17px] font-bold"><Megaphone className="size-5" /> Social Media</p>
               <span className="flex items-center gap-1.5" aria-hidden><SocialIcons active={view === "social"} /></span>
             </div>
-            <p className={cn("mt-1 text-[10px] font-semibold", view === "social" ? "text-white/80" : "text-[#555]")}>Ads · reach & engagement</p>
+            <p className={cn("mt-1.5 text-[14px] font-semibold", view === "social" ? "text-white/80" : "text-[#555]")}>Ads · reach & engagement</p>
           </button>
         </div>
 
-        {view !== "social" && view !== "rs" && (
-          <div className="mt-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Survey time slot">
-            <span className="mr-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#8C6A2F]">{view === "ex" ? "Day" : "Month"}</span>
-            {surveySlots(data, view).filter((item) => !item.subKey).map((item) => {
-              const source = item.monthKey ? period.months?.[item.monthKey] : period;
-              const itemShares = source?.expected[STATE] ?? expected;
-              const lead = leaderOf(itemShares, parties) ?? "TVK";
-              const subs = item.monthKey ? Object.entries(period.months?.[item.monthKey]?.sub ?? {}) : [];
+        {view !== "social" && (
+          <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Survey time slot">
+            <span className="mr-1 text-[12px] font-bold uppercase tracking-[0.12em] text-[#8C6A2F]">{view === "ex" ? "Day" : "Month"}</span>
+            {slots.filter((item) => !item.subKey).map((item) => {
+              const itemLead = leaderOf(item.expected[STATE] ?? {}, parties) ?? "TVK";
+              const subs = slots.filter((candidate) => candidate.subKey && candidate.monthKey === item.key);
               return (
                 <div key={item.key} className="relative">
-                  <button type="button" aria-pressed={slotKey === item.key} onClick={() => navigate({ slot: item.key, profile: "" })}
-                    title={parties.slice(0, 4).map((party) => `${party} ${pct(itemShares[party])}`).join(" · ")}
-                    className={cn("min-h-8 rounded-full border px-3 text-[10.5px] font-semibold transition-colors", slotKey === item.key ? "border-[#002147] shadow-[0_0_0_2px_white,0_0_0_3.5px_#002147]" : "border-[#C9CDD4] hover:border-[#0B0B0C]")}
-                    style={{ background: slotKey === item.key ? colour(lead) : `${colour(lead)}22`, color: slotKey === item.key ? "#fff" : "#1f2937" }}>
-                    {item.label}{subs.length ? <ChevronDown className="ml-1 inline size-3" /> : null}
+                  <button type="button" aria-pressed={slot.key === item.key || slot.monthKey === item.key} onMouseEnter={() => prefetch(periodKey, item.key)} onClick={() => navigate({ slot: item.key, profile: "" })}
+                    className={cn("min-h-10 rounded-full border px-4 text-[14px] font-semibold transition-all active:scale-[0.98]", slot.key === item.key || slot.monthKey === item.key ? "border-[#002147] shadow-[0_0_0_2px_white,0_0_0_3.5px_#002147]" : "border-[#C9CDD4] hover:border-[#0B0B0C]")}
+                    style={{ background: slot.key === item.key || slot.monthKey === item.key ? colour(itemLead) : `${colour(itemLead)}22`, color: slot.key === item.key || slot.monthKey === item.key ? "#fff" : "#1f2937" }}>
+                    {item.buttonLabel}{subs.length ? <ChevronDown className="ml-1 inline size-4" /> : null}
                   </button>
                 </div>
               );
             })}
-            {subPeriodRow.length > 0 && (
-              <div className="mt-1 flex w-full flex-wrap items-center gap-1.5 rounded-lg border border-[#EAEAEA] bg-[#FAFAFA] px-2 py-1.5">
-                <span className="mr-1 text-[9.5px] font-semibold uppercase tracking-[0.1em] text-[#6B6B6B]">{period.months?.[subPeriodMonth ?? ""]?.label} sub-periods</span>
-                {subPeriodRow.map(([key, sub]) => (
-                  <button key={key} type="button" aria-pressed={slotKey === key} onClick={() => navigate({ slot: key, profile: "" })}
-                    title={parties.slice(0, 4).map((party) => `${party} ${pct(sub.expected[STATE]?.[party])}`).join(" · ")}
-                    className={cn("min-h-7 rounded-full border px-2.5 text-[10px] font-semibold", slotKey === key ? "border-[#002147] bg-[#002147] text-white" : "border-[#D5D8DE] bg-white text-[#1f2937] hover:border-[#0B0B0C]")}>
-                    {sub.label}
-                  </button>
-                ))}
-              </div>
-            )}
+            {slots.filter((candidate) => candidate.subKey && candidate.monthKey === (slot.monthKey ?? "")).map((item) => (
+              <button key={item.key} type="button" aria-pressed={slot.key === item.key} onClick={() => navigate({ slot: item.key, profile: "" })} className={cn("min-h-9 rounded-full border px-3 text-[13px] font-semibold active:scale-[0.98]", slot.key === item.key ? "border-[#002147] bg-[#002147] text-white" : "border-[#D5D8DE] bg-white text-[#1f2937] hover:border-[#0B0B0C]")}>{item.buttonLabel}</button>
+            ))}
           </div>
         )}
 
-        {view === "social" ? (
-          <div className="mt-4"><TnSocialMedia stateSlug="tamil-nadu" initialFilter={initialSocialFilter} onClose={closeSocial} owner={owner} /></div>
-        ) : (
+        {socialMounted && (
+          <div className={cn("mt-4 scroll-mt-24", view === "social" ? "tn-crossfade" : "hidden")}><TnSocialMedia stateSlug="tamil-nadu" initialFilter={socialFilter} onClose={closeSocial} owner={owner} /></div>
+        )}
+        <div className={view === "social" ? "hidden" : "tn-crossfade"}>
           <>
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {parties.map((party) => {
-                const value = view === "rs" ? (actual[party] ?? 0) : (expected[party] ?? 0);
-                const perParty = view === "rs" ? null : Math.max(0, 100 - Math.abs(value - (actual[party] ?? 0)));
+                const value = expected[party] ?? 0;
+                const perParty = Math.max(0, 100 - Math.abs(value - (actual[party] ?? 0)));
                 return (
-                  <div key={party} className="rounded-xl border border-[#EAEAEA] bg-white p-3" style={{ borderTopColor: colour(party), borderTopWidth: 3 }}>
-                    <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[#555]"><span className="size-2 rounded-sm" style={{ background: colour(party) }} />{party} · {view === "rs" ? "actual" : view === "ex" ? "share" : "expected"}</p>
-                    <p className="mt-1 font-display text-[26px] font-semibold leading-none tracking-[-0.02em] text-[#0B0B0C]">{value.toFixed(2)}%</p>
-                    {view !== "rs" && <p className="mt-1 text-[10px] font-semibold text-[#B91C1C]">Actual 2026: {(actual[party] ?? 0).toFixed(2)}%</p>}
-                    {perParty != null && <p className="mt-0.5 text-[10px] font-semibold text-[#15803D]">Accuracy {perParty.toFixed(1)}%</p>}
+                  <div key={party} className="rounded-2xl border border-[#EAEAEA] bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.03)]" style={{ borderTopColor: colour(party), borderTopWidth: 3 }}>
+                    <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[#555]"><span className="size-2.5 rounded-sm" style={{ background: colour(party) }} />{party} · {view === "ex" ? "share" : "expected"}</p>
+                    <p className="mt-1 font-display text-[38px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[#0B0B0C]"><CountUp value={value} decimals={2} suffix="%" /></p>
+                    <p className="mt-1.5 text-[12.5px] font-semibold text-[#B91C1C]">Actual 2026: {pct2(actual[party])}</p>
+                    <p className="mt-0.5 text-[12.5px] font-semibold text-[#15803D]">Accuracy {perParty.toFixed(1)}%</p>
                   </div>
                 );
               })}
             </div>
-            {view !== "rs" && (
-              <p className="mt-2 text-[12px] leading-relaxed text-[#555]"><b className="text-[#0B0B0C]">Note:</b> actual vs prediction, overall vote-share accuracy <b className="text-[#15803D]">{accuracy?.toFixed(1)}%</b> against the actual 2026 result ({parties.map((party) => `${party} ${(actual[party] ?? 0).toFixed(2)}%`).join(", ")}).</p>
-            )}
 
-            <div className="mt-2 rounded-xl border border-[#EAEAEA] bg-white p-3">
-              <div className="flex h-3 w-full overflow-hidden rounded-full bg-[#F1F1F1]" role="img" aria-label={`Vote share bar for ${slot.label}`}>
-                {parties.map((party) => <span key={party} style={{ width: `${Math.max(0, expected[party] ?? 0)}%`, background: colour(party) }} title={`${party} ${pct(expected[party])}`} />)}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[#555]">
-                {parties.map((party) => <span key={party} className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm" style={{ background: colour(party) }} />{party} {pct(expected[party])}</span>)}
-                <span className="ml-auto text-[#15803D]">Lead key: {leadParty} ahead by {signed((expected[leadParty ?? ""] ?? 0) - (expected[[...parties].sort((a, b) => (expected[b] ?? 0) - (expected[a] ?? 0))[1] ?? ""] ?? 0))}</span>
-              </div>
-            </div>
+            <div className="mt-3"><VoteShareHero expected={expected} parties={parties} slotKey={slot.key} /></div>
 
-
-            <section className="mt-3 rounded-2xl border border-[#EAEAEA] bg-white p-3 sm:p-4" aria-label="Tamil Nadu map">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h2 className="font-display text-[16px] font-semibold text-[#0B0B0C]">{view === "rs" ? "Result 2026 by district" : `${slot.label} by ${mapMode === "district" ? "district" : "assembly"}`}</h2>
-                  <p className="text-[10px] text-[#6B6B6B]">{view === "rs" ? "Actual seats from the uploaded Result period." : `${int(slotN)} responses · ${slot.from || "—"} to ${slot.to || "—"}`}</p>
+            <section className="relative mt-3 rounded-2xl border border-[#EAEAEA] bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.035)] sm:p-4" aria-label="Tamil Nadu map">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="inline-flex rounded-full bg-[#F4F4F5] p-1" role="group" aria-label="Map detail">
+                  {(["district", "assembly"] as const).map((mode) => (
+                    <button key={mode} type="button" aria-pressed={mapMode === mode} onMouseEnter={() => prefetch(periodKey, slot.key)} onClick={() => setMapMode(mode)} className={cn("min-h-9 rounded-full px-4 text-[13px] font-semibold capitalize", mapMode === mode ? "bg-white text-[#0B0B0C] shadow-sm" : "text-[#6B6B6B]")}>{mode}</button>
+                  ))}
                 </div>
-                {view !== "rs" && (
-                  <div className="inline-flex rounded-full bg-[#F4F4F5] p-1" role="group" aria-label="Map detail">
-                    {(["district", "assembly"] as const).map((mode) => (
-                      <button key={mode} type="button" aria-pressed={mapMode === mode} onClick={() => setMapMode(mode)} className={cn("min-h-7 rounded-full px-2.5 text-[10px] font-semibold capitalize", mapMode === mode ? "bg-white text-[#0B0B0C] shadow-sm" : "text-[#6B6B6B]")}>{mode}</button>
-                    ))}
-                  </div>
-                )}
+                {(district || acNo != null) && <button type="button" onClick={() => { setDistrict(null); setAcNo(null); }} className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#0B0B0C] underline"><RotateCcw className="size-3.5" /> Reset map</button>}
               </div>
-              <div className="mt-2 h-[360px] overflow-hidden rounded-xl border border-[#EAEAEA] bg-[#FBFAF7] sm:h-[440px]">
-                <TamilNaduMap
-                  acs={mapBuild?.acs ?? []}
-                  districts={mapBuild?.districts ?? []}
+              <div className={cn("relative h-[380px] overflow-hidden rounded-xl border border-[#EAEAEA] bg-[#FBFAF7] transition-opacity md:h-[680px] xl:h-[700px]", mapLoading && "opacity-60")}>
+                {mapMounted ? <TamilNaduMap
+                  acs={map.acs}
+                  districts={map.districts}
                   district={district}
                   acNo={acNo}
                   year="2026"
@@ -351,103 +499,62 @@ export default function TnSurveyDashboard({
                   onSelectAc={(no) => setAcNo(no)}
                   onReset={() => { setDistrict(null); setAcNo(null); }}
                   tooltip={(payload) => {
-                    const row = payload.kind === "district" ? mapBuild?.districtRows[canonicalDistrictName(payload.name)] : payload.no != null ? payload.no != null ? mapBuild?.acRows[String(payload.no)] : undefined : undefined;
-                    if (view === "rs" && payload.kind === "district") {
-                      const result = mapBuild?.resultRows[canonicalDistrictName(payload.name)];
-                      if (!result) return { sub: "Result 2026 · No data", value: "No data", color: "#94A3B8" };
-                      const top = Object.entries(result.seats).sort((a, b) => b[1] - a[1])[0];
-                      return { sub: `Result 2026 · ${result.acs} ACs`, value: Object.entries(result.seats).map(([party, value]) => `${party} ${value}`).join(" · "), color: colour(top?.[0] ?? "") };
-                    }
+                    const row = payload.kind === "district" ? map.districtRows[canonicalDistrictName(payload.name)] : payload.no != null ? map.acRows[String(payload.no)] : undefined;
                     if (!row || !row.shares) return { sub: `${slot.label} · No data`, value: "No data", color: "#94A3B8" };
                     return {
-                      sub: `${slot.label} · ${int(row.n)} responses`,
+                      sub: `${payload.kind === "ac" && payload.district ? `${payload.district} · ` : ""}${slot.label} · ${int(row.n)} responses`,
                       value: `${parties.map((party) => `${party} ${pct(((row.shares as Record<string, number> | null)?.[GROUP_KEY[party] ?? party] ?? 0) * 100)}`).join(" · ")}${row.marginPp == null ? "" : ` · lead ${row.marginPp.toFixed(1)} pp`}`,
                       color: colour(row.leader ?? ""),
                     };
                   }}
-                />
+                /> : <div className="grid h-full place-items-center text-[14px] text-[#6B6B6B]">Preparing map...</div>}
+                {mapLoading && <p role="status" className="absolute inset-0 grid place-items-center text-[14px] font-semibold text-[#6B6B6B]">Loading map...</p>}
               </div>
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[#555]">
-                {parties.map((party) => <span key={party} className="inline-flex items-center gap-1.5"><span className="h-2.5 w-5 rounded-[2px] ring-1 ring-inset ring-black/10" style={{ background: colour(party) }} />{party}</span>)}
-                <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-5 rounded-[2px] bg-[#94A3B8] ring-1 ring-inset ring-black/10" />No data / under 30</span>
-                {(district || acNo != null) && <button type="button" onClick={() => { setDistrict(null); setAcNo(null); }} className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#0B0B0C] underline"><RotateCcw className="size-3" /> Reset map</button>}
+              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-[#555]">
+                {parties.map((party) => <span key={party} className="inline-flex items-center gap-1.5"><span className="h-3 w-6 rounded-[2px] ring-1 ring-inset ring-black/10" style={{ background: colour(party) }} />{party}</span>)}
+                <span className="inline-flex items-center gap-1.5"><span className="h-3 w-6 rounded-[2px] bg-[#94A3B8] ring-1 ring-inset ring-black/10" />No data / under 30</span>
               </div>
             </section>
 
-            {view === "rs" ? (
-              <ResultSection data={data} parties={parties} />
-            ) : (
-              <>
-                {profiles.length > 0 && demo && (
-                  <Section title={`Raw 2026 vote % by voter profile · ${slot.label}`} note={`${demo.label} · ${int(slotN)} responses`} className="mt-3">
-                    <div className="mt-2 flex flex-wrap gap-1.5" role="tablist" aria-label="Voter profile">
-                      {profiles.map((key) => (
-                        <button key={key} type="button" role="tab" aria-selected={activeProfile === key} onClick={() => navigate({ profile: key })} className={cn("min-h-8 rounded-full border px-2.5 text-[10px] font-semibold", activeProfile === key ? "border-[#8C6A2F] bg-[#FBF3DF] text-[#0B0B0C]" : "border-[#D5D8DE] text-[#555] hover:border-[#0B0B0C]")}>
-                          {slot.demoCatalog?.[key]?.label ?? slot.demo[key]?.label ?? key}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="mt-2">
-                      <TnProfileTable
-                        demo={demo}
-                        parties={parties}
-                        profileKey={activeProfile}
-                        periodKey={view}
-                        slotLabel={slot.label}
-                        average={average}
-                        onTarget={(payload) => openSocial({ match: "target", kind: payload.kind, place: payload.place, label: `${payload.label} · ${payload.place} · AIADMK+ ${payload.value.toFixed(1)}% (average ${payload.average.toFixed(1)}%)`, value: String(payload.value), average: String(payload.average) })}
-                        onCampaigns={(payload) => openSocial({ match: "campaigns", kind: payload.kind, place: payload.place, label: payload.place })}
-                        onGroup={(group) => openSocial({ match: "group", group, label: group })}
-                      />
-                    </div>
-                  </Section>
-                )}
-                <SwingSection data={data} swing={swing} parties={parties} period={swingPeriod} slot={swingSlot} onPeriod={(next) => { setSwingPeriod(next); setSwingSlot("all"); }} onSlot={setSwingSlot} />
-                <SeatsByZone data={data} parties={parties} seats={seats} periodKey={view} slotLabel={slot.label} />
-              </>
+            {profiles.length > 0 && (
+              <Section title={`Raw 2026 vote % by voter profile`} note={`${slot.label} · ${int(slot.n)} responses`} className="mt-3">
+                <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Voter profile">
+                  {profiles.map((key) => (
+                    <button key={key} type="button" role="tab" aria-selected={activeProfile === key} onMouseEnter={() => prefetchProfile(key)} onClick={() => navigate({ profile: key })} className={cn("min-h-10 rounded-full border px-3.5 text-[13px] font-semibold active:scale-[0.98]", activeProfile === key ? "border-[#8C6A2F] bg-[#FBF3DF] text-[#0B0B0C]" : "border-[#D5D8DE] text-[#555] hover:border-[#0B0B0C]")}>
+                      {slot.demoCatalog[key]?.label ?? key}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3">
+                  {!demo && activeProfile === "ac" ? <div className="rounded-xl border border-[#EAEAEA] bg-[#FAFAFA] p-6 text-[14px] text-[#6B6B6B]">Loading assembly table...</div> :
+                    demo ? <div key={`${slot.key}:${activeProfile}`} className="tn-fade-slide"><TnProfileTable demo={demo} parties={parties} profileKey={activeProfile} periodKey={view} slotLabel={slot.label} average={average}
+                      onTarget={(payload) => openSocial({ match: "target", kind: payload.kind, place: payload.place, label: `${payload.label} · ${payload.place} · AIADMK+ ${payload.value.toFixed(1)}% (average ${payload.average.toFixed(1)}%)`, value: String(payload.value), average: String(payload.average) })}
+                      onCampaigns={(payload) => openSocial({ match: "campaigns", kind: payload.kind, place: payload.place, label: payload.place })}
+                      onGroup={(group) => openSocial({ match: "group", group, label: group })}
+                    /></div> : null}
+                </div>
+              </Section>
             )}
-
-            <Section title="Method & caveats" className="mt-3">
-              <ul className="mt-2 space-y-1.5 text-[13px] leading-relaxed text-[#555]">
-                <li><b className="text-[#0B0B0C]">Data:</b> WPForms online surveys run through Meta ads. Opinion poll = the five TN Opinion Poll 2026 zone forms, 28 Mar to 7 May 2026, with a 2021-vote question. Exit poll = the seven TN Election Poll 2026 forms, mostly 23 to 29 Apr 2026. Polling day was 23 Apr 2026 and results were declared on 4 May 2026.</li>
-                <li><b className="text-[#0B0B0C]">Opinion map:</b> the opinion and exit maps use the survey&apos;s deduplicated responses (n 67,211 for the opinion poll), so the header, map and profile tables always agree. The raw workbook was used to check the district shares.</li>
-                <li><b className="text-[#0B0B0C]">Target Campaign flag:</b> shown under the AIADMK+ % in any profile row where AIADMK+ is below its weighted average for that table. It opens the matching campaigns in Social Media without any commercial figures.</li>
-                <li><b className="text-[#0B0B0C]">Accuracy:</b> overall = 100 minus half the sum of the absolute gaps between survey % and actual 2026 %. Per party = 100 minus the gap in percentage points.</li>
-                <li><b className="text-[#0B0B0C]">Late answers:</b> 87 exit-poll answers arrived after the result (up to 7 Oct 2026); they are kept so the total stays at 31,316.</li>
-                <li><b className="text-[#0B0B0C]">Parties:</b> TVK; DMK+ = DMK, INC, VCK and allies; AIADMK+ = AIADMK, BJP, PMK, AMMK; NTK; Others. NOTA is shown in Others.</li>
-                <li><b className="text-[#0B0B0C]">Expected % (opinion poll):</b> answers are weighted by the respondent&apos;s 2021 vote so the sample matches the actual 2021 ECI result in each zone, and zones are weighted by their 2021 votes. Exit poll figures are plain shares.</li>
-                <li><b className="text-[#0B0B0C]">Raw %:</b> profile tables are unweighted shares of respondents. Groups under 30 answers are hidden.</li>
-                <li><b className="text-[#0B0B0C]">Seat projection:</b> each AC&apos;s own survey shares plus the statewide shift, floored at 0; the party ahead wins. ACs with no answers take their zone&apos;s figure. Actual 2026: TVK 108, DMK+ 73, AIADMK+ 53.</li>
-                <li><b className="text-[#0B0B0C]">Zones:</b> the five opinion-poll zones; each AC takes the zone its answers were filed under, and districts follow the 2026 ECI grouping. Exit-poll answers without an AC or district count only in the statewide figure.</li>
-                <li><b className="text-[#0B0B0C]">2021 base:</b> official ECI AC results (alliance totals summed per zone). TVK did not contest in 2021, so its base is 0 and its swing equals its 2026 share.</li>
-                <li><b className="text-[#0B0B0C]">Ads:</b> every Tamil Nadu campaign in the uploaded dashboard, grouped into survey periods. Commercial figures are never sent to the browser.</li>
-              </ul>
-            </Section>
+            <SwingSection data={model} swing={model.swing} parties={parties} period={view === "ex" ? "ex" : "op"} slot={slot.key} />
+            <SeatsByZone data={model} parties={parties} seats={seats} periodKey={view} slotLabel={slot.label} />
           </>
-        )}
+        </div>
       </div>
     </main>
   );
 }
 
-function SwingSection({ data, swing, parties, period, slot, onPeriod, onSlot }: { data: SurveyData; swing: TnSwingPayload; parties: string[]; period: "op" | "ex"; slot: string; onPeriod: (period: "op" | "ex") => void; onSlot: (slot: string) => void }) {
+function SwingSection({ data, swing, parties, period, slot }: { data: TnClientModel; swing: TnSwingPayload; parties: string[]; period: "op" | "ex"; slot: string }) {
   const state = "Tamil Nadu";
   const sources = swing.sources[period] ?? [];
   const source = sources.find((item) => item.key === slot) ?? sources[0];
-  const slots = sources;
-  if (!source) return <Section title="Zone: 2021 → 2026 (swing)" className="mt-3"><p className="mt-2 text-[12px] text-[#6B6B6B]">No swing data in this upload.</p></Section>;
+  if (!source) return <Section title={`Zone: 2021 → 2026 (swing) · ${period === "ex" ? "Exit poll" : "Opinion poll"}`} className="mt-3"><p className="mt-2 text-[14px] text-[#6B6B6B]">No swing data in this upload.</p></Section>;
   return (
-    <Section title="Zone: 2021 → 2026 (swing)" note={source.label} className="mt-3">
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {(["op", "ex"] as const).map((key) => <button key={key} type="button" aria-pressed={period === key} onClick={() => onPeriod(key)} className={cn("min-h-7 rounded-full border px-2.5 text-[10px] font-semibold", period === key ? "border-[#002147] bg-[#002147] text-white" : "border-[#D5D8DE] text-[#555]")}>{data.periods[key]?.label.replace(/\s*\(.*/, "") ?? key}</button>)}
-        <select aria-label="Swing month" value={slot} onChange={(event) => onSlot(event.target.value)} className="min-h-7 rounded-full border border-[#D5D8DE] bg-white px-2 text-[10px] font-semibold text-[#555]">
-          {slots.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
-        </select>
-      </div>
-      <p className="mt-1 text-[12px] leading-relaxed text-[#555]">Each cell shows the actual 2021 % (ECI, alliance totals) → the survey&apos;s {period === "ex" ? "2026 share" : "expected 2026 %"} (swing in percentage points). The Tamil Nadu row also shows the actual 2026 result. Zones with fewer than 30 located answers are left out.</p>
-      <div className="mt-2 overflow-x-auto rounded-xl border border-[#EAEAEA]">
-        <table className="w-full min-w-[900px] border-collapse text-[13px]">
-          <thead className="bg-[#FAFAFA] text-left text-[11px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-3 py-2">Zone</th>{parties.map((party) => <th key={party} className="px-3 py-2 text-center">{party} 21→26</th>)}</tr></thead>
+    <Section title={`Zone: 2021 → 2026 (swing) · ${source.label}`} className="mt-3">
+      <p className="mt-1 text-[14px] leading-relaxed text-[#555]">Each cell shows the actual 2021 % (ECI, alliance totals) → the survey&apos;s {period === "ex" ? "2026 share" : "expected 2026 %"} (swing in percentage points). The Tamil Nadu row also shows the actual 2026 result. Zones with fewer than 30 located answers are left out.</p>
+      <div className="mt-3 overflow-x-auto rounded-xl border border-[#EAEAEA]">
+        <table className="w-full min-w-[980px] border-collapse text-[15px]">
+          <thead className="bg-[#FAFAFA] text-left text-[13px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-4 py-3">Zone</th>{parties.map((party) => <th key={party} className="px-4 py-3 text-center">{party} 21→26</th>)}</tr></thead>
           <tbody>
             {data.regions.map((region) => {
               const before = data.base?.[region] ?? TN_2021_BASE[region];
@@ -455,10 +562,10 @@ function SwingSection({ data, swing, parties, period, slot, onPeriod, onSlot }: 
               if (!before || !after) return null;
               return (
                 <tr key={region} className={cn("border-t border-[#EAEAEA]", region === state && "font-bold")}>
-                  <th scope="row" className="px-3 py-2 text-left">{data.zonelabels?.[region] ?? region}</th>
+                  <th scope="row" className="px-4 py-2.5 text-left">{data.zonelabels?.[region] ?? region}</th>
                   {parties.map((party) => {
                     const swing = (after[party] ?? 0) - (before[party] ?? 0);
-                    return <td key={party} className="px-3 py-2 text-center tabular-nums">{pct(before[party])} → {pct(after[party])} <span className={cn("ml-1 rounded px-1 py-0.5 text-[10.5px] font-bold", swing > 0 ? "bg-[#DCFCE7] text-[#15803D]" : swing < 0 ? "bg-[#FEE2E2] text-[#B91C1C]" : "text-[#6B6B6B]")}>({signed(swing)})</span>{region === state && data.actual[region]?.[party] != null && <span className="mt-0.5 block text-[10.5px] font-bold text-[#B91C1C]">Actual 2026: {pct(data.actual[region][party])}</span>}</td>;
+                    return <td key={party} className="px-4 py-2.5 text-center tabular-nums">{pct(before[party])} → {pct(after[party])} <span className={cn("ml-1 rounded px-1.5 py-0.5 text-[12px] font-bold", swing > 0 ? "bg-[#DCFCE7] text-[#15803D]" : swing < 0 ? "bg-[#FEE2E2] text-[#B91C1C]" : "text-[#6B6B6B]")}>({signed(swing)})</span>{region === state && data.actual[region]?.[party] != null && <span className="mt-0.5 block text-[12px] font-bold text-[#B91C1C]">Actual 2026: {pct(data.actual[region][party])}</span>}</td>;
                   })}
                 </tr>
               );
@@ -470,126 +577,54 @@ function SwingSection({ data, swing, parties, period, slot, onPeriod, onSlot }: 
   );
 }
 
-function SeatsByZone({ data, parties, seats, periodKey, slotLabel }: { data: SurveyData; parties: string[]; seats: Record<string, unknown>; periodKey: string; slotLabel: string }) {
+function SeatsByZone({ data, parties, seats, periodKey, slotLabel }: { data: TnClientModel; parties: string[]; seats: Record<string, unknown>; periodKey: string; slotLabel: string }) {
   const zones = (seats.zones as Record<string, Record<string, unknown>> | undefined) ?? {};
-  const actualZones = (data.periods.rs?.seats?.zones as Record<string, Record<string, unknown>> | undefined) ?? {};
-  const actualSeats = data.periods.rs?.seats ?? {};
+  const actualZones = (data.actualZones as Record<string, Record<string, unknown>> | undefined) ?? {};
+  const actualSeats = data.actualSeats as Record<string, unknown>;
   const projected = seatTotal(seats, parties);
   const summaryParties = ["TVK", "DMK+", "AIADMK+", "NTK"];
   const actualParties = ["TVK", "DMK+", "AIADMK+"];
   const hit = typeof seats.hit === "number" ? seats.hit : null;
-  const leader = leaderOf(data.periods.rs?.expected?.[STATE], parties);
+  const leader = leaderOf(data.actual[STATE], parties);
   const majorityParty = leader && Number(actualSeats[leader] ?? 0) >= MAJORITY ? `${leader} majority` : "hung";
-  const zoneRows = Object.entries(zones).map(([zone, row]) => ({ zone, row }));
   return (
     <Section title={`Seats by zone · 2026 projection · ${slotLabel}`} note={`${projected} of 234 seats · majority ${MAJORITY} · ${majorityParty}`} className="mt-3">
-      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {summaryParties.map((party) => (
-          <div key={party} className="rounded-xl border border-[#EAEAEA] p-3">
-            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[#555]"><span className="size-2 rounded-sm" style={{ background: colour(party) }} />{party}</p>
-            <p className="mt-1 font-display text-[24px] font-semibold leading-none tabular-nums text-[#0B0B0C]">{int(Number(seats[party] ?? 0))}</p>
-            <p className="mt-1 text-[10px] text-[#6B6B6B]">projected · actual {int(Number(actualSeats[party] ?? 0))}</p>
+          <div key={party} className="rounded-xl border border-[#EAEAEA] p-4">
+            <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[#555]"><span className="size-2.5 rounded-sm" style={{ background: colour(party) }} />{party}</p>
+            <p className="mt-1 font-display text-[32px] font-semibold leading-none tabular-nums text-[#0B0B0C]"><CountUp value={Number(seats[party] ?? 0)} /></p>
+            <p className="mt-1.5 text-[12.5px] text-[#6B6B6B]">projected · actual {int(Number(actualSeats[party] ?? 0))}</p>
           </div>
         ))}
       </div>
-      <p className="mt-2 text-[12px] text-[#555]">Projection: {summaryParties.map((party) => `${party} ${int(Number(seats[party] ?? 0))}`).join(" · ")} of 234. Actual 2026: TVK 108 · DMK+ 73 · AIADMK+ 53.</p>
-      {hit != null && <p className="mt-1 text-[12px] font-semibold text-[#0B0B0C]">The projected winner matches the actual winner in {int(hit)} of 234 ACs ({((hit / 234) * 100).toFixed(1)}%).</p>}
-      <div className="mt-2 overflow-x-auto rounded-xl border border-[#EAEAEA]">
-        <table className="w-full min-w-[720px] border-collapse text-[13px]">
-          <thead className="bg-[#FAFAFA] text-left text-[11px] uppercase tracking-wide text-[#6B6B6B]">
-            <tr><th rowSpan={2} className="px-3 py-2">Zone</th><th rowSpan={2} className="px-3 py-2 text-right">ACs</th><th colSpan={4} className="px-3 py-2 text-center">Projected</th><th colSpan={3} className="px-3 py-2 text-center">Actual 2026</th></tr>
-            <tr>{summaryParties.map((party) => <th key={party} className="px-3 py-2 text-right">{party}</th>)}{actualParties.map((party) => <th key={party} className="px-3 py-2 text-right">{party}</th>)}</tr>
+      <p className="mt-3 text-[14px] text-[#555]">Projection: {summaryParties.map((party) => `${party} ${int(Number(seats[party] ?? 0))}`).join(" · ")} of 234. Actual 2026: TVK 108 · DMK+ 73 · AIADMK+ 53.</p>
+      {hit != null && <p className="mt-1 text-[14px] font-semibold text-[#0B0B0C]">The projected winner matches the actual winner in {int(hit)} of 234 ACs ({((hit / 234) * 100).toFixed(1)}%).</p>}
+      <div className="mt-3 overflow-x-auto rounded-xl border border-[#EAEAEA]">
+        <table className="w-full min-w-[780px] border-collapse text-[15px]">
+          <thead className="bg-[#FAFAFA] text-left text-[13px] uppercase tracking-wide text-[#6B6B6B]">
+            <tr><th rowSpan={2} className="px-4 py-3">Zone</th><th rowSpan={2} className="px-4 py-3 text-right">ACs</th><th colSpan={4} className="px-4 py-3 text-center">Projected</th><th colSpan={3} className="px-4 py-3 text-center">Actual 2026</th></tr>
+            <tr>{summaryParties.map((party) => <th key={party} className="px-4 py-2 text-right">{party}</th>)}{actualParties.map((party) => <th key={party} className="px-4 py-2 text-right">{party}</th>)}</tr>
           </thead>
           <tbody>
-            {zoneRows.map(({ zone, row }) => (
+            {Object.entries(zones).map(([zone, row]) => (
               <tr key={zone} className="border-t border-[#EAEAEA]">
-                <th scope="row" className="px-3 py-2 text-left font-semibold">{data.zonelabels?.[zone] ?? zone}</th>
-                <td className="px-3 py-2 text-right tabular-nums">{int(Number(row.acs ?? 0))}</td>
-                {summaryParties.map((party) => <td key={party} className="px-3 py-2 text-right tabular-nums">{int(Number(row[party] ?? 0))}</td>)}
-                {actualParties.map((party) => <td key={party} className="px-3 py-2 text-right tabular-nums">{int(Number(actualZones[zone]?.[party] ?? 0))}</td>)}
+                <th scope="row" className="px-4 py-2.5 text-left font-semibold">{data.zonelabels?.[zone] ?? zone}</th>
+                <td className="px-4 py-2.5 text-right tabular-nums">{int(Number(row.acs ?? 0))}</td>
+                {summaryParties.map((party) => <td key={party} className="px-4 py-2.5 text-right tabular-nums">{int(Number(row[party] ?? 0))}</td>)}
+                {actualParties.map((party) => <td key={party} className="px-4 py-2.5 text-right tabular-nums">{int(Number(actualZones[zone]?.[party] ?? 0))}</td>)}
               </tr>
             ))}
             <tr className="border-t-2 border-[#0B0B0C] font-bold">
-              <th scope="row" className="px-3 py-2 text-left">Tamil Nadu</th>
-              <td className="px-3 py-2 text-right tabular-nums">234</td>
-              {summaryParties.map((party) => <td key={party} className="px-3 py-2 text-right tabular-nums">{int(Number(seats[party] ?? 0))}</td>)}
-              {actualParties.map((party) => <td key={party} className="px-3 py-2 text-right tabular-nums">{int(Number(actualSeats[party] ?? 0))}</td>)}
+              <th scope="row" className="px-4 py-3 text-left">Tamil Nadu</th>
+              <td className="px-4 py-3 text-right tabular-nums">234</td>
+              {summaryParties.map((party) => <td key={party} className="px-4 py-3 text-right tabular-nums">{int(Number(seats[party] ?? 0))}</td>)}
+              {actualParties.map((party) => <td key={party} className="px-4 py-3 text-right tabular-nums">{int(Number(actualSeats[party] ?? 0))}</td>)}
             </tr>
           </tbody>
         </table>
       </div>
-      <p className="mt-1 text-[10px] text-[#6B6B6B]">{periodKey === "rs" ? "Actual seats by zone." : "Projected winner calls compared with the actual 2026 winners."}</p>
-    </Section>
-  );
-}
-
-function ResultSection({ data, parties }: { data: SurveyData; parties: string[] }) {
-  const state = "Tamil Nadu";
-  const actual = data.actual[state] ?? {};
-  const op = data.periods.op?.expected[state] ?? {};
-  const ex = data.periods.ex?.expected[state] ?? {};
-  const rsSeats = data.periods.rs?.seats ?? {};
-  const opSeats = data.periods.op?.seats ?? {};
-  const exSeats = data.periods.ex?.seats ?? {};
-  const actualZones = (data.periods.rs?.seats?.zones as Record<string, Record<string, unknown>> | undefined) ?? {};
-  const districts = data.periods.rs?.dist ?? [];
-  const mape = (shares: SurveyShare) => (["TVK", "DMK+", "AIADMK+", "NTK"].reduce((sum, party) => sum + Math.abs((shares[party] ?? 0) - (actual[party] ?? 0)) / ((actual[party] ?? 1) || 1), 0) / 4 * 100).toFixed(1);
-  const seatRow = (label: string, seats: Record<string, unknown>, extra = false) => (
-    <tr className={cn("border-t border-[#EAEAEA]", extra && "font-bold")}>
-      <th scope="row" className="px-2 py-1.5 text-left">{label}</th>
-      {["TVK", "DMK+", "AIADMK+"].map((party) => <td key={party} className="px-2 py-1.5 text-right tabular-nums">{int(Number(seats[party] ?? 0))}{!extra && <span className="ml-1 text-[10.5px] text-[#6B6B6B]">({signed(Number(seats[party] ?? 0) - Number(rsSeats[party] ?? 0)).replace("pp", "")})</span>}</td>)}
-      <td className="px-2 py-1.5 text-right tabular-nums">{extra ? "234 / 234" : `${int(Number(seats.hit ?? 0))} / 234`}</td>
-    </tr>
-  );
-  return (
-    <Section title="Result 2026 vs survey projections" note="Actual: ECI result declared 4 May 2026" className="mt-3">
-      <p className="mt-1 text-[12px] text-[#555]">Actual: TVK won 108 seats with {pct(actual.TVK)} of the vote; DMK+ 73 ({pct(actual["DMK+"])}); AIADMK+ 53 ({pct(actual["AIADMK+"])}); NTK 0 ({pct(actual.NTK)}). Chips show survey minus actual.</p>
-      <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {["TVK", "DMK+", "AIADMK+"].map((party) => <div key={party} className="rounded-xl border border-[#EAEAEA] p-3"><p className="flex items-center gap-1.5 text-[12px] font-semibold text-[#555]"><span className="size-2 rounded-sm" style={{ background: colour(party) }} />{party}</p><p className="mt-0.5 text-[22px] font-semibold tabular-nums">{int(Number(rsSeats[party] ?? 0))}</p><p className="text-[11px] text-[#6B6B6B]">seats · {pct(actual[party])} votes</p></div>)}
-        <div className="rounded-xl border border-[#EAEAEA] p-3"><p className="text-[10px] font-semibold text-[#555]">Majority</p><p className="mt-0.5 text-[22px] font-semibold tabular-nums">118</p><p className="text-[11px] text-[#6B6B6B]">TVK short by {MAJORITY - Number(rsSeats.TVK ?? 0)}</p></div>
-      </div>
-      <h4 className="mt-3 text-[12px] font-semibold text-[#0B0B0C]">Vote share</h4>
-      <div className="mt-1 overflow-x-auto rounded-xl border border-[#EAEAEA]">
-        <table className="w-full min-w-[640px] border-collapse text-[13px]">
-          <thead className="bg-[#FAFAFA] text-left text-[11px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">Source</th>{parties.map((party) => <th key={party} className="px-2 py-2 text-right">{party}</th>)}<th className="px-2 py-2 text-right">MAPE (4 parties)</th></tr></thead>
-          <tbody>
-            {[{ label: "Opinion poll · expected", shares: op }, { label: "Exit poll · share", shares: ex }, { label: "Actual 2026", shares: actual, extra: true }].map((row) => (
-              <tr key={row.label} className={cn("border-t border-[#EAEAEA]", row.extra && "font-bold")}><th scope="row" className="px-2 py-1.5 text-left">{row.label}</th>{parties.map((party) => <td key={party} className="px-2 py-1.5 text-right tabular-nums">{pct(row.shares[party])}{!row.extra && <span className="ml-1 text-[10.5px] text-[#6B6B6B]">({signed((row.shares[party] ?? 0) - (actual[party] ?? 0))})</span>}</td>)}<td className="px-2 py-1.5 text-right tabular-nums">{row.extra ? "—" : `${mape(row.shares)}%`}</td></tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <h4 className="mt-3 text-[12px] font-semibold text-[#0B0B0C]">Seats</h4>
-      <div className="mt-1 overflow-x-auto rounded-xl border border-[#EAEAEA]">
-        <table className="w-full min-w-[560px] border-collapse text-[13px]">
-          <thead className="bg-[#FAFAFA] text-left text-[11px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">Source</th>{["TVK", "DMK+", "AIADMK+"].map((party) => <th key={party} className="px-2 py-2 text-right">{party}</th>)}<th className="px-2 py-2 text-right">ACs with the right winner</th></tr></thead>
-          <tbody>{seatRow("Opinion poll projection", opSeats)}{seatRow("Exit poll projection", exSeats)}{seatRow("Actual 2026", rsSeats, true)}</tbody>
-        </table>
-      </div>
-      <h4 className="mt-3 text-[12px] font-semibold text-[#0B0B0C]">Actual seats by zone</h4>
-      <div className="mt-1 overflow-x-auto rounded-xl border border-[#EAEAEA]">
-        <table className="w-full min-w-[520px] border-collapse text-[13px]">
-          <thead className="bg-[#FAFAFA] text-left text-[11px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">Zone</th><th className="px-2 py-2 text-right">ACs</th>{["TVK", "DMK+", "AIADMK+"].map((party) => <th key={party} className="px-2 py-2 text-right">{party}</th>)}<th className="px-2 py-2 text-right">Top</th></tr></thead>
-          <tbody>
-            {Object.entries(actualZones).map(([zone, row]) => {
-              const top = ["TVK", "DMK+", "AIADMK+"].sort((a, b) => Number(row[b] ?? 0) - Number(row[a] ?? 0))[0];
-              return <tr key={zone} className="border-t border-[#EAEAEA]"><th scope="row" className="px-2 py-1.5 text-left">{data.zonelabels?.[zone] ?? zone}</th><td className="px-2 py-1.5 text-right tabular-nums">{int(Number(row.acs ?? 0))}</td>{["TVK", "DMK+", "AIADMK+"].map((party) => <td key={party} className="px-2 py-1.5 text-right tabular-nums">{int(Number(row[party] ?? 0))}</td>)}<td className="px-2 py-1.5 text-right"><span className="mr-1 inline-block size-1.5 rounded-sm" style={{ background: colour(top) }} />{top}</td></tr>;
-            })}
-          </tbody>
-        </table>
-      </div>
-      <h4 className="mt-3 text-[12px] font-semibold text-[#0B0B0C]">Actual seats by district</h4>
-      <div className="mt-1 max-h-[420px] overflow-auto rounded-xl border border-[#EAEAEA]">
-        <table className="w-full min-w-[520px] border-collapse text-[13px]">
-          <thead className="sticky top-0 bg-[#FAFAFA] text-left text-[11px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-2 py-2">District</th><th className="px-2 py-2 text-right">ACs</th>{["TVK", "DMK+", "AIADMK+"].map((party) => <th key={party} className="px-2 py-2 text-right">{party}</th>)}<th className="px-2 py-2 text-right">Top</th></tr></thead>
-          <tbody>
-            {districts.map((row) => {
-              const top = ["TVK", "DMK+", "AIADMK+"].sort((a, b) => Number(row[b] ?? 0) - Number(row[a] ?? 0))[0];
-              return <tr key={row.d} className="border-t border-[#EAEAEA]"><th scope="row" className="px-2 py-1.5 text-left">{row.d}</th><td className="px-2 py-1.5 text-right tabular-nums">{int(row.acs)}</td>{["TVK", "DMK+", "AIADMK+"].map((party) => <td key={party} className="px-2 py-1.5 text-right tabular-nums">{int(Number(row[party] ?? 0))}</td>)}<td className="px-2 py-1.5 text-right"><span className="mr-1 inline-block size-1.5 rounded-sm" style={{ background: colour(top) }} />{top}</td></tr>;
-            })}
-          </tbody>
-        </table>
-      </div>
+      <p className="mt-2 text-[12px] text-[#6B6B6B]">{periodKey === "rs" ? "Actual seats by zone." : "Projected winner calls compared with the actual 2026 winners."}</p>
     </Section>
   );
 }
