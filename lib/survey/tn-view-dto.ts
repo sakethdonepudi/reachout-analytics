@@ -2,12 +2,16 @@ import "server-only";
 
 import { adsManagerCampaigns, adsManagerForCampaign } from "@/lib/ads-desk/links";
 import { getClientLinks } from "@/lib/ads-desk/settings";
-import type { SurveyData } from "./types";
+import type { SurveyData, SurveyDemo } from "./types";
+import { accuracyAgainst } from "./tn-shared";
 import { canonicalDistrictName } from "@/lib/tamil-nadu/aliases";
-import { buildSurveyMap, type SurveyMapRow, type SurveyMapSlot } from "@/lib/tamil-nadu/survey-map";
+import { buildSurveyMap, resolveSurveySlot, type SurveyMapRow, type SurveyMapSlot } from "@/lib/tamil-nadu/survey-map";
 import { surveySlots } from "./tn-shared";
 import type { TnAc, TnDistrict } from "@/lib/tamil-nadu/model";
+import type { TnCardModel, TnClientModel, TnSerializedMap, TnSlotModel, TnSwingPayload, TnSwingSource } from "./tn-view-model";
+export type { TnSerializedMap, TnSwingSource, TnSwingPayload, TnSlotModel, TnCardModel, TnClientModel } from "./tn-view-model";
 
+const STATE = "Tamil Nadu";
 const MONEY = /spend|cost|cpm|cpc|cpr|billing|amount|inr|budget|payment/i;
 const AIRX = /aiadmk|admk|\beps\b|edapp|puratchi|amma|it wing|two leaves/i;
 
@@ -203,7 +207,7 @@ export async function tnSocialFiltered(data: SurveyData, options: FilterOptions,
   }
 
   matched.sort((a, b) => b.reach - a.reach || b.clicks - a.clicks);
-  const limited = (mode === "campaigns" ? matched.slice(0, 150) : matched.slice(0, 100)).map(({ accountId: _accountId, ...campaign }) => campaign);
+  const limited = matched.slice(0, 100).map(({ accountId: _accountId, ...campaign }) => campaign);
   const byAccount = new Map<string, TnSocialAccount>();
   for (const campaign of matched) {
     const account = accountBySourceId.get(campaign.accountId);
@@ -236,6 +240,7 @@ export async function tnSocialFiltered(data: SurveyData, options: FilterOptions,
       : `${options.label ?? place} campaigns`;
   return {
     title,
+    place: options.place ?? options.label ?? group,
     note: `${matched.length} matching Tamil Nadu campaigns across ${used.length} ad accounts.`,
     how,
     accounts: used,
@@ -254,25 +259,91 @@ const PROFILE_ORDER: Record<string, string[]> = {
   ex: ["zone", "dist", "ac", "v21", "age", "caste", "prof", "form", "religion", "app"],
 };
 
-export type TnSerializedMap = {
-  slot: SurveyMapSlot;
-  acs: TnAc[];
-  districts: TnDistrict[];
-  districtRows: Record<string, SurveyMapRow>;
-  acRows: Record<string, SurveyMapRow>;
-  resultRows: Record<string, { acs: number; seats: Record<string, number>; total: number }>;
-};
-export type TnSwingSource = { key: string; label: string; expected: Record<string, import("./types").SurveyShare>; seats: Record<string, unknown>; n: number };
-export type TnSwingPayload = { sources: Record<"op" | "ex", TnSwingSource[]> };
-
-function serializeMap(build: ReturnType<typeof buildSurveyMap>): TnSerializedMap {
+export function serializeMap(build: ReturnType<typeof buildSurveyMap>): TnSerializedMap {
+  // Only the fields the 2026 map actually reads. The historical, model and
+  // seat-call fields are not needed by the client map and add substantial RSC
+  // weight to every slot.
+  const acs = build.acs.map((ac) => ({
+    no: ac.no,
+    name: ac.name,
+    district: ac.district,
+    districtEci: ac.district,
+    survey: ac.survey,
+    surveyLeader: ac.surveyLeader,
+    noData: ac.noData,
+  })) as unknown as TnAc[];
+  const districts = build.districts.map((district) => ({
+    name: district.name,
+    acs: district.acs,
+    survey: district.survey,
+    surveyLeader: district.surveyLeader,
+  })) as unknown as TnDistrict[];
   return {
-    slot: build.slot,
-    acs: build.acs,
-    districts: build.districts,
+    slot: { ...build.slot, demo: {}, demoCatalog: undefined },
+    acs,
+    districts,
     districtRows: Object.fromEntries(build.districtRows),
     acRows: Object.fromEntries(build.acRows),
-    resultRows: Object.fromEntries(build.resultRows),
+    resultRows: {},
+  };
+}
+
+export function tnClientModel(data: SurveyData, initialView: "op" | "ex" | "social", initialSlot: string): TnClientModel {
+  const actual = data.actual[STATE] ?? {};
+  const cards: TnCardModel[] = (["op", "ex"] as const).map((key) => {
+    const period = data.periods[key];
+    return {
+      key,
+      label: period?.label.replace(/\s*\(.*/, "") ?? key,
+      n: period?.n ?? 0,
+      expected: period?.expected[STATE] ?? {},
+      accuracy: period ? accuracyAgainst(period.expected[STATE] ?? {}, actual, data.parties) : 0,
+    };
+  });
+  const slots = { op: [] as TnSlotModel[], ex: [] as TnSlotModel[] };
+  const swing: TnSwingPayload = { sources: { op: [], ex: [] } };
+  for (const key of ["op", "ex"] as const) {
+    for (const option of surveySlots(data, key)) {
+      const slot = resolveSurveySlot(data, key, option.key);
+      if (!slot) continue;
+      swing.sources[key].push({ key: option.key, label: slot.label, expected: slot.expected, seats: slot.seats, n: slot.n });
+      const profiles: Record<string, SurveyDemo> = {};
+      const lazyProfiles: string[] = [];
+      for (const [profileKey, profile] of Object.entries(slot.demo)) {
+        if (profileKey === "ac") { lazyProfiles.push(profileKey); continue; }
+        profiles[profileKey] = profile;
+      }
+      slots[key].push({
+        key: option.key,
+        label: slot.label,
+        buttonLabel: option.label,
+        monthKey: option.monthKey,
+        subKey: option.subKey,
+        n: slot.n,
+        from: slot.from,
+        to: slot.to,
+        expected: slot.expected,
+        seats: slot.seats,
+        demoCatalog: Object.fromEntries(Object.entries(slot.demo).map(([profileKey, profile]) => [profileKey, { label: profile.label, cov: profile.cov }])),
+        profiles,
+        lazyProfiles,
+      });
+    }
+  }
+  const mapPeriod = initialView === "ex" ? "ex" : "op";
+  return {
+    parties: data.parties,
+    regions: data.regions,
+    actual: data.actual,
+    base: data.base,
+    zonelabels: data.zonelabels,
+    n_total: data.n_total,
+    actualSeats: (data.periods.rs?.seats ?? {}) as Record<string, unknown>,
+    actualZones: ((data.periods.rs?.seats?.zones ?? {}) as Record<string, Record<string, unknown>>),
+    cards,
+    slots,
+    swing,
+    initialMap: serializeMap(buildSurveyMap(data, mapPeriod, initialSlot)),
   };
 }
 

@@ -7,7 +7,7 @@ import NotUploaded from "@/components/case-studies/shared/not-uploaded";
 import { requirePageSession } from "@/lib/require-session";
 import { caseAllowed } from "@/lib/session-scope";
 import { getSurveyCached } from "@/lib/survey/store";
-import { tnSurveySlice } from "@/lib/survey/tn-view-dto";
+import { tnClientModel } from "@/lib/survey/tn-view-dto";
 import type { SocialFilter } from "@/lib/survey/social-types";
 
 export const metadata: Metadata = {
@@ -22,11 +22,10 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", images: ["https://reachout-analytics.vercel.app/og/tamil-nadu.png"] },
 };
 
-export const dynamic = "force-dynamic";
+export const preferredRegion = "bom1";
 
-function resolveView(view?: string): "op" | "ex" | "rs" | "social" {
+function resolveView(view?: string): "op" | "ex" | "social" {
   if (view === "social") return "social";
-  if (view === "rs") return "rs";
   if (view === "ex" || view === "exit") return "ex";
   return "op";
 }
@@ -37,13 +36,13 @@ export default async function TamilNaduCaseStudyPage({
   searchParams: Promise<{ view?: string; slot?: string; profile?: string; match?: string; kind?: string; place?: string; label?: string; value?: string; average?: string; group?: string }>;
 }) {
   const params = await searchParams;
+  if (params.view === "rs") redirect("/case-studies/tamil-nadu?view=op");
   const session = await requirePageSession("/case-studies/tamil-nadu");
   if (!(await caseAllowed(session, "tamil-nadu"))) redirect("/no-access");
   const owner = session.role === "owner";
   const record = await getSurveyCached("tamil-nadu");
   const initialView = resolveView(params.view);
-  const sliced = record ? tnSurveySlice(record.data, { view: initialView, slot: params.slot, profile: params.profile }) : null;
-  const survey = sliced?.data ?? null;
+  const model = record ? tnClientModel(record.data, initialView, params.slot ?? "all") : null;
   const socialFilter: SocialFilter | null = params.match
     ? {
       match: params.match as SocialFilter["match"],
@@ -56,7 +55,7 @@ export default async function TamilNaduCaseStudyPage({
     }
     : null;
 
-  if (!survey) {
+  if (!model) {
     return (
       <main className="min-h-0 bg-white">
         <div className="mx-auto max-w-[1240px] px-4 pt-4 sm:px-6">
@@ -71,14 +70,12 @@ export default async function TamilNaduCaseStudyPage({
     <>
       <h1 className="sr-only">AIADMK · Tamil Nadu</h1>
       <TnSurveyDashboard
-        data={survey}
+        model={model}
         owner={owner}
         initialView={initialView}
         initialSlot={params.slot ?? "all"}
-        initialProfile={params.profile ?? sliced?.activeProfile ?? ""}
+        initialProfile={params.profile ?? ""}
         initialSocialFilter={socialFilter}
-        map={sliced?.map ?? null}
-        swing={sliced?.swing ?? { sources: { op: [], ex: [] } }}
       />
     </>
   );
