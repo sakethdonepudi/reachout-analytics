@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ArrowDownToLine, ArrowLeft, ChevronDown, Megaphone } from "lucide-react";
-import PartyCard from "@/components/case-studies/shared/party-card";
 import TnSocialMedia from "./tn-social-media";
 import type { SocialFilter } from "@/lib/survey/social-types";
 import TnProfileTable, { weightedAiadminAverage } from "./tn-profile-table";
@@ -394,23 +393,29 @@ export default function TnSurveyDashboard({
     <main className="relative min-h-0 bg-white text-[16px] text-[var(--p-ink)]">
       <div className={cn("fixed left-0 top-0 z-50 h-0.5 bg-[#0B0B0C] transition-all duration-200", slowLoad ? "w-full opacity-100" : "w-0 opacity-0")} aria-hidden />
       <div className="mx-auto w-full max-w-[1680px] px-4 pb-20 pt-20 sm:px-6 sm:pt-20 xl:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link href="/case-studies" className="inline-flex min-h-11! items-center gap-2 rounded-full border border-[#CFCFCF] bg-white px-3.5 py-1.5 text-[14px] text-[#6B6B6B] transition-colors hover:border-[#0B0B0C] hover:text-[#0B0B0C]">
-            <ArrowLeft className="size-4" /> Back to Case Studies
+        <header className="flex flex-wrap items-center gap-3">
+          <Link href="/case-studies" className="inline-flex min-h-11! shrink-0 items-center gap-2 rounded-full border border-[#CFCFCF] bg-white px-3.5 py-1.5 text-[14px] text-[#6B6B6B] transition-colors hover:border-[#0B0B0C] hover:text-[#0B0B0C]">
+            <ArrowLeft className="size-4" /><span className="hidden sm:inline">Back to Case Studies</span><span className="sm:hidden">Back</span>
           </Link>
+          <div className="inline-flex min-h-11! shrink-0 items-center gap-2 rounded-full border border-[#E4E2DA] bg-white py-1 pl-1 pr-3">
+            <span className="grid size-8 place-items-center rounded-full bg-[#F7F8FA]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/parties/aiadmk.png" alt="AIADMK symbol" width={28} height={19} className="h-auto w-7 object-contain" />
+            </span>
+            <span className="leading-tight">
+              <span className="block text-[13px] font-bold text-[#0B0B0C]">AIADMK</span>
+              <span className="block text-[10.5px] text-[#6B6B6B]">Tamil Nadu</span>
+            </span>
+          </div>
           {owner && (
-            <button type="button" onClick={() => void download()} disabled={downloading} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[13px] font-semibold text-[#0B0B0C] hover:bg-[#0B0B0C] hover:text-white disabled:opacity-50">
+            <button type="button" onClick={() => void download()} disabled={downloading} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[13px] font-semibold text-[#0B0B0C] hover:bg-[#0B0B0C] hover:text-white disabled:opacity-50 sm:ml-auto">
               <ArrowDownToLine className="size-4" /> {downloading ? "Preparing..." : "Download data"}
             </button>
           )}
-        </div>
-
-        <header className="mt-5 flex flex-wrap items-center justify-between gap-4">
-          <PartyCard party="AIADMK" state="Tamil Nadu" className="w-auto min-w-[220px]" />
-          <p className="text-[16px] font-medium text-[#555]">{int(model.n_total)} responses</p>
+          <p className={cn("w-full text-[15px] font-medium text-[#555] sm:w-auto sm:text-right", owner ? "sm:ml-0" : "sm:ml-auto")}>{int(model.n_total)} responses</p>
         </header>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {model.cards.map((card) => (
             <button key={card.key} type="button" aria-pressed={view === card.key} onMouseEnter={() => prefetch(card.key, "all")} onClick={() => { setDistrict(null); setAcNo(null); navigate({ view: card.key, slot: "all", profile: "", filter: null }); }}
               className={cn("tn-card rounded-2xl border-2 p-4 text-left transition-all", view === card.key ? "border-[#002147] bg-[#002147] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#002147]" : "border-[#D5D8DE] bg-[#F7F8FA] text-[#0B0B0C] hover:-translate-y-0.5 hover:border-[#9AA3AF]")}>
