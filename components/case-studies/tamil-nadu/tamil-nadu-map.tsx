@@ -7,12 +7,18 @@ import { MAP_STYLE, addMapLights, createScreenLine, setScreenLinePoints, updateL
 import AC_GEO from "@/lib/data/tamil-nadu/tn-acs.json";
 import DISTRICT_GEO from "@/lib/data/tamil-nadu/tn-districts.json";
 import {
-  TN_COLOR, TN_GROUPS, TN_LABEL, TN_NO_DATA, tnPct,
+  TN_COLOR, TN_GROUPS, TN_NO_DATA,
   type TnAc, type TnDistrict, type TnGroup, type TnShares, type TnYearOrCurrent,
 } from "@/lib/tamil-nadu/model";
+import { partyColour } from "@/lib/tamil-nadu/party-brand";
+import { PartyBadge } from "./party-badge";
 
 export type MapTheme = "light";
-export type MapMode = "state" | "district";
+export type TnMapHover = {
+  title: string;
+  leader: string | null;
+  rows: Array<{ party: string; value: number }>;
+};
 
 const BOX = 1000;
 const DEPTH = 10;
@@ -83,10 +89,8 @@ type Props = {
   acNo: number | null;
   year: TnYearOrCurrent;
   theme: MapTheme;
-  /** District fills, or every assembly constituency at once. */
-  mode?: "district" | "assembly";
-  /** Optional tooltip override, used by the uploaded survey map. */
-  tooltip?: (payload: { kind: "district" | "ac"; name: string; no?: number; district?: string }) => { sub: string; value: string; color?: string } | null;
+  /** The single hover card, shared by districts and assembly constituencies. */
+  tooltip?: (payload: { kind: "district" | "ac"; name: string; no?: number; district?: string }) => TnMapHover | null;
   /** Increment after a split resize to refit without changing selection. */
   fitKey?: number;
   onSelectDistrict: (name: string) => void;
@@ -168,14 +172,14 @@ function blendColor(blend: BlendInfo, t: number): THREE.Color {
   return gradientColor(blend.color1, blend.color2, blend.p1, t);
 }
 
-export default function TamilNaduMap({ acs, districts, district, acNo, year, theme, mode = "district", tooltip, fitKey = 0, onSelectDistrict, onSelectAc, onReset }: Props) {
+export default function TamilNaduMap({ acs, districts, district, acNo, year, theme, tooltip, fitKey = 0, onSelectDistrict, onSelectAc, onReset }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
-  const [tip, setTip] = useState<{ x: number; y: number; title: string; sub: string; value: string; color: string } | null>(null);
-  const live = useRef({ acs, districts, district, acNo, year, theme, mode, tooltip, onSelectDistrict, onSelectAc, onReset });
-  live.current = { acs, districts, district, acNo, year, theme, mode, tooltip, onSelectDistrict, onSelectAc, onReset };
+  const [tip, setTip] = useState<{ x: number; y: number; card: TnMapHover } | null>(null);
+  const live = useRef({ acs, districts, district, acNo, year, theme, tooltip, onSelectDistrict, onSelectAc, onReset });
+  live.current = { acs, districts, district, acNo, year, theme, tooltip, onSelectDistrict, onSelectAc, onReset };
   const acByNo = useMemo(() => new Map(acs.map((a) => [a.no, a])), [acs]);
   const acRef = useRef(acByNo); acRef.current = acByNo;
   const districtByName = useMemo(() => new Map(districts.map((d) => [d.name, d])), [districts]);
@@ -310,6 +314,11 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       const layer = new THREE.Group(); layer.visible = false; u.group.add(layer); acLayer.set(districtKey, layer);
       mapGroup.add(u.group);
     }
+    const stateBounds = { minx: Infinity, maxx: -Infinity, minz: Infinity, maxz: -Infinity };
+    for (const u of districtsUnits.values()) {
+      stateBounds.minx = Math.min(stateBounds.minx, u.bounds.minx); stateBounds.maxx = Math.max(stateBounds.maxx, u.bounds.maxx);
+      stateBounds.minz = Math.min(stateBounds.minz, u.bounds.minz); stateBounds.maxz = Math.max(stateBounds.maxz, u.bounds.maxz);
+    }
     let acBuilt = false;
     const buildAcs = () => {
       if (acBuilt) return;
@@ -360,6 +369,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       accent.line.visible = true;
     };
 
+    let stateDist = 1400;
     let cam = { tx: 0, tz: 0, ty: 0, dist: 2050, theta: 0, phi: 0.58 };
     let camTarget = { ...cam };
     let camAnim: { start: number; dur: number; from: typeof cam } | null = null;
@@ -449,12 +459,6 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       u.emissiveHex = blend.first ? blend.color1 : "#000000";
       u.cap.needsUpdate = true; u.side.needsUpdate = true;
     };
-    const tipValue = (b: BlendInfo) => {
-      if (!b.first) return "No data";
-      const first = `${TN_LABEL[b.first]} ${tnPct(b.firstShare)}`;
-      const second = b.second ? ` · ${TN_LABEL[b.second]} ${tnPct(b.secondShare)}` : "";
-      return `${first}${second} · lead ${b.marginPp == null ? "—" : b.marginPp.toFixed(1)} pp`;
-    };
     const setAcEmissive = (no: number | null, hover: boolean) => {
       if (no == null) return;
       const u = acUnits.get(no);
@@ -466,14 +470,14 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
 
     apiRef.current = {
       setSelection: (d, a, y) => {
-        if (live.current.mode === "assembly" || d || a != null) buildAcs();
+        if (d || a != null) buildAcs();
         const activeD = d ? districtsUnits.get(d) : null;
         const activeAC = a != null ? acUnits.get(a) : null;
         hoveredKey = null; hoveredNo = null; setTip(null); canvas.style.cursor = "grab";
         showAccent(activeAC?.no ?? null, !!activeAC);
         const mobileState = typeof window !== "undefined" && window.innerWidth < 640;
         const mobileLabels = new Set([...districtsUnits.keys()].sort((aKey, bKey) => (districtRef.current.get(bKey)?.survey.valid ?? 0) - (districtRef.current.get(aKey)?.survey.valid ?? 0)).slice(0, 10));
-        const assembly = live.current.mode === "assembly";
+        const assembly = false;
         for (const [name, u] of districtsUnits) {
           const selected = !!activeD && name === activeD.name;
           const acLayerGroup = acLayer.get(name); if (acLayerGroup) acLayerGroup.visible = !!activeD && selected;
@@ -513,22 +517,21 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         let bounds: { minx: number; maxx: number; minz: number; maxz: number } | null = null;
         if (activeAC) bounds = activeAC.bounds;
         else if (activeD) bounds = activeD.bounds;
+        else bounds = stateBounds;
         const hostRect = host.getBoundingClientRect();
         const vw = Math.max(320, hostRect.width), vh = Math.max(320, hostRect.height);
         const wide = typeof window !== "undefined" && window.innerWidth > 1024;
-        let centerX = 0, centerZ = 0, dist = Math.max(1450, Math.min(2600, 1900 * (700 / Math.max(320, vw))));
-        if (bounds) {
+        let centerX = 0, centerZ = 0, dist = 1450;
+        if (bounds && Number.isFinite(bounds.minx)) {
           centerX = (bounds.minx + bounds.maxx) / 2; centerZ = (bounds.minz + bounds.maxz) / 2;
           const W = Math.max(1, bounds.maxx - bounds.minx), H = Math.max(1, bounds.maxz - bounds.minz);
-          const availW = Math.max(220, vw - (wide ? 20 : 0));
-          const availH = Math.max(220, vh - 90);
+          const availW = Math.max(220, vw - (wide ? 34 : 18));
+          const availH = Math.max(220, vh - (activeAC || activeD ? 96 : 118));
           const fov = camera.fov * Math.PI / 180;
-          const fit = Math.max((H / 2) / Math.tan(fov / 2), (W / 2) / Math.tan(Math.atan(Math.tan(fov / 2) * (availW / availH)))) * (activeAC ? 2.25 : 1.45);
-          dist = Math.max(45, Math.min(3300, fit));
-          const shift = 0;
-          const worldPerPx = (2 * dist * Math.tan(fov / 2)) / availH;
-          centerX += shift * worldPerPx;
+          const fit = Math.max((H / 2) / Math.tan(fov / 2), (W / 2) / Math.tan(Math.atan(Math.tan(fov / 2) * (availW / availH)))) * (activeAC ? 1.32 : activeD ? 1.28 : 1.08);
+          dist = Math.max(45, Math.min(3600, fit));
         }
+        if (!activeD && !activeAC) stateDist = dist;
         startCamera({ tx: centerX, tz: centerZ, ty: activeAC ? 2.2 : activeD ? 0.8 : 0, dist, theta: 0, phi: 0.58 });
       },
       resetCamera: () => {
@@ -537,6 +540,12 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         startCamera({ tx: 0, tz: 0, ty: 0, dist, theta: 0, phi: 0.58 });
       },
       zoomBy: (factor: number) => {
+        if (factor < 1 && !live.current.district) {
+          const r = canvas.getBoundingClientRect();
+          const hit = hitAt(r.left + r.width / 2, r.top + r.height / 2);
+          if (hit && hit.object.userData.kind === "district") { live.current.onSelectDistrict(canonicalDistrict(hit.object.userData.district as string)); return; }
+        }
+        if (factor > 1 && live.current.district && camTarget.dist * factor >= stateDist * 0.92) { live.current.onReset(); return; }
         startCamera({ ...camTarget, dist: Math.max(35, Math.min(3300, camTarget.dist * factor)) });
       },
     };
@@ -593,17 +602,30 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         if (collides && u.kind === "ac" && u.no !== live.current.acNo) { u.label.style.visibility = "hidden"; continue; }
         let dx = 0, dy = 0;
         if (u.kind === "district") {
-          const offset = LABEL_OFFSET[u.name];
-          if (offset) { dx = offset.x; dy = offset.y; }
-          if (collides) {
+          const base = LABEL_OFFSET[u.name] ?? { x: 0, y: 0 };
+          const candidate = [
+            { x: base.x, y: base.y },
+            { x: base.x + 40, y: base.y }, { x: base.x - 40, y: base.y },
+            { x: base.x, y: base.y - 20 }, { x: base.x, y: base.y + 20 },
+            { x: base.x + 36, y: base.y - 16 }, { x: base.x - 36, y: base.y + 16 },
+            { x: base.x + 36, y: base.y + 16 }, { x: base.x - 36, y: base.y - 16 },
+          ].find((offset) => {
+            const l = box.l + offset.x, r = box.r + offset.x, t = box.t + offset.y, b = box.b + offset.y;
+            return l >= 2 && r <= rect.width - 2 && t >= 2 && b <= rect.height - 2 && !boxes.some((other) => l < other.r && r > other.l && t < other.b && b > other.t);
+          });
+          if (candidate) { dx = candidate.x; dy = candidate.y; }
+          else {
             const seed = [...u.name].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-            dx += (seed % 2 === 0 ? 1 : -1) * 18;
-            dy += (seed % 3 - 1) * 16;
+            dx = base.x + (seed % 2 === 0 ? 1 : -1) * 22;
+            dy = base.y + (seed % 3 - 1) * 18;
           }
         }
-        boxes.push({ l: box.l + dx, r: box.r + dx, t: box.t + dy, b: box.b + dy });
+        const halfW = w / 2 + 3, halfH = h / 2 + 3;
+        const px = Math.min(rect.width - halfW, Math.max(halfW, sx + dx));
+        const py = Math.min(rect.height - halfH, Math.max(halfH, sy + dy));
+        boxes.push({ l: px - halfW, r: px + halfW, t: py - halfH, b: py + halfH });
         u.label.style.visibility = "visible";
-        u.label.style.transform = `translate(${sx + dx}px,${sy + dy}px) translate(-50%,-50%)`;
+        u.label.style.transform = `translate(${px}px,${py}px) translate(-50%,-50%)`;
       }
       renderer.render(scene, camera);
       if (!disposed) raf = requestAnimationFrame(render);
@@ -654,14 +676,15 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         canvas.style.cursor = "pointer";
         if (kind === "district") {
           showAccent(live.current.acNo, true);
-          const blend = blendForDistrict(districtRef.current.get(canonicalDistrict(data.district)), live.current.year);
-          const custom = live.current.tooltip?.({ kind: "district", name: canonicalDistrict(data.district) });
-          setTip({ x: e.clientX, y: e.clientY, title: canonicalDistrict(data.district), sub: custom?.sub ?? (live.current.year === "2026" ? "2026 estimated vote share" : `${live.current.year} result`), value: custom?.value ?? tipValue(blend), color: custom?.color ?? blend.color });
+          const name = canonicalDistrict(data.district);
+          const custom = live.current.tooltip?.({ kind: "district", name });
+          setTip({ x: e.clientX, y: e.clientY, card: custom ?? { title: name, leader: null, rows: [] } });
         } else {
           showAccent(data.no as number, data.no === live.current.acNo);
-          const a = acRef.current.get(data.no as number); const blend = blendForAc(a, live.current.year);
-          const custom = live.current.tooltip?.({ kind: "ac", name: a?.name ?? `AC ${data.no}`, no: data.no as number, district: canonicalDistrict(data.district) });
-          setTip({ x: e.clientX, y: e.clientY, title: a?.name ?? `AC ${data.no}`, sub: custom?.sub ?? `${canonicalDistrict(data.district)} · ${live.current.year === "2026" ? "estimated vote share" : live.current.year}`, value: custom?.value ?? tipValue(blend), color: custom?.color ?? blend.color });
+          const a = acRef.current.get(data.no as number);
+          const name = a?.name ?? `AC ${data.no}`;
+          const custom = live.current.tooltip?.({ kind: "ac", name, no: data.no as number, district: canonicalDistrict(data.district) });
+          setTip({ x: e.clientX, y: e.clientY, card: custom ?? { title: name, leader: null, rows: [] } });
         }
       } else setTip((t) => t ? { ...t, x: e.clientX, y: e.clientY } : t);
     };
@@ -685,7 +708,13 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
-      const next = Math.max(35, Math.min(3300, camTarget.dist * (1 + e.deltaY * 0.0012)));
+      const factor = 1 + e.deltaY * 0.0012;
+      const next = Math.max(35, Math.min(3300, camTarget.dist * factor));
+      if (factor < 1 && !live.current.district) {
+        const hit = hitAt(e.clientX, e.clientY);
+        if (hit && hit.object.userData.kind === "district") { live.current.onSelectDistrict(canonicalDistrict(hit.object.userData.district as string)); return; }
+      }
+      if (factor > 1 && live.current.district && next >= stateDist * 0.92) { live.current.onReset(); return; }
       startCamera({ ...camTarget, dist: next });
     };
     let touchState: { startDist: number; startMidX: number; startMidY: number; dist: number; theta: number; phi: number } | null = null;
@@ -729,7 +758,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
   useEffect(() => {
     if (!ready) return;
     apiRef.current?.setSelection(district, acNo, year);
-  }, [ready, district, acNo, year, acs, districts, fitKey, mode]);
+  }, [ready, district, acNo, year, acs, districts, fitKey]);
 
   return (
     <div className="relative h-full w-full">
@@ -742,12 +771,37 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         <button type="button" aria-label="Zoom out" onClick={() => apiRef.current?.zoomBy(1.25)} className="grid size-11! place-items-center border-t border-[#EAEAEA] text-[20px] font-semibold text-[#0B0B0C] hover:bg-[#F4F4F5]">−</button>
       </div>
       <p className="pointer-events-none absolute bottom-2 left-2 z-10 rounded bg-white/80 px-2 py-1 text-[9px] text-[#6B6B6B]">Ctrl + scroll to zoom</p>
-      {tip && <div data-testid="map-tooltip" className="pointer-events-none fixed z-[var(--z-dropdown)] max-w-[240px] rounded-lg border border-border bg-card/95 px-2.5 py-2 text-[10px] shadow-xl" style={{ left: Math.min(tip.x + 12, window.innerWidth - 255), top: Math.max(8, tip.y - 12) }}>
-        <div className="font-semibold" style={{ color: tip.color }}>{tip.title}</div>
-        <div className="text-[9px] text-muted-foreground">{tip.sub}</div>
-        <div className="mt-0.5 tabular-nums text-foreground/85">{tip.value}</div>
-      </div>}
-      <div className="sr-only" aria-live="polite">{tip ? `${tip.title}: ${tip.value}` : ""}</div>
+      {tip && (() => {
+        const width = 232;
+        const height = 46 + tip.card.rows.length * 23;
+        const viewportW = typeof window === "undefined" ? 1440 : window.innerWidth;
+        const viewportH = typeof window === "undefined" ? 900 : window.innerHeight;
+        const left = tip.x + 12 + width > viewportW - 8 ? Math.max(8, tip.x - 12 - width) : tip.x + 12;
+        const top = tip.y + 12 + height > viewportH - 8 ? Math.max(8, tip.y - 12 - height) : tip.y + 12;
+        return (
+          <div data-testid="map-tooltip" className="tn-tooltip pointer-events-none fixed z-[var(--z-dropdown)] rounded-2xl border border-[#E4E4E7] bg-white p-3 shadow-[0_18px_46px_-18px_rgba(0,0,0,0.35)]" style={{ left, top, width, borderLeft: `4px solid ${partyColour(tip.card.leader ?? "")}` }}>
+            <div className="flex items-center gap-2 border-b border-[#F0F0F0] pb-2">
+              {tip.card.leader && <PartyBadge party={tip.card.leader} size={20} />}
+              <span className="min-w-0 truncate text-[14px] font-semibold text-[#0B0B0C]">{tip.card.title}</span>
+            </div>
+            {tip.card.rows.length ? (
+              <ul className="mt-1.5 space-y-0.5">
+                {tip.card.rows.map((row) => (
+                  <li key={row.party} className={row.party === tip.card.leader ? "flex items-center gap-1.5 text-[13px] font-bold text-[#0B0B0C]" : "flex items-center gap-1.5 text-[13px] text-[#555]"}>
+                    <PartyBadge party={row.party} size={16} />
+                    <span className="size-2 rounded-[2px]" style={{ background: partyColour(row.party) }} aria-hidden />
+                    <span className="flex-1 truncate">{row.party}</span>
+                    <span className="tabular-nums">{row.value.toFixed(1)}%</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1.5 text-[13px] text-[#6B6B6B]">No data / under 30</p>
+            )}
+          </div>
+        );
+      })()}
+      <div className="sr-only" aria-live="polite">{tip ? `${tip.card.title}: ${tip.card.rows.map((row) => `${row.party} ${row.value.toFixed(1)}%`).join(", ")}` : ""}</div>
     </div>
   );
 }

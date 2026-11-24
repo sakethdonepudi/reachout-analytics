@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { ArrowDownToLine, ArrowLeft, ChevronDown, Megaphone, RotateCcw } from "lucide-react";
+import { ArrowDownToLine, ArrowLeft, ChevronDown, Megaphone } from "lucide-react";
 import PartyCard from "@/components/case-studies/shared/party-card";
 import TnSocialMedia from "./tn-social-media";
 import type { SocialFilter } from "@/lib/survey/social-types";
@@ -180,7 +180,6 @@ export default function TnSurveyDashboard({
   const [socialFilter, setSocialFilter] = useState<SocialFilter | null>(initialSocialFilter ?? null);
   const [district, setDistrict] = useState<string | null>(null);
   const [acNo, setAcNo] = useState<number | null>(null);
-  const [mapMode, setMapMode] = useState<"district" | "assembly">("district");
   const [downloading, setDownloading] = useState(false);
   const [mapMounted, setMapMounted] = useState(false);
   const [mapLoading, setMapLoading] = useState(false);
@@ -474,14 +473,14 @@ export default function TnSurveyDashboard({
 
             <div className="mt-3"><VoteShareHero expected={expected} parties={parties} slotKey={slot.key} /></div>
 
-            <section className="relative mt-3 rounded-2xl border border-[#EAEAEA] bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.035)] sm:p-4" aria-label="Tamil Nadu map">
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <div className="inline-flex rounded-full bg-[#F4F4F5] p-1" role="group" aria-label="Map detail">
-                  {(["district", "assembly"] as const).map((mode) => (
-                    <button key={mode} type="button" aria-pressed={mapMode === mode} onMouseEnter={() => prefetch(periodKey, slot.key)} onClick={() => setMapMode(mode)} className={cn("min-h-11! rounded-full px-4 text-[13px] font-semibold capitalize", mapMode === mode ? "bg-white text-[#0B0B0C] shadow-sm" : "text-[#6B6B6B]")}>{mode}</button>
-                  ))}
-                </div>
-                {(district || acNo != null) && <button type="button" onClick={() => { setDistrict(null); setAcNo(null); }} className="inline-flex min-h-11! items-center gap-1 text-[13px] font-semibold text-[#0B0B0C] underline"><RotateCcw className="size-3.5" /> Reset map</button>}
+            <section className="relative mt-3 scroll-mt-28 rounded-2xl border border-[#EAEAEA] bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.035)] sm:p-4" aria-label="Tamil Nadu map">
+              <div className="mb-2 flex h-11 items-center justify-between gap-2">
+                <p className="text-[13px] font-semibold text-[#6B6B6B]">{district ?? (acNo != null ? `Assembly constituency ${acNo}` : "Tamil Nadu districts")}</p>
+                {(district || acNo != null) && (
+                  <button type="button" onClick={() => { setDistrict(null); setAcNo(null); }} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[#CFCFCF] bg-white px-3.5 text-[13px] font-semibold text-[#0B0B0C] transition-colors hover:border-[#0B0B0C] hover:bg-[#FAFAFA]">
+                    <ArrowLeft className="size-4" /> Back to state
+                  </button>
+                )}
               </div>
               <div className={cn("relative h-[380px] overflow-hidden rounded-xl border border-[#EAEAEA] bg-[#FBFAF7] transition-opacity md:h-[680px] xl:h-[700px]", mapLoading && "opacity-60")}>
                 {mapMounted ? <TamilNaduMap
@@ -491,18 +490,20 @@ export default function TnSurveyDashboard({
                   acNo={acNo}
                   year="2026"
                   theme="light"
-                  mode={mapMode}
                   fitKey={0}
                   onSelectDistrict={(name) => { setDistrict(name); setAcNo(null); }}
                   onSelectAc={(no) => setAcNo(no)}
                   onReset={() => { setDistrict(null); setAcNo(null); }}
                   tooltip={(payload) => {
                     const row = payload.kind === "district" ? map.districtRows[canonicalDistrictName(payload.name)] : payload.no != null ? map.acRows[String(payload.no)] : undefined;
-                    if (!row || !row.shares) return { sub: `${slot.label} · No data`, value: "No data", color: "#94A3B8" };
+                    const shares = row?.shares as Record<string, number> | null | undefined;
+                    const ranked = parties
+                      .map((party) => ({ party, value: Number(shares?.[GROUP_KEY[party] ?? party] ?? 0) * 100 }))
+                      .sort((a, b) => b.value - a.value);
                     return {
-                      sub: `${payload.kind === "ac" && payload.district ? `${payload.district} · ` : ""}${slot.label} · ${int(row.n)} responses`,
-                      value: `${parties.map((party) => `${party} ${pct(((row.shares as Record<string, number> | null)?.[GROUP_KEY[party] ?? party] ?? 0) * 100)}`).join(" · ")}${row.marginPp == null ? "" : ` · lead ${row.marginPp.toFixed(1)} pp`}`,
-                      color: colour(row.leader ?? ""),
+                      title: payload.name,
+                      leader: shares && ranked[0] && ranked[0].value > 0 ? ranked[0].party : null,
+                      rows: shares ? ranked : [],
                     };
                   }}
                 /> : <div className="grid h-full place-items-center text-[14px] text-[#6B6B6B]">Preparing map...</div>}
