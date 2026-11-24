@@ -26,10 +26,10 @@ const AC_DEPTH = 3;
 const AC_LIFT = 1.6;
 const SELECTED_LIFT = 3.6;
 const BOUNDARY_Y = DEPTH + AC_DEPTH + 0.16;
-const ANIM_MS = 720;
+const ANIM_MS = 340;
 const CX = BOX / 2;
 const CZ = BOX / 2;
-const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 type AcFeature = { type: "Feature"; properties: { no: number; name: string; district: string; centroid?: [number, number] }; geometry: { type: string; coordinates: unknown } };
@@ -402,7 +402,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
     const updateUnit = (u: Unit, now: number) => {
       if (u.anim) {
         const t = u.anim.dur <= 0 ? 1 : Math.max(0, Math.min(1, (now - u.anim.start) / u.anim.dur));
-        const e = easeInOut(t);
+        const e = easeOut(t);
         u.opacity = lerp(u.anim.fromO, u.anim.toO, e);
         u.lineOpacity = lerp(u.anim.fromL, u.anim.toL, e);
         u.y = lerp(u.anim.fromY, u.anim.toY, e);
@@ -418,7 +418,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
     const updateBoundary = (now: number) => {
       if (boundaryStart) {
         const t = reduced ? 1 : Math.max(0, Math.min(1, (now - boundaryStart) / ANIM_MS));
-        boundaryOpacity = lerp(boundaryFrom, boundaryTarget, easeInOut(t));
+        boundaryOpacity = lerp(boundaryFrom, boundaryTarget, easeOut(t));
         if (t >= 1) boundaryStart = 0;
       }
       boundary.material.opacity = boundaryOpacity;
@@ -426,7 +426,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       boundary.line.position.y = boundaryOpacity > 0.01 ? AC_LIFT - 2 : 0;
       if (districtStart) {
         const t = reduced ? 1 : Math.max(0, Math.min(1, (now - districtStart) / ANIM_MS));
-        districtOpacity = lerp(districtFrom, districtTarget, easeInOut(t));
+        districtOpacity = lerp(districtFrom, districtTarget, easeOut(t));
         if (t >= 1) districtStart = 0;
       }
       stateOutline.material.opacity = districtOpacity;
@@ -559,7 +559,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
     const updateCamera = (now: number) => {
       if (camAnim) {
         const t = camAnim.dur <= 0 ? 1 : Math.max(0, Math.min(1, (now - camAnim.start) / camAnim.dur));
-        const e = easeInOut(t);
+        const e = easeOut(t);
         cam = {
           tx: lerp(camAnim.from.tx, camTarget.tx, e), tz: lerp(camAnim.from.tz, camTarget.tz, e), ty: lerp(camAnim.from.ty, camTarget.ty, e),
           dist: lerp(camAnim.from.dist, camTarget.dist, e), theta: lerp(camAnim.from.theta, camTarget.theta, e), phi: lerp(camAnim.from.phi, camTarget.phi, e),
