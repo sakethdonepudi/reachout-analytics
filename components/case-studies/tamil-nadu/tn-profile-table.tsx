@@ -115,7 +115,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                     {dmkFlag && <span className="ml-1 rounded-full border border-[#e52020] px-1 py-0.5 text-[10.5px] font-bold text-[#e52020]">Need Target promotion</span>}
                     {geo && (
                       <button type="button" onClick={() => onCampaigns({ kind: profileKey, place: row.g })} className="ml-1 rounded-full border border-[#1f6fd1] px-1.5 py-0.5 text-[10.5px] font-bold text-[#1f6fd1] hover:bg-[#EFF6FF]">
-                        Campaigns
+                        Campaigns ↗
                       </button>
                     )}
                   </td>

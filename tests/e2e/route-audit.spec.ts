@@ -214,7 +214,7 @@ async function clickTab(page: Page, name: RegExp) {
     }
     await page.getByRole("tab", { name: "Zone" }).click();
     await page.waitForTimeout(400);
-    const campaignsLink = page.getByRole("button", { name: "Campaigns" }).first();
+    const campaignsLink = page.getByRole("button", { name: /^Campaigns/ }).first();
     if (await campaignsLink.isVisible().catch(() => false)) {
       await campaignsLink.click();
       await page.waitForTimeout(1500);
