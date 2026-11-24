@@ -173,8 +173,8 @@ function PeriodTimeline({
         </button>
       </div>
       <div className="relative mt-5 hidden min-[640px]:block">
-        <span className="period-connector absolute left-[10%] right-[10%] top-[14px] hidden h-px min-[1024px]:block" aria-hidden />
-        <div className="relative grid grid-cols-2 gap-4 min-[1024px]:grid-cols-4" onKeyDown={onKeyDown} role="group" aria-label="Campaign period filter">
+        <span className="period-connector absolute top-[14px] hidden h-px min-[640px]:block" style={{ left: `${50 / Math.max(1, periods.length)}%`, right: `${50 / Math.max(1, periods.length)}%` }} aria-hidden />
+        <div className={cn("relative grid grid-cols-2 gap-4", periods.length === 3 ? "min-[640px]:grid-cols-3" : "min-[1024px]:grid-cols-4")} onKeyDown={onKeyDown} role="group" aria-label="Campaign period filter">
           {periods.map((period, index) => (
             <div key={`${period.key}-h`} className="flex flex-col items-center">
               <span className={cn("period-dot z-10 grid size-7 place-items-center rounded-full border-2 bg-[color:var(--theme-surface)] text-[12px] font-bold", selected === period.key ? "border-[color:var(--period-ink)] text-[color:var(--period-ink)]" : "border-[color:var(--theme-border)] text-[color:var(--theme-text-3)]")}>{index + 1}</span>

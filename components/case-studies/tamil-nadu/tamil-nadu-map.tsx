@@ -19,6 +19,11 @@ export default function TamilNaduMap(props: Omit<SurveyMapProps, "acGeo" | "dist
       labelOffset={TN_CONFIG.map.labelOffset}
       mobileLabelOffset={TN_CONFIG.map.mobileLabelOffset}
       districtAlias={TN_CONFIG.map.districtAlias}
+      fillMode="gradient"
+      mobileLabelCount={10}
+      mobileForcedLabels={["Chennai", "Kanniyakumari"]}
+      stateTilt={0.82}
+      stateFit={1}
     />
   );
 }

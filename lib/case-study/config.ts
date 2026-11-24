@@ -44,6 +44,12 @@ export type CaseStudyConfig = {
     labelOffset: Record<string, { x: number; y: number }>;
     mobileLabelOffset: Record<string, { x: number; y: number }>;
     shareKey: Record<string, string>;
+    fillMode?: "gradient" | "flat";
+    mobileLabelCount?: number;
+    tilt?: number;
+    fit?: number;
+    centerZ?: number;
+    rotation?: number;
   };
   social: { stateName: string; targetName: string; fallbackPattern: string; fallbackLabel: string };
   brand: Record<string, CasePartyBrand>;
@@ -62,7 +68,7 @@ const TN_LABEL_OFFSET: Record<string, { x: number; y: number }> = {
 };
 
 const AP_LABEL_OFFSET: Record<string, { x: number; y: number }> = {
-  Srikakulam: { x: -46, y: -8 }, Vizianagaram: { x: -36, y: 8 }, "Parvathipuram Manyam": { x: -60, y: -10 },
+  Srikakulam: { x: 24, y: -16 }, Vizianagaram: { x: -18, y: 12 }, "Parvathipuram Manyam": { x: -60, y: -10 },
   Visakhapatnam: { x: 40, y: 16 }, Anakapalli: { x: 22, y: -14 }, "Alluri Sitharama Raju": { x: -50, y: -24 },
   Kakinada: { x: 54, y: -30 }, "East Godavari": { x: 4, y: 26 }, Konaseema: { x: 38, y: 28 }, Polavaram: { x: 8, y: -16 },
   "West Godavari": { x: -22, y: 22 }, Eluru: { x: 10, y: 0 }, NTR: { x: -38, y: -24 }, Krishna: { x: -14, y: 22 },
@@ -106,21 +112,21 @@ export const AP_CONFIG: CaseStudyConfig = {
   cardKeys: ["op", "ex", "rd"], cardStyle: "ap", defaultView: "op", mapPeriod: "op", apiBase: "/api/survey/ap", socialState: "andhra-pradesh-2024", shareLabel: { op: "2024 vote share", ex: "2024 vote share", rd: "2029 projection" },
   periodLabels: { op: "Month", ex: "Month", rd: "Year" }, monthLabel: "Month",
   profileOrder: {
-    op: ["zone", "area", "dist", "ac", "v19", "month", "form"],
-    ex: ["zone", "area", "dist", "ac", "v19", "month", "form"],
-    rd: ["zone", "area", "dist", "ac", "v24", "govt", "mla", "scheme", "super6", "corrupt", "leader", "expect", "caste", "age", "sex", "urb"],
+    op: ["zone", "area", "dist", "ac"],
+    ex: ["zone", "area", "dist", "ac"],
+    rd: ["zone", "area", "dist", "ac", "v24", "govt", "mla", "scheme", "super6", "corrupt", "leader", "expect", "caste"],
   },
   profileGroups: {
-    op: [{ label: "Region", keys: ["zone", "area", "dist", "ac"] }, { label: "Vote & feedback", keys: ["v19", "month", "form"] }],
-    ex: [{ label: "Region", keys: ["zone", "area", "dist", "ac"] }, { label: "Vote & feedback", keys: ["v19", "month", "form"] }],
-    rd: [{ label: "Region", keys: ["zone", "area", "dist", "ac"] }, { label: "Vote & feedback", keys: ["v24", "govt", "mla", "scheme", "super6", "corrupt", "leader", "expect", "caste", "age", "sex", "urb"] }],
+    op: [{ label: "Region", keys: ["zone", "area", "dist", "ac"] }],
+    ex: [{ label: "Region", keys: ["zone", "area", "dist", "ac"] }],
+    rd: [{ label: "Region", keys: ["zone", "area", "dist", "ac"] }, { label: "Vote & feedback", keys: ["v24", "govt", "mla", "scheme", "super6", "corrupt", "leader", "expect", "caste"] }],
   },
   target: { party: "YSRCP", mode: "leads", periods: ["op", "ex", "rd"], pillParty: "NDA", tooltipGeo: "YSRCP leads: open look-alike ad campaigns", tooltipOther: "YSRCP leads in this voter group: open post-2024 campaigns to retarget" },
   swing: { fromLabel: { op: "19→24", ex: "19→24", rd: "24→29" }, toLabel: { op: "19→24", ex: "19→24", rd: "24→29" }, showActual: ["op", "ex"] },
-  map: { heading: "Andhra Pradesh", totalSeats: 175, majority: 88, districtAlias: { Anantapur: "Ananthapuramu", ASR: "Alluri Sitharama Raju" }, labelOffset: AP_LABEL_OFFSET, mobileLabelOffset: {}, shareKey: { NDA: "NDA", YSRCP: "YSRCP", INC: "INC", Others: "Others" } },
+  map: { heading: "Andhra Pradesh", totalSeats: 175, majority: 88, districtAlias: { Anantapur: "Ananthapuramu", ASR: "Alluri Sitharama Raju" }, labelOffset: AP_LABEL_OFFSET, mobileLabelOffset: {}, shareKey: { NDA: "NDA", YSRCP: "YSRCP", INC: "INC", Others: "Others" }, fillMode: "flat", mobileLabelCount: 8, tilt: 0.6, fit: 1, centerZ: 35, rotation: 0.22 },
   social: { stateName: "Andhra Pradesh", targetName: "YSRCP", fallbackPattern: "ysrcp|jagan|yeduguri|saila|fan", fallbackLabel: "YSRCP campaigns" },
   brand: {
-    NDA: { color: "var(--ap-party-nda)", logo: "/parties/tdp.png", plus: 2 },
+    NDA: { color: "var(--ap-party-nda)", logo: "/parties/tdp.png" },
     YSRCP: { color: "var(--ap-party-ysrcp)", logo: "/parties/ysrcp.svg", mask: true },
     INC: { color: "var(--ap-party-inc)", logo: "/parties/inc.png" },
     Others: { color: "var(--ap-party-others)", monogram: "OTH" },

@@ -21,7 +21,7 @@ export function PartyBadge({
 }) {
   const brand = partyBrand(party);
   const px = Math.max(12, size);
-  const inner = Math.round(px * 0.64);
+  const inner = Math.round(px * (brand.mask ? 0.76 : 0.64));
   const monogram = brand.monogram;
   return (
     <span

@@ -163,10 +163,30 @@ async function clickTab(page: Page, name: RegExp) {
     record("/case-studies/andhra-pradesh-2024", "Top cards", "client", "Opinion, Exit, Post-poll, Social", apCards.join(", "), apCards.every(Boolean));
     record("/case-studies/andhra-pradesh-2024", "Opinion values", "client", "NDA 55.9, YSRCP 41.4, seats 154–21", apBody.includes("NDA 55.9%") && apBody.includes("YSRCP 41.4%") && apBody.includes("seats 154–21") ? "visible" : "missing", apBody.includes("NDA 55.9%") && apBody.includes("YSRCP 41.4%") && apBody.includes("seats 154–21"));
     record("/case-studies/andhra-pradesh-2024", "Post-poll card", "client", "latest projection 42–133", apBody.includes("NDA 45.5%") && apBody.includes("YSRCP 51.9%") && apBody.includes("seats 42–133") ? "visible" : "missing", apBody.includes("NDA 45.5%") && apBody.includes("YSRCP 51.9%") && apBody.includes("seats 42–133"));
+    for (const width of [1024, 1180, 1280, 1440, 1920]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.waitForTimeout(220);
+      const overlap = await page.evaluate(`(() => {
+        const r = (s) => { const el = document.querySelector(s); if (!el) return null; const b = el.getBoundingClientRect(); const cs = getComputedStyle(el); return cs.display === "none" ? null : { l: b.left, r: b.right, t: b.top, b: b.bottom, h: b.height }; };
+        const boxes = { title: r("[data-social-title]"), subtitle: r("[data-social-subtitle]"), icons: r("[data-social-icons]"), sparkline: r("[data-social-card] svg[aria-label='Monthly reach']") };
+        const entries = Object.entries(boxes).filter(([, value]) => value);
+        const hits = [];
+        for (let i = 0; i < entries.length; i += 1) for (let j = i + 1; j < entries.length; j += 1) {
+          const [an, a] = entries[i]; const [bn, b] = entries[j];
+          if (a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t) hits.push(an + "/" + bn);
+        }
+        return { boxes, hits };
+      })()`) as { boxes: Record<string, { h: number } | null>; hits: string[] };
+      record("/case-studies/andhra-pradesh-2024", `Social card overlap ${width}`, "client", "title, subtitle, icons and sparkline do not intersect", JSON.stringify(overlap.boxes), overlap.hits.length === 0 && (overlap.boxes.title?.h ?? 99) < 32 && (overlap.boxes.subtitle?.h ?? 99) < 28);
+    }
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.waitForTimeout(250);
+    const apOpTabs = await page.locator("[data-profile-tab]").allTextContents();
+    record("/case-studies/andhra-pradesh-2024", "Opinion tabs", "client", "Zone, Area, District, Assembly constituency only", apOpTabs.join(", "), JSON.stringify(apOpTabs) === JSON.stringify(["Zone", "Area", "District", "Assembly constituency"]));
     const apPartyCards = ["NDA · expected", "YSRCP · expected", "INC · expected", "Others · expected"];
     record("/case-studies/andhra-pradesh-2024", "Party cards", "client", "4 expected cards", String(apPartyCards.filter((label) => apBody.includes(label)).length), apPartyCards.every((label) => apBody.includes(label)));
     const apGroups = await page.getByRole("group", { name: "Voter profile" }).innerText();
-    record("/case-studies/andhra-pradesh-2024", "Profile groups", "client", "Region and Vote & feedback", apGroups.replace(/\n+/g, ", "), /region/i.test(apGroups) && /vote & feedback/i.test(apGroups));
+    record("/case-studies/andhra-pradesh-2024", "Profile groups", "client", "Region only on opinion", apGroups.replace(/\n+/g, ", "), /region/i.test(apGroups) && !/vote & feedback/i.test(apGroups));
     record("/case-studies/andhra-pradesh-2024", "Target absent in opinion", "client", "no YSRCP lead row", String(await page.locator('button[aria-label^="Target Campaign"]:visible').count()), (await page.locator('button[aria-label^="Target Campaign"]:visible').count()) === 0);
     await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd&profile=govt`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2600);
@@ -183,6 +203,9 @@ async function clickTab(page: Page, name: RegExp) {
     await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2600);
     const apSlots = (await page.getByRole("group", { name: "Survey time slot" }).innerText()).replace(/\n+/g, ", ");
+    const apRdTabs = await page.locator("[data-profile-tab]").allTextContents();
+    record("/case-studies/andhra-pradesh-2024", "Post-poll tabs", "client", "13 HTML tabs only", apRdTabs.join(", "), JSON.stringify(apRdTabs) === JSON.stringify(["Zone", "Area", "District", "Assembly constituency", "2024 vote", "Govt performance", "MLA performance", "Better schemes", "Super Six", "Corruption", "Preferred leader", "Top expectation", "Social category"]));
+    record("/case-studies/andhra-pradesh-2024", "No row campaign buttons", "client", "Leading column has no Campaigns link", String(await page.getByRole("button", { name: /^Campaigns/ }).count()), (await page.getByRole("button", { name: /^Campaigns/ }).count()) === 0);
     record("/case-studies/andhra-pradesh-2024", "Post-poll years", "client", "All years, 2024, 2025, 2026", apSlots, apSlots.includes("All years") && apSlots.includes("2024") && apSlots.includes("2025") && apSlots.includes("2026"));
     await page.getByRole("button", { name: /^2026/ }).click();
     await page.waitForTimeout(700);
@@ -192,6 +215,8 @@ async function clickTab(page: Page, name: RegExp) {
     await page.waitForTimeout(3000);
     const apSocialBody = await page.locator("body").innerText();
     record("/case-studies/andhra-pradesh-2024", "Social overview", "client", "three periods and no money", `${await page.locator("[data-period-card]").count()} cards`, (await page.locator("[data-period-card]").count()) >= 3 && !/₹|\bspend\b|\bINR\b/i.test(apSocialBody));
+    const apPeriodOrder = [apSocialBody.indexOf("Opinion poll period"), apSocialBody.indexOf("Exit poll / election period"), apSocialBody.indexOf("After the 2024 result")];
+    record("/case-studies/andhra-pradesh-2024", "Social period order", "client", "Opinion, Exit, After the result", apPeriodOrder.join(", "), apPeriodOrder[0] >= 0 && apPeriodOrder[0] < apPeriodOrder[1] && apPeriodOrder[1] < apPeriodOrder[2]);
     const apOverviewResponse = await page.evaluate(async () => (await fetch("/api/survey/social?state=andhra-pradesh-2024")).json());
     const apAccountNames: string[] = (apOverviewResponse.overview?.accounts ?? []).map((item: { name: string }) => item.name);
     record("/case-studies/andhra-pradesh-2024", "AP account names", "client", "owner-provided names visible", `${apAccountNames.length} accounts`, ["Districts AIADMK", "Amazon", "Niagara water falls", "Drama DMK"].every((name) => apAccountNames.includes(name)));

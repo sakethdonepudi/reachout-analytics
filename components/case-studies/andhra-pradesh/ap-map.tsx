@@ -21,6 +21,14 @@ export default function ApMap(props: Omit<SurveyMapProps, "acGeo" | "districtGeo
       labelOffset={AP_CONFIG.map.labelOffset}
       mobileLabelOffset={AP_CONFIG.map.mobileLabelOffset}
       districtAlias={AP_CONFIG.map.districtAlias}
+      fillMode={AP_CONFIG.map.fillMode}
+      mobileLabelCount={AP_CONFIG.map.mobileLabelCount ?? 8}
+      mobileForcedLabels={[]}
+      avoidDistrictCollisions
+      stateTilt={AP_CONFIG.map.tilt}
+      stateFit={AP_CONFIG.map.fit}
+      stateCenterZ={AP_CONFIG.map.centerZ}
+      mapRotation={AP_CONFIG.map.rotation}
     />
   );
 }

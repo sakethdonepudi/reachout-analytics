@@ -94,6 +94,8 @@ export async function apSocialOverview(data: SurveyData, owner = false): Promise
     const parsed = /^(.*?)\s*\((.*)\)\s*$/.exec(label);
     return { key, label, name: parsed?.[1]?.trim() ?? label, range: parsed?.[2]?.trim() ?? "", campaigns: number(item.n), reach: number(item.reach), impressions: number(item.impr) || metrics.impressions, views: number(item.views) || metrics.views, clicks: number(item.clicks), engagements: number(item.eng) || metrics.engagements, ...(item.responses != null ? { responses: number(item.responses) } : {}) };
   });
+  const rank: Record<string, number> = { op: 0, ex: 1, rd: 2 };
+  periods.sort((left, right) => (rank[left.key] ?? 9) - (rank[right.key] ?? 9));
   return {
     label: text(ads.label) || "Meta ads",
     range: text(ads.range),

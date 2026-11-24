@@ -2574,3 +2574,17 @@ body { transition: background-color 150ms ease, color 150ms ease; }
 [data-pill-party="INC"][data-pill-selected="true"] { color: #000000 !important; }
 
 .tn-dashboard { overflow-anchor: none; }
+
+/* Dark table headers need a dark surface, not the light dark-theme navy token. */
+[data-theme="dark"] thead {
+  background: var(--theme-selected) !important;
+  color: #ffffff;
+}
+[data-theme="dark"] thead th,
+[data-theme="dark"] thead td {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+[data-theme="dark"] .analysis-shell thead th {
+  background: var(--theme-selected) !important;
+}

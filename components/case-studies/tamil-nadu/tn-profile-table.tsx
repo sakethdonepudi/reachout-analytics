@@ -25,6 +25,7 @@ type Props = {
   targetPillParty: string;
   targetTooltip: string;
   allowTarget: boolean;
+  showCampaignsLink: boolean;
   onTarget: (payload: { kind: string; place: string; label: string; value: number; average: number }) => void;
   onCampaigns: (payload: { kind: string; place: string }) => void;
   onGroup: (group: string) => void;
@@ -32,7 +33,7 @@ type Props = {
 
 const LEADING_KEY = "__leading";
 
-function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, average, slotLeader, targetParty, targetMode, targetPillParty, targetTooltip, allowTarget, onTarget, onCampaigns, onGroup }: Props) {
+function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, average, slotLeader, targetParty, targetMode, targetPillParty, targetTooltip, allowTarget, showCampaignsLink, onTarget, onCampaigns, onGroup }: Props) {
   const [sort, setSort] = useState<{ key: string; asc: boolean } | null>(null);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<string[]>(parties);
@@ -141,7 +142,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
               }
             }}
           >
-            <PartyBadge party={party} size={16} />
+            <PartyBadge party={party} size={20} />
             {party}
           </Pill>
         ))}
@@ -157,7 +158,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                 return (
                   <th key={`${party}:${active ? "in" : "out"}`} className={cn("px-1.5 py-2 text-center font-semibold", active ? "tn-col-in" : "tn-col-out")}>
                     <button type="button" onClick={() => toggleSort(party)} className="inline-flex min-h-11! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[color:var(--theme-surface)]/10" title={`Sort by ${party}`}>
-                      <PartyBadge party={party} size={16} />
+                      <PartyBadge party={party} size={20} />
                       {party}
                       <ArrowUpDown className={cn("size-2.5 opacity-50", sort?.key === party && "opacity-100")} />
                     </button>
@@ -251,11 +252,11 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                   <td className="h-12 whitespace-nowrap px-2 py-1 text-left font-semibold align-middle">
                     {leader.index >= 0 ? (
                       <span className="mr-1 inline-flex items-center gap-1 align-middle">
-                        <PartyBadge party={parties[leader.index]} size={16} />
+                        <PartyBadge party={parties[leader.index]} size={20} />
                         {leader.tie ? "Tie" : parties[leader.index]}
                       </span>
                     ) : "—"}
-                    {geo && (
+                    {geo && showCampaignsLink && (
                       <button type="button" onClick={() => onCampaigns({ kind: profileKey, place: row.g })} className="ml-1 inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[color:var(--theme-link)] px-2 text-[12px] font-bold text-[color:var(--theme-link)] hover:bg-[color:var(--tn-soft-blue)]">
                         Campaigns ↗
                       </button>
@@ -274,7 +275,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                   return <td key={`${party}:${selectedSet.has(party) ? "in" : "out"}`} className={cn("px-1 py-2 text-center tabular-nums", selectedSet.has(party) ? "tn-col-in" : "tn-col-out")}>{pct(weighted[index])}</td>;
                 })}
                 <td className="px-2 py-2 text-left">
-                  {totalLeader >= 0 ? <span className="inline-flex items-center gap-1"><PartyBadge party={parties[totalLeader]} size={16} />{parties[totalLeader]}</span> : "—"}
+                  {totalLeader >= 0 ? <span className="inline-flex items-center gap-1"><PartyBadge party={parties[totalLeader]} size={20} />{parties[totalLeader]}</span> : "—"}
                 </td>
               </tr>
             </tfoot>
@@ -298,7 +299,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                   {row.n < 30 && <span className="text-[12px] font-normal text-[color:var(--theme-text-3)]" title={`Only ${row.n} answers – rough signal`}>· {int(row.n)}</span>}
                 </span>
                 <span className="inline-flex items-center gap-1 text-[12px] text-[color:var(--theme-text-3)]">
-                  {leader.index >= 0 && <PartyBadge party={parties[leader.index]} size={16} />}
+                  {leader.index >= 0 && <PartyBadge party={parties[leader.index]} size={20} />}
                   {leader.tie ? "Tie" : parties[leader.index]}
                 </span>
               </div>
@@ -322,7 +323,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className={cn("inline-flex items-center gap-1.5 text-[12px] font-semibold", lightText ? "text-white" : "text-[color:var(--theme-text)]")}>
-                          <PartyBadge party={party} size={16} />{party}
+                          <PartyBadge party={party} size={20} />{party}
                         </span>
                         <span className={cn("text-[13px] tabular-nums", isLead && "font-extrabold", lightText ? "text-white" : "text-[color:var(--theme-text)]")}>{pct(value)}</span>
                       </div>
@@ -344,7 +345,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                   );
                 })}
               </div>
-              {geo && (
+              {geo && showCampaignsLink && (
                 <button type="button" onClick={() => onCampaigns({ kind: profileKey, place: row.g })} className="mt-2 inline-flex min-h-11! items-center gap-1 text-[12px] font-semibold text-[color:var(--theme-link)]">
                   Campaigns ↗
                 </button>

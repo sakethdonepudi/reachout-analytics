@@ -168,7 +168,7 @@ function VoteShareHero({ expected, parties, slotKey, label }: { expected: Survey
           const value = Math.max(0, expected[party] ?? 0);
           return (
             <span key={party} data-bar-party={party} title={`${party} ${pct(expected[party])}`} className="flex min-w-0 items-center justify-center overflow-hidden whitespace-nowrap text-[12px] font-bold transition-[width] duration-300 ease-out" style={{ width: grown ? `${value}%` : "0%", background: colour(party), color: partyNeedsWhiteInk(party) ? "#fff" : "#0B0B0C", textShadow: partyNeedsWhiteInk(party) ? "0 1px 2px rgba(0,0,0,.45)" : "none" }}>
-              {value >= 14 ? <span className="hidden items-center gap-1.5 lg:inline-flex"><PartyBadge party={party} size={16} />{party} {value.toFixed(1)}%</span> : ""}
+              {value >= 14 ? <span className="hidden items-center gap-1.5 lg:inline-flex"><PartyBadge party={party} size={18} />{party} {value.toFixed(1)}%</span> : ""}
             </span>
           );
         })}
@@ -176,7 +176,7 @@ function VoteShareHero({ expected, parties, slotKey, label }: { expected: Survey
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-[color:var(--theme-text-3)] lg:hidden">
         {parties.map((party) => (
           <span key={party} className="inline-flex items-center gap-1.5">
-            <PartyBadge party={party} size={16} />{party} {pct(expected[party])}
+            <PartyBadge party={party} size={18} />{party} {pct(expected[party])}
           </span>
         ))}
       </div>
@@ -501,27 +501,24 @@ export default function TnSurveyDashboard({
           <p className={cn("w-full text-[15px] font-medium text-[color:var(--theme-text-2)] sm:w-auto sm:text-right", owner ? "sm:ml-0" : "sm:ml-auto")}>{int(model.n_total)} responses</p>
         </header>
 
-        <div className={cn("mt-4 grid grid-cols-1 gap-3", model.cards.length + 1 >= 4 ? "min-[900px]:grid-cols-2 min-[1600px]:grid-cols-4" : "min-[900px]:grid-cols-3")}>
+        <div className={cn("mt-4 grid grid-cols-1 gap-3", model.cards.length + 1 >= 4 ? "min-[900px]:grid-cols-2 min-[1100px]:grid-cols-4" : "min-[900px]:grid-cols-3")}>
           {model.cards.map((card) => (
             <button key={card.key} type="button" aria-pressed={view === card.key} onMouseEnter={() => prefetch(card.key, "all")} onClick={() => { setDistrict(null); setAcNo(null); navigate({ view: card.key, slot: "all", profile: "", filter: null }); }}
-              className={cn("tn-card flex min-h-[112px] flex-col justify-center rounded-2xl border-2 p-4 text-left transition-all min-[1360px]:min-h-[120px]", view === card.key ? "border-[color:var(--theme-selected)] bg-[color:var(--theme-selected)] text-white shadow-[0_0_0_2px_var(--theme-surface),0_0_0_4px_var(--theme-selected)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface-2)] text-[color:var(--theme-text)] hover:-translate-y-0.5 hover:border-[color:var(--theme-border)]")}>
+              className={cn("tn-card flex min-h-[124px] flex-col justify-center rounded-2xl border-2 p-4 text-left transition-all", view === card.key ? "border-[color:var(--theme-selected)] bg-[color:var(--theme-selected)] text-white shadow-[0_0_0_2px_var(--theme-surface),0_0_0_4px_var(--theme-selected)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface-2)] text-[color:var(--theme-text)] hover:-translate-y-0.5 hover:border-[color:var(--theme-border)]")}>
               <p className="text-[17px] font-bold">{card.label}</p>
               <p className={cn("mt-1.5 text-[14px] font-semibold", view === card.key ? "text-white/90" : "text-[color:var(--theme-text-2)]")}>{parties.slice(0, config.cardStyle === "ap" ? 2 : 3).map((party) => `${party} ${pct(card.expected[party])}`).join(" · ")}{config.cardStyle === "ap" && card.seats ? ` · seats ${int(card.seats[config.actualParties[0]] ?? 0)}–${int(card.seats[config.actualParties[1]] ?? 0)}` : ""}</p>
               {card.showAccuracy !== false && <p className={cn("mt-1.5 text-[14px] font-bold", view === card.key ? "text-[#4ade80]" : "text-[color:var(--theme-positive)]")}>accuracy {(card.accuracy ?? 0).toFixed(1)}%</p>}
             </button>
           ))}
-          <button type="button" aria-pressed={view === "social"} onMouseEnter={() => prefetchSocial()} onPointerDown={() => prefetchSocial()} onFocus={() => prefetchSocial()} onClick={() => openSocial()} className={cn("tn-card group flex min-h-[112px] items-center rounded-2xl border-2 p-4 text-left transition-all min-[1360px]:min-h-[120px]", view === "social" ? "border-[#1877F2] bg-[color:var(--theme-selected)] text-white shadow-[0_0_0_2px_var(--theme-surface),0_0_0_4px_var(--theme-selected)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface-2)] text-[color:var(--theme-text)] hover:-translate-y-0.5 hover:border-[color:var(--theme-border)]")}>
-            <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 text-[17px] font-bold"><Megaphone className="size-5" /> Social Media</p>
-                <p className={cn("mt-1.5 whitespace-nowrap text-[13px] font-semibold", view === "social" ? "text-white/80" : "text-[color:var(--theme-text-2)]")}>Ads · reach & engagement</p>
-              </div>
-              <span className="flex shrink-0 items-center gap-2.5">
-                <SocialCluster iconSize={22} tileSize={30} columns={2} className="grid min-[1360px]:hidden" />
-                <SocialCluster iconSize={30} tileSize={42} columns={2} className="hidden min-[1360px]:grid" />
-                <TrendChart data={model.socialMonthly} series={[{ metric: "reach", label: "Reach", color: "var(--theme-chart-reach)" }]} height={44} label="Monthly reach" className="hidden h-11 w-[140px] min-[1360px]:block" />
-              </span>
+          <button type="button" aria-pressed={view === "social"} data-social-card onMouseEnter={() => prefetchSocial()} onPointerDown={() => prefetchSocial()} onFocus={() => prefetchSocial()} onClick={() => openSocial()} className={cn("tn-card group flex min-h-[124px] flex-col justify-center rounded-2xl border-2 p-4 text-left transition-all", view === "social" ? "border-[#1877F2] bg-[color:var(--theme-selected)] text-white shadow-[0_0_0_2px_var(--theme-surface),0_0_0_4px_var(--theme-selected)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface-2)] text-[color:var(--theme-text)] hover:-translate-y-0.5 hover:border-[color:var(--theme-border)]")}>
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <p data-social-title className="flex min-w-0 items-center gap-2 whitespace-nowrap text-[17px] font-bold"><Megaphone className="size-5 shrink-0" /> Social Media</p>
+              <TrendChart data={model.socialMonthly} series={[{ metric: "reach", label: "Reach", color: "var(--theme-chart-reach)" }]} height={34} label="Monthly reach" className="hidden h-8 w-24 min-[1280px]:block" />
             </div>
+            <p data-social-subtitle className={cn("mt-1 whitespace-nowrap text-[13px] font-semibold", view === "social" ? "text-white/80" : "text-[color:var(--theme-text-2)]")}>Ads · reach & engagement</p>
+            <span data-social-icons className="mt-2 flex items-center">
+              <SocialCluster iconSize={18} tileSize={28} columns={4} />
+            </span>
           </button>
         </div>
 
@@ -575,7 +572,7 @@ export default function TnSurveyDashboard({
                 const perParty = Math.max(0, 100 - Math.abs(value - (actual[party] ?? 0)));
                 return (
                   <div key={party} className={cn("min-w-0 rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.03)] min-[640px]:min-w-[160px] min-[640px]:flex-1 min-[640px]:snap-start min-[1100px]:min-w-0", partyIndex === 4 && "col-span-2 min-[640px]:col-span-1")} style={{ borderTopColor: colour(party), borderTopWidth: 3 }}>
-                    <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[color:var(--theme-text-2)]"><PartyBadge party={party} size={24} />{party} · {view === "ex" ? "share" : "expected"}</p>
+                    <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[color:var(--theme-text-2)]"><PartyBadge party={party} size={28} />{party} · {view === "ex" ? "share" : "expected"}</p>
                     <p className="tn-number mt-1 text-[38px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[color:var(--theme-text)]"><CountUp value={value} decimals={2} suffix="%" /></p>
                     <p className="mt-1.5 text-[12.5px] font-semibold text-[color:var(--theme-negative)]">Actual {config.cardStyle === "ap" ? "2024" : "2026"}: {pct2(actual[party])}</p>
                     {!(config.cardStyle === "ap" && view === "rd") && <p className="mt-0.5 text-[12.5px] font-semibold text-[color:var(--theme-positive)]">Accuracy {perParty.toFixed(1)}%</p>}
@@ -634,7 +631,7 @@ export default function TnSurveyDashboard({
                 <div className="mt-3">
                   <LazyMount minHeight={540}>
                     {!demo && activeProfile === "ac" ? <div className="rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface-3)] p-6 text-[14px] text-[color:var(--theme-text-3)]">Loading assembly table...</div> :
-                      demo ? <div key={`${slot.key}:${activeProfile}`} className="tn-fade-slide"><TnProfileTable demo={demo} parties={parties} profileKey={activeProfile} periodKey={view} slotLabel={slot.label} average={average} slotLeader={leadParty ?? parties[0] ?? ""} targetParty={config.target.party} targetMode={config.target.mode} targetPillParty={config.target.pillParty} targetTooltip={["zone", "area", "dist", "ac"].includes(activeProfile) ? config.target.tooltipGeo : config.target.tooltipOther} allowTarget={config.target.periods.includes(view)}
+                      demo ? <div key={`${slot.key}:${activeProfile}`} className="tn-fade-slide"><TnProfileTable demo={demo} parties={parties} profileKey={activeProfile} periodKey={view} slotLabel={slot.label} average={average} slotLeader={leadParty ?? parties[0] ?? ""} targetParty={config.target.party} targetMode={config.target.mode} targetPillParty={config.target.pillParty} targetTooltip={["zone", "area", "dist", "ac"].includes(activeProfile) ? config.target.tooltipGeo : config.target.tooltipOther} allowTarget={config.target.periods.includes(view)} showCampaignsLink={config.cardStyle !== "ap"}
                         onTarget={(payload) => openSocial({ match: "target", kind: payload.kind, place: payload.place, label: `${payload.label} · ${payload.place} · ${config.target.party} ${config.target.mode === "leads" ? "leads" : `${payload.value.toFixed(1)}% (average ${payload.average.toFixed(1)})`}`, value: String(payload.value), average: String(payload.average) })}
                         onCampaigns={(payload) => openSocial({ match: "campaigns", kind: payload.kind, place: payload.place, label: payload.place })}
                         onGroup={(group) => openSocial({ match: "group", group, label: group })}
@@ -696,7 +693,7 @@ export default function TnSurveyDashboard({
                 {mapLoading && <p role="status" className="absolute inset-0 grid place-items-center text-[14px] font-semibold text-[color:var(--theme-text-3)]">Loading map...</p>}
               </div>
               <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-[color:var(--theme-text-2)]">
-                {parties.map((party) => <span key={party} className="inline-flex items-center gap-1.5"><span className="h-3 w-6 rounded-[2px] ring-1 ring-inset ring-black/10" style={{ background: colour(party) }} />{party}</span>)}
+                {parties.map((party) => <span key={party} className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={20} />{party}</span>)}
                 <span className="inline-flex items-center gap-1.5"><span className="h-3 w-6 rounded-[2px] bg-[#94A3B8] ring-1 ring-inset ring-black/10" />No data / under 30</span>
               </div>
             </section>
@@ -719,7 +716,7 @@ function SwingSection({ data, swing, parties, period, slot, config }: { data: Tn
     <Section title={`${config.cardStyle === "ap" ? "Region swing" : "Zone swing"} · ${source.label}`} className="mt-3">
       <div className="mt-3 overflow-x-auto rounded-xl border border-[color:var(--theme-border)]">
         <table className="w-full min-w-[980px] border-collapse text-[15px]">
-          <thead className="bg-[color:var(--theme-surface-3)] text-left text-[13px] uppercase tracking-wide text-[color:var(--theme-text-3)]"><tr><th className="px-4 py-3">{config.cardStyle === "ap" ? "Region" : "Zone"}</th>{parties.map((party) => <th key={party} className="px-4 py-3 text-center"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party} {fromLabel}</span></th>)}</tr></thead>
+          <thead className="bg-[color:var(--theme-surface-3)] text-left text-[13px] uppercase tracking-wide text-[color:var(--theme-text-3)]"><tr><th className="px-4 py-3">{config.cardStyle === "ap" ? "Region" : "Zone"}</th>{parties.map((party) => <th key={party} className="px-4 py-3 text-center"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={20} />{party} {fromLabel}</span></th>)}</tr></thead>
           <tbody>
             {data.regions.map((region) => {
               const before = source.base?.[region] ?? data.base?.[region] ?? TN_2021_BASE[region as keyof typeof TN_2021_BASE];
@@ -753,10 +750,10 @@ function SeatsByZone({ data, parties, seats, periodKey, slotLabel, config }: { d
   const showActualColumns = config.cardStyle !== "ap";
   return (
     <Section title={`Seats by zone · ${slotLabel}`} className="mt-3">
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className={cn("mt-3 grid gap-3", summaryParties.length === 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4")}>
         {summaryParties.map((party) => (
           <div key={party} className="rounded-xl border border-[color:var(--theme-border)] p-4">
-            <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[color:var(--theme-text-2)]"><PartyBadge party={party} size={24} />{party}</p>
+            <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[color:var(--theme-text-2)]"><PartyBadge party={party} size={28} />{party}</p>
             <p className="mt-1 font-display text-[32px] font-semibold leading-none tabular-nums text-[color:var(--theme-text)]"><CountUp value={Number(seats[party] ?? 0)} /></p>
             <p className="mt-1.5 text-[12.5px] text-[color:var(--theme-text-3)]">projected · actual {int(Number(actualSeats[party] ?? 0))}</p>
           </div>
@@ -766,7 +763,7 @@ function SeatsByZone({ data, parties, seats, periodKey, slotLabel, config }: { d
         <table className="w-full min-w-[780px] border-collapse text-[15px]" aria-label={majority.status === "majority" ? `${majority.leader} projected majority with ${majority.seats} seats` : "Projected assembly is hung"} >
           <thead className="bg-[color:var(--theme-surface-3)] text-left text-[13px] uppercase tracking-wide text-[color:var(--theme-text-3)]">
             <tr><th rowSpan={2} className="px-4 py-3">Zone</th><th rowSpan={2} className="px-4 py-3 text-right">ACs</th><th colSpan={summaryParties.length} className="px-4 py-3 text-center">Projected</th>{showActualColumns && <th colSpan={actualParties.length} className="px-4 py-3 text-center">Actual {config.cardStyle === "ap" ? "2024" : "2026"}</th>}</tr>
-            <tr>{summaryParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party}</span></th>)}{showActualColumns && actualParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party}</span></th>)}</tr>
+            <tr>{summaryParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={20} />{party}</span></th>)}{showActualColumns && actualParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={20} />{party}</span></th>)}</tr>
           </thead>
           <tbody>
             {Object.entries(zones).map(([zone, row]) => (

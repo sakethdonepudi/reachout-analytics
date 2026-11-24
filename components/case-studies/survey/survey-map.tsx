@@ -43,6 +43,14 @@ export type SurveyMapProps = {
   labelOffset: Record<string, { x: number; y: number }>;
   mobileLabelOffset: Record<string, { x: number; y: number }>;
   districtAlias: Record<string, string>;
+  fillMode?: "gradient" | "flat";
+  mobileLabelCount?: number;
+  mobileForcedLabels?: string[];
+  avoidDistrictCollisions?: boolean;
+  stateTilt?: number;
+  stateFit?: number;
+  stateCenterZ?: number;
+  mapRotation?: number;
   district: string | null;
   acNo: number | null;
   year: TnYearOrCurrent;
@@ -70,6 +78,7 @@ const PAL = {
 let ACTIVE_PARTY_COLORS: Record<string, string> = {};
 let ACTIVE_PARTY_ORDER: readonly string[] = [];
 let ACTIVE_NO_DATA = "#94A3B8";
+let ACTIVE_FILL_MODE: "gradient" | "flat" = "gradient";
 const shade = (hex: string, amount: number) => {
   const c = new THREE.Color(hex);
   const hsl = { h: 0, s: 0, l: 0 };
@@ -134,16 +143,21 @@ function blendForDistrict(d: TnDistrict | undefined, year: TnYearOrCurrent): Ble
 }
 function blendColor(blend: BlendInfo, t: number): THREE.Color {
   if (!blend.first) return new THREE.Color(ACTIVE_NO_DATA);
+  if (ACTIVE_FILL_MODE === "flat") {
+    const margin = Math.max(0, Math.min(100, blend.marginPp ?? 0));
+    return shade(ACTIVE_PARTY_COLORS[blend.first] ?? blend.color1, 0.1 - (margin / 100) * 0.26);
+  }
   if (!blend.second) return new THREE.Color(blend.color1);
   return gradientColor(blend.color1, blend.color2, blend.p1, t);
 }
 
-export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrder, partyColors, partyColorsDark, noDataColor, labelOffset, mobileLabelOffset, districtAlias, district, acNo, year, theme, tooltip, fitKey = 0, onSelectDistrict, onSelectAc, onReset }: Props) {
+export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrder, partyColors, partyColorsDark, noDataColor, labelOffset, mobileLabelOffset, districtAlias, fillMode = "gradient", mobileLabelCount = 10, mobileForcedLabels = [], avoidDistrictCollisions = false, stateTilt = 0.82, stateFit = 1, stateCenterZ = 0, mapRotation = 0, district, acNo, year, theme, tooltip, fitKey = 0, onSelectDistrict, onSelectAc, onReset }: Props) {
   const AC_FC = acGeo as unknown as FC;
   const D_FC = districtGeo as unknown as DFC;
   const canonicalDistrict = (name: string) => districtAlias[name] ?? name;
   ACTIVE_PARTY_ORDER = partyOrder;
   ACTIVE_NO_DATA = noDataColor;
+  ACTIVE_FILL_MODE = fillMode;
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
@@ -191,7 +205,11 @@ export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrd
     const projection = geoIdentity().reflectY(true).fitExtent([[70, 70], [BOX - 70, BOX - 70]], D_FC as never);
     const project = (p: [number, number]) => {
       const q = projection(p);
-      return q ? ([q[0], q[1]] as [number, number]) : ([0, 0] as [number, number]);
+      if (!q) return [0, 0] as [number, number];
+      if (!mapRotation) return [q[0], q[1]] as [number, number];
+      const cos = Math.cos(mapRotation), sin = Math.sin(mapRotation);
+      const dx = q[0] - CX, dy = q[1] - CZ;
+      return [CX + dx * cos - dy * sin, CZ + dx * sin + dy * cos] as [number, number];
     };
 
     type Anim = { start: number; dur: number; fromO: number; toO: number; fromL: number; toL: number; fromY: number; toY: number };
@@ -353,7 +371,7 @@ export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrd
     };
 
     let stateDist = 1400;
-    let cam = { tx: 0, tz: 0, ty: 0, dist: 2050, theta: 0, phi: 0.82 };
+    let cam = { tx: 0, tz: 0, ty: 0, dist: 2050, theta: 0, phi: stateTilt };
     let camTarget = { ...cam };
     let camAnim: { start: number; dur: number; from: typeof cam } | null = null;
     const startCamera = (target: typeof cam) => {
@@ -459,7 +477,7 @@ export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrd
         hoveredKey = null; hoveredNo = null; setTip(null); canvas.style.cursor = "grab";
         showAccent(activeAC?.no ?? null, !!activeAC);
         const mobileState = typeof window !== "undefined" && window.innerWidth < 640;
-        const mobileLabels = new Set(["Chennai", "Kanniyakumari", ...[...districtsUnits.keys()].sort((aKey, bKey) => (districtRef.current.get(bKey)?.survey.valid ?? 0) - (districtRef.current.get(aKey)?.survey.valid ?? 0)).slice(0, 10)]);
+        const mobileLabels = new Set([...mobileForcedLabels, ...[...districtsUnits.keys()].sort((aKey, bKey) => (districtRef.current.get(bKey)?.survey.valid ?? 0) - (districtRef.current.get(aKey)?.survey.valid ?? 0)).slice(0, mobileLabelCount)]);
         const assembly = false;
         for (const [name, u] of districtsUnits) {
           const selected = !!activeD && name === activeD.name;
@@ -505,7 +523,7 @@ export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrd
         const vw = Math.max(320, hostRect.width), vh = Math.max(320, hostRect.height);
         const wide = typeof window !== "undefined" && window.innerWidth > 1024;
         let centerX = 0, centerZ = 0, dist = 1450;
-        const phi = activeAC || activeD ? 0.58 : 0.82;
+        const phi = activeAC || activeD ? 0.58 : stateTilt;
         if (bounds && Number.isFinite(bounds.minx)) {
           centerX = (bounds.minx + bounds.maxx) / 2; centerZ = (bounds.minz + bounds.maxz) / 2;
           const W = Math.max(1, bounds.maxx - bounds.minx), H = Math.max(1, bounds.maxz - bounds.minz);
@@ -515,13 +533,13 @@ export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrd
           const fit = Math.max((H / 2) / Math.tan(fov / 2), (W / 2) / Math.tan(Math.atan(Math.tan(fov / 2) * (availW / availH)))) * (activeAC ? 1.32 : activeD ? 1.28 : Math.cos(phi) * (vh / availH) * 1.05);
           dist = Math.max(45, Math.min(3600, fit));
         }
-        if (!activeD && !activeAC) stateDist = dist;
+        if (!activeD && !activeAC) { dist *= stateFit; stateDist = dist; centerZ += stateCenterZ; }
         startCamera({ tx: centerX, tz: centerZ, ty: activeAC ? 2.2 : activeD ? 0.8 : 0, dist, theta: 0, phi });
       },
       resetCamera: () => {
         const width = Math.max(280, host.getBoundingClientRect().width);
         const dist = Math.max(1100, Math.min(2600, 1800 * (700 / width)));
-        startCamera({ tx: 0, tz: 0, ty: 0, dist, theta: 0, phi: 0.82 });
+        startCamera({ tx: 0, tz: stateCenterZ, ty: 0, dist, theta: 0, phi: stateTilt });
       },
       zoomBy: (factor: number) => {
         if (factor < 1 && !live.current.district) {
@@ -570,8 +588,10 @@ export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrd
       const rect = host.getBoundingClientRect();
       const boxes: { l: number; r: number; t: number; b: number }[] = [];
       const ordered = [...labelEls].sort((a, b) => {
-        const pa = (a.kind === "ac" && a.no === live.current.acNo ? 100 : 0) + (a.kind === "ac" && a.no === hoveredNo ? 90 : 0) + (a.kind === "ac" ? 50 : a.name === live.current.district ? 95 : 10);
-        const pb = (b.kind === "ac" && b.no === live.current.acNo ? 100 : 0) + (b.kind === "ac" && b.no === hoveredNo ? 90 : 0) + (b.kind === "ac" ? 50 : b.name === live.current.district ? 95 : 10);
+        const va = a.kind === "district" ? Math.min(80, (districtRef.current.get(a.name)?.survey.valid ?? 0) / 8000) : 0;
+        const vb = b.kind === "district" ? Math.min(80, (districtRef.current.get(b.name)?.survey.valid ?? 0) / 8000) : 0;
+        const pa = (a.kind === "ac" && a.no === live.current.acNo ? 100 : 0) + (a.kind === "ac" && a.no === hoveredNo ? 90 : 0) + (a.kind === "ac" ? 50 : a.name === live.current.district ? 95 : 10) + va;
+        const pb = (b.kind === "ac" && b.no === live.current.acNo ? 100 : 0) + (b.kind === "ac" && b.no === hoveredNo ? 90 : 0) + (b.kind === "ac" ? 50 : b.name === live.current.district ? 95 : 10) + vb;
         return pb - pa;
       });
       for (const u of ordered) {
@@ -581,10 +601,8 @@ export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrd
         const sx = (p.x * 0.5 + 0.5) * rect.width, sy = (-p.y * 0.5 + 0.5) * rect.height;
         const size = parseFloat(u.label.style.fontSize || "9");
         const w = Math.max(20, (u.label.textContent?.length ?? 4) * size * 0.62 + 10), h = size + 7;
-        const box = { l: sx - w / 2 - 2, r: sx + w / 2 + 2, t: sy - h / 2 - 1, b: sy + h / 2 + 1 };
-        const collides = boxes.some((b) => box.l < b.r && box.r > b.l && box.t < b.b && box.b > b.t);
-        if (collides && u.kind === "ac" && u.no !== live.current.acNo) { u.label.style.visibility = "hidden"; continue; }
         let dx = 0, dy = 0;
+        const baseBox = { l: sx - w / 2 - 3, r: sx + w / 2 + 3, t: sy - h / 2 - 3, b: sy + h / 2 + 3 };
         if (u.kind === "district") {
           const base = (window.innerWidth < 640 ? mobileLabelOffset[u.name] : undefined) ?? labelOffset[u.name] ?? { x: 0, y: 0 };
           const candidate = [
@@ -594,7 +612,7 @@ export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrd
             { x: base.x + 36, y: base.y - 16 }, { x: base.x - 36, y: base.y + 16 },
             { x: base.x + 36, y: base.y + 16 }, { x: base.x - 36, y: base.y - 16 },
           ].find((offset) => {
-            const l = box.l + offset.x, r = box.r + offset.x, t = box.t + offset.y, b = box.b + offset.y;
+            const l = baseBox.l + offset.x, r = baseBox.r + offset.x, t = baseBox.t + offset.y, b = baseBox.b + offset.y;
             return l >= 2 && r <= rect.width - 2 && t >= 2 && b <= rect.height - 2 && !boxes.some((other) => l < other.r && r > other.l && t < other.b && b > other.t);
           });
           if (candidate) { dx = candidate.x; dy = candidate.y; }
@@ -607,7 +625,10 @@ export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrd
         const halfW = w / 2 + 3, halfH = h / 2 + 3;
         const px = Math.min(rect.width - halfW, Math.max(halfW, sx + dx));
         const py = Math.min(rect.height - halfH, Math.max(halfH, sy + dy));
-        boxes.push({ l: px - halfW, r: px + halfW, t: py - halfH, b: py + halfH });
+        const box = { l: px - halfW, r: px + halfW, t: py - halfH, b: py + halfH };
+        const collides = boxes.some((b) => box.l < b.r && box.r > b.l && box.t < b.b && box.b > b.t);
+        if (collides && (u.kind === "ac" ? u.no !== live.current.acNo : avoidDistrictCollisions && u.name !== live.current.district)) { u.label.style.visibility = "hidden"; continue; }
+        boxes.push(box);
         u.label.style.visibility = "visible";
         u.label.style.transform = `translate(${px}px,${py}px) translate(-50%,-50%)`;
       }

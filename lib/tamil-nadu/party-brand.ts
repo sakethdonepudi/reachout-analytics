@@ -21,7 +21,7 @@ export const TN_PARTY_BRAND: Record<string, TnPartyBrand> = {
   NTK: { color: "var(--tn-party-ntk)", logo: "/parties/ntk.png" },
   Others: { color: "var(--tn-party-others)", monogram: "OTH" },
   NOTA: { color: "var(--tn-party-others)", monogram: "NOTA" },
-  NDA: { color: "var(--ap-party-nda)", logo: "/parties/tdp.png", plus: 2 },
+  NDA: { color: "var(--ap-party-nda)", logo: "/parties/tdp.png" },
   YSRCP: { color: "var(--ap-party-ysrcp)", logo: "/parties/ysrcp.svg", mask: true },
   INC: { color: "var(--ap-party-inc)", logo: "/parties/inc.png" },
 };
