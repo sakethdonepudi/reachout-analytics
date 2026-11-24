@@ -28,7 +28,6 @@ const COLOR = TN_PARTY_COLORS;
 const colour = (party: string) => COLOR[party] ?? "#64748B";
 const STATE = "Tamil Nadu";
 const GROUP_KEY: Record<string, string> = { TVK: "TVK", "DMK+": "DMK+INC+VCK", "AIADMK+": "AIADMK+BJP+PMK+AMMK", NTK: "NTK", Others: "Others" };
-const MAJORITY = 118;
 const PROFILE_ORDER: Record<string, string[]> = {
   op: ["age", "caste", "prof", "zone", "dist", "ac", "v21", "app"],
   ex: ["zone", "dist", "ac", "v21", "age", "caste", "prof", "form", "religion", "app"],
@@ -141,7 +140,6 @@ function VoteShareHero({ expected, parties, slotKey }: { expected: SurveyShare; 
           <span className="size-4 rounded-full ring-2 ring-white" style={{ background: colour(lead) }} />
           <div>
             <p className="font-display text-[22px] font-semibold leading-none tracking-[-0.02em] text-[#0B0B0C]">{lead} leads by {margin.toFixed(1)} pts</p>
-            <p className="mt-1 text-[13px] text-[#6B6B6B]">Runner-up {runner} {pct(expected[runner])}</p>
           </div>
         </div>
         <p className="text-[13px] font-semibold text-[#6B6B6B]">2026 vote share</p>
@@ -517,7 +515,7 @@ export default function TnSurveyDashboard({
             </section>
 
             {profiles.length > 0 && (
-              <Section title={`Raw 2026 vote % by voter profile`} note={`${slot.label} · ${int(slot.n)} responses`} className="mt-3">
+              <Section title={`Voter profile · ${slot.buttonLabel}`} className="mt-3">
                 <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Voter profile">
                   {profiles.map((key) => (
                     <button key={key} type="button" role="tab" aria-selected={activeProfile === key} onMouseEnter={() => prefetchProfile(key)} onClick={() => navigate({ profile: key })} className={cn("min-h-11! rounded-full border px-3.5 text-[13px] font-semibold active:scale-[0.98]", activeProfile === key ? "border-[#8C6A2F] bg-[#FBF3DF] text-[#0B0B0C]" : "border-[#D5D8DE] text-[#555] hover:border-[#0B0B0C]")}>
@@ -548,10 +546,9 @@ function SwingSection({ data, swing, parties, period, slot }: { data: TnClientMo
   const state = "Tamil Nadu";
   const sources = swing.sources[period] ?? [];
   const source = sources.find((item) => item.key === slot) ?? sources[0];
-  if (!source) return <Section title={`Zone: 2021 → 2026 (swing) · ${period === "ex" ? "Exit poll" : "Opinion poll"}`} className="mt-3"><p className="mt-2 text-[14px] text-[#6B6B6B]">No swing data in this upload.</p></Section>;
+  if (!source) return <Section title={`Zone swing · ${period === "ex" ? "Exit poll" : "Opinion poll"}`} className="mt-3"><p className="mt-2 text-[14px] text-[#6B6B6B]">No swing data in this upload.</p></Section>;
   return (
-    <Section title={`Zone: 2021 → 2026 (swing) · ${source.label}`} className="mt-3">
-      <p className="mt-1 text-[14px] leading-relaxed text-[#555]">Each cell shows the actual 2021 % (ECI, alliance totals) → the survey&apos;s {period === "ex" ? "2026 share" : "expected 2026 %"} (swing in percentage points). The Tamil Nadu row also shows the actual 2026 result. Zones with fewer than 30 located answers are left out.</p>
+    <Section title={`Zone swing · ${source.label}`} className="mt-3">
       <div className="mt-3 overflow-x-auto rounded-xl border border-[#EAEAEA]">
         <table className="w-full min-w-[980px] border-collapse text-[15px]">
           <thead className="bg-[#FAFAFA] text-left text-[13px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-4 py-3">Zone</th>{parties.map((party) => <th key={party} className="px-4 py-3 text-center">{party} 21→26</th>)}</tr></thead>
@@ -581,14 +578,10 @@ function SeatsByZone({ data, parties, seats, periodKey, slotLabel }: { data: TnC
   const zones = (seats.zones as Record<string, Record<string, unknown>> | undefined) ?? {};
   const actualZones = (data.actualZones as Record<string, Record<string, unknown>> | undefined) ?? {};
   const actualSeats = data.actualSeats as Record<string, unknown>;
-  const projected = seatTotal(seats, parties);
   const summaryParties = ["TVK", "DMK+", "AIADMK+", "NTK"];
   const actualParties = ["TVK", "DMK+", "AIADMK+"];
-  const hit = typeof seats.hit === "number" ? seats.hit : null;
-  const leader = leaderOf(data.actual[STATE], parties);
-  const majorityParty = leader && Number(actualSeats[leader] ?? 0) >= MAJORITY ? `${leader} majority` : "hung";
   return (
-    <Section title={`Seats by zone · 2026 projection · ${slotLabel}`} note={`${projected} of 234 seats · majority ${MAJORITY} · ${majorityParty}`} className="mt-3">
+    <Section title={`Seats by zone · ${slotLabel}`} className="mt-3">
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {summaryParties.map((party) => (
           <div key={party} className="rounded-xl border border-[#EAEAEA] p-4">
@@ -598,8 +591,6 @@ function SeatsByZone({ data, parties, seats, periodKey, slotLabel }: { data: TnC
           </div>
         ))}
       </div>
-      <p className="mt-3 text-[14px] text-[#555]">Projection: {summaryParties.map((party) => `${party} ${int(Number(seats[party] ?? 0))}`).join(" · ")} of 234. Actual 2026: TVK 108 · DMK+ 73 · AIADMK+ 53.</p>
-      {hit != null && <p className="mt-1 text-[14px] font-semibold text-[#0B0B0C]">The projected winner matches the actual winner in {int(hit)} of 234 ACs ({((hit / 234) * 100).toFixed(1)}%).</p>}
       <div className="mt-3 overflow-x-auto rounded-xl border border-[#EAEAEA]">
         <table className="w-full min-w-[780px] border-collapse text-[15px]">
           <thead className="bg-[#FAFAFA] text-left text-[13px] uppercase tracking-wide text-[#6B6B6B]">

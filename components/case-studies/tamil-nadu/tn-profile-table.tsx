@@ -61,11 +61,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
 
   return (
     <div>
-      <p className="text-[14px] leading-relaxed text-[#6B6B6B]">
-        {isV21
-          ? "Cross-tabulation: each row is how people who voted for that alliance in 2021 say they will vote in 2026. Row % - each row adds up to 100%."
-          : `Coverage: ${demo.cov ?? "answers recorded for this profile"}.`}
-      </p>
+      {isV21 && <p className="text-[14px] leading-relaxed text-[#6B6B6B]">Cross-tabulation: each row is how people who voted for that alliance in 2021 say they will vote in 2026. Row % - each row adds up to 100%.</p>}
       <div className="mt-2 max-h-[520px] overflow-auto rounded-xl border border-[#EAEAEA]" tabIndex={0} role="region" aria-label={`${demo.label} table`}>
         <table className="w-full min-w-[760px] border-collapse text-[15px]">
           <thead className="sticky top-0 z-10 bg-[#FAFAFA]">
@@ -140,16 +136,13 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
           )}
         </table>
       </div>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-[#6B6B6B]">
-        <p>{slotLabel} · groups under 30 answers are hidden. {int(demo.rows.reduce((sum, row) => sum + row.n, 0))} answers in this table.</p>
-        {pageCount > 1 && (
-          <div className="flex items-center gap-2">
-            <span className="tabular-nums">{currentPage * pageSize + 1}-{Math.min(rows.length, (currentPage + 1) * pageSize)} of {rows.length}</span>
-            <button type="button" disabled={currentPage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#CFCFCF] px-3 font-semibold text-[#0B0B0C] disabled:opacity-40">Previous</button>
-            <button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#CFCFCF] px-3 font-semibold text-[#0B0B0C] disabled:opacity-40">Next</button>
-          </div>
-        )}
-      </div>
+      {pageCount > 1 && (
+        <div className="mt-2 flex flex-wrap items-center justify-end gap-2 text-[12.5px] text-[#6B6B6B]">
+          <span className="tabular-nums">{currentPage * pageSize + 1}-{Math.min(rows.length, (currentPage + 1) * pageSize)} of {rows.length}</span>
+          <button type="button" disabled={currentPage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#CFCFCF] px-3 font-semibold text-[#0B0B0C] disabled:opacity-40">Previous</button>
+          <button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#CFCFCF] px-3 font-semibold text-[#0B0B0C] disabled:opacity-40">Next</button>
+        </div>
+      )}
     </div>
   );
 }
