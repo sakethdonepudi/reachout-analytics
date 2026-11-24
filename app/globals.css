@@ -2216,7 +2216,7 @@ html { scroll-padding-top: 96px; }
   font-weight: 800;
   line-height: 1.35;
   white-space: nowrap;
-  animation: ringblink 1.2s ease-in-out infinite, spark 1.2s ease-in-out infinite, tn-target-zoom 1.2s ease-in-out infinite;
+  animation: spark 1.6s ease-in-out infinite, tn-target-zoom 1.6s ease-in-out infinite;
   animation-delay: var(--tn-target-delay, 0ms);
   transform-origin: center;
   will-change: transform, opacity;
@@ -2320,12 +2320,12 @@ html { scroll-padding-top: 96px; }
   --theme-chart-clicks: #0f766e;
   --tn-party-tvk: #e6b800;
   --tn-party-dmk: #dd1100;
-  --tn-party-aiadmk: #138808;
+  --tn-party-aiadmk: #0f7007;
   --tn-party-ntk: #7b3fa0;
   --tn-party-others: #8c8f96;
   --ap-party-nda: #c98a00;
   --ap-party-ysrcp: #1f6fd1;
-  --ap-party-inc: #138a52;
+  --ap-party-inc: #0f7043;
   --ap-party-others: #8c8f96;
   --tn-x-icon: #000000;
   --tn-soft-violet: #f3e8ff;
@@ -2334,6 +2334,7 @@ html { scroll-padding-top: 96px; }
   --tn-soft-amber: #fef3c7;
   --tn-soft-pink: #fdf2f8;
   --tn-soft-rose: #fff1f2;
+  --party-badge-surface: #ffffff;
 }
 
 [data-theme="dark"] {
@@ -2368,6 +2369,7 @@ html { scroll-padding-top: 96px; }
   --theme-chart-impressions: #b794f6;
   --theme-chart-views: #f4b860;
   --theme-chart-clicks: #5eead4;
+  --party-badge-surface: #f1f1ed;
   --tn-party-tvk: #e8b923;
   --tn-party-dmk: #f0544f;
   --tn-party-aiadmk: #1fa36f;
@@ -2510,28 +2512,18 @@ body { transition: background-color 150ms ease, color 150ms ease; }
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 
-.trend-line { stroke-dasharray: 1; stroke-dashoffset: 0; }
-.group\/trend:hover .trend-line { animation: trend-draw 400ms ease-out; }
-@keyframes trend-draw {
-  from { stroke-dashoffset: 1; }
-  to { stroke-dashoffset: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .group\/trend:hover .trend-line { animation: none !important; }
-}
-
 /* Campaign period cards */
 .period-card { --period-tint: #f3e8ff; --period-ink: #6b21a8; background: color-mix(in srgb, var(--period-tint) 48%, var(--theme-surface)); border-color: color-mix(in srgb, var(--period-ink) 26%, var(--theme-border)); }
 .period-pre { --period-tint: #f3e8ff; --period-ink: #6b21a8; }
 .period-op { --period-tint: #fef3c7; --period-ink: #92400e; }
 .period-ex { --period-tint: #dbeafe; --period-ink: #1e40af; }
-.period-post { --period-tint: #dcfce7; --period-ink: #166534; }
+.period-post, .period-rd { --period-tint: #dcfce7; --period-ink: #166534; }
 .period-card.period-selected { background: var(--period-tint); border-color: var(--period-ink); box-shadow: 0 10px 24px -16px color-mix(in srgb, var(--period-ink) 55%, transparent); }
 .period-connector { background: linear-gradient(90deg, transparent, var(--theme-border), var(--theme-accent), var(--theme-border), transparent); }
 [data-theme="dark"] .period-pre { --period-tint: #2b1d3a; --period-ink: #d8b4fe; }
 [data-theme="dark"] .period-op { --period-tint: #33270f; --period-ink: #f4c56a; }
 [data-theme="dark"] .period-ex { --period-tint: #16243a; --period-ink: #93c5fd; }
-[data-theme="dark"] .period-post { --period-tint: #153222; --period-ink: #6ee7a8; }
+[data-theme="dark"] .period-post, [data-theme="dark"] .period-rd { --period-tint: #153222; --period-ink: #6ee7a8; }
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .scroll-fade-x { mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent); }
@@ -2560,18 +2552,16 @@ body { transition: background-color 150ms ease, color 150ms ease; }
 .target-ring::after { content: ""; position: absolute; inset: -17px; border-radius: 999px; }
 
 /* Dark party fills are lighter, so blue and green need dark ink for AA. */
-[data-theme="dark"] [data-pill-party="YSRCP"][data-pill-selected="true"],
-[data-theme="dark"] [data-pill-party="INC"][data-pill-selected="true"],
-[data-theme="dark"] [data-pill-party="NDA"][data-pill-selected="true"],
-[data-theme="dark"] [data-pill-party="Others"][data-pill-selected="true"] {
-  color: #0B0B0C !important;
-}
-[data-theme="dark"] [data-bar-party="YSRCP"],
-[data-theme="dark"] [data-bar-party="INC"] {
+/* Dark party fills are lighter, so every selected pill and bar uses dark ink. */
+[data-theme="dark"] [data-pill-party][data-pill-selected="true"],
+[data-theme="dark"] [data-slot-active="true"] {
   color: #0B0B0C !important;
   text-shadow: none !important;
 }
-[data-pill-party="INC"][data-pill-selected="true"] { color: #000000 !important; }
+[data-theme="dark"] [data-bar-party] {
+  color: #0B0B0C !important;
+  text-shadow: none !important;
+}
 
 .tn-dashboard { overflow-anchor: none; }
 
@@ -2587,4 +2577,27 @@ body { transition: background-color 150ms ease, color 150ms ease; }
 }
 [data-theme="dark"] .analysis-shell thead th {
   background: var(--theme-selected) !important;
+}
+
+/* Premium pass: one focus ring, tabular figures and readable scroll edges. */
+:where(a, button, [role="button"], input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--theme-link);
+  outline-offset: 2px;
+}
+.tn-dashboard { font-variant-numeric: tabular-nums; }
+.edge-fade-right {
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 22px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 22px), transparent 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .edge-fade-right { -webkit-mask-image: none; mask-image: none; }
 }

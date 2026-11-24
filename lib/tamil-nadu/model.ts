@@ -8,7 +8,7 @@ export type TnYearOrCurrent = TnYear | "2026";
 export const TN_HISTORICAL_YEARS: TnYear[] = ["2011", "2016", "2021"];
 export const TN_COLOR: Record<TnGroup, string> = {
   TVK: "#E6B800",
-  "AIADMK+BJP+PMK+AMMK": "#138808",
+  "AIADMK+BJP+PMK+AMMK": "#0f7007",
   "DMK+INC+VCK": "#DD1100",
   NTK: "#7b3fa0",
   NOTA: "#8c8f96",

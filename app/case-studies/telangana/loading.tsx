@@ -1,5 +1,5 @@
-import SignalLoader from "@/components/ui/signal-loader";
+import CaseSkeleton from "@/components/case-studies/case-skeleton";
 
 export default function Loading() {
-  return <SignalLoader delay={600} label="Opening Telangana" />;
+  return <CaseSkeleton label="Opening Telangana" />;
 }

@@ -178,6 +178,8 @@ async function clickTab(page: Page, name: RegExp) {
         return { boxes, hits };
       })()`) as { boxes: Record<string, { h: number } | null>; hits: string[] };
       record("/case-studies/andhra-pradesh-2024", `Social card overlap ${width}`, "client", "title, subtitle, icons and sparkline do not intersect", JSON.stringify(overlap.boxes), overlap.hits.length === 0 && (overlap.boxes.title?.h ?? 99) < 32 && (overlap.boxes.subtitle?.h ?? 99) < 28);
+      const overflow = await page.evaluate(() => ({ page: document.documentElement.scrollWidth - document.documentElement.clientWidth, body: document.body.scrollWidth - document.body.clientWidth }));
+      record("/case-studies/andhra-pradesh-2024", `No page overflow ${width}`, "client", "no horizontal page scroll", JSON.stringify(overflow), overflow.page <= 1);
     }
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.waitForTimeout(250);
@@ -219,8 +221,30 @@ async function clickTab(page: Page, name: RegExp) {
     record("/case-studies/andhra-pradesh-2024", "Social period order", "client", "Opinion, Exit, After the result", apPeriodOrder.join(", "), apPeriodOrder[0] >= 0 && apPeriodOrder[0] < apPeriodOrder[1] && apPeriodOrder[1] < apPeriodOrder[2]);
     const apOverviewResponse = await page.evaluate(async () => (await fetch("/api/survey/social?state=andhra-pradesh-2024")).json());
     const apAccountNames: string[] = (apOverviewResponse.overview?.accounts ?? []).map((item: { name: string }) => item.name);
-    record("/case-studies/andhra-pradesh-2024", "AP account names", "client", "owner-provided names visible", `${apAccountNames.length} accounts`, ["Districts AIADMK", "Amazon", "Niagara water falls", "Drama DMK"].every((name) => apAccountNames.includes(name)));
+    const realApNames = ["Districts AIADMK", "Amazon", "Niagara water falls", "Drama DMK", "TN Civic Edge", "SurveyZoom"];
+    record("/case-studies/andhra-pradesh-2024", "AP account names", "client", "only Ad account N aliases", `${apAccountNames.length} accounts`, apAccountNames.length > 0 && apAccountNames.every((name) => /^Ad account \d+$/.test(name)) && !realApNames.some((name) => apAccountNames.includes(name)));
+    record("/case-studies/andhra-pradesh-2024", "AP account privacy", "client", "no real name, business, id or href", JSON.stringify(apOverviewResponse).includes("business") || JSON.stringify(apOverviewResponse).includes("acct_name") ? "leaked" : "clean", !JSON.stringify(apOverviewResponse).includes("acct_name") && !JSON.stringify(apOverviewResponse).includes("business"));
+    const apSpark = await page.evaluate(() => {
+      const svg = document.querySelector("svg[aria-label='Monthly campaigns']");
+      const line = svg?.querySelector("polyline");
+      const points = line?.getAttribute("points")?.trim().split(/\s+/) ?? [];
+      return { polygon: Boolean(svg?.querySelector("polygon")), first: points[0] ?? "", last: points[points.length - 1] ?? "" };
+    });
+    record("/case-studies/andhra-pradesh-2024", "Social sparkline", "client", "clean full-width line and end dot", JSON.stringify(apSpark), !apSpark.polygon && apSpark.first.startsWith("0.0,") && apSpark.last.startsWith("160.0,"));
     record("/case-studies/andhra-pradesh-2024", "AP no long ids", "client", "no 14 to 17 digit number", /\d{14,17}/.test(apSocialBody) ? "found" : "clean", !/\d{14,17}/.test(apSocialBody));
+    await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=op`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2200);
+    await page.locator("section[aria-label='Andhra Pradesh map']").scrollIntoViewIfNeeded();
+    await page.waitForTimeout(900);
+    record("/case-studies/andhra-pradesh-2024", "Map credit", "client", "DataMeet CC BY 2.5 IN link", String(await page.getByRole("link", { name: /Map: DataMeet/ }).count()), (await page.getByRole("link", { name: /Map: DataMeet/ }).count()) === 1);
+    for (const [tab, expected] of [["zone", 3], ["area", 2], ["dist", 3], ["govt", 3]] as const) {
+      await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd&profile=${tab}`, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1600);
+      await page.locator("section[aria-label^='Voter profile']").scrollIntoViewIfNeeded();
+      await page.waitForTimeout(700);
+      const count = await page.locator('button[aria-label^="Target Campaign"]:visible').count();
+      record("/case-studies/andhra-pradesh-2024", `Post-poll targets ${tab}`, "client", `${expected} gap rows flagged`, String(count), count === expected);
+    }
     await page.goto(`${BASE}/case-studies/tamil-nadu?view=op`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2200);
     let surveyRequests = 0;
@@ -264,11 +288,11 @@ async function clickTab(page: Page, name: RegExp) {
       await page.waitForTimeout(500);
     }
     record("/case-studies/tamil-nadu", "Sub-period switch", "client", "slot=2026-04a", String(new URL(page.url()).searchParams.get("slot")), new URL(page.url()).searchParams.get("slot") === "2026-04a");
-    await page.getByRole("tab", { name: "Age group" }).click();
+    await page.locator('[data-profile-tab="age"]').click();
     await page.waitForTimeout(400);
     record("/case-studies/tamil-nadu", "Profile tab", "client", "profile=age", String(new URL(page.url()).searchParams.get("profile")), new URL(page.url()).searchParams.get("profile") === "age");
-    record("/case-studies/tamil-nadu", "Survey form tab", "client", "new profile present", String(await page.getByRole("tab", { name: "Survey form" }).count()), (await page.getByRole("tab", { name: "Survey form" }).count()) === 1);
-    await page.getByRole("tab", { name: "Community" }).click();
+    record("/case-studies/tamil-nadu", "Survey form tab", "client", "new profile present", String(await page.locator('[data-profile-tab="form"]').count()), (await page.locator('[data-profile-tab="form"]').count()) === 1);
+    await page.locator('[data-profile-tab="caste"]').click();
     await page.waitForTimeout(400);
     record("/case-studies/tamil-nadu", "Profile heat map", "client", "community table", await page.getByRole("region", { name: /Community table/ }).isVisible().catch(() => false) ? "visible" : "missing", await page.getByRole("region", { name: /Community table/ }).isVisible().catch(() => false));
     const partyChips = page.getByRole("group", { name: "Party columns" });
@@ -327,7 +351,7 @@ async function clickTab(page: Page, name: RegExp) {
       await page.getByRole("button", { name: /^Opinion poll/ }).filter({ hasText: "accuracy" }).first().click();
       await page.waitForTimeout(900);
     }
-    await page.getByRole("tab", { name: "Zone" }).click();
+    await page.locator('[data-profile-tab="zone"]').click();
     await page.waitForTimeout(400);
     const campaignsLink = page.getByRole("button", { name: /^Campaigns/ }).first();
     if (await campaignsLink.isVisible().catch(() => false)) {
@@ -381,6 +405,7 @@ async function clickTab(page: Page, name: RegExp) {
       await page.waitForTimeout(1000);
       record("/case-studies/tamil-nadu", "Map back to state", "client", "district view returns", String(await page.getByRole("button", { name: /Back to state/ }).count()), (await page.getByRole("button", { name: /Back to state/ }).count()) === 0);
     }
+    record("/case-studies/tamil-nadu", "Map credit", "client", "DataMeet CC BY 2.5 IN link", String(await page.getByRole("link", { name: /Map: DataMeet/ }).count()), (await page.getByRole("link", { name: /Map: DataMeet/ }).count()) === 1);
     await page.goto(`${BASE}/case-studies/tamil-nadu?view=rs`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(800);
     record("/case-studies/tamil-nadu", "Old rs link", "client", "redirects to op", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "op");
@@ -440,7 +465,7 @@ async function clickTab(page: Page, name: RegExp) {
         const e = el as HTMLElement;
         const s = getComputedStyle(e);
         if (s.visibility === "hidden" || s.display === "none") return false;
-        if (e.closest("[aria-hidden='true']") || e.closest(".sr-only") || e.closest("[data-party-badge='true']") || e.classList.contains("tn-target")) return false;
+        if (e.closest("[aria-hidden='true']") || e.closest(".sr-only") || e.closest("[data-map-credit]") || e.closest("[data-party-badge='true']") || e.classList.contains("tn-target")) return false;
         if (["svg", "path", "circle", "rect", "polyline", "polygon", "stop"].includes(e.tagName.toLowerCase())) return false;
         const hasText = [...e.childNodes].some((node) => node.nodeType === 3 && (node.textContent ?? "").trim());
         return hasText && parseFloat(s.fontSize) < 12;

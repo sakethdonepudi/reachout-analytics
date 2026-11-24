@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUpDown, ArrowUpRight, BarChart3, Check, ChevronDown, ChevronRight, Eye, Heart, Loader2, Megaphone, MousePointerClick, Users, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, BarChart3, Check, ChevronDown, ChevronRight, Eye, Heart, Loader2, Megaphone, MousePointerClick, Users, X } from "lucide-react";
 import type { SocialFilter, TnSocialAccount, TnSocialCampaign, TnSocialFiltered, TnSocialMonth, TnSocialOverview, TnSocialPeriod } from "@/lib/survey/social-types";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import { cn } from "@/lib/utils";
@@ -213,10 +213,10 @@ function SortHead({
 }) {
   const active = sort.key === sortKey;
   return (
-    <th className={cn("px-3 py-2.5", align === "right" ? "text-right" : "text-left")} aria-sort={active ? (sort.asc ? "ascending" : "descending") : "none"}>
+    <th scope="col" className={cn("px-3 py-2.5", align === "right" ? "text-right" : "text-left")} aria-sort={active ? (sort.asc ? "ascending" : "descending") : "none"}>
       <button type="button" onClick={() => onSort(sortKey)} className={cn("inline-flex min-h-11! items-center gap-1 rounded px-1 hover:bg-[color:var(--theme-surface)]/10", align === "right" && "justify-end")} title={`Sort by ${label}`}>
         {label}
-        <ArrowUpDown className={cn("size-3 opacity-45", active && "opacity-100")} />
+        {active ? (sort.asc ? <ArrowUp className="size-3" aria-hidden /> : <ArrowDown className="size-3" aria-hidden />) : <ArrowUpDown className="size-3 opacity-45" aria-hidden />}
       </button>
     </th>
   );
@@ -418,7 +418,8 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
               <h3 className="text-[16px] font-semibold text-[color:var(--theme-text)]">Ad accounts</h3>
               <p className="text-[12px] text-[color:var(--theme-text-3)]">{allAccounts.length} accounts · sorted by {sortLabel[sort.key]}</p>
             </div>
-            <div className="hidden max-h-[560px] overflow-auto min-[640px]:block">
+            {!allAccounts.length && <p className="px-4 py-6 text-[14px] text-[color:var(--theme-text-3)]">No ad accounts in this period. Pick another period or clear the filter.</p>}
+            {allAccounts.length > 0 && <div className="edge-fade-right hidden max-h-[560px] overflow-auto min-[640px]:block">
               <table className="w-full min-w-[860px] border-collapse text-[14px]">
                 <thead className="sticky top-0 z-10 text-left text-[12px] uppercase tracking-wide">
                   <tr>
@@ -435,7 +436,7 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
                   {pageAccounts.map((item) => (
                     <Fragment key={item.key}>
                     <tr className="border-t border-[color:var(--theme-border)] transition-colors hover:bg-[color:var(--theme-surface-3)] align-middle">
-                      <th scope="row" className="px-4 py-2.5 text-left font-semibold text-[color:var(--theme-text)]">
+                      <th scope="row" className="sticky left-0 z-10 bg-[color:var(--theme-surface)] px-4 py-2.5 text-left font-semibold text-[color:var(--theme-text)]">
                         <button type="button" onClick={() => void toggleAccount(item.key)} className="inline-flex min-h-11! items-center gap-2 align-middle text-left hover:text-[color:var(--theme-link)]">
                           <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[color:var(--tn-soft-blue)] text-[12px] font-bold text-[color:var(--theme-link)]" aria-hidden>{initialsOf(item.name)}</span>
                           {item.name}
@@ -465,7 +466,7 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
                   ))}
                 </tbody>
               </table>
-            </div>
+            </div>}
             <div className="space-y-2 p-3 min-[640px]:hidden">
               {pageAccounts.map((item) => (
                 <div key={item.key} className="rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-3">
@@ -536,16 +537,17 @@ function CampaignTable({ title, campaigns, total, periodLabel, flush = false }: 
         <h3 className="text-[18px] font-semibold text-[color:var(--theme-text)]">{title}{periodLabel ? ` · ${periodLabel}` : ""}</h3>
         <p className="text-[12px] text-[color:var(--theme-text-3)]">{rows.length} of {total}</p>
       </div>
-      <div className={cn("hidden min-[640px]:block", flush ? "overflow-x-auto" : "max-h-[520px] overflow-auto")}>
+      {!rows.length && <p className="px-4 py-6 text-[14px] text-[color:var(--theme-text-3)]">No campaigns match this period. Try another period or clear the filter.</p>}
+      <div className={cn("edge-fade-right hidden min-[640px]:block", flush ? "overflow-x-auto" : "max-h-[520px] overflow-auto")}>
         <table className="tn-long-table w-full min-w-[980px] border-collapse text-[14px]">
           <thead className="sticky top-0 z-10 text-left text-[12px] uppercase tracking-wide">
-            <tr><th className="px-4 py-2.5">Campaign</th><th className="px-3 py-2.5">Period</th><th className="px-3 py-2.5">Status</th><th className="px-3 py-2.5">Start</th><th className="px-3 py-2.5 text-right">Reach</th><th className="px-3 py-2.5 text-right">Impressions</th><th className="px-3 py-2.5 text-right">Views</th><th className="px-3 py-2.5 text-right">Clicks</th><th className="px-3 py-2.5 text-right">Engagement</th></tr>
+            <tr><th scope="col" className="px-4 py-2.5">Campaign</th><th scope="col" className="px-3 py-2.5">Period</th><th scope="col" className="px-3 py-2.5">Status</th><th scope="col" className="px-3 py-2.5">Start</th><th scope="col" className="px-3 py-2.5 text-right">Reach</th><th scope="col" className="px-3 py-2.5 text-right">Impressions</th><th scope="col" className="px-3 py-2.5 text-right">Views</th><th scope="col" className="px-3 py-2.5 text-right">Clicks</th><th scope="col" className="px-3 py-2.5 text-right">Engagement</th></tr>
           </thead>
           <tbody>
             {pageRows.length === 0 && <tr><td colSpan={9} className="px-4 py-6 text-center text-[13px] text-[color:var(--theme-text-3)]">No campaigns in this period.</td></tr>}
             {pageRows.map((campaign, index) => (
               <tr key={campaign.id ?? `${campaign.name}-${index}`} className="border-t border-[color:var(--theme-border)] transition-colors hover:bg-[color:var(--theme-surface-3)] align-middle">
-                <th scope="row" className="px-4 py-2 text-left font-medium text-[color:var(--theme-text)]">{campaign.href ? <a href={campaign.href} target="_blank" rel="noopener" className="inline-flex min-h-11! items-center gap-1 text-[color:var(--theme-link)] hover:underline">{campaign.name}<ArrowUpRight className="size-3" /></a> : campaign.name}</th>
+                <th scope="row" className="sticky left-0 z-10 bg-[color:var(--theme-surface)] px-4 py-2 text-left font-medium text-[color:var(--theme-text)]">{campaign.href ? <a href={campaign.href} target="_blank" rel="noopener" className="inline-flex min-h-11! items-center gap-1 text-[color:var(--theme-link)] hover:underline">{campaign.name}<ArrowUpRight className="size-3" /></a> : campaign.name}</th>
                 <td className="px-3 py-2"><span className={cn("rounded-full px-2 py-0.5 text-[12px] font-semibold", periodStyle(campaign.period))}>{campaign.period}</span></td>
                 <td className="px-3 py-2"><span className={cn("rounded-full px-2 py-0.5 text-[12px] font-semibold", /on/i.test(campaign.status) ? "bg-[color:var(--theme-positive-soft)] text-[color:var(--theme-positive)]" : "bg-[color:var(--theme-surface-2)] text-[color:var(--theme-text-2)]")}>{campaign.status || "—"}</span></td>
                 <td className="px-3 py-2 whitespace-nowrap">{campaign.start}</td>

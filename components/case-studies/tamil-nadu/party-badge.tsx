@@ -1,4 +1,4 @@
-import { partyBrand } from "@/lib/tamil-nadu/party-brand";
+import { partyBrand, partyNeedsWhiteInk } from "@/lib/tamil-nadu/party-brand";
 import { cn } from "@/lib/utils";
 
 const SIZES = [16, 20, 24, 28] as const;
@@ -21,21 +21,23 @@ export function PartyBadge({
 }) {
   const brand = partyBrand(party);
   const px = Math.max(12, size);
-  const inner = Math.round(px * (brand.mask ? 0.76 : 0.64));
+  const inner = Math.max(1, Math.round(px * (brand.mask ? 0.9 : 0.88)));
   const monogram = brand.monogram;
+  const dot = party === "Others";
+  const ink = monogram && !dot ? (partyNeedsWhiteInk(party) ? "#ffffff" : "#0B0B0C") : undefined;
   return (
     <span
       className={cn(
         "relative inline-grid shrink-0 place-items-center rounded-full border align-middle",
         brand.plus ? "overflow-visible" : "overflow-hidden",
-        monogram ? "text-white" : "bg-white",
         className,
       )}
       style={{
         width: px,
         height: px,
         borderColor: brand.color,
-        background: monogram ? brand.color : undefined,
+        background: monogram && !dot ? brand.color : "var(--party-badge-surface)",
+        color: ink,
       }}
       data-party-badge="true"
       role="img"
@@ -73,6 +75,8 @@ export function PartyBadge({
           className="object-contain"
           style={{ width: inner, height: inner }}
         />
+      ) : dot ? (
+        <span aria-hidden className="block rounded-full" style={{ width: Math.max(5, Math.round(px * 0.42)), height: Math.max(5, Math.round(px * 0.42)), background: brand.color }} />
       ) : (
         <span aria-hidden className="grid h-full w-full place-items-center font-bold leading-none" style={{ fontSize: Math.max(6, Math.round(px * (monogram && monogram.length > 3 ? 0.24 : 0.32))) }}>
           {monogram ?? party.slice(0, 3).toUpperCase()}

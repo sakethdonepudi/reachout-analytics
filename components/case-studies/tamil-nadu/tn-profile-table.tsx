@@ -1,10 +1,11 @@
 "use client";
 
 import { memo, useEffect, useMemo, useState } from "react";
-import { ArrowUpDown, Check } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check } from "lucide-react";
 import type { SurveyDemo, SurveyDemoRow } from "@/lib/survey/types";
 import { cn } from "@/lib/utils";
-import { partyColour, partyNeedsWhiteInk } from "@/lib/tamil-nadu/party-brand";
+import { inkOnTint, partyColour } from "@/lib/tamil-nadu/party-brand";
+import { useTheme } from "@/components/site/theme";
 import { PartyBadge } from "./party-badge";
 import { Pill, PillRow } from "@/components/case-studies/shared/pill-row";
 
@@ -21,7 +22,7 @@ type Props = {
   average: number;
   slotLeader: string;
   targetParty: string;
-  targetMode: "below-average" | "leads";
+  targetMode: "below-average" | "leads" | "gap";
   targetPillParty: string;
   targetTooltip: string;
   allowTarget: boolean;
@@ -33,7 +34,14 @@ type Props = {
 
 const LEADING_KEY = "__leading";
 
+function SortIcon({ active, asc }: { active: boolean; asc: boolean }) {
+  if (!active) return <ArrowUpDown className="size-2.5 opacity-50" aria-hidden />;
+  return asc ? <ArrowUp className="size-2.5" aria-hidden /> : <ArrowDown className="size-2.5" aria-hidden />;
+}
+
 function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, average, slotLeader, targetParty, targetMode, targetPillParty, targetTooltip, allowTarget, showCampaignsLink, onTarget, onCampaigns, onGroup }: Props) {
+  const { theme } = useTheme();
+  const dark = theme === "dark";
   const [sort, setSort] = useState<{ key: string; asc: boolean } | null>(null);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<string[]>(parties);
@@ -54,6 +62,19 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
     return () => window.clearTimeout(timer);
   }, [leaving]);
   useEffect(() => { setPage(0); }, [demo, sort, selected]);
+
+  const gapRows = useMemo(() => {
+    const targetIndex = parties.indexOf(targetParty);
+    if (targetMode !== "gap" || targetIndex < 0) return new Set<string>();
+    return new Set(
+      demo.rows
+        .filter((row) => (row.v[targetIndex] ?? 0) < average)
+        .map((row) => ({ g: row.g, gap: average - (row.v[targetIndex] ?? 0), n: row.n }))
+        .sort((left, right) => right.gap - left.gap || right.n - left.n)
+        .slice(0, 3)
+        .map((row) => row.g),
+    );
+  }, [average, demo.rows, parties, targetMode, targetParty]);
 
   const toggle = (party: string) => {
     setLeaving((current) => current.filter((item) => item !== party));
@@ -89,7 +110,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demo.rows, parties, selected, sort]);
 
-  const pageSize = rows.length > 40 ? 30 : rows.length;
+  const pageSize = rows.length > 80 ? 50 : rows.length;
   const pageCount = Math.max(1, Math.ceil(rows.length / Math.max(1, pageSize)));
   const currentPage = Math.min(page, pageCount - 1);
   const pageRows = rows.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
@@ -147,27 +168,27 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
           </Pill>
         ))}
       </PillRow>
-      <div className="mt-2 hidden max-h-[520px] overflow-auto rounded-xl border border-[color:var(--theme-border)] min-[640px]:block" tabIndex={0} role="region" aria-label={`${demo.label} table`}>
+      <div className="edge-fade-right mt-2 hidden max-h-[520px] overflow-auto rounded-xl border border-[color:var(--theme-border)] min-[640px]:block" tabIndex={0} role="region" aria-label={`${demo.label} table`}>
         <table className="w-full min-w-[760px] border-collapse text-[15px]">
           <thead className="sticky top-0 z-10">
             <tr className="text-left text-[13px] uppercase tracking-wide">
-              <th className="sticky left-0 z-30 px-2 py-2 font-semibold">{isV21 ? "2021 voted / 2026 vote" : demo.label}</th>
+              <th scope="col" className="sticky left-0 z-30 px-2 py-2 font-semibold">{isV21 ? "2021 voted / 2026 vote" : demo.label}</th>
               {visible.map((party) => {
                 const index = parties.indexOf(party);
                 const active = selectedSet.has(party);
                 return (
-                  <th key={`${party}:${active ? "in" : "out"}`} className={cn("px-1.5 py-2 text-center font-semibold", active ? "tn-col-in" : "tn-col-out")}>
+                  <th key={`${party}:${active ? "in" : "out"}`} scope="col" className={cn("px-1.5 py-2 text-center font-semibold", active ? "tn-col-in" : "tn-col-out")}>
                     <button type="button" onClick={() => toggleSort(party)} className="inline-flex min-h-11! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[color:var(--theme-surface)]/10" title={`Sort by ${party}`}>
                       <PartyBadge party={party} size={20} />
                       {party}
-                      <ArrowUpDown className={cn("size-2.5 opacity-50", sort?.key === party && "opacity-100")} />
+                      <SortIcon active={sort?.key === party} asc={Boolean(sort?.asc)} />
                     </button>
                   </th>
                 );
               })}
-              <th className="px-2 py-2 text-left font-semibold">
+              <th scope="col" className="px-2 py-2 text-left font-semibold">
                 <button type="button" onClick={() => toggleSort(LEADING_KEY)} className="inline-flex min-h-11! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[color:var(--theme-surface)]/10" title="Sort by leading party">
-                  {allSelected ? "Leading" : "Leading (selected)"} <ArrowUpDown className={cn("size-2.5 opacity-50", sort?.key === LEADING_KEY && "opacity-100")} />
+                  {allSelected ? "Leading" : "Leading (selected)"} <SortIcon active={sort?.key === LEADING_KEY} asc={Boolean(sort?.asc)} />
                 </button>
               </th>
             </tr>
@@ -175,7 +196,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
           <tbody>
             {pageRows.map((row, rowIndex) => {
               const leader = leaderOfRow(row);
-              const rowTarget = allowTarget && targetMode === "leads" && leader.index === parties.indexOf(targetParty) && !leader.tie;
+              const rowTarget = allowTarget && !leader.tie && (targetMode === "leads" ? leader.index === parties.indexOf(targetParty) : targetMode === "gap" ? gapRows.has(row.g) : false);
               return (
                 <tr
                   key={row.g}
@@ -197,10 +218,10 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                     const index = parties.indexOf(party);
                     const active = selectedSet.has(party);
                     const value = row.v[index] ?? 0;
-                    const alpha = 6 + (value / maxByParty[index]) * 82;
+                    const alpha = 6 + (value / maxByParty[index]) * 56;
                     const isLead = active && index === leader.index && !leader.tie;
-                    const target = allowTarget && active && (targetMode === "leads" ? rowTarget && party === targetPillParty : party === targetParty && value < average);
-                    const lightText = active && alpha > 52 && partyNeedsWhiteInk(party);
+                    const target = allowTarget && active && (targetMode === "below-average" ? party === targetParty && value < average : rowTarget && party === targetPillParty);
+                    const tint = inkOnTint(party, alpha, dark);
                     const delayKey = `${row.g}:${party}`;
                     let delayHash = 0;
                     for (let charIndex = 0; charIndex < delayKey.length; charIndex += 1) delayHash = (delayHash * 31 + delayKey.charCodeAt(charIndex)) | 0;
@@ -213,10 +234,10 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                           active ? "tn-col-in" : "tn-col-out",
                           hover.column === party && "tn-col-hover",
                           hover.row === row.g && "tn-row-hover",
-                          lightText && "text-white",
                         )}
                         style={{
-                          background: active ? `color-mix(in srgb, ${colourOf(party)} ${alpha}%, var(--theme-surface))` : "white",
+                          background: active ? tint.background : "var(--theme-surface)",
+                          color: active ? tint.ink : "var(--theme-text)",
                           outline: isLead ? `2px solid ${colourOf(party)}` : undefined,
                           outlineOffset: isLead ? -2 : undefined,
                           boxShadow: rowTarget && party === visible.find((item) => selectedSet.has(item)) ? "inset 3px 0 0 #e52020" : undefined,
@@ -225,7 +246,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                         onMouseLeave={() => setHover((current) => ({ ...current, column: null }))}
                       >
                         <div className="flex flex-col items-center gap-0">
-                          <span className={cn("text-[15px] tabular-nums", isLead && "font-extrabold", lightText ? "text-white" : "text-[color:var(--theme-text)]")}>
+                          <span className={cn("text-[15px] tabular-nums", isLead && "font-extrabold")} style={{ color: active ? tint.ink : "var(--theme-text)" }}>
                             {pct(value)}
                           </span>
                           {target && (
@@ -285,7 +306,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
       <div className="mt-2 space-y-3 min-[640px]:hidden">
         {pageRows.map((row) => {
           const leader = leaderOfRow(row);
-          const rowTarget = allowTarget && targetMode === "leads" && leader.index === parties.indexOf(targetParty) && !leader.tie;
+          const rowTarget = allowTarget && !leader.tie && (targetMode === "leads" ? leader.index === parties.indexOf(targetParty) : targetMode === "gap" ? gapRows.has(row.g) : false);
           return (
             <article key={row.g} className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-3">
               <div className="flex items-start justify-between gap-2">
@@ -307,25 +328,26 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                 {visible.filter((party) => selectedSet.has(party)).map((party) => {
                   const index = parties.indexOf(party);
                   const value = row.v[index] ?? 0;
-                  const alpha = 6 + (value / maxByParty[index]) * 82;
+                  const alpha = 6 + (value / maxByParty[index]) * 56;
+                  const tint = inkOnTint(party, alpha, dark);
                   const isLead = index === leader.index && !leader.tie;
-                  const lightText = alpha > 52 && partyNeedsWhiteInk(party);
-                  const target = allowTarget && (targetMode === "leads" ? rowTarget && party === targetPillParty : party === targetParty && value < average);
+                  const target = allowTarget && (targetMode === "below-average" ? party === targetParty && value < average : rowTarget && party === targetPillParty);
                   return (
                     <div
                       key={party}
                       className="rounded-xl px-2.5 py-2"
                       style={{
-                        background: `color-mix(in srgb, ${colourOf(party)} ${alpha}%, var(--theme-surface))`,
+                        background: tint.background,
+                        color: tint.ink,
                         outline: isLead ? `2px solid ${colourOf(party)}` : undefined,
                         outlineOffset: isLead ? -2 : undefined,
                       }}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className={cn("inline-flex items-center gap-1.5 text-[12px] font-semibold", lightText ? "text-white" : "text-[color:var(--theme-text)]")}>
+                        <span className={cn("inline-flex items-center gap-1.5 text-[12px] font-semibold")} style={{ color: tint.ink }}>
                           <PartyBadge party={party} size={20} />{party}
                         </span>
-                        <span className={cn("text-[13px] tabular-nums", isLead && "font-extrabold", lightText ? "text-white" : "text-[color:var(--theme-text)]")}>{pct(value)}</span>
+                        <span className={cn("text-[13px] tabular-nums", isLead && "font-extrabold")} style={{ color: tint.ink }}>{pct(value)}</span>
                       </div>
                       {target && (
                         <div className="mt-1.5 flex justify-center">
@@ -354,6 +376,9 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
           );
         })}
       </div>
+      {!rows.length && (
+        <p className="rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface-3)] px-4 py-6 text-[14px] text-[color:var(--theme-text-3)]">No rows in this view. The upload may not include this question.</p>
+      )}
       {pageCount > 1 && (
         <div className="mt-2 flex flex-wrap items-center justify-end gap-2 text-[12.5px] text-[color:var(--theme-text-3)]">
           <span className="tabular-nums">{currentPage * pageSize + 1}-{Math.min(rows.length, (currentPage + 1) * pageSize)} of {rows.length}</span>
@@ -365,10 +390,14 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
   );
 }
 
-export function weightedAiadminAverage(rows: SurveyDemoRow[], parties: string[]): number {
-  const index = parties.indexOf("AIADMK+");
+export function weightedPartyAverage(rows: SurveyDemoRow[], parties: string[], party: string): number {
+  const index = parties.indexOf(party);
   const total = rows.reduce((sum, row) => sum + row.n, 0);
   return index < 0 || !total ? 0 : rows.reduce((sum, row) => sum + (row.v[index] ?? 0) * row.n, 0) / total;
+}
+
+export function weightedAiadminAverage(rows: SurveyDemoRow[], parties: string[]): number {
+  return weightedPartyAverage(rows, parties, "AIADMK+");
 }
 
 export default memo(TnProfileTable);

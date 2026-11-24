@@ -54,8 +54,7 @@ const cleanCampaignName = (name: string) => name.replace(/₹\s?[\d,.]+/g, "").r
 function safeAccountName(raw: unknown, rank: number, id: string, owner: boolean) {
   const name = text(raw).trim();
   if (owner) return name || id;
-  if (!name || /\d{10,20}/.test(name)) return `Ad account ${rank}`;
-  return name;
+  return `Ad account ${rank}`;
 }
 
 function accountRows(data: SurveyData, links: boolean, owner: boolean): { accounts: TnSocialAccount[]; campaignsByKey: Map<string, TnSocialCampaign[]>; idByKey: Map<string, string> } {

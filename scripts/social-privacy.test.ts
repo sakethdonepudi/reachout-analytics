@@ -4,6 +4,8 @@
  * A source account may carry its numeric Meta id in acct_name. The client DTO
  * must never put a 14-17 digit id in a name, key, row id, URL or campaign
  * field. Owner payloads keep the real id and business name.
+ * Real ad account names, business names, ids, money and Ads Manager links
+ * must never reach a client payload.
  */
 import assert from "node:assert/strict";
 import { tnSocialFiltered, tnSocialMonthly, tnSocialOverview } from "@/lib/survey/tn-view-dto";
@@ -86,7 +88,15 @@ const data = {
   const apOverview = await apSocialOverview(apData, false);
   const apOverviewText = JSON.stringify(apOverview);
   check("AP numeric account becomes Ad account <rank>", () => assert.equal(apOverview.accounts.find((item) => item.key === "acct-1")?.name, "Ad account 1"));
-  check("AP client payload keeps permitted account names", () => assert.ok(apOverview.accounts.some((item) => item.name === "Districts AIADMK")));
+  check("AP client payload has no real account names", () => {
+    assert.ok(apOverview.accounts.every((item) => /^Ad account \d+$/.test(item.name)));
+    assert.ok(!apOverviewText.includes("Districts AIADMK"));
+    assert.ok(!apOverviewText.includes("Secret Business"));
+  });
+  check("AP account aliases follow reach rank", () => {
+    assert.equal(apOverview.accounts.find((item) => item.key === "acct-1")?.name, "Ad account 1");
+    assert.equal(apOverview.accounts.find((item) => item.key === "acct-2")?.name, "Ad account 2");
+  });
   check("AP overview has no 14-17 digit number", () => assert.ok(!/\d{14,17}/.test(apOverviewText)));
   check("AP overview has no business name or href", () => {
     const account = apOverview.accounts.find((item) => item.key === "acct-2");

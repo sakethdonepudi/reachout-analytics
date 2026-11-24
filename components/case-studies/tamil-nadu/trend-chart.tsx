@@ -1,10 +1,12 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { TnSocialMonth } from "@/lib/survey/social-types";
 import { cn } from "@/lib/utils";
 
 type Metric = "campaigns" | "reach" | "impressions" | "views" | "clicks" | "engagements";
+
+const METRICS: Metric[] = ["campaigns", "reach", "impressions", "views", "clicks", "engagements"];
 
 const MONTHS: Record<string, string> = {
   campaigns: "campaigns",
@@ -48,13 +50,11 @@ export function TrendChart({
   label?: string;
   mode?: "compact" | "int";
 }) {
-  const rawId = useId();
-  const gradientId = `trend-${rawId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const [hover, setHover] = useState<number | null>(null);
 
   const usable = useMemo(() => {
     if (data.length < 3) return { months: [], lines: [] as Array<TrendSeries & { points: string; last: { x: number; y: number } }>, max: 1 };
-    const months = data.filter((row) => series.some((item) => Number(row[item.metric] ?? 0) > 0));
+    const months = data.filter((row) => METRICS.some((metric) => Number(row[metric] ?? 0) > 0));
     if (months.length < 3) return { months: [], lines: [] as Array<TrendSeries & { points: string; last: { x: number; y: number } }>, max: 1 };
     const max = Math.max(1, ...months.flatMap((row) => series.map((item) => Number(row[item.metric] ?? 0))));
     const width = 160;
@@ -94,15 +94,6 @@ export function TrendChart({
         }}
         onPointerLeave={() => setHover(null)}
       >
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop stopColor={series[0]?.color ?? "var(--theme-chart-reach)"} stopOpacity="0.22" />
-            <stop offset="1" stopColor={series[0]?.color ?? "var(--theme-chart-reach)"} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {usable.lines.length === 1 && (
-          <polygon points={`0,${viewHeight} ${usable.lines[0].points} 160,${viewHeight}`} fill={`url(#${gradientId})`} />
-        )}
         {usable.lines.map((line) => (
           <g key={line.metric}>
             <polyline
@@ -112,13 +103,9 @@ export function TrendChart({
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              pathLength={1}
-              strokeDasharray={1}
-              strokeDashoffset={0}
               vectorEffect="non-scaling-stroke"
-              className="trend-line"
             />
-            <circle cx={line.last.x} cy={line.last.y} r="2.6" fill={line.color} />
+            <circle cx={line.last.x} cy={line.last.y} r="2.4" fill={line.color} />
           </g>
         ))}
         {active && (

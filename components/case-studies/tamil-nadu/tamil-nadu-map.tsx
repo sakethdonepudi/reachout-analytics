@@ -24,6 +24,7 @@ export default function TamilNaduMap(props: Omit<SurveyMapProps, "acGeo" | "dist
       mobileForcedLabels={["Chennai", "Kanniyakumari"]}
       stateTilt={0.82}
       stateFit={1}
+      avoidDistrictCollisions
     />
   );
 }

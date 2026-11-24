@@ -61,7 +61,7 @@ export default async function CaseStudiesIndex() {
                       {published ? "Published" : "Draft"}
                     </span>
                   </div>
-                  <p className="mt-4 line-clamp-2 text-[13px] leading-relaxed text-[var(--p-ink-2)]">{item.summary}</p>
+                  <p className="mt-4 text-[13px] leading-relaxed text-[var(--p-ink-2)]">{item.summary}</p>
                   <span className="mt-5 flex items-center justify-between border-t border-[var(--p-line)] pt-3 text-[10.5px] font-bold uppercase tracking-[0.14em]">
                     Open <span aria-hidden>↗</span>
                   </span>

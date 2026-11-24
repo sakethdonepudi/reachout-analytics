@@ -19,7 +19,7 @@ export function PillRow({
   return (
     <div className={cn("flex flex-col items-start gap-2 min-[640px]:flex-row min-[640px]:items-center", className)}>
       <span className="shrink-0 text-[12px] font-bold uppercase tracking-[0.12em] text-[color:var(--theme-warning)]">{label}</span>
-      <div className="no-scrollbar flex w-full flex-nowrap items-center gap-2 overflow-x-auto pb-1 snap-x min-[640px]:w-auto min-[640px]:flex-1" role="group" aria-label={ariaLabel ?? label}>
+      <div className="edge-fade-right no-scrollbar flex w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1 snap-x min-[640px]:w-auto min-[640px]:flex-1" role="group" aria-label={ariaLabel ?? label}>
         {children}
       </div>
     </div>
@@ -57,9 +57,7 @@ export function Pill({
   return (
     <button
       type="button"
-      role={profileTab ? "tab" : undefined}
       aria-pressed={selected}
-      aria-selected={profileTab ? selected : undefined}
       aria-label={label}
       title={title}
       data-slot-active={dataActive ? "true" : undefined}
@@ -69,7 +67,7 @@ export function Pill({
       data-pill-selected={selected ? "true" : "false"}
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-11! shrink-0 snap-start items-center gap-1.5 rounded-full border px-4 text-[14px] font-semibold transition-all active:scale-[0.98]",
+        "inline-flex min-h-11! shrink-0 snap-start items-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-[14px] font-semibold transition-all active:scale-[0.98]",
         selected ? "shadow-[0_0_0_2px_var(--theme-surface),0_0_0_3.5px_var(--theme-selected)]" : "hover:border-[color:var(--theme-text)]",
         className,
       )}
