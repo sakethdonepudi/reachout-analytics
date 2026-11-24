@@ -16,6 +16,7 @@ import { canonicalDistrictName } from "@/lib/tamil-nadu/aliases";
 import { partyColour, TN_GROUP_KEY } from "@/lib/tamil-nadu/party-brand";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import { cn } from "@/lib/utils";
+import { ReachSparkline, SocialGlyphs } from "./social-icons";
 
 const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
   ssr: false,
@@ -86,18 +87,6 @@ function CountUp({ value, decimals = 0, suffix = "" }: { value: number; decimals
     return () => cancelAnimationFrame(frame);
   }, [reduced, value]);
   return <>{shown.toFixed(decimals)}{suffix}</>;
-}
-
-function SocialIcons({ active }: { active: boolean }) {
-  const opacity = active ? 0.95 : 0.8;
-  return (
-    <>
-      <svg viewBox="0 0 24 24" className="size-5" fill="#1877F2" opacity={opacity}><path d="M13.5 22v-8h2.7l.4-3.1h-3.1V8.9c0-.9.3-1.5 1.6-1.5h1.7V4.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H7.4V14h2.7v8h3.4Z"/></svg>
-      <svg viewBox="0 0 24 24" className="size-5" fill="#C13584" opacity={opacity}><circle cx="12" cy="12" r="4.1" fill="none" stroke="#C13584" strokeWidth="2"/><circle cx="17.6" cy="6.4" r="1.2" fill="#C13584"/><rect x="3.5" y="3.5" width="17" height="17" rx="4.5" fill="none" stroke="#C13584" strokeWidth="2"/></svg>
-      <svg viewBox="0 0 24 24" className="size-5" fill="#FF0000" opacity={opacity}><rect x="2.5" y="5.2" width="19" height="13.6" rx="3.2"/><path d="M10 9.2v5.6l4.8-2.8L10 9.2Z" fill="#fff"/></svg>
-      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="#15803D" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" opacity={opacity}><path d="M4 16.5 10 10l3.5 3.5L20 7"/><path d="M14.5 7H20v5.5"/></svg>
-    </>
-  );
 }
 
 function Section({ title, note, children, className }: { title: string; note?: string; children: React.ReactNode; className?: string }) {
@@ -432,7 +421,10 @@ export default function TnSurveyDashboard({
           <button type="button" aria-pressed={view === "social"} onMouseEnter={() => { void fetch("/api/survey/social?state=tamil-nadu").catch(() => {}); }} onClick={() => openSocial()} className={cn("tn-card rounded-2xl border-2 p-4 text-left transition-all", view === "social" ? "border-[#1877F2] bg-[#002147] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#1877F2]" : "border-[#D5D8DE] bg-[#F7F8FA] text-[#0B0B0C] hover:-translate-y-0.5 hover:border-[#9AA3AF]")}>
             <div className="flex items-start justify-between gap-2">
               <p className="flex items-center gap-2 text-[17px] font-bold"><Megaphone className="size-5" /> Social Media</p>
-              <span className="flex items-center gap-1.5" aria-hidden><SocialIcons active={view === "social"} /></span>
+              <span className="flex items-center gap-2" aria-hidden>
+                <SocialGlyphs size={22} className="flex items-center gap-1" />
+                <ReachSparkline className="hidden h-7 w-[60px] sm:block" />
+              </span>
             </div>
             <p className={cn("mt-1.5 text-[14px] font-semibold", view === "social" ? "text-white/80" : "text-[#555]")}>Ads · reach & engagement</p>
           </button>

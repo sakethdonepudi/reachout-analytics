@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUpRight, ChevronDown, ChevronRight, Loader2, X } from "lucide-react";
 import type { SocialFilter, TnSocialAccount, TnSocialCampaign, TnSocialFiltered, TnSocialOverview } from "@/lib/survey/social-types";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import { cn } from "@/lib/utils";
 import { PartyBadge } from "./party-badge";
+import { ReachSparkline, SocialGlyphs } from "./social-icons";
 
 const number = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? "—" : new Intl.NumberFormat("en-IN").format(Math.round(value)));
 const compact = (value: number | null | undefined) => {
@@ -14,6 +15,14 @@ const compact = (value: number | null | undefined) => {
   if (value >= 1e5) return `${(value / 1e5).toFixed(2)} L`;
   return number(value);
 };
+
+function Num({ value, className }: { value: number | null | undefined; className?: string }) {
+  return <span className={cn("tabular-nums", className)} title={number(value)}>{compact(value)}</span>;
+}
+
+function initialsOf(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map((word) => word[0] ?? "").join("").toUpperCase() || "AD";
+}
 
 function AnimatedNumber({ value, mode = "int" }: { value: number; mode?: "int" | "compact" }) {
   const reduced = usePrefersReducedMotion();
@@ -123,6 +132,8 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
   const totals = filtered
     ? { campaigns: filtered.totalMatching, reach: filtered.accounts.reduce((sum, item) => sum + item.reach, 0), impressions: filtered.accounts.reduce((sum, item) => sum + item.impressions, 0), views: filtered.accounts.reduce((sum, item) => sum + item.views, 0), clicks: filtered.accounts.reduce((sum, item) => sum + item.clicks, 0), engagements: filtered.accounts.reduce((sum, item) => sum + item.engagements, 0) }
     : overview?.totals;
+  const maxAccountReach = Math.max(1, ...allAccounts.map((item) => item.reach));
+  const maxAccountEng = Math.max(1, ...allAccounts.map((item) => item.engagements));
 
   return (
     <section ref={rootRef} className="scroll-mt-28 space-y-4" aria-label="Social media">
@@ -142,22 +153,38 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-display text-[28px] font-semibold tracking-[-0.02em] text-[#0B0B0C]">Social Media</h2>
-            <p className="mt-1 text-[14px] text-[#6B6B6B]">{overview?.range}{overview?.asOf ? ` · as of ${overview.asOf}` : ""}</p>
+        <div className="rounded-2xl border border-[#EAEAEA] bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.035)]">
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-2 rounded-2xl bg-[#F7F8FA] px-3 py-2 ring-1 ring-black/[.06]"><SocialGlyphs size={26} className="flex items-center gap-2" /></span>
+              <div>
+                <h2 className="font-display text-[24px] font-semibold tracking-[-0.02em] text-[#0B0B0C] sm:text-[28px]">Social Media</h2>
+                <p className="mt-1 text-[14px] text-[#6B6B6B]">{overview?.range}{overview?.asOf ? ` · as of ${overview.asOf}` : ""}</p>
+              </div>
+            </div>
+            <div className="flex w-full flex-wrap items-center justify-between gap-4 sm:w-auto sm:justify-start sm:gap-6">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">Total reach</p>
+                <p className="mt-1 font-display text-[26px] font-semibold leading-none tabular-nums text-[#0B0B0C]" title={number(totals?.reach)}>{compact(totals?.reach)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">Engagement</p>
+                <p className="mt-1 font-display text-[26px] font-semibold leading-none tabular-nums text-[#0B0B0C]" title={number(totals?.engagements)}>{compact(totals?.engagements)}</p>
+              </div>
+              <ReachSparkline className="hidden h-10 w-28 sm:block" />
+            </div>
           </div>
         </div>
       )}
 
       {totals && (
-        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className={cn("grid gap-2", filtered ? "sm:grid-cols-3 lg:grid-cols-6" : "sm:grid-cols-2 lg:grid-cols-4")}>
           <Stat label="Campaigns" value={totals.campaigns} mode="int" />
-          <Stat label="Reach" value={totals.reach} note={number(totals.reach)} />
+          {filtered && <Stat label="Reach" value={totals.reach} note={number(totals.reach)} />}
           <Stat label="Impressions" value={totals.impressions} note={number(totals.impressions)} />
           <Stat label="Views" value={totals.views} note={number(totals.views)} />
           <Stat label="Clicks" value={totals.clicks} note={number(totals.clicks)} />
-          <Stat label="Engagement" value={totals.engagements} note={number(totals.engagements)} />
+          {filtered && <Stat label="Engagement" value={totals.engagements} note={number(totals.engagements)} />}
         </div>
       )}
 
@@ -187,28 +214,42 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
               <h3 className="text-[16px] font-semibold text-[#0B0B0C]">Ad accounts</h3>
               <p className="text-[12px] text-[#6B6B6B]">{(active.accounts ?? []).length} accounts</p>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px] border-collapse text-[14px]">
-                <thead className="bg-[#FAFAFA] text-left text-[12px] uppercase tracking-wide text-[#6B6B6B]">
+            <div className="max-h-[560px] overflow-auto">
+              <table className="w-full min-w-[860px] border-collapse text-[14px]">
+                <thead className="sticky top-0 z-10 text-left text-[12px] uppercase tracking-wide">
                   <tr><th className="px-4 py-2.5">Ad account</th><th className="px-3 py-2.5 text-right">Campaigns</th><th className="px-3 py-2.5 text-right">Reach</th><th className="px-3 py-2.5 text-right">Impressions</th><th className="px-3 py-2.5 text-right">Views</th><th className="px-3 py-2.5 text-right">Clicks</th><th className="px-3 py-2.5 text-right">Engagement</th></tr>
                 </thead>
                 <tbody>
                   {pageAccounts.map((item) => (
-                    <tr key={item.key} className="border-t border-[#EAEAEA] transition-colors hover:bg-[#FAFAFA] align-top">
+                    <Fragment key={item.key}>
+                    <tr className="border-t border-[#EAEAEA] transition-colors hover:bg-[#FAFAFA] align-middle">
                       <th scope="row" className="px-4 py-2.5 text-left font-semibold text-[#0B0B0C]">
-                        <button type="button" onClick={() => void toggleAccount(item.key)} className="inline-flex min-h-11! items-center gap-1 text-left hover:text-[#1f6fd1]">
-                          {openAccount === item.key ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                        <button type="button" onClick={() => void toggleAccount(item.key)} className="inline-flex min-h-11! items-center gap-2 align-middle text-left hover:text-[#1f6fd1]">
+                          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#EFF6FF] text-[10.5px] font-bold text-[#1f6fd1]" aria-hidden>{initialsOf(item.name)}</span>
                           {item.name}
+                          {openAccount === item.key ? <ChevronDown className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}
                         </button>
                         {owner && item.id && <span className="mt-0.5 block text-[10px] font-normal text-[#6B6B6B]">{item.business || "Ad account"} · {item.id}</span>}
                       </th>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{number(item.campaignCount)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{number(item.reach)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{number(item.impressions)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{number(item.views)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{number(item.clicks)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{number(item.engagements)}</td>
+                      <td className="px-3 py-2.5 text-right align-middle tabular-nums">{number(item.campaignCount)}</td>
+                      <td className="px-3 py-2.5 text-right align-middle tabular-nums"><BarCell value={item.reach} max={maxAccountReach} /></td>
+                      <td className="px-3 py-2.5 text-right align-middle tabular-nums"><Num value={item.impressions} /></td>
+                      <td className="px-3 py-2.5 text-right align-middle tabular-nums"><Num value={item.views} /></td>
+                      <td className="px-3 py-2.5 text-right align-middle tabular-nums"><Num value={item.clicks} /></td>
+                      <td className="px-3 py-2.5 text-right align-middle tabular-nums"><BarCell value={item.engagements} max={maxAccountEng} tone="sky" /></td>
                     </tr>
+                    {openAccount === item.key && account?.accounts[0]?.key === item.key && (
+                      <tr className="border-t border-[#EAEAEA] bg-[#FAFAFA]">
+                        <td colSpan={7} className="p-0">
+                          <div className="tn-expand">
+                            <div className="min-h-0 overflow-hidden">
+                              <CampaignTable title={`Campaigns · ${item.name}`} campaigns={account.campaigns} total={account.totalMatching} flush />
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -226,10 +267,6 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
         )
       )}
 
-      {!filtered && openAccount && account?.accounts[0]?.key === openAccount && (
-        <CampaignTable title={`Campaigns · ${account.accounts[0].name}`} campaigns={account.campaigns} total={account.totalMatching} />
-      )}
-
       {filtered && <CampaignTable title={`Top ${Math.min(100, filtered.campaigns.length)} campaigns`} campaigns={filtered.campaigns} total={filtered.totalMatching} />}
     </section>
   );
@@ -238,15 +275,19 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
 function AccountCard({ account, maxReach, owner }: { account: TnSocialAccount; maxReach: number; owner: boolean }) {
   return (
     <div className="rounded-xl border border-[#EAEAEA] bg-white p-3">
-      <p className="truncate text-[13px] font-semibold text-[#0B0B0C]">{account.name}</p>
+      <div className="flex items-center gap-2">
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#EFF6FF] text-[10.5px] font-bold text-[#1f6fd1]" aria-hidden>{initialsOf(account.name)}</span>
+        <p className="truncate text-[13px] font-semibold text-[#0B0B0C]">{account.name}</p>
+      </div>
       {owner && account.id && <p className="mt-0.5 truncate text-[10px] text-[#6B6B6B]">{account.business || "Ad account"} · {account.id}</p>}
-      <p className="mt-1 text-[12px] text-[#555]">{number(account.campaignCount)} campaigns · reach {compact(account.reach)}</p>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#F1F1F1]"><span className="block h-full rounded-full bg-[#0B0B0C]" style={{ width: `${Math.max(4, (account.reach / maxReach) * 100)}%` }} /></div>
+      <p className="mt-1 text-[12px] text-[#555]">{number(account.campaignCount)} campaigns · reach <span title={number(account.reach)}>{compact(account.reach)}</span></p>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#F1F1F1]" title={`Reach ${number(account.reach)}`}><span className="block h-full rounded-full bg-[#0B0B0C]" style={{ width: `${Math.max(4, (account.reach / maxReach) * 100)}%` }} /></div>
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#F1F1F1]" title={`Engagement ${number(account.engagements)}`}><span className="block h-full rounded-full bg-[#1f6fd1]" style={{ width: `${Math.max(4, (account.engagements / Math.max(1, ...Array(1).fill(account.reach))) * 100)}%` }} /></div>
     </div>
   );
 }
 
-function CampaignTable({ title, campaigns, total }: { title: string; campaigns: TnSocialCampaign[]; total: number }) {
+function CampaignTable({ title, campaigns, total, flush = false }: { title: string; campaigns: TnSocialCampaign[]; total: number; flush?: boolean }) {
   const [page, setPage] = useState(0);
   const pageSize = 25;
   const pageCount = Math.max(1, Math.ceil(campaigns.length / pageSize));
@@ -256,28 +297,28 @@ function CampaignTable({ title, campaigns, total }: { title: string; campaigns: 
   const maxReach = Math.max(1, ...campaigns.map((campaign) => campaign.reach));
   const maxEng = Math.max(1, ...campaigns.map((campaign) => campaign.engagements));
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#EAEAEA] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.03)]" aria-label={title}>
+    <section className={cn("overflow-hidden bg-white", flush ? "border-t border-[#EAEAEA]" : "rounded-2xl border border-[#EAEAEA] shadow-[0_10px_30px_rgba(0,0,0,0.03)]")} aria-label={title}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EAEAEA] px-4 py-3">
         <h3 className="text-[18px] font-semibold text-[#0B0B0C]">{title}</h3>
         <p className="text-[12px] text-[#6B6B6B]">{campaigns.length} of {total}</p>
       </div>
-      <div className="max-h-[520px] overflow-auto">
+      <div className={flush ? "overflow-x-auto" : "max-h-[520px] overflow-auto"}>
         <table className="tn-long-table w-full min-w-[980px] border-collapse text-[14px]">
           <thead className="sticky top-0 z-10 bg-[#FAFAFA] text-left text-[12px] uppercase tracking-wide text-[#6B6B6B]">
             <tr><th className="px-4 py-2.5">Campaign</th><th className="px-3 py-2.5">Period</th><th className="px-3 py-2.5">Status</th><th className="px-3 py-2.5">Start</th><th className="px-3 py-2.5 text-right">Reach</th><th className="px-3 py-2.5 text-right">Impressions</th><th className="px-3 py-2.5 text-right">Views</th><th className="px-3 py-2.5 text-right">Clicks</th><th className="px-3 py-2.5 text-right">Engagement</th></tr>
           </thead>
           <tbody>
             {pageRows.map((campaign, index) => (
-              <tr key={campaign.id ?? `${campaign.name}-${index}`} className="border-t border-[#EAEAEA] transition-colors hover:bg-[#FAFAFA]">
+              <tr key={campaign.id ?? `${campaign.name}-${index}`} className="border-t border-[#EAEAEA] transition-colors hover:bg-[#FAFAFA] align-middle">
                 <th scope="row" className="px-4 py-2 text-left font-medium text-[#0B0B0C]">{campaign.href ? <a href={campaign.href} target="_blank" rel="noopener" className="inline-flex min-h-11! items-center gap-1 text-[#002147] hover:underline">{campaign.name}<ArrowUpRight className="size-3" /></a> : campaign.name}</th>
                 <td className="px-3 py-2"><span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", periodStyle(campaign.period))}>{campaign.period}</span></td>
                 <td className="px-3 py-2"><span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", /on/i.test(campaign.status) ? "bg-[#DCFCE7] text-[#166534]" : "bg-[#F1F5F9] text-[#475569]")}>{campaign.status || "—"}</span></td>
                 <td className="px-3 py-2 whitespace-nowrap">{campaign.start}</td>
-                <td className="px-3 py-2 text-right tabular-nums"><BarCell value={campaign.reach} max={maxReach} /></td>
-                <td className="px-3 py-2 text-right tabular-nums">{number(campaign.impressions)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{number(campaign.views)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{number(campaign.clicks)}</td>
-                <td className="px-3 py-2 text-right tabular-nums"><BarCell value={campaign.engagements} max={maxEng} /></td>
+                <td className="px-3 py-2 text-right align-middle tabular-nums"><BarCell value={campaign.reach} max={maxReach} /></td>
+                <td className="px-3 py-2 text-right align-middle tabular-nums"><Num value={campaign.impressions} /></td>
+                <td className="px-3 py-2 text-right align-middle tabular-nums"><Num value={campaign.views} /></td>
+                <td className="px-3 py-2 text-right align-middle tabular-nums"><Num value={campaign.clicks} /></td>
+                <td className="px-3 py-2 text-right align-middle tabular-nums"><BarCell value={campaign.engagements} max={maxEng} tone="sky" /></td>
               </tr>
             ))}
           </tbody>
@@ -296,11 +337,11 @@ function CampaignTable({ title, campaigns, total }: { title: string; campaigns: 
   );
 }
 
-function BarCell({ value, max }: { value: number; max: number }) {
+function BarCell({ value, max, tone = "navy" }: { value: number; max: number; tone?: "navy" | "sky" }) {
   return (
-    <span className="relative inline-flex min-w-[80px] justify-end px-1 py-0.5">
-      <span className="absolute inset-y-0 left-0 rounded bg-[#E0F2FE]" style={{ width: `${Math.max(4, (value / max) * 100)}%` }} aria-hidden />
-      <span className="relative">{number(value)}</span>
+    <span className="relative inline-flex min-w-[80px] justify-end px-1 py-0.5" title={number(value)}>
+      <span className={cn("absolute inset-y-0 left-0 rounded", tone === "sky" ? "bg-[#E0F2FE]" : "bg-[#E8EEF5]")} style={{ width: `${Math.max(4, (value / max) * 100)}%` }} aria-hidden />
+      <span className="relative">{compact(value)}</span>
     </span>
   );
 }
