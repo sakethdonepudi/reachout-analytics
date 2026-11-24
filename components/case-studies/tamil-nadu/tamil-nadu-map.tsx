@@ -773,7 +773,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       <p className="pointer-events-none absolute bottom-2 left-2 z-10 rounded bg-white/80 px-2 py-1 text-[9px] text-[#6B6B6B]">Ctrl + scroll to zoom</p>
       {tip && (() => {
         const width = 232;
-        const height = 46 + tip.card.rows.length * 23;
+        const height = 48 + tip.card.rows.length * 23;
         const viewportW = typeof window === "undefined" ? 1440 : window.innerWidth;
         const viewportH = typeof window === "undefined" ? 900 : window.innerHeight;
         const left = tip.x + 12 + width > viewportW - 8 ? Math.max(8, tip.x - 12 - width) : tip.x + 12;
@@ -788,7 +788,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
               <ul className="mt-1.5 space-y-0.5">
                 {tip.card.rows.map((row) => (
                   <li key={row.party} className={row.party === tip.card.leader ? "flex items-center gap-1.5 text-[13px] font-bold text-[#0B0B0C]" : "flex items-center gap-1.5 text-[13px] text-[#555]"}>
-                    <PartyBadge party={row.party} size={16} />
+                    <PartyBadge party={row.party} size={20} />
                     <span className="size-2 rounded-[2px]" style={{ background: partyColour(row.party) }} aria-hidden />
                     <span className="flex-1 truncate">{row.party}</span>
                     <span className="tabular-nums">{row.value.toFixed(1)}%</span>
