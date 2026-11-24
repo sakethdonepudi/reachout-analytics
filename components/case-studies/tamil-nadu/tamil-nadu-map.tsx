@@ -33,6 +33,44 @@ type DFC = { type: "FeatureCollection"; features: DistrictFeature[] };
 const AC_FC = AC_GEO as unknown as FC;
 const D_FC = DISTRICT_GEO as unknown as DFC;
 
+const LABEL_OFFSET: Record<string, { x: number; y: number }> = {
+  Chennai: { x: 58, y: -14 },
+  Thiruvallur: { x: -46, y: -28 },
+  Kancheepuram: { x: 40, y: 14 },
+  Chengalpattu: { x: 54, y: 30 },
+  Ranipet: { x: -40, y: -26 },
+  Vellore: { x: -46, y: 68 },
+  Tirupathur: { x: -88, y: 0 },
+  Krishnagiri: { x: -44, y: -32 },
+  Dharmapuri: { x: -60, y: -10 },
+  Kallakurichi: { x: 42, y: -30 },
+  Salem: { x: 12, y: -8 },
+  Kanniyakumari: { x: 18, y: 32 },
+  "The Nilgiris": { x: -40, y: 12 },
+  Cuddalore: { x: -18, y: 24 },
+  Mayiladuthurai: { x: 30, y: 28 },
+  Nagapattinam: { x: 36, y: 8 },
+  Tiruvarur: { x: 6, y: 38 },
+  Ariyalur: { x: -12, y: 18 },
+  Perambalur: { x: -36, y: -14 },
+  Tiruchirappalli: { x: -30, y: 18 },
+  Karur: { x: 30, y: -18 },
+  Sivaganga: { x: 20, y: 6 },
+  Ramanathapuram: { x: 34, y: 20 },
+  Thoothukudi: { x: -30, y: 26 },
+  Tirunelveli: { x: 12, y: 40 },
+  Tenkasi: { x: -30, y: -16 },
+  Virudhunagar: { x: -22, y: 10 },
+  Madurai: { x: 14, y: -4 },
+  Theni: { x: -22, y: -8 },
+  Erode: { x: 12, y: -12 },
+  Coimbatore: { x: -32, y: 12 },
+  Tiruppur: { x: -28, y: 16 },
+  Tiruvannamalai: { x: 2, y: -20 },
+  Namakkal: { x: 14, y: 6 },
+  Dindigul: { x: -18, y: -6 },
+};
+
 const DISTRICT_ALIAS: Record<string, string> = {
   Kanyakumari: "Kanniyakumari", Nilgiris: "The Nilgiris", Thiruvarur: "Tiruvarur", Thoothukkudi: "Thoothukudi", Viluppuram: "Villupuram",
 };
@@ -190,6 +228,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       el.textContent = text;
       el.style.position = "absolute"; el.style.pointerEvents = "none"; el.style.transform = "translate(-50%,-50%)";
       el.style.whiteSpace = "nowrap"; el.style.fontFamily = "inherit"; el.style.fontWeight = kind === "district" ? "600" : "500";
+      if (kind === "district") el.style.textShadow = "0 0 2px rgba(255,255,255,.98), 0 0 4px rgba(255,255,255,.92)";
       el.style.fontSize = `${labelSize(kind === "district" ? "district" : "assembly", false).px}px`; el.style.fontWeight = String(labelSize(kind === "district" ? "district" : "assembly", false).weight); el.style.zIndex = kind === "district" ? "4" : "3";
       el.style.color = P.label; el.style.textShadow = `0 0 2px ${P.halo}`; el.style.userSelect = "none";
       el.style.transition = reduced ? "none" : "opacity .22s ease";
@@ -271,6 +310,10 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       const layer = new THREE.Group(); layer.visible = false; u.group.add(layer); acLayer.set(districtKey, layer);
       mapGroup.add(u.group);
     }
+    let acBuilt = false;
+    const buildAcs = () => {
+      if (acBuilt) return;
+      acBuilt = true;
     for (const f of AC_FC.features) {
       const districtKey = canonicalDistrict(f.properties.district);
       const layer = acLayer.get(districtKey);
@@ -297,6 +340,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       if (!districtEdges.has(districtKey)) districtEdges.set(districtKey, dPts);
     }
 
+    };
     const boundary = createScreenLine([], P.line, MAP_STYLE.border.assembly, resolution, 0);
     const accent = createScreenLine([], P.sel, MAP_STYLE.border.selected, resolution, 1);
     const stateOutline = createScreenLine(stateOutlinePoints, P.line, MAP_STYLE.border.state, resolution, 0.82);
@@ -422,6 +466,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
 
     apiRef.current = {
       setSelection: (d, a, y) => {
+        if (live.current.mode === "assembly" || d || a != null) buildAcs();
         const activeD = d ? districtsUnits.get(d) : null;
         const activeAC = a != null ? acUnits.get(a) : null;
         hoveredKey = null; hoveredNo = null; setTip(null); canvas.style.cursor = "grab";
@@ -471,7 +516,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         const hostRect = host.getBoundingClientRect();
         const vw = Math.max(320, hostRect.width), vh = Math.max(320, hostRect.height);
         const wide = typeof window !== "undefined" && window.innerWidth > 1024;
-        let centerX = 0, centerZ = 0, dist = Math.max(1100, Math.min(2400, 1800 * (700 / Math.max(320, vw))));
+        let centerX = 0, centerZ = 0, dist = Math.max(1450, Math.min(2600, 1900 * (700 / Math.max(320, vw))));
         if (bounds) {
           centerX = (bounds.minx + bounds.maxx) / 2; centerZ = (bounds.minz + bounds.maxz) / 2;
           const W = Math.max(1, bounds.maxx - bounds.minx), H = Math.max(1, bounds.maxz - bounds.minz);
@@ -522,7 +567,10 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
     };
     resize();
     const ro = new ResizeObserver(resize); ro.observe(host);
+    let lastFrame = 0;
     const render = (now: number) => {
+      if (now - lastFrame < 32 || document.visibilityState !== "visible") { if (!disposed) raf = requestAnimationFrame(render); return; }
+      lastFrame = now;
       updateCamera(now);
       for (const u of labelEls) updateUnit(u, now);
       updateBoundary(now);
@@ -542,9 +590,20 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         const w = Math.max(20, (u.label.textContent?.length ?? 4) * size * 0.62 + 10), h = size + 7;
         const box = { l: sx - w / 2 - 2, r: sx + w / 2 + 2, t: sy - h / 2 - 1, b: sy + h / 2 + 1 };
         const collides = boxes.some((b) => box.l < b.r && box.r > b.l && box.t < b.b && box.b > b.t);
-        if (collides && !(u.kind === "ac" && u.no === live.current.acNo)) { u.label.style.visibility = "hidden"; continue; }
-        boxes.push(box); u.label.style.visibility = "visible";
-        u.label.style.transform = `translate(${sx}px,${sy}px) translate(-50%,-50%)`;
+        if (collides && u.kind === "ac" && u.no !== live.current.acNo) { u.label.style.visibility = "hidden"; continue; }
+        let dx = 0, dy = 0;
+        if (u.kind === "district") {
+          const offset = LABEL_OFFSET[u.name];
+          if (offset) { dx = offset.x; dy = offset.y; }
+          if (collides) {
+            const seed = [...u.name].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+            dx += (seed % 2 === 0 ? 1 : -1) * 18;
+            dy += (seed % 3 - 1) * 16;
+          }
+        }
+        boxes.push({ l: box.l + dx, r: box.r + dx, t: box.t + dy, b: box.b + dy });
+        u.label.style.visibility = "visible";
+        u.label.style.transform = `translate(${sx + dx}px,${sy + dy}px) translate(-50%,-50%)`;
       }
       renderer.render(scene, camera);
       if (!disposed) raf = requestAnimationFrame(render);
@@ -683,7 +742,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         <button type="button" aria-label="Zoom out" onClick={() => apiRef.current?.zoomBy(1.25)} className="grid size-8 place-items-center border-t border-[#EAEAEA] text-[18px] font-semibold text-[#0B0B0C] hover:bg-[#F4F4F5]">−</button>
       </div>
       <p className="pointer-events-none absolute bottom-2 left-2 z-10 rounded bg-white/80 px-2 py-1 text-[9px] text-[#6B6B6B]">Ctrl + scroll to zoom</p>
-      {tip && <div className="pointer-events-none fixed z-[var(--z-dropdown)] max-w-[240px] rounded-lg border border-border bg-card/95 px-2.5 py-2 text-[10px] shadow-xl" style={{ left: Math.min(tip.x + 12, window.innerWidth - 255), top: Math.max(8, tip.y - 12) }}>
+      {tip && <div data-testid="map-tooltip" className="pointer-events-none fixed z-[var(--z-dropdown)] max-w-[240px] rounded-lg border border-border bg-card/95 px-2.5 py-2 text-[10px] shadow-xl" style={{ left: Math.min(tip.x + 12, window.innerWidth - 255), top: Math.max(8, tip.y - 12) }}>
         <div className="font-semibold" style={{ color: tip.color }}>{tip.title}</div>
         <div className="text-[9px] text-muted-foreground">{tip.sub}</div>
         <div className="mt-0.5 tabular-nums text-foreground/85">{tip.value}</div>
