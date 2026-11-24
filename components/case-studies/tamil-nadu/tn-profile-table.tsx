@@ -4,15 +4,10 @@ import { memo, useEffect, useMemo, useState } from "react";
 import { ArrowUpDown } from "lucide-react";
 import type { SurveyDemo, SurveyDemoRow } from "@/lib/survey/types";
 import { cn } from "@/lib/utils";
+import { partyColour } from "@/lib/tamil-nadu/party-brand";
+import { PartyBadge } from "./party-badge";
 
-export const TN_PARTY_COLORS: Record<string, string> = {
-  TVK: "#E6B800",
-  "DMK+": "#DD1100",
-  "AIADMK+": "#138808",
-  NTK: "#7b3fa0",
-  Others: "#8c8f96",
-};
-const colourOf = (party: string) => TN_PARTY_COLORS[party] ?? "#64748B";
+const colourOf = partyColour;
 const pct = (value: number) => `${value.toFixed(1)}%`;
 const int = (value: number) => new Intl.NumberFormat("en-IN").format(Math.round(value));
 
@@ -70,7 +65,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
               {parties.map((party, index) => (
                 <th key={party} className="px-1.5 py-2 text-center font-semibold">
                   <button type="button" onClick={() => toggleSort(index)} className="inline-flex min-h-11! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-black/5" title={`Sort by ${party}`}>
-                    <span className="size-1.5 rounded-sm" style={{ background: colourOf(party) }} />
+                    <PartyBadge party={party} size={16} />
                     {party}
                     <ArrowUpDown className={cn("size-2.5 opacity-50", sort?.column === index && "opacity-100")} />
                   </button>
@@ -112,8 +107,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                     );
                   })}
                   <td className="whitespace-nowrap px-2 py-1.5 text-left font-semibold">
-                    <span className="mr-1 inline-block size-1.5 rounded-sm align-middle" style={{ background: colourOf(parties[leader]) }} />
-                    {tie ? "Tie" : parties[leader]}
+                    <span className="mr-1 inline-flex items-center gap-1 align-middle"><PartyBadge party={parties[leader]} size={16} />{tie ? "Tie" : parties[leader]}</span>
                     {dmkFlag && <span className="ml-1 rounded-full border border-[#e52020] px-1 py-0.5 text-[10.5px] font-bold text-[#e52020]">Need Target promotion</span>}
                     {geo && (
                       <button type="button" onClick={() => onCampaigns({ kind: profileKey, place: row.g })} className="ml-1 inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#1f6fd1] px-2 text-[10.5px] font-bold text-[#1f6fd1] hover:bg-[#EFF6FF]">
@@ -130,7 +124,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
               <tr className="border-t-2 border-[#0B0B0C] bg-[#FAFAFA] font-bold">
                 <td className="sticky left-0 z-10 bg-[#FAFAFA] px-2 py-2 text-left">All 2021 voters</td>
                 {weighted.map((value, index) => <td key={index} className="px-1 py-2 text-center tabular-nums">{pct(value)}</td>)}
-                <td className="px-2 py-2 text-left"><span className="mr-1 inline-block size-1.5 rounded-sm align-middle" style={{ background: colourOf(parties[totalLeader]) }} />{parties[totalLeader]}</td>
+                <td className="px-2 py-2 text-left"><span className="inline-flex items-center gap-1"><PartyBadge party={parties[totalLeader]} size={16} />{parties[totalLeader]}</span></td>
               </tr>
             </tfoot>
           )}

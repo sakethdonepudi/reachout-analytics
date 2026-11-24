@@ -7,11 +7,13 @@ import { ArrowDownToLine, ArrowLeft, ChevronDown, Megaphone } from "lucide-react
 import PartyCard from "@/components/case-studies/shared/party-card";
 import TnSocialMedia from "./tn-social-media";
 import type { SocialFilter } from "@/lib/survey/social-types";
-import TnProfileTable, { TN_PARTY_COLORS, weightedAiadminAverage } from "./tn-profile-table";
+import TnProfileTable, { weightedAiadminAverage } from "./tn-profile-table";
+import { PartyBadge } from "./party-badge";
 import type { SurveyDemo, SurveyShare } from "@/lib/survey/types";
 import type { TnClientModel, TnSerializedMap, TnSlotModel, TnSwingPayload } from "@/lib/survey/tn-view-model";
 import { TN_2021_BASE } from "@/lib/tamil-nadu/baseline";
 import { canonicalDistrictName } from "@/lib/tamil-nadu/aliases";
+import { partyColour, TN_GROUP_KEY } from "@/lib/tamil-nadu/party-brand";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import { cn } from "@/lib/utils";
 
@@ -24,10 +26,9 @@ const int = (value: number) => new Intl.NumberFormat("en-IN").format(Math.round(
 const pct = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? "—" : `${value.toFixed(1)}%`);
 const pct2 = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? "—" : `${value.toFixed(2)}%`);
 const signed = (value: number) => `${Math.abs(value) < 0.05 ? "0.0" : value > 0 ? "+" : ""}${value.toFixed(1)}pp`;
-const COLOR = TN_PARTY_COLORS;
-const colour = (party: string) => COLOR[party] ?? "#64748B";
+const colour = partyColour;
 const STATE = "Tamil Nadu";
-const GROUP_KEY: Record<string, string> = { TVK: "TVK", "DMK+": "DMK+INC+VCK", "AIADMK+": "AIADMK+BJP+PMK+AMMK", NTK: "NTK", Others: "Others" };
+const GROUP_KEY = TN_GROUP_KEY;
 const PROFILE_ORDER: Record<string, string[]> = {
   op: ["age", "caste", "prof", "zone", "dist", "ac", "v21", "app"],
   ex: ["zone", "dist", "ac", "v21", "age", "caste", "prof", "form", "religion", "app"],
@@ -137,7 +138,7 @@ function VoteShareHero({ expected, parties, slotKey }: { expected: SurveyShare; 
     <div className="rounded-2xl border border-[#EAEAEA] bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.035)] sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="size-4 rounded-full ring-2 ring-white" style={{ background: colour(lead) }} />
+          <PartyBadge party={lead} size={28} />
           <div>
             <p className="font-display text-[22px] font-semibold leading-none tracking-[-0.02em] text-[#0B0B0C]">{lead} leads by {margin.toFixed(1)} pts</p>
           </div>
@@ -149,7 +150,7 @@ function VoteShareHero({ expected, parties, slotKey }: { expected: SurveyShare; 
           const value = Math.max(0, expected[party] ?? 0);
           return (
             <span key={party} title={`${party} ${pct(expected[party])}`} className="flex min-w-0 items-center justify-center overflow-hidden whitespace-nowrap text-[12px] font-bold text-white transition-[width] duration-300 ease-out" style={{ width: grown ? `${value}%` : "0%", background: colour(party), textShadow: "0 1px 2px rgba(0,0,0,.45)" }}>
-              {value >= 8 ? `${party} ${value.toFixed(1)}%` : ""}
+              {value >= 8 ? <span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party} {value.toFixed(1)}%</span> : ""}
             </span>
           );
         })}
@@ -462,7 +463,7 @@ export default function TnSurveyDashboard({
                 const perParty = Math.max(0, 100 - Math.abs(value - (actual[party] ?? 0)));
                 return (
                   <div key={party} className="rounded-2xl border border-[#EAEAEA] bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.03)]" style={{ borderTopColor: colour(party), borderTopWidth: 3 }}>
-                    <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[#555]"><span className="size-2.5 rounded-sm" style={{ background: colour(party) }} />{party} · {view === "ex" ? "share" : "expected"}</p>
+                    <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[#555]"><PartyBadge party={party} size={24} />{party} · {view === "ex" ? "share" : "expected"}</p>
                     <p className="mt-1 font-display text-[38px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[#0B0B0C]"><CountUp value={value} decimals={2} suffix="%" /></p>
                     <p className="mt-1.5 text-[12.5px] font-semibold text-[#B91C1C]">Actual 2026: {pct2(actual[party])}</p>
                     <p className="mt-0.5 text-[12.5px] font-semibold text-[#15803D]">Accuracy {perParty.toFixed(1)}%</p>
@@ -552,7 +553,7 @@ function SwingSection({ data, swing, parties, period, slot }: { data: TnClientMo
     <Section title={`Zone swing · ${source.label}`} className="mt-3">
       <div className="mt-3 overflow-x-auto rounded-xl border border-[#EAEAEA]">
         <table className="w-full min-w-[980px] border-collapse text-[15px]">
-          <thead className="bg-[#FAFAFA] text-left text-[13px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-4 py-3">Zone</th>{parties.map((party) => <th key={party} className="px-4 py-3 text-center">{party} 21→26</th>)}</tr></thead>
+          <thead className="bg-[#FAFAFA] text-left text-[13px] uppercase tracking-wide text-[#6B6B6B]"><tr><th className="px-4 py-3">Zone</th>{parties.map((party) => <th key={party} className="px-4 py-3 text-center"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party} 21→26</span></th>)}</tr></thead>
           <tbody>
             {data.regions.map((region) => {
               const before = data.base?.[region] ?? TN_2021_BASE[region];
@@ -586,7 +587,7 @@ function SeatsByZone({ data, parties, seats, periodKey, slotLabel }: { data: TnC
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {summaryParties.map((party) => (
           <div key={party} className="rounded-xl border border-[#EAEAEA] p-4">
-            <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[#555]"><span className="size-2.5 rounded-sm" style={{ background: colour(party) }} />{party}</p>
+            <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[#555]"><PartyBadge party={party} size={24} />{party}</p>
             <p className="mt-1 font-display text-[32px] font-semibold leading-none tabular-nums text-[#0B0B0C]"><CountUp value={Number(seats[party] ?? 0)} /></p>
             <p className="mt-1.5 text-[12.5px] text-[#6B6B6B]">projected · actual {int(Number(actualSeats[party] ?? 0))}</p>
           </div>
@@ -596,7 +597,7 @@ function SeatsByZone({ data, parties, seats, periodKey, slotLabel }: { data: TnC
         <table className="w-full min-w-[780px] border-collapse text-[15px]">
           <thead className="bg-[#FAFAFA] text-left text-[13px] uppercase tracking-wide text-[#6B6B6B]">
             <tr><th rowSpan={2} className="px-4 py-3">Zone</th><th rowSpan={2} className="px-4 py-3 text-right">ACs</th><th colSpan={4} className="px-4 py-3 text-center">Projected</th><th colSpan={3} className="px-4 py-3 text-center">Actual 2026</th></tr>
-            <tr>{summaryParties.map((party) => <th key={party} className="px-4 py-2 text-right">{party}</th>)}{actualParties.map((party) => <th key={party} className="px-4 py-2 text-right">{party}</th>)}</tr>
+            <tr>{summaryParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party}</span></th>)}{actualParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party}</span></th>)}</tr>
           </thead>
           <tbody>
             {Object.entries(zones).map(([zone, row]) => (

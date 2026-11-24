@@ -12,7 +12,12 @@ politician portraits or endorsements.
 | `bjp.png` | Bharatiya Janata Party (BJP) | [Logo of the Bharatiya Janata Party — Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Logo_of_the_Bharatiya_Janata_Party.svg) |
 | `jdu.png` | Janata Dal (United) | [Indian Election Symbol Arrow — Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Indian_Election_Symbol_Arrow.svg) |
 | `inc.png` | Indian National Congress (INC) | [Indian National Congress logo — Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Indian_National_Congress_logo.svg) |
+| `tvk.svg` | Tamilaga Vettri Kazhagam (TVK) | [Indian Election Symbol Whistle — Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Indian_Election_Symbol_Whistle.svg) (Election Commission of India, CC0 1.0). Retrieved 24 November 2026. |
+| `dmk.svg` | Dravida Munnetra Kazhagam (DMK) | [Indian election symbol rising sun — Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Indian_election_symbol_rising_sun.svg) (by Furfur, CC BY-SA 4.0, attribution required). Retrieved 24 November 2026. |
+| `ntk.png` | Naam Tamilar Katchi (NTK) | [NTK-EC-Symbol — Wikimedia Commons](https://commons.wikimedia.org/wiki/File:NTK-EC-Symbol.jpg) (by Mohantry-3009, CC0 1.0). Hand-drawn scan cleaned to a transparent, tinted 256 px PNG; the artist signature is cropped out. Retrieved 24 November 2026. |
 
-The SVG sources were rasterised to 256 px-high transparent PNGs to keep the
-public page payload small. No colours, proportions or symbols were redrawn.
-All party symbols remain the property of their respective parties.
+`tvk.svg` and `dmk.svg` are optimised line art (SVGO, integer precision,
+under 5 KB) tinted with the case-study party colour through a CSS mask at run
+time. `aiadmk.png` keeps its supplied colours. No colours, proportions or
+symbols were redrawn. All party symbols remain the property of their
+respective parties.
