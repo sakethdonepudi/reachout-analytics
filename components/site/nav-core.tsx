@@ -159,6 +159,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
   return (
     <>
       <header className="site-header pointer-events-none fixed inset-x-0 top-0 z-[var(--z-nav)] px-3 pt-2 sm:px-4">
+        <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[66px] bg-white/85 backdrop-blur-md supports-[backdrop-filter]:bg-white/70 sm:h-[72px]" aria-hidden />
         <div className={cn("site-group pointer-events-auto mx-auto flex h-[52px] w-full max-w-[1240px] items-center gap-2 rounded-full px-3 sm:h-[56px] sm:px-4", glass)}>
           <Logo href={home} className="h-[26px] w-[116px] sm:h-[28px] sm:w-[126px]" />
           <nav ref={navRef} className="relative ml-2 hidden items-center gap-0.5 min-[900px]:flex" aria-label="Primary">

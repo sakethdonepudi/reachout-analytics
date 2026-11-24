@@ -14,6 +14,8 @@ import type { TnClientModel, TnSerializedMap, TnSlotModel, TnSwingPayload } from
 import { TN_2021_BASE } from "@/lib/tamil-nadu/baseline";
 import { canonicalDistrictName } from "@/lib/tamil-nadu/aliases";
 import { partyColour, TN_GROUP_KEY } from "@/lib/tamil-nadu/party-brand";
+import { projectedMajority } from "@/lib/tamil-nadu/majority";
+import { swingLabel, swingTone } from "@/lib/tamil-nadu/swing";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import { cn } from "@/lib/utils";
 import { ReachSparkline, SocialGlyphs } from "./social-icons";
@@ -26,7 +28,6 @@ const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
 const int = (value: number) => new Intl.NumberFormat("en-IN").format(Math.round(value));
 const pct = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? "—" : `${value.toFixed(1)}%`);
 const pct2 = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? "—" : `${value.toFixed(2)}%`);
-const signed = (value: number) => `${Math.abs(value) < 0.05 ? "0.0" : value > 0 ? "+" : ""}${value.toFixed(1)}pp`;
 const colour = partyColour;
 const STATE = "Tamil Nadu";
 const GROUP_KEY = TN_GROUP_KEY;
@@ -100,7 +101,7 @@ function Section({ title, note, children, className }: { title: string; note?: s
     return () => observer.disconnect();
   }, []);
   return (
-    <section ref={ref} className={cn("tn-reveal scroll-mt-24 rounded-2xl border border-[#EAEAEA] bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.035)] sm:p-6", seen && "tn-reveal-in", className)} aria-label={title}>
+    <section ref={ref} className={cn("tn-reveal scroll-mt-28 rounded-2xl border border-[#EAEAEA] bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.035)] sm:p-6", seen && "tn-reveal-in", className)} aria-label={title}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-display text-[23px] font-semibold leading-tight tracking-[-0.02em] text-[#0B0B0C]">{title}</h3>
         {note && <p className="text-[13px] text-[#6B6B6B]">{note}</p>}
@@ -564,7 +565,8 @@ function SwingSection({ data, swing, parties, period, slot }: { data: TnClientMo
                   <th scope="row" className="px-4 py-2.5 text-left">{data.zonelabels?.[region] ?? region}</th>
                   {parties.map((party) => {
                     const swing = (after[party] ?? 0) - (before[party] ?? 0);
-                    return <td key={party} className="px-4 py-2.5 text-center tabular-nums">{pct(before[party])} → {pct(after[party])} <span className={cn("ml-1 rounded px-1.5 py-0.5 text-[12px] font-bold", swing > 0 ? "bg-[#DCFCE7] text-[#15803D]" : swing < 0 ? "bg-[#FEE2E2] text-[#B91C1C]" : "text-[#6B6B6B]")}>({signed(swing)})</span>{region === state && data.actual[region]?.[party] != null && <span className="mt-0.5 block text-[12px] font-bold text-[#B91C1C]">Actual 2026: {pct(data.actual[region][party])}</span>}</td>;
+                    const tone = swingTone(swing);
+                    return <td key={party} className="px-4 py-2.5 text-center tabular-nums">{pct(before[party])} → {pct(after[party])} <span className={cn("ml-1 rounded px-1.5 py-0.5 text-[12px] font-bold", tone === "up" ? "bg-[#DCFCE7] text-[#15803D]" : tone === "down" ? "bg-[#FEE2E2] text-[#B91C1C]" : "text-[#6B6B6B]")}>{swingLabel(swing)}</span>{region === state && data.actual[region]?.[party] != null && <span className="mt-0.5 block text-[12px] font-bold text-[#B91C1C]">Actual 2026: {pct(data.actual[region][party])}</span>}</td>;
                   })}
                 </tr>
               );
@@ -582,6 +584,7 @@ function SeatsByZone({ data, parties, seats, periodKey, slotLabel }: { data: TnC
   const actualSeats = data.actualSeats as Record<string, unknown>;
   const summaryParties = ["TVK", "DMK+", "AIADMK+", "NTK"];
   const actualParties = ["TVK", "DMK+", "AIADMK+"];
+  const majority = projectedMajority(seats, summaryParties);
   return (
     <Section title={`Seats by zone · ${slotLabel}`} className="mt-3">
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -594,7 +597,7 @@ function SeatsByZone({ data, parties, seats, periodKey, slotLabel }: { data: TnC
         ))}
       </div>
       <div className="mt-3 overflow-x-auto rounded-xl border border-[#EAEAEA]">
-        <table className="w-full min-w-[780px] border-collapse text-[15px]">
+        <table className="w-full min-w-[780px] border-collapse text-[15px]" aria-label={majority.status === "majority" ? `${majority.leader} projected majority with ${majority.seats} seats` : "Projected assembly is hung"} >
           <thead className="bg-[#FAFAFA] text-left text-[13px] uppercase tracking-wide text-[#6B6B6B]">
             <tr><th rowSpan={2} className="px-4 py-3">Zone</th><th rowSpan={2} className="px-4 py-3 text-right">ACs</th><th colSpan={4} className="px-4 py-3 text-center">Projected</th><th colSpan={3} className="px-4 py-3 text-center">Actual 2026</th></tr>
             <tr>{summaryParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party}</span></th>)}{actualParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party}</span></th>)}</tr>

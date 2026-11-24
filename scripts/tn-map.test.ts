@@ -7,6 +7,8 @@ import * as XLSX from "xlsx";
 import { aggregateRows, mapParty, opinionFilter, rawAcDistrict, trackingRows } from "../lib/tamil-nadu/map-aggregate";
 import { canonicalAcName, canonicalDistrictName, resolveAcDistrict } from "../lib/tamil-nadu/aliases";
 import { AC_DISTRICT_BY_NO } from "../lib/tamil-nadu/survey-map";
+import { projectedMajority } from "../lib/tamil-nadu/majority";
+import { swingLabel, swingTone } from "../lib/tamil-nadu/swing";
 
 let passed = 0;
 const check = (name: string, fn: () => void) => { fn(); passed += 1; console.log(`  ✓ ${name}`); };
@@ -41,6 +43,37 @@ check("Mayiladuturai rows land in Mayiladuthurai", () => { assert.equal(opinion.
 check("tracking months are kept per month", () => {
   assert.equal(aggregateRows(trackingRows(rows, "District Swing", "2025-10")).n, 5);
   assert.equal(aggregateRows(trackingRows(rows, "Tracking Survey", "2026-01")).n, 5);
+});
+
+console.log("\n4. Projection and swing formatting");
+const parties = ["TVK", "DMK+", "AIADMK+", "NTK", "Others"];
+check("a projected majority uses projected seats, not actual seats", () => {
+  const result = projectedMajority({ TVK: 162, "DMK+": 2, "AIADMK+": 62, NTK: 0, Others: 8 }, parties);
+  assert.equal(result.leader, "TVK");
+  assert.equal(result.seats, 162);
+  assert.equal(result.status, "majority");
+});
+check("the actual 108 seats remain hung", () => {
+  const result = projectedMajority({ TVK: 108, "DMK+": 73, "AIADMK+": 53, NTK: 0, Others: 0 }, parties);
+  assert.equal(result.status, "hung");
+});
+check("a tied projection is hung", () => {
+  const result = projectedMajority({ TVK: 117, "DMK+": 117, "AIADMK+": 0, NTK: 0, Others: 0 }, parties);
+  assert.equal(result.status, "hung");
+  assert.equal(result.tie, true);
+});
+check("negative zero and rounded zero render one zero", () => {
+  assert.equal(swingLabel(-0), "(0.0pp)");
+  assert.equal(swingLabel(0), "(0.0pp)");
+  assert.equal(swingLabel(-0.04), "(0.0pp)");
+  assert.equal(swingLabel(0.04), "(0.0pp)");
+  assert.equal(swingTone(-0.04), "flat");
+});
+check("positive and negative swing keep their sign", () => {
+  assert.equal(swingLabel(3.24), "(+3.2pp)");
+  assert.equal(swingLabel(-3.26), "(-3.3pp)");
+  assert.equal(swingTone(3.2), "up");
+  assert.equal(swingTone(-3.2), "down");
 });
 
 console.log(`\nTN MAP ${passed} passed`);

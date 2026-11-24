@@ -2170,6 +2170,8 @@ tr[data-highlight="true"] { background: var(--r-hl); }
   [data-owner-content] .auth-shell { min-height: calc(100svh - 1.5rem); }
 }
 
+html { scroll-padding-top: 96px; }
+
 /* TN survey presentation motion. Fast, ease-out, and off for reduced motion. */
 @keyframes tn-fade-slide {
   from { opacity: 0; transform: translateY(8px); }
