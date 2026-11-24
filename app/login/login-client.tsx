@@ -4,12 +4,13 @@ import Link from "next/link";
 import { Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check, Eye, EyeOff, Loader2 } from "lucide-react";
-import { Logo } from "@/components/site/brand";
+import { ThemeLogo } from "@/components/site/theme-logo";
 import Turnstile from "@/components/site/turnstile";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@/lib/use-navigate";
 import { useDelayedFlag } from "@/lib/use-delayed-flag";
 import { shakeElement } from "@/lib/shake";
+import ThemeToggle from "@/components/site/theme-toggle";
 
 function LoginClient({ turnstileEnabled, nonce, expired = false }: { turnstileEnabled: boolean; nonce?: string; expired?: boolean }) {
   const search = useSearchParams();
@@ -109,9 +110,10 @@ function LoginClient({ turnstileEnabled, nonce, expired = false }: { turnstileEn
 
   return (
     <>
-      <main className="auth-shell grid min-h-[100svh] place-items-center px-5 py-14 text-[var(--p-ink)]">
+      <main className="auth-shell relative grid min-h-[100svh] place-items-center px-5 py-14 text-[var(--p-ink)]">
+      <div className="absolute right-4 top-4 z-10"><ThemeToggle /></div>
       <div className="relative w-full max-w-[420px]">
-        <div className="mb-7 flex justify-center"><Logo /></div>
+        <div className="mb-7 flex justify-center"><ThemeLogo /></div>
         <div className="auth-card">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6B6B6B]">Political Analysis</p>
           <h1 className="type-h1 mt-2">{step === "totp" ? "Enter your code" : "Sign in to continue"}</h1>

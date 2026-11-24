@@ -13,12 +13,22 @@ export type TnPartyBrand = {
 };
 
 export const TN_PARTY_BRAND: Record<string, TnPartyBrand> = {
-  TVK: { color: "#E6B800", logo: "/parties/tvk.svg", mask: true },
-  "DMK+": { color: "#DD1100", logo: "/parties/dmk.svg", mask: true },
-  "AIADMK+": { color: "#138808", logo: "/parties/aiadmk.png" },
-  NTK: { color: "#7b3fa0", logo: "/parties/ntk.png" },
-  Others: { color: "#8c8f96", monogram: "OTH" },
-  NOTA: { color: "#8c8f96", monogram: "NOTA" },
+  TVK: { color: "var(--tn-party-tvk)", logo: "/parties/tvk.svg", mask: true },
+  "DMK+": { color: "var(--tn-party-dmk)", logo: "/parties/dmk.svg", mask: true },
+  "AIADMK+": { color: "var(--tn-party-aiadmk)", logo: "/parties/aiadmk.png" },
+  NTK: { color: "var(--tn-party-ntk)", logo: "/parties/ntk.png" },
+  Others: { color: "var(--tn-party-others)", monogram: "OTH" },
+  NOTA: { color: "var(--tn-party-others)", monogram: "NOTA" },
+};
+
+/** Light-theme hexes used only for contrast calculations. */
+const TN_PARTY_HEX: Record<string, string> = {
+  TVK: "#E6B800",
+  "DMK+": "#DD1100",
+  "AIADMK+": "#138808",
+  NTK: "#7b3fa0",
+  Others: "#8c8f96",
+  NOTA: "#8c8f96",
 };
 
 export function partyBrand(party: string): TnPartyBrand {
@@ -31,7 +41,7 @@ export function partyColour(party: string): string {
 
 /** True when white type is the readable choice on a near-full party fill. */
 export function partyNeedsWhiteInk(party: string): boolean {
-  const hex = partyColour(party).replace("#", "");
+  const hex = (TN_PARTY_HEX[party] ?? "#64748B").replace("#", "");
   if (hex.length !== 6) return false;
   const channel = (value: number) => {
     const c = value / 255;

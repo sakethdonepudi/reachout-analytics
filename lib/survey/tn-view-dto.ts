@@ -16,7 +16,7 @@ const MONEY = /spend|cost|cpm|cpc|cpr|billing|amount|inr|budget|payment/i;
 const AIRX = /aiadmk|admk|\beps\b|edapp|puratchi|amma|it wing|two leaves/i;
 
 export type { TnSocialCampaign, TnSocialAccount, TnSocialPeriod, TnSocialTotals, TnSocialOverview, TnSocialFiltered } from "./social-types";
-import type { TnSocialCampaign, TnSocialAccount, TnSocialOverview, TnSocialFiltered, SocialFilter } from "./social-types";
+import type { TnSocialCampaign, TnSocialAccount, TnSocialOverview, TnSocialFiltered, TnSocialMonth, SocialFilter } from "./social-types";
 
 type AnyRecord = Record<string, unknown>;
 const number = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : Number(value) || 0);
@@ -102,6 +102,36 @@ function accountRows(data: SurveyData, links: boolean, owner: boolean): { accoun
   return { accounts, campaignsByKey, idByKey };
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+export function tnSocialMonthly(data: SurveyData): TnSocialMonth[] {
+  const ads = record(data.ads);
+  const campaigns = Object.values(record(ads.camps)).flatMap((value) => Array.isArray(value) ? value.map(record) : []);
+  const months = new Map<string, TnSocialMonth>();
+  for (const campaign of campaigns) {
+    const month = text(campaign.start).slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(month)) continue;
+    const current = months.get(month) ?? {
+      month,
+      label: `${MONTHS[Number(month.slice(5, 7)) - 1] ?? month.slice(5, 7)} ${month.slice(0, 4)}`,
+      campaigns: 0,
+      reach: 0,
+      impressions: 0,
+      views: 0,
+      clicks: 0,
+      engagements: 0,
+    };
+    current.campaigns += 1;
+    current.reach += number(campaign.reach);
+    current.impressions += number(campaign.impr);
+    current.views += number(campaign.views);
+    current.clicks += number(campaign.clicks);
+    current.engagements += number(campaign.eng);
+    months.set(month, current);
+  }
+  return [...months.values()].sort((a, b) => a.month.localeCompare(b.month));
+}
+
 export async function tnSocialOverview(data: SurveyData, owner = false): Promise<TnSocialOverview> {
   const links = owner && await getClientLinks();
   const ads = record(data.ads);
@@ -126,9 +156,13 @@ export async function tnSocialOverview(data: SurveyData, owner = false): Promise
   const periods = Object.entries(record(ads.periods)).map(([key, value]) => {
     const item = record(value);
     const metrics = periodMetrics(key);
+    const label = text(item.label) || key;
+    const parsed = /^(.*?)\s*\((.*)\)\s*$/.exec(label);
     return {
       key,
-      label: text(item.label) || key,
+      label,
+      name: parsed?.[1]?.trim() ?? label,
+      range: parsed?.[2]?.trim() ?? "",
       campaigns: number(item.n),
       reach: number(item.reach),
       impressions: number(item.impr) || metrics.impressions,
@@ -154,6 +188,7 @@ export async function tnSocialOverview(data: SurveyData, owner = false): Promise
     },
     accounts,
     periods,
+    monthly: tnSocialMonthly(data),
   };
 }
 
@@ -360,6 +395,7 @@ export function tnClientModel(data: SurveyData, initialView: "op" | "ex" | "soci
     cards,
     slots,
     swing,
+    socialMonthly: tnSocialMonthly(data),
     initialMap: serializeMap(buildSurveyMap(data, mapPeriod, initialSlot)),
   };
 }

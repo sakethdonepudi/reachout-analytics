@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Logo } from "@/components/site/brand";
+import { ThemeLogo } from "@/components/site/theme-logo";
 import { CASES, UPCOMING } from "@/lib/cases";
 
 export default function SiteFooter() {
@@ -8,7 +8,7 @@ export default function SiteFooter() {
     <footer className="relative z-10 border-t border-[#EAEAEA] bg-white">
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-12 sm:px-10 lg:grid-cols-[1.2fr_0.9fr_auto] lg:gap-16 lg:py-16">
         <div>
-          <Logo variant="light" className="h-8 w-[132px]" />
+          <ThemeLogo className="h-8 w-[132px]" />
           <p className="mt-4 font-display text-[15px] font-semibold tracking-[-0.01em] text-[#0B0B0C]">Political Analysis</p>
         </div>
 

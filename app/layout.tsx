@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import localFont from "next/font/local";
 import "./globals.css";
 import RouteTransition from "@/components/site/route-transition";
@@ -9,11 +10,11 @@ import MotionTier from "@/components/site/motion-tier";
 import CsrfFetch from "@/components/site/csrf-fetch";
 import { ReauthProvider } from "@/components/auth/reauth-provider";
 import IdleProvider from "@/components/auth/idle-provider";
+import { ThemeProvider } from "@/components/site/theme";
 
 const inter = localFont({
   src: [
     { path: "./fonts/inter-latin-400-normal.woff2", weight: "400", style: "normal" },
-    { path: "./fonts/inter-latin-500-normal.woff2", weight: "500", style: "normal" },
     { path: "./fonts/inter-latin-600-normal.woff2", weight: "600", style: "normal" },
     { path: "./fonts/inter-latin-700-normal.woff2", weight: "700", style: "normal" },
   ],
@@ -24,10 +25,7 @@ const inter = localFont({
 });
 const interTight = localFont({
   src: [
-    { path: "./fonts/inter-tight-latin-500-normal.woff2", weight: "500", style: "normal" },
     { path: "./fonts/inter-tight-latin-600-normal.woff2", weight: "600", style: "normal" },
-    { path: "./fonts/inter-tight-latin-700-normal.woff2", weight: "700", style: "normal" },
-    { path: "./fonts/inter-tight-latin-800-normal.woff2", weight: "800", style: "normal" },
   ],
   variable: "--font-inter-tight",
   display: "swap",
@@ -52,17 +50,23 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, googleBot: { index: false, follow: false, noimageindex: true } },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+const THEME_SCRIPT = `(function(){try{var k="ro-theme";var s=localStorage.getItem(k);var t=s==="dark"||s==="light"?s:(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;}catch(e){}})();`;
+
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html lang="en" className={`${inter.variable} ${interTight.variable} ${instrumentSerif.variable}`}>
+    <html lang="en" className={`${inter.variable} ${interTight.variable} ${instrumentSerif.variable}`} suppressHydrationWarning>
+      <head><script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} /></head>
       <body>
-        <CsrfFetch />
-        <ReauthProvider><IdleProvider>{children}</IdleProvider></ReauthProvider>
-        <RouteTransition />
-        <NavigationLoader />
-        <RouteHistory />
-        <HashScroller />
-        <MotionTier />
+        <ThemeProvider>
+          <CsrfFetch />
+          <ReauthProvider><IdleProvider>{children}</IdleProvider></ReauthProvider>
+          <RouteTransition />
+          <NavigationLoader />
+          <RouteHistory />
+          <HashScroller />
+          <MotionTier />
+        </ThemeProvider>
       </body>
     </html>
   );

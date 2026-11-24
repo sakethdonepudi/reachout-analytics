@@ -2,18 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { X } from "lucide-react";
 import { geoIdentity } from "d3-geo";
 import { MAP_STYLE, addMapLights, createScreenLine, setScreenLinePoints, updateLineResolution, gradientColor, labelSize } from "@/lib/map-style";
 import AC_GEO from "@/lib/data/tamil-nadu/tn-acs.json";
 import DISTRICT_GEO from "@/lib/data/tamil-nadu/tn-districts.json";
 import {
-  TN_COLOR, TN_GROUPS, TN_NO_DATA,
+  TN_COLOR, TN_COLOR_DARK, TN_GROUPS, TN_NO_DATA,
   type TnAc, type TnDistrict, type TnGroup, type TnShares, type TnYearOrCurrent,
 } from "@/lib/tamil-nadu/model";
 import { partyColour } from "@/lib/tamil-nadu/party-brand";
 import { PartyBadge } from "./party-badge";
 
-export type MapTheme = "light";
+export type MapTheme = "light" | "dark";
 export type TnMapHover = {
   title: string;
   leader: string | null;
@@ -51,7 +52,7 @@ const LABEL_OFFSET: Record<string, { x: number; y: number }> = {
   Dharmapuri: { x: -60, y: -10 },
   Kallakurichi: { x: 42, y: -30 },
   Salem: { x: 12, y: -8 },
-  Kanniyakumari: { x: 62, y: 2 },
+  Kanniyakumari: { x: 52, y: 0 },
   "The Nilgiris": { x: -40, y: 12 },
   Cuddalore: { x: -18, y: 24 },
   Mayiladuthurai: { x: 30, y: 28 },
@@ -75,6 +76,10 @@ const LABEL_OFFSET: Record<string, { x: number; y: number }> = {
   Tiruvannamalai: { x: 2, y: -20 },
   Namakkal: { x: 14, y: 6 },
   Dindigul: { x: -18, y: -6 },
+};
+
+const MOBILE_LABEL_OFFSET: Record<string, { x: number; y: number }> = {
+  Chennai: { x: -38, y: 22 },
 };
 
 const DISTRICT_ALIAS: Record<string, string> = {
@@ -103,7 +108,12 @@ const PAL = {
     none: "#e7ebef", side: "#d3d9e0", line: "rgba(40,58,78,.50)", hover: "#1d4ed8",
     sel: "#111827", label: "#1b2430", halo: "rgba(255,255,255,.94)", bg: "rgba(255,255,255,.98)", border: "rgba(20,24,31,.14)",
   },
+  dark: {
+    none: "#232322", side: "#181817", line: "rgba(210,210,200,.38)", hover: "#8fb0ff",
+    sel: "#f0efec", label: "#f0efec", halo: "rgba(18,18,17,.92)", bg: "rgba(26,26,25,.98)", border: "rgba(210,210,200,.22)",
+  },
 };
+let ACTIVE_PARTY_COLORS: Record<TnGroup, string> = TN_COLOR;
 const shade = (hex: string, amount: number) => {
   const c = new THREE.Color(hex);
   const hsl = { h: 0, s: 0, l: 0 };
@@ -151,8 +161,8 @@ function blendFromShares(shares: TnShares | null | undefined, label: string): Bl
     first: first.g, second: second?.g ?? null,
     firstShare: first.v, secondShare: second?.v ?? null,
     p1, p2, marginPp: second ? Math.max(0, (first.v - second.v) * 100) : 100,
-    color1: TN_COLOR[first.g], color2: second ? TN_COLOR[second.g] : TN_COLOR[first.g],
-    color: TN_COLOR[first.g], label,
+    color1: ACTIVE_PARTY_COLORS[first.g], color2: second ? ACTIVE_PARTY_COLORS[second.g] : ACTIVE_PARTY_COLORS[first.g],
+    color: ACTIVE_PARTY_COLORS[first.g], label,
   };
 }
 function blendForAc(a: TnAc | undefined, year: TnYearOrCurrent): BlendInfo {
@@ -178,12 +188,23 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
   const labelRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [tip, setTip] = useState<{ x: number; y: number; card: TnMapHover } | null>(null);
+  const [touch, setTouch] = useState(false);
+  const touchRef = useRef(false);
+  const [sheet, setSheet] = useState<{ card: TnMapHover; kind: "district" | "ac"; name: string; no?: number; district?: string } | null>(null);
   const live = useRef({ acs, districts, district, acNo, year, theme, tooltip, onSelectDistrict, onSelectAc, onReset });
   live.current = { acs, districts, district, acNo, year, theme, tooltip, onSelectDistrict, onSelectAc, onReset };
   const acByNo = useMemo(() => new Map(acs.map((a) => [a.no, a])), [acs]);
   const acRef = useRef(acByNo); acRef.current = acByNo;
   const districtByName = useMemo(() => new Map(districts.map((d) => [d.name, d])), [districts]);
   const districtRef = useRef(districtByName); districtRef.current = districtByName;
+  useEffect(() => {
+    const query = window.matchMedia("(hover: none), (pointer: coarse)");
+    const update = () => { touchRef.current = query.matches; setTouch(query.matches); };
+    update();
+    query.addEventListener?.("change", update);
+    return () => query.removeEventListener?.("change", update);
+  }, []);
+  useEffect(() => { setSheet(null); }, [district, acNo]);
   const apiRef = useRef<{
     setSelection: (d: string | null, a: number | null, y: TnYearOrCurrent) => void;
     resetCamera: () => void;
@@ -195,6 +216,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
     if (!host || !canvas || !labelRoot) return;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const P = PAL[theme];
+    ACTIVE_PARTY_COLORS = theme === "dark" ? TN_COLOR_DARK : TN_COLOR;
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setClearColor(0x000000, 0);
@@ -476,7 +498,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         hoveredKey = null; hoveredNo = null; setTip(null); canvas.style.cursor = "grab";
         showAccent(activeAC?.no ?? null, !!activeAC);
         const mobileState = typeof window !== "undefined" && window.innerWidth < 640;
-        const mobileLabels = new Set([...districtsUnits.keys()].sort((aKey, bKey) => (districtRef.current.get(bKey)?.survey.valid ?? 0) - (districtRef.current.get(aKey)?.survey.valid ?? 0)).slice(0, 10));
+        const mobileLabels = new Set(["Chennai", "Kanniyakumari", ...[...districtsUnits.keys()].sort((aKey, bKey) => (districtRef.current.get(bKey)?.survey.valid ?? 0) - (districtRef.current.get(aKey)?.survey.valid ?? 0)).slice(0, 10)]);
         const assembly = false;
         for (const [name, u] of districtsUnits) {
           const selected = !!activeD && name === activeD.name;
@@ -526,10 +548,10 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         if (bounds && Number.isFinite(bounds.minx)) {
           centerX = (bounds.minx + bounds.maxx) / 2; centerZ = (bounds.minz + bounds.maxz) / 2;
           const W = Math.max(1, bounds.maxx - bounds.minx), H = Math.max(1, bounds.maxz - bounds.minz);
-          const availW = Math.max(220, vw - (wide ? 34 : 18));
-          const availH = Math.max(220, vh - (activeAC || activeD ? 96 : 64));
+          const availW = Math.max(220, vw - (wide ? 34 : 30));
+          const availH = Math.max(220, vh - (activeAC || activeD ? 96 : 74));
           const fov = camera.fov * Math.PI / 180;
-          const fit = Math.max((H / 2) / Math.tan(fov / 2), (W / 2) / Math.tan(Math.atan(Math.tan(fov / 2) * (availW / availH)))) * (activeAC ? 1.32 : activeD ? 1.28 : Math.cos(phi) * (vh / availH));
+          const fit = Math.max((H / 2) / Math.tan(fov / 2), (W / 2) / Math.tan(Math.atan(Math.tan(fov / 2) * (availW / availH)))) * (activeAC ? 1.32 : activeD ? 1.28 : Math.cos(phi) * (vh / availH) * 1.05);
           dist = Math.max(45, Math.min(3600, fit));
         }
         if (!activeD && !activeAC) stateDist = dist;
@@ -603,7 +625,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         if (collides && u.kind === "ac" && u.no !== live.current.acNo) { u.label.style.visibility = "hidden"; continue; }
         let dx = 0, dy = 0;
         if (u.kind === "district") {
-          const base = LABEL_OFFSET[u.name] ?? { x: 0, y: 0 };
+          const base = (window.innerWidth < 640 ? MOBILE_LABEL_OFFSET[u.name] : undefined) ?? LABEL_OFFSET[u.name] ?? { x: 0, y: 0 };
           const candidate = [
             { x: base.x, y: base.y },
             { x: base.x + 40, y: base.y }, { x: base.x - 40, y: base.y },
@@ -654,6 +676,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
     };
     const restoreSelectedAccent = () => showAccent(live.current.acNo, true);
     const onPointerMove = (e: PointerEvent) => {
+      if (touchRef.current) return;
       if (drag) {
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
@@ -701,9 +724,22 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
       const wasDrag = drag?.moved; drag = null; canvas.style.cursor = "grab";
       if (wasDrag || pointers.size > 0) return;
       const hit = hitAt(e.clientX, e.clientY);
-      if (!hit) { hoveredKey = null; hoveredNo = null; setTip(null); restoreSelectedAccent(); live.current.onReset(); return; }
-      if (hit.object.userData.kind === "district") live.current.onSelectDistrict(canonicalDistrict(hit.object.userData.district as string));
-      else live.current.onSelectAc(hit.object.userData.no as number);
+      if (!hit) {
+        hoveredKey = null; hoveredNo = null; setTip(null); restoreSelectedAccent();
+        if (touchRef.current) setSheet(null);
+        else live.current.onReset();
+        return;
+      }
+      const data = hit.object.userData as { kind: "district" | "ac"; district?: string; no?: number };
+      if (touchRef.current) {
+        const kind = data.kind;
+        const name = kind === "district" ? canonicalDistrict(data.district ?? "") : acRef.current.get(data.no as number)?.name ?? `AC ${data.no}`;
+        const card = live.current.tooltip?.({ kind, name, no: data.no, district: data.district ? canonicalDistrict(data.district) : undefined }) ?? { title: name, leader: null, rows: [] };
+        setSheet({ card, kind, name, no: data.no, district: data.district ? canonicalDistrict(data.district) : undefined });
+        return;
+      }
+      if (data.kind === "district") live.current.onSelectDistrict(canonicalDistrict(data.district ?? ""));
+      else live.current.onSelectAc(data.no as number);
     };
     const onPointerCancel = (e: PointerEvent) => { pointers.delete(e.pointerId); drag = null; canvas.style.cursor = "grab"; };
     const onWheel = (e: WheelEvent) => {
@@ -767,11 +803,11 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         <canvas ref={canvasRef} className="block h-full w-full" style={{ touchAction: "pan-y pinch-zoom" }} aria-label="3D map of Tamil Nadu districts and assembly constituencies" role="img" />
         <div ref={labelRef} className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden />
       </div>
-      <div className="absolute right-2 top-2 z-10 flex flex-col overflow-hidden rounded-lg border border-[#D5D8DE] bg-white/95 shadow-sm">
-        <button type="button" aria-label="Zoom in" onClick={() => apiRef.current?.zoomBy(0.8)} className="grid size-11! place-items-center text-[20px] font-semibold text-[#0B0B0C] hover:bg-[#F4F4F5]">+</button>
-        <button type="button" aria-label="Zoom out" onClick={() => apiRef.current?.zoomBy(1.25)} className="grid size-11! place-items-center border-t border-[#EAEAEA] text-[20px] font-semibold text-[#0B0B0C] hover:bg-[#F4F4F5]">−</button>
+      <div className="absolute right-2 top-2 z-10 flex flex-col overflow-hidden rounded-lg border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)]/95 shadow-sm">
+        <button type="button" aria-label="Zoom in" onClick={() => apiRef.current?.zoomBy(0.8)} className="grid size-11! place-items-center text-[20px] font-semibold text-[color:var(--theme-text)] hover:bg-[color:var(--theme-surface-2)]">+</button>
+        <button type="button" aria-label="Zoom out" onClick={() => apiRef.current?.zoomBy(1.25)} className="grid size-11! place-items-center border-t border-[color:var(--theme-border)] text-[20px] font-semibold text-[color:var(--theme-text)] hover:bg-[color:var(--theme-surface-2)]">−</button>
       </div>
-      <p className="pointer-events-none absolute bottom-2 left-2 z-10 rounded bg-white/80 px-2 py-1 text-[9px] text-[#6B6B6B]">Ctrl + scroll to zoom</p>
+      <p className="pointer-events-none absolute bottom-2 right-2 z-10 rounded bg-[color:var(--theme-surface)]/85 px-2 py-1 text-[12px] text-[color:var(--theme-text-3)]">{touch ? "Pinch to zoom" : "Ctrl + scroll to zoom"}</p>
       {tip && (() => {
         const width = 232;
         const height = 48 + tip.card.rows.length * 23;
@@ -780,15 +816,15 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         const left = tip.x + 12 + width > viewportW - 8 ? Math.max(8, tip.x - 12 - width) : tip.x + 12;
         const top = tip.y + 12 + height > viewportH - 8 ? Math.max(8, tip.y - 12 - height) : tip.y + 12;
         return (
-          <div data-testid="map-tooltip" className="tn-tooltip pointer-events-none fixed z-[var(--z-dropdown)] rounded-2xl border border-[#E4E4E7] bg-white p-3 shadow-[0_18px_46px_-18px_rgba(0,0,0,0.35)]" style={{ left, top, width, borderLeft: `4px solid ${partyColour(tip.card.leader ?? "")}` }}>
+          <div data-testid="map-tooltip" className="tn-tooltip pointer-events-none fixed z-[var(--z-dropdown)] rounded-2xl border border-[#E4E4E7] bg-[color:var(--theme-surface)] p-3 shadow-[0_18px_46px_-18px_rgba(0,0,0,0.35)]" style={{ left, top, width, borderLeft: `4px solid ${partyColour(tip.card.leader ?? "")}` }}>
             <div className="flex items-center gap-2 border-b border-[#F0F0F0] pb-2">
               {tip.card.leader && <PartyBadge party={tip.card.leader} size={20} />}
-              <span className="min-w-0 truncate text-[14px] font-semibold text-[#0B0B0C]">{tip.card.title}</span>
+              <span className="min-w-0 truncate text-[14px] font-semibold text-[color:var(--theme-text)]">{tip.card.title}</span>
             </div>
             {tip.card.rows.length ? (
               <ul className="mt-1.5 space-y-0.5">
                 {tip.card.rows.map((row) => (
-                  <li key={row.party} className={row.party === tip.card.leader ? "flex items-center gap-1.5 text-[13px] font-bold text-[#0B0B0C]" : "flex items-center gap-1.5 text-[13px] text-[#555]"}>
+                  <li key={row.party} className={row.party === tip.card.leader ? "flex items-center gap-1.5 text-[13px] font-bold text-[color:var(--theme-text)]" : "flex items-center gap-1.5 text-[13px] text-[color:var(--theme-text-2)]"}>
                     <PartyBadge party={row.party} size={20} />
                     <span className="size-2 rounded-[2px]" style={{ background: partyColour(row.party) }} aria-hidden />
                     <span className="flex-1 truncate">{row.party}</span>
@@ -797,11 +833,41 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
                 ))}
               </ul>
             ) : (
-              <p className="mt-1.5 text-[13px] text-[#6B6B6B]">No data / under 30</p>
+              <p className="mt-1.5 text-[13px] text-[color:var(--theme-text-3)]">No data / under 30</p>
             )}
           </div>
         );
       })()}
+      {touch && sheet && (
+        <div className="absolute inset-x-0 bottom-0 z-30 rounded-t-2xl border-t border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-4 shadow-[0_-12px_40px_rgba(0,0,0,0.22)]">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              {sheet.card.leader && <PartyBadge party={sheet.card.leader} size={24} />}
+              <p className="truncate text-[14px] font-semibold text-[color:var(--theme-text)]">{sheet.card.title}</p>
+            </div>
+            <button type="button" onClick={() => setSheet(null)} aria-label="Close map details" className="grid size-11 place-items-center rounded-full text-[color:var(--theme-text-3)] hover:bg-[color:var(--theme-surface-2)]"><X className="size-4" /></button>
+          </div>
+          {sheet.card.rows.length ? (
+            <ul className="mt-2 space-y-1">
+              {sheet.card.rows.map((row) => (
+                <li key={row.party} className={row.party === sheet.card.leader ? "flex items-center gap-2 text-[12px] font-bold text-[color:var(--theme-text)]" : "flex items-center gap-2 text-[12px] text-[color:var(--theme-text-2)]"}>
+                  <PartyBadge party={row.party} size={20} />
+                  <span className="size-2 rounded-[2px]" style={{ background: partyColour(row.party) }} aria-hidden />
+                  <span className="flex-1">{row.party}</span>
+                  <span className="tabular-nums">{row.value.toFixed(1)}%</span>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="mt-2 text-[12px] text-[color:var(--theme-text-3)]">No data / under 30</p>}
+          <button
+            type="button"
+            onClick={() => { if (sheet.kind === "district") onSelectDistrict(sheet.name); else if (sheet.no != null) onSelectAc(sheet.no); setSheet(null); }}
+            className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[color:var(--theme-selected)] px-4 text-[13px] font-semibold text-white"
+          >
+            {sheet.kind === "district" ? "View constituencies" : "View constituency"}
+          </button>
+        </div>
+      )}
       <div className="sr-only" aria-live="polite">{tip ? `${tip.card.title}: ${tip.card.rows.map((row) => `${row.party} ${row.value.toFixed(1)}%`).join(", ")}` : ""}</div>
     </div>
   );

@@ -12,12 +12,23 @@ export type TnSocialAccount = {
   href?: string | null;
 };
 export type TnSocialPeriod = {
-  key: string; label: string; campaigns: number; reach: number; impressions: number; views: number; clicks: number; engagements: number; responses?: number;
+  key: string; label: string; name: string; range: string; campaigns: number; reach: number; impressions: number; views: number; clicks: number; engagements: number; responses?: number;
 };
 export type TnSocialTotals = { accounts: number; campaigns: number; reach: number; impressions: number; views: number; clicks: number; engagements: number };
+export type TnSocialMonth = {
+  month: string;
+  label: string;
+  campaigns: number;
+  reach: number;
+  impressions: number;
+  views: number;
+  clicks: number;
+  engagements: number;
+};
+
 export type TnSocialOverview = {
   label: string; range: string; asOf?: string; note?: string;
-  totals: TnSocialTotals; accounts: TnSocialAccount[]; periods: TnSocialPeriod[];
+  totals: TnSocialTotals; accounts: TnSocialAccount[]; periods: TnSocialPeriod[]; monthly: TnSocialMonth[];
 };
 export type TnSocialFiltered = {
   title: string; place?: string; note: string; how: string;

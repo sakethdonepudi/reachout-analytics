@@ -7,12 +7,21 @@ export type TnYear = "2011" | "2016" | "2021";
 export type TnYearOrCurrent = TnYear | "2026";
 export const TN_HISTORICAL_YEARS: TnYear[] = ["2011", "2016", "2021"];
 export const TN_COLOR: Record<TnGroup, string> = {
-  TVK: "#EAB308",
-  "AIADMK+BJP+PMK+AMMK": "#16A34A",
-  "DMK+INC+VCK": "#DC2626",
-  NTK: "#7C3AED",
-  NOTA: "#64748B",
-  Others: "#0F766E",
+  TVK: "#E6B800",
+  "AIADMK+BJP+PMK+AMMK": "#138808",
+  "DMK+INC+VCK": "#DD1100",
+  NTK: "#7b3fa0",
+  NOTA: "#8c8f96",
+  Others: "#8c8f96",
+};
+
+export const TN_COLOR_DARK: Record<TnGroup, string> = {
+  TVK: "#e8b923",
+  "AIADMK+BJP+PMK+AMMK": "#1fa36f",
+  "DMK+INC+VCK": "#f0544f",
+  NTK: "#a46cd0",
+  NOTA: "#8f939b",
+  Others: "#8f939b",
 };
 export const TN_LABEL: Record<TnGroup, string> = {
   TVK: "TVK",

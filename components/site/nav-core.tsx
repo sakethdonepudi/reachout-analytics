@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Menu } from "lucide-react";
-import { Logo } from "@/components/site/brand";
+import { ThemeLogo } from "@/components/site/theme-logo";
 import { Sheet } from "@/components/ui/sheet";
 import { useIdle } from "@/components/auth/idle-provider";
 import { cn } from "@/lib/utils";
 import { announceOpening } from "@/lib/use-navigate";
 import { broadcastLogout } from "@/lib/session-channel";
 import { NavIcon, NavPartyMark } from "@/components/site/nav-icon";
+import ThemeToggle from "@/components/site/theme-toggle";
 import { ACCOUNT_ITEMS, CLIENT_NAV, LOGIN, OWNER_NAV, PUBLIC_NAV, type NavItem } from "@/lib/nav";
 import type { PartyId } from "@/lib/parties";
 
@@ -85,10 +86,10 @@ function Dropdown({ label, items, footer, active, align = "left" }: {
           {items.map((item) => (
             <Link key={item.href + item.label} href={item.href} prefetch={false} role="menuitem" onClick={() => setOpen(false)} className={cn("flex min-h-11! items-start gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium transition-colors hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45", item.active && "site-group-inset")}>
               {item.party ? <NavPartyMark party={item.party} /> : item.icon}
-              <span className="min-w-0"><span className="block">{item.label}</span>{item.hint && <span className="mt-0.5 block text-[10px] font-normal text-[var(--h-muted)]">{item.hint}</span>}</span>
+              <span className="min-w-0"><span className="block">{item.label}</span>{item.hint && <span className="mt-0.5 block text-[12px] font-normal text-[var(--h-muted)]">{item.hint}</span>}</span>
             </Link>
           ))}
-          {footer && <><div className="my-1 h-px bg-[var(--h-border)]/20" /><Link href={footer.href} role="menuitem" onClick={() => setOpen(false)} className="flex min-h-11! items-center gap-2 rounded-xl px-3 text-[11.5px] font-semibold text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">{footer.icon}{footer.label}</Link></>}
+          {footer && <><div className="my-1 h-px bg-[var(--h-border)]/20" /><Link href={footer.href} role="menuitem" onClick={() => setOpen(false)} className="flex min-h-11! items-center gap-2 rounded-xl px-3 text-[12px] font-semibold text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">{footer.icon}{footer.label}</Link></>}
       </div>
     </div>
   );
@@ -159,9 +160,9 @@ export default function NavCore({ variant, displayName, username, organisation, 
   return (
     <>
       <header className="site-header pointer-events-none fixed inset-x-0 top-0 z-[var(--z-nav)] px-3 pt-2 sm:px-4">
-        <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[66px] bg-white/85 backdrop-blur-md supports-[backdrop-filter]:bg-white/70 sm:h-[72px]" aria-hidden />
+        <div className="nav-veil pointer-events-none absolute inset-x-0 top-0 -z-10 h-[66px] sm:h-[72px]" aria-hidden />
         <div className={cn("site-group pointer-events-auto mx-auto flex h-[52px] w-full max-w-[1240px] items-center gap-2 rounded-full px-3 sm:h-[56px] sm:px-4", glass)}>
-          <Logo href={home} className="h-[26px] w-[116px] sm:h-[28px] sm:w-[126px]" />
+          <ThemeLogo href={home} className="h-[26px] min-h-11! w-[116px] sm:h-[28px] sm:w-[126px]" />
           <nav ref={navRef} className="relative ml-2 hidden items-center gap-0.5 min-[900px]:flex" aria-label="Primary">
             {variant === "public" && PUBLIC_NAV.map((item) => item.key === "cases" && caseItems.length > 1
               ? <Dropdown key="cases" label={<><NavIcon name="casesOpen" /> Case Studies</>} items={caseItems} active={Boolean(pathname?.startsWith("/case-studies"))} />
@@ -181,6 +182,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
             {underline && <span className="nav-underline" style={{ transform: `translateX(${underline.left}px)`, width: underline.width }} aria-hidden />}
           </nav>
           <div className="ml-auto flex items-center gap-1">
+            <span className="hidden min-[900px]:inline-flex"><ThemeToggle /></span>
             {variant === "public" ? (
               <>
                 <a href={LOGIN.href} className="hit-expand hidden min-h-11! items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[12px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:inline-flex"><NavIcon name="login" /> {LOGIN.label}</a>
@@ -191,15 +193,15 @@ export default function NavCore({ variant, displayName, username, organisation, 
                 <div ref={accountRef} className="relative hidden min-[900px]:block">
                   <button type="button" onClick={() => setAccountOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountOpen} className={cn("inline-flex min-h-11! items-center gap-2 rounded-full px-2 text-[12px] font-semibold text-[var(--h-ink)] hover:bg-[var(--h-surface-inset)]", accountOpen && "site-group-inset")}>
                     <span className="sr-only">Account menu</span>
-                    <span className="grid size-7 place-items-center rounded-full bg-[#0B0B0C] text-[10px] font-bold text-white">{initials(displayName ?? "User")}</span>
+                    <span className="grid size-7 place-items-center rounded-full bg-[color:var(--theme-text)] text-[12px] font-bold text-[color:var(--theme-surface)]">{initials(displayName ?? "User")}</span>
                     <span className="hidden max-w-[110px] truncate lg:block">{variant === "client" ? displayName : "Account"}</span>
-                    <span className="hidden text-[9.5px] font-normal tabular-nums text-[var(--h-muted)] xl:inline">{idleLabel(remainingMs)}</span>
+                    <span className="hidden text-[12px] font-normal tabular-nums text-[var(--h-muted)] xl:inline">{idleLabel(remainingMs)}</span>
                     <ChevronDown className="size-3 text-[var(--h-muted)]" />
                   </button>
                   {accountOpen && (
                     <div role="menu" className="site-group absolute right-0 top-[calc(100%+8px)] w-72 rounded-2xl p-2 text-[var(--h-ink)]">
                       {variant === "client" ? (
-                        <div className="px-2 pb-2 pt-1 text-[11px] text-[var(--h-muted)]">
+                        <div className="px-2 pb-2 pt-1 text-[12px] text-[var(--h-muted)]">
                           <p className="text-[13px] font-semibold text-[var(--h-ink)]">{displayName}</p>
                           <p>{organisation ?? "Client"}</p>
                           <p>@{username}</p>
@@ -208,7 +210,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
                           <p className="tabular-nums">Signs out in {idleLabel(remainingMs)}</p>
                         </div>
                       ) : (
-                        <div className="px-2 pb-2 pt-1 text-[11px] text-[var(--h-muted)]">
+                        <div className="px-2 pb-2 pt-1 text-[12px] text-[var(--h-muted)]">
                           <p className="text-[13px] font-semibold text-[var(--h-ink)]">{displayName}</p>
                           <p>Last sign-in {lastLoginAt ?? "—"}{lastLoginDevice ? ` · ${lastLoginDevice}` : ""}</p>
                           <p className="tabular-nums">Signs out in {idleLabel(remainingMs)}</p>
@@ -269,6 +271,8 @@ export default function NavCore({ variant, displayName, username, organisation, 
               <MobileLink item={ACCOUNT_ITEMS.security} />
             </>
           )}
+          <div className="my-1 h-px bg-[var(--h-border)]/20" />
+          <ThemeToggle withLabel />
           {variant !== "public" && <button type="button" onClick={() => void signOut()} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-[14px] font-medium text-[var(--h-muted)]"><NavIcon name="logout" /> {variant === "client" ? "Log out" : "Sign out"}</button>}
         </div>
       </Sheet>
@@ -297,7 +301,7 @@ function MobileCaseLink({ item }: { item: { href: string; label: string; hint: s
   return (
     <Link href={item.href} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold text-[var(--h-muted)]">
       <NavPartyMark party={item.party} />
-      <span className="min-w-0"><span className="block">{item.label}</span><span className="block text-[10px] font-normal">{item.hint}</span></span>
+      <span className="min-w-0"><span className="block">{item.label}</span><span className="block text-[12px] font-normal">{item.hint}</span></span>
     </Link>
   );
 }

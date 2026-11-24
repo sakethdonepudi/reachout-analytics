@@ -1,4 +1,5 @@
 import type { SurveyDemo, SurveyShare } from "./types";
+import type { TnSocialMonth } from "./social-types";
 import type { TnAc, TnDistrict } from "@/lib/tamil-nadu/model";
 import type { SurveyMapRow, SurveyMapSlot } from "@/lib/tamil-nadu/survey-map";
 
@@ -51,4 +52,5 @@ export type TnClientModel = {
   slots: Record<"op" | "ex", TnSlotModel[]>;
   swing: TnSwingPayload;
   initialMap: TnSerializedMap;
+  socialMonthly: TnSocialMonth[];
 };

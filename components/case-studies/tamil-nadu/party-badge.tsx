@@ -36,6 +36,7 @@ export function PartyBadge({
         borderColor: brand.color,
         background: monogram ? brand.color : undefined,
       }}
+      data-party-badge="true"
       role="img"
       aria-label={`${party} symbol`}
       title={title ?? party}

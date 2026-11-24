@@ -181,13 +181,19 @@ async function clickTab(page: Page, name: RegExp) {
     record("/case-studies/tamil-nadu", "Hero lead", "client", "leads by", partyBody.includes("leads by") ? "visible" : "missing", partyBody.includes("leads by"));
     record("/case-studies/tamil-nadu", "Removed copy", "client", "no title, dates, note or method", [!partyBody.includes("Opinion, Exit & Result Survey Analysis"), !partyBody.includes("28 Mar 2026 to 07 May 2026"), !partyBody.includes("actual vs prediction"), !partyBody.includes("Method & caveats")].join(", "), !partyBody.includes("Opinion, Exit & Result Survey Analysis") && !partyBody.includes("28 Mar 2026 to 07 May 2026") && !partyBody.includes("actual vs prediction") && !partyBody.includes("Method & caveats"));
     const removedPhrases = ["Coverage:", "groups under 30 answers are hidden", "Each cell shows the actual 2021", "Runner-up", "234 of 234 seats", "majority 118", "Projection: TVK", "The projected winner matches", "Projected winner calls compared"];
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(900);
+    const fullBody = await page.locator("body").innerText();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(200);
     const foundPhrases = removedPhrases.filter((phrase) => partyBody.includes(phrase));
-    record("/case-studies/tamil-nadu", "Section 1 wording", "client", "0 removed phrases in the DOM", foundPhrases.length ? foundPhrases.join("; ") : "clean", foundPhrases.length === 0);
+    const foundFullPhrases = removedPhrases.filter((phrase) => fullBody.includes(phrase));
+    record("/case-studies/tamil-nadu", "Section 1 wording", "client", "0 removed phrases in the DOM", foundFullPhrases.length ? foundFullPhrases.join("; ") : "clean", foundFullPhrases.length === 0);
     const badgeCount = await page.locator("[role='img'][aria-label$='symbol']").count();
     record("/case-studies/tamil-nadu", "Party badges", "client", "all party badges render", String(badgeCount), badgeCount >= 5);
     record("/case-studies/tamil-nadu", "Swing rows", "client", "6 rows", String(await page.locator("section[aria-label^='Zone swing'] tbody tr").count()), await page.locator("section[aria-label^='Zone swing'] tbody tr").count() === 6);
     record("/case-studies/tamil-nadu", "Swing switch removed", "client", "absent", String(await page.getByRole("combobox", { name: "Swing month" }).count()), (await page.getByRole("combobox", { name: "Swing month" }).count()) === 0);
-    record("/case-studies/tamil-nadu", "Seat notes removed", "client", "no majority, projection or hit line", [!partyBody.includes("majority 118"), !partyBody.includes("Projection: TVK"), !partyBody.includes("The projected winner matches")].join(", "), !partyBody.includes("majority 118") && !partyBody.includes("Projection: TVK") && !partyBody.includes("The projected winner matches"));
+    record("/case-studies/tamil-nadu", "Seat notes removed", "client", "no majority, projection or hit line", [!fullBody.includes("majority 118"), !fullBody.includes("Projection: TVK"), !fullBody.includes("The projected winner matches")].join(", "), !fullBody.includes("majority 118") && !fullBody.includes("Projection: TVK") && !fullBody.includes("The projected winner matches"));
     record("/case-studies/tamil-nadu", "Time slots", "client", "All months, Mar 2026, Apr 2026", (await page.getByRole("group", { name: "Survey time slot" }).innerText()).replace(/\n+/g, ", "), (await page.getByRole("button", { name: /^All months/ }).isVisible()) && (await page.getByRole("button", { name: /^Apr 2026/ }).isVisible()));
     const navCount = await page.evaluate(() => performance.getEntriesByType("navigation").length);
     await page.getByRole("button", { name: /^Apr 2026/ }).click();
@@ -242,13 +248,22 @@ async function clickTab(page: Page, name: RegExp) {
       await page.waitForTimeout(1400);
       const clearedUrl = new URL(page.url());
       const staleTarget = await page.getByText("Target campaign").isVisible().catch(() => false);
-      const socialOverview = await page.getByRole("button", { name: /^All periods/ }).isVisible().catch(() => false);
+      const socialOverview = await page.getByRole("button", { name: /Showing all periods|Clear filter/ }).isVisible().catch(() => false);
       record("/case-studies/tamil-nadu", "Social card clears target filter", "client", "unfiltered social view", `${clearedUrl.searchParams.get("match") ?? "no match"}/${staleTarget ? "target visible" : "target gone"}`, !clearedUrl.searchParams.get("match") && !staleTarget && socialOverview);
       const beforePeriod = surveyRequests;
       await page.locator("section[aria-label='Campaign periods']").getByRole("button", { name: /Opinion poll/ }).click();
       await page.waitForTimeout(500);
-      record("/case-studies/tamil-nadu", "Period filter", "client", "client-side, 0 survey requests", `${surveyRequests - beforePeriod} requests`, surveyRequests === beforePeriod && (await page.getByText(/Showing Opinion poll/).isVisible().catch(() => false)));
-      await page.getByRole("button", { name: /^Opinion poll/ }).first().click();
+      record("/case-studies/tamil-nadu", "Period filter", "client", "client-side, 0 survey requests", `${surveyRequests - beforePeriod} requests`, surveyRequests === beforePeriod && (await page.getByText(/Showing Opinion poll/).first().isVisible().catch(() => false)));
+      const periodText = await page.locator("section[aria-label='Campaign periods']").innerText();
+      record("/case-studies/tamil-nadu", "Periods have no responses", "client", "campaigns and reach only", /responses/i.test(periodText) ? "responses found" : "clean", !/responses/i.test(periodText));
+      const chart = page.locator('svg[aria-label="Monthly reach and engagement"]').first();
+      await chart.scrollIntoViewIfNeeded().catch(() => {});
+      const chartBox = await chart.boundingBox().catch(() => null);
+      const beforeChart = surveyRequests;
+      if (chartBox) { await page.mouse.move(chartBox.x + chartBox.width * 0.55, chartBox.y + chartBox.height * 0.5); await page.waitForTimeout(250); }
+      const chartTip = await chart.locator("xpath=..").locator('[role="tooltip"]').isVisible().catch(() => false);
+      record("/case-studies/tamil-nadu", "Chart hover", "client", "tooltip, 0 survey requests", `${surveyRequests - beforeChart} requests/${chartTip ? "tooltip" : "no tooltip"}`, surveyRequests === beforeChart && chartTip);
+      await page.getByRole("button", { name: /^Opinion poll/ }).filter({ hasText: "accuracy" }).first().click();
       await page.waitForTimeout(900);
     }
     await page.getByRole("tab", { name: "Zone" }).click();
@@ -261,11 +276,32 @@ async function clickTab(page: Page, name: RegExp) {
       await page.getByRole("button", { name: /Back to survey/ }).click();
       await page.waitForTimeout(900);
     }
+    await page.goto(`${BASE}/case-studies/tamil-nadu?view=op`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1800);
+    const socialCard = page.getByRole("button", { name: /^Social Media/ }).first();
+    await socialCard.hover();
+    await page.waitForTimeout(900);
+    const beforeInstant = surveyRequests;
+    const instantMs = await page.evaluate(async () => {
+      const card = [...document.querySelectorAll("button")].find((element) => /Social Media/.test(element.textContent ?? "") && (element as HTMLElement).offsetParent !== null) as HTMLElement | undefined;
+      if (!card) return -1;
+      const started = performance.now();
+      card.click();
+      for (let frame = 0; frame < 60; frame += 1) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        if (document.body.innerText.includes("Campaign periods")) return performance.now() - started;
+      }
+      return performance.now() - started;
+    });
+    record("/case-studies/tamil-nadu", "Social first open", "client", "prefetched, no loading screen", `${Math.round(instantMs)} ms, ${surveyRequests - beforeInstant} requests`, instantMs >= 0 && instantMs < 400 && surveyRequests === beforeInstant);
+    await page.goto(`${BASE}/case-studies/tamil-nadu?view=op`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(900);
     const mapSection = page.locator("section[aria-label='Tamil Nadu map']");
     await mapSection.scrollIntoViewIfNeeded();
     await page.waitForTimeout(600);
     record("/case-studies/tamil-nadu", "Single map", "client", "no District or Assembly toggle", String(await page.getByRole("button", { name: "assembly", exact: true }).count()), (await page.getByRole("button", { name: "assembly", exact: true }).count()) === 0);
     const mapCanvas = page.locator("canvas[aria-label*='3D map']");
+    await mapCanvas.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
     const box = await mapCanvas.boundingBox();
     if (box) {
       await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
@@ -321,6 +357,104 @@ async function clickTab(page: Page, name: RegExp) {
     record("/case-studies/tamil-nadu", "Back to survey", "client", "view=op", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "op");
     record("/case-studies/tamil-nadu", "Console and 404s", "client", "none", errors.length ? errors.join("; ") : "none", errors.length === 0);
     await context.close();
+  }
+
+  // Theme toggle, no-flash and the full device matrix.
+  {
+    const widths = [360, 390, 430, 768, 820, 1024, 1180, 1280, 1440, 1920];
+    const deviceCheck = async (page: Page) => page.evaluate(() => {
+      const doc = document.documentElement;
+      const nav = document.querySelector("header");
+      const first = document.querySelector("main .mx-auto > :first-child") as HTMLElement | null;
+      const overlap = nav && first ? first.getBoundingClientRect().top < nav.getBoundingClientRect().bottom - 1 : false;
+      const targets = [...document.querySelectorAll("button,a,[role=button]")].filter((el) => {
+        const e = el as HTMLElement;
+        const s = getComputedStyle(e);
+        const r = e.getBoundingClientRect();
+        if (s.visibility === "hidden" || s.display === "none" || r.width === 0 || r.height === 0) return false;
+        if (e.closest("[aria-hidden='true']") || e.classList.contains("tn-target")) return false;
+        return r.width < 44 || r.height < 44;
+      }).length;
+      const small = [...document.querySelectorAll("body *")].filter((el) => {
+        const e = el as HTMLElement;
+        const s = getComputedStyle(e);
+        if (s.visibility === "hidden" || s.display === "none") return false;
+        if (e.closest("[aria-hidden='true']") || e.closest(".sr-only") || e.closest("[data-party-badge='true']") || e.classList.contains("tn-target")) return false;
+        if (["svg", "path", "circle", "rect", "polyline", "polygon", "stop"].includes(e.tagName.toLowerCase())) return false;
+        const hasText = [...e.childNodes].some((node) => node.nodeType === 3 && (node.textContent ?? "").trim());
+        return hasText && parseFloat(s.fontSize) < 12;
+      }).length;
+      return { scroll: doc.scrollWidth, client: doc.clientWidth, overlap, targets, small };
+    });
+    for (const theme of ["light", "dark"] as const) {
+      const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+      await context.addCookies([{ name: "ro_session", value: client, domain: "localhost", path: "/" }]);
+      const page = await context.newPage();
+      await page.addInitScript((value) => localStorage.setItem("ro-theme", value), theme);
+      await page.goto(`${BASE}/case-studies/tamil-nadu?view=op&profile=caste`, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1000);
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.waitForTimeout(900);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      for (const width of widths) {
+        await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
+        await page.waitForTimeout(180);
+        const result = await deviceCheck(page);
+        record("/case-studies/tamil-nadu", `Device ${theme} ${width} survey`, "client", "no h-scroll, nav clear, tap >=44, text >=12", `scroll ${result.scroll}/${result.client}, overlap ${result.overlap}, targets ${result.targets}, small ${result.small}`, result.scroll <= result.client + 1 && !result.overlap && result.targets === 0 && result.small === 0);
+      }
+      await page.goto(`${BASE}/case-studies/tamil-nadu?view=social`, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1000);
+      for (const width of widths) {
+        await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
+        await page.waitForTimeout(180);
+        const result = await deviceCheck(page);
+        record("/case-studies/tamil-nadu", `Device ${theme} ${width} social`, "client", "no h-scroll, nav clear, tap >=44, text >=12", `scroll ${result.scroll}/${result.client}, overlap ${result.overlap}, targets ${result.targets}, small ${result.small}`, result.scroll <= result.client + 1 && !result.overlap && result.targets === 0 && result.small === 0);
+      }
+      await context.close();
+    }
+    {
+      const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+      await context.addCookies([{ name: "ro_session", value: client, domain: "localhost", path: "/" }]);
+      const page = await context.newPage();
+      await page.addInitScript(() => { try { if (!localStorage.getItem("ro-theme")) localStorage.setItem("ro-theme", "light"); } catch { /* storage can be blocked */ } });
+      let surveyCalls = 0;
+      page.on("request", (request) => { if (new URL(request.url()).pathname.startsWith("/api/survey/")) surveyCalls += 1; });
+      await page.goto(`${BASE}/case-studies/tamil-nadu?view=op`, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1800);
+      const beforeToggle = surveyCalls;
+      await page.locator("[data-theme-toggle]:visible").first().click();
+      await page.waitForTimeout(250);
+      const darkNow = await page.evaluate(() => document.documentElement.dataset.theme);
+      record("/case-studies/tamil-nadu", "Theme toggle", "client", "dark, 0 survey requests", `${darkNow}/${surveyCalls - beforeToggle} requests`, darkNow === "dark" && surveyCalls === beforeToggle);
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(500);
+      record("/case-studies/tamil-nadu", "Theme remembered", "client", "dark after reload", String(await page.evaluate(() => document.documentElement.dataset.theme)), (await page.evaluate(() => document.documentElement.dataset.theme)) === "dark");
+      await context.close();
+    }
+    {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+      await context.addCookies([{ name: "ro_session", value: client, domain: "localhost", path: "/" }]);
+      const page = await context.newPage();
+      await page.addInitScript(() => localStorage.setItem("ro-theme", "light"));
+      await page.goto(`${BASE}/case-studies/tamil-nadu?view=op`, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1500);
+      await page.getByRole("button", { name: "Open menu" }).click();
+      await page.waitForTimeout(250);
+      await page.locator("[data-theme-toggle]:visible").last().click();
+      await page.waitForTimeout(250);
+      record("/case-studies/tamil-nadu", "Themetoggle in the hamburger", "client", "dark on phone", String(await page.evaluate(() => document.documentElement.dataset.theme)), (await page.evaluate(() => document.documentElement.dataset.theme)) === "dark");
+      await context.close();
+    }
+    {
+      const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+      await context.addCookies([{ name: "ro_session", value: client, domain: "localhost", path: "/" }]);
+      const page = await context.newPage();
+      await page.addInitScript(() => localStorage.setItem("ro-theme", "dark"));
+      await page.goto(`${BASE}/case-studies/tamil-nadu?view=op`, { waitUntil: "domcontentloaded" });
+      const first = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme, body: getComputedStyle(document.body).backgroundColor }));
+      record("/case-studies/tamil-nadu", "No theme flash", "client", "dark at first paint", `${first.theme}/${first.body}`, first.theme === "dark" && first.body === "rgb(18, 18, 17)");
+      await context.close();
+    }
   }
 
   // Owner: sidebar, upload card and case-study shell.

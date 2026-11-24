@@ -6,7 +6,7 @@
  * field. Owner payloads keep the real id and business name.
  */
 import assert from "node:assert/strict";
-import { tnSocialFiltered, tnSocialOverview } from "@/lib/survey/tn-view-dto";
+import { tnSocialFiltered, tnSocialMonthly, tnSocialOverview } from "@/lib/survey/tn-view-dto";
 import type { SurveyData } from "@/lib/survey/types";
 
 let pass = 0;
@@ -49,6 +49,17 @@ const data = {
     assert.equal(account?.href, undefined);
   });
   check("overview has no 14-17 digit number", () => assert.ok(!/\d{14,17}/.test(overviewText)));
+
+  check("monthly series sums to every KPI total", () => {
+    const monthly = tnSocialMonthly(data);
+    const sum = (key: "reach" | "impressions" | "views" | "clicks" | "engagements") => monthly.reduce((total, row) => total + row[key], 0);
+    assert.equal(sum("reach"), overview.totals.reach);
+    assert.equal(sum("impressions"), overview.totals.impressions);
+    assert.equal(sum("views"), overview.totals.views);
+    assert.equal(sum("clicks"), overview.totals.clicks);
+    assert.equal(sum("engagements"), overview.totals.engagements);
+    assert.equal(monthly.reduce((total, row) => total + row.campaigns, 0), overview.totals.campaigns);
+  });
 
   console.log("\n2. Client filtered view");
   const filtered = await tnSocialFiltered(data, { match: "group", group: "Vanniyar" }, false);

@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useEffect, useMemo, useState } from "react";
-import { ArrowUpDown, Check, Target } from "lucide-react";
+import { ArrowUpDown, Check } from "lucide-react";
 import type { SurveyDemo, SurveyDemoRow } from "@/lib/survey/types";
 import { cn } from "@/lib/utils";
 import { partyColour, partyNeedsWhiteInk } from "@/lib/tamil-nadu/party-brand";
@@ -100,15 +100,22 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
 
   return (
     <div>
-      {isV21 && <p className="text-[14px] leading-relaxed text-[#6B6B6B]">Cross-tabulation: each row is how people who voted for that alliance in 2021 say they will vote in 2026. Row % - each row adds up to 100%.</p>}
-      <div className="mt-2 flex flex-wrap items-center gap-2" role="group" aria-label="Party columns">
+      {isV21 && <p className="text-[14px] leading-relaxed text-[color:var(--theme-text-3)]">Cross-tabulation: each row is how people who voted for that alliance in 2021 say they will vote in 2026. Row % - each row adds up to 100%.</p>}
+      <div className="scroll-fade-x no-scrollbar mt-2 flex flex-nowrap items-center gap-2 overflow-x-auto pb-1 snap-x" role="group" aria-label="Party columns">
         <button
           type="button"
           aria-pressed={allSelected}
-          onClick={selectAll}
+          onClick={(event) => {
+            selectAll();
+            const strip = event.currentTarget.closest(".no-scrollbar") as HTMLElement | null;
+            if (strip) {
+              const sr = strip.getBoundingClientRect(), br = event.currentTarget.getBoundingClientRect();
+              strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "smooth" });
+            }
+          }}
           className={cn(
-            "inline-flex min-h-11! items-center gap-1 rounded-full border px-3.5 text-[13px] font-semibold transition-colors",
-            allSelected ? "border-[#0B0B0C] bg-[#0B0B0C] text-white" : "border-[#D5D8DE] bg-white text-[#555] hover:border-[#0B0B0C]",
+            "inline-flex min-h-11! shrink-0 snap-start items-center gap-1 rounded-full border px-3.5 text-[13px] font-semibold transition-colors",
+            allSelected ? "border-[color:var(--theme-text)] bg-[color:var(--theme-text)] text-[color:var(--theme-surface)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] text-[color:var(--theme-text-2)] hover:border-[color:var(--theme-text)]",
           )}
         >
           {allSelected && <Check className="size-3.5" />} All
@@ -120,10 +127,17 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
               key={party}
               type="button"
               aria-pressed={active}
-              onClick={() => toggle(party)}
+              onClick={(event) => {
+                toggle(party);
+                const strip = event.currentTarget.closest(".no-scrollbar") as HTMLElement | null;
+                if (strip) {
+                  const sr = strip.getBoundingClientRect(), br = event.currentTarget.getBoundingClientRect();
+                  strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "smooth" });
+                }
+              }}
               className={cn(
-                "inline-flex min-h-11! items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold transition-colors",
-                active ? "border-[#0B0B0C] bg-[#0B0B0C] text-white" : "border-[#D5D8DE] bg-white text-[#555] hover:border-[#0B0B0C]",
+                "inline-flex min-h-11! shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold transition-colors",
+                active ? "border-[color:var(--theme-text)] bg-[color:var(--theme-text)] text-[color:var(--theme-surface)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] text-[color:var(--theme-text-2)] hover:border-[color:var(--theme-text)]",
               )}
             >
               <PartyBadge party={party} size={16} />
@@ -132,7 +146,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
           );
         })}
       </div>
-      <div className="mt-2 max-h-[520px] overflow-auto rounded-xl border border-[#EAEAEA]" tabIndex={0} role="region" aria-label={`${demo.label} table`}>
+      <div className="mt-2 hidden max-h-[520px] overflow-auto rounded-xl border border-[color:var(--theme-border)] min-[640px]:block" tabIndex={0} role="region" aria-label={`${demo.label} table`}>
         <table className="w-full min-w-[760px] border-collapse text-[15px]">
           <thead className="sticky top-0 z-10">
             <tr className="text-left text-[13px] uppercase tracking-wide">
@@ -142,7 +156,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                 const active = selectedSet.has(party);
                 return (
                   <th key={`${party}:${active ? "in" : "out"}`} className={cn("px-1.5 py-2 text-center font-semibold", active ? "tn-col-in" : "tn-col-out")}>
-                    <button type="button" onClick={() => toggleSort(party)} className="inline-flex min-h-11! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-white/10" title={`Sort by ${party}`}>
+                    <button type="button" onClick={() => toggleSort(party)} className="inline-flex min-h-11! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[color:var(--theme-surface)]/10" title={`Sort by ${party}`}>
                       <PartyBadge party={party} size={16} />
                       {party}
                       <ArrowUpDown className={cn("size-2.5 opacity-50", sort?.key === party && "opacity-100")} />
@@ -151,7 +165,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                 );
               })}
               <th className="px-2 py-2 text-left font-semibold">
-                <button type="button" onClick={() => toggleSort(LEADING_KEY)} className="inline-flex min-h-11! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-white/10" title="Sort by leading party">
+                <button type="button" onClick={() => toggleSort(LEADING_KEY)} className="inline-flex min-h-11! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[color:var(--theme-surface)]/10" title="Sort by leading party">
                   {allSelected ? "Leading" : "Leading (selected)"} <ArrowUpDown className={cn("size-2.5 opacity-50", sort?.key === LEADING_KEY && "opacity-100")} />
                 </button>
               </th>
@@ -163,13 +177,13 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
               return (
                 <tr
                   key={row.g}
-                  className="border-t border-[#EAEAEA]"
+                  className="border-t border-[color:var(--theme-border)]"
                   onMouseEnter={() => setHover((current) => ({ ...current, row: row.g }))}
                   onMouseLeave={() => setHover((current) => ({ ...current, row: null }))}
                 >
-                  <th scope="row" className="sticky left-0 z-10 h-[54px] bg-white px-3 py-1 text-left font-semibold text-[#1f2937]">
+                  <th scope="row" className="sticky left-0 z-10 h-12 bg-[color:var(--theme-surface)] px-3 py-1 text-left font-semibold text-[color:var(--theme-text-2)]">
                     {clickableGroup ? (
-                      <button type="button" onClick={() => onGroup(row.g)} className="group/link inline-flex min-h-11! items-center gap-0.5 text-left font-semibold text-[#002147] underline decoration-[#B8B8B8] decoration-1 underline-offset-2 hover:decoration-[#002147]" title={`Open campaigns for ${row.g}`}>
+                      <button type="button" onClick={() => onGroup(row.g)} className="group/link inline-flex min-h-11! items-center gap-0.5 text-left font-semibold text-[color:var(--theme-link)] underline decoration-[#B8B8B8] decoration-1 underline-offset-2 hover:decoration-[color:var(--theme-link)]" title={`Open campaigns for ${row.g}`}>
                         {row.g}
                         <span aria-hidden className="opacity-0 transition-opacity duration-150 group-hover/link:opacity-100">↗</span>
                       </button>
@@ -191,40 +205,37 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                       <td
                         key={`${party}:${active ? "in" : "out"}`}
                         className={cn(
-                          "h-[54px] min-w-[132px] px-2 py-1 text-center align-middle tabular-nums",
+                          "h-12 min-w-[132px] px-2 py-1.5 text-center align-middle tabular-nums",
                           active ? "tn-col-in" : "tn-col-out",
                           hover.column === party && "tn-col-hover",
                           hover.row === row.g && "tn-row-hover",
                           lightText && "text-white",
                         )}
                         style={{
-                          background: active ? `color-mix(in srgb, ${colourOf(party)} ${alpha}%, white)` : "white",
+                          background: active ? `color-mix(in srgb, ${colourOf(party)} ${alpha}%, var(--theme-surface))` : "white",
                           outline: isLead ? `2px solid ${colourOf(party)}` : undefined,
                           outlineOffset: isLead ? -2 : undefined,
                         }}
                         onMouseEnter={() => setHover((current) => ({ ...current, column: party }))}
                         onMouseLeave={() => setHover((current) => ({ ...current, column: null }))}
                       >
-                        <div className="flex items-center justify-between gap-1.5">
-                          <span
-                            className={cn("text-[15px] tabular-nums", isLead && "font-extrabold", lightText ? "text-white" : "text-[#0B0B0C]")}
-                            style={{ animationDelay: `${rowIndex * 14 + index * 8}ms` }}
-                          >
+                        <div className="flex flex-col items-center gap-0">
+                          <span className={cn("text-[15px] tabular-nums", isLead && "font-extrabold", lightText ? "text-white" : "text-[color:var(--theme-text)]")}>
                             {pct(value)}
                           </span>
                           {target && (
-                            <span className="group/target relative shrink-0">
+                            <span className="group/target relative inline-flex flex-col items-center">
                               <button
                                 type="button"
                                 onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })}
-                                className="tn-target inline-flex h-11 items-center justify-center gap-1 rounded-full border border-[#B91C1C] bg-[#DC2626] px-2 text-[10.5px] font-bold text-white shadow-sm"
-                                style={{ animationDelay: `${animationDelay}ms` }}
+                                className="tn-target"
+                                style={{ "--tn-target-delay": `${animationDelay}ms` } as React.CSSProperties}
                                 title="AIADMK+ below average here: open campaigns"
                                 aria-label="Target Campaign. AIADMK+ below average here: open campaigns"
                               >
-                                <Target className="size-3.5" aria-hidden /> Target
+                                Target Campaign
                               </button>
-                              <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#0B0B0C] px-2.5 py-1.5 text-[10.5px] font-semibold text-white shadow-xl group-hover/target:block">
+                              <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-[color:var(--theme-text)] px-2.5 py-1.5 text-[12px] font-semibold text-[color:var(--theme-surface)] shadow-xl group-hover/target:block">
                                 AIADMK+ below average here: open campaigns
                               </span>
                             </span>
@@ -233,7 +244,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                       </td>
                     );
                   })}
-                  <td className="h-[54px] whitespace-nowrap px-2 py-1 text-left font-semibold align-middle">
+                  <td className="h-12 whitespace-nowrap px-2 py-1 text-left font-semibold align-middle">
                     {leader.index >= 0 ? (
                       <span className="mr-1 inline-flex items-center gap-1 align-middle">
                         <PartyBadge party={parties[leader.index]} size={16} />
@@ -241,7 +252,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                       </span>
                     ) : "—"}
                     {geo && (
-                      <button type="button" onClick={() => onCampaigns({ kind: profileKey, place: row.g })} className="ml-1 inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#1f6fd1] px-2 text-[10.5px] font-bold text-[#1f6fd1] hover:bg-[#EFF6FF]">
+                      <button type="button" onClick={() => onCampaigns({ kind: profileKey, place: row.g })} className="ml-1 inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[color:var(--theme-link)] px-2 text-[12px] font-bold text-[color:var(--theme-link)] hover:bg-[color:var(--tn-soft-blue)]">
                         Campaigns ↗
                       </button>
                     )}
@@ -252,8 +263,8 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
           </tbody>
           {isV21 && (
             <tfoot>
-              <tr className="border-t-2 border-[#0B0B0C] bg-[#FAFAFA] font-bold">
-                <td className="sticky left-0 z-10 bg-[#FAFAFA] px-2 py-2 text-left">All 2021 voters</td>
+              <tr className="border-t-2 border-[color:var(--theme-text)] bg-[color:var(--theme-surface-3)] font-bold">
+                <td className="sticky left-0 z-10 bg-[color:var(--theme-surface-3)] px-2 py-2 text-left">All 2021 voters</td>
                 {visible.map((party) => {
                   const index = parties.indexOf(party);
                   return <td key={`${party}:${selectedSet.has(party) ? "in" : "out"}`} className={cn("px-1 py-2 text-center tabular-nums", selectedSet.has(party) ? "tn-col-in" : "tn-col-out")}>{pct(weighted[index])}</td>;
@@ -266,11 +277,78 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
           )}
         </table>
       </div>
+      <div className="mt-2 space-y-3 min-[640px]:hidden">
+        {pageRows.map((row) => {
+          const leader = leaderOfRow(row);
+          return (
+            <article key={row.g} className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-3">
+              <div className="flex items-start justify-between gap-2">
+                {clickableGroup ? (
+                  <button type="button" onClick={() => onGroup(row.g)} className="inline-flex min-h-11! items-center gap-1 text-left text-[14px] font-semibold text-[color:var(--theme-link)] underline decoration-[#B8B8B8] underline-offset-2">
+                    {row.g}<span aria-hidden>↗</span>
+                  </button>
+                ) : <p className="text-[14px] font-semibold text-[color:var(--theme-text)]">{row.g}</p>}
+                <span className="inline-flex items-center gap-1 text-[12px] text-[color:var(--theme-text-3)]">
+                  {leader.index >= 0 && <PartyBadge party={parties[leader.index]} size={16} />}
+                  {leader.tie ? "Tie" : parties[leader.index]}
+                </span>
+              </div>
+              <div className="mt-2 space-y-1">
+                {visible.filter((party) => selectedSet.has(party)).map((party) => {
+                  const index = parties.indexOf(party);
+                  const value = row.v[index] ?? 0;
+                  const alpha = 6 + (value / maxByParty[index]) * 82;
+                  const isLead = index === leader.index && !leader.tie;
+                  const lightText = alpha > 52 && partyNeedsWhiteInk(party);
+                  const target = party === "AIADMK+" && value < average;
+                  return (
+                    <div
+                      key={party}
+                      className="rounded-xl px-2.5 py-2"
+                      style={{
+                        background: `color-mix(in srgb, ${colourOf(party)} ${alpha}%, var(--theme-surface))`,
+                        outline: isLead ? `2px solid ${colourOf(party)}` : undefined,
+                        outlineOffset: isLead ? -2 : undefined,
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={cn("inline-flex items-center gap-1.5 text-[12px] font-semibold", lightText ? "text-white" : "text-[color:var(--theme-text)]")}>
+                          <PartyBadge party={party} size={16} />{party}
+                        </span>
+                        <span className={cn("text-[13px] tabular-nums", isLead && "font-extrabold", lightText ? "text-white" : "text-[color:var(--theme-text)]")}>{pct(value)}</span>
+                      </div>
+                      {target && (
+                        <div className="mt-1.5 flex justify-center">
+                          <button
+                            type="button"
+                            onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })}
+                            className="tn-target"
+                            style={{ "--tn-target-delay": `${(row.g.length * 17 + index * 43) % 400}ms` } as React.CSSProperties}
+                            title="AIADMK+ below average here: open campaigns"
+                            aria-label="Target Campaign. AIADMK+ below average here: open campaigns"
+                          >
+                            Target Campaign
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {geo && (
+                <button type="button" onClick={() => onCampaigns({ kind: profileKey, place: row.g })} className="mt-2 inline-flex min-h-11! items-center gap-1 text-[12px] font-semibold text-[color:var(--theme-link)]">
+                  Campaigns ↗
+                </button>
+              )}
+            </article>
+          );
+        })}
+      </div>
       {pageCount > 1 && (
-        <div className="mt-2 flex flex-wrap items-center justify-end gap-2 text-[12.5px] text-[#6B6B6B]">
+        <div className="mt-2 flex flex-wrap items-center justify-end gap-2 text-[12.5px] text-[color:var(--theme-text-3)]">
           <span className="tabular-nums">{currentPage * pageSize + 1}-{Math.min(rows.length, (currentPage + 1) * pageSize)} of {rows.length}</span>
-          <button type="button" disabled={currentPage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#CFCFCF] px-3 font-semibold text-[#0B0B0C] disabled:opacity-40">Previous</button>
-          <button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#CFCFCF] px-3 font-semibold text-[#0B0B0C] disabled:opacity-40">Next</button>
+          <button type="button" disabled={currentPage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[color:var(--theme-border)] px-3 font-semibold text-[color:var(--theme-text)] disabled:opacity-40">Previous</button>
+          <button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[color:var(--theme-border)] px-3 font-semibold text-[color:var(--theme-text)] disabled:opacity-40">Next</button>
         </div>
       )}
     </div>
