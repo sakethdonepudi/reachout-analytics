@@ -309,12 +309,12 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
             <div className="flex flex-wrap items-end gap-6 sm:gap-8">
               <div>
                 <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]"><Users className="size-3.5" /> Total reach</p>
-                <p className="mt-1 font-display text-[34px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[#0B0B0C] sm:text-[42px]"><AnimatedNumber value={totals?.reach ?? 0} mode="compact" /></p>
+                <p className="mt-1 font-display text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[#0B0B0C] sm:text-[42px]"><AnimatedNumber value={totals?.reach ?? 0} mode="compact" /></p>
                 <p className="mt-1 text-[11.5px] tabular-nums text-[#6B6B6B]">{number(totals?.reach)}</p>
               </div>
               <div>
                 <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]"><Heart className="size-3.5" /> Engagement</p>
-                <p className="mt-1 font-display text-[34px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[#0B0B0C] sm:text-[42px]"><AnimatedNumber value={totals?.engagements ?? 0} mode="compact" /></p>
+                <p className="mt-1 font-display text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[#0B0B0C] sm:text-[42px]"><AnimatedNumber value={totals?.engagements ?? 0} mode="compact" /></p>
                 <p className="mt-1 text-[11.5px] tabular-nums text-[#6B6B6B]">{number(totals?.engagements)}</p>
               </div>
               <ReachSparkline className="hidden h-14 w-44 md:block" />
