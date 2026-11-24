@@ -183,6 +183,10 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                     const isLead = active && index === leader.index && !leader.tie;
                     const target = active && party === "AIADMK+" && value < average;
                     const lightText = active && alpha > 52 && partyNeedsWhiteInk(party);
+                    const delayKey = `${row.g}:${party}`;
+                    let delayHash = 0;
+                    for (let charIndex = 0; charIndex < delayKey.length; charIndex += 1) delayHash = (delayHash * 31 + delayKey.charCodeAt(charIndex)) | 0;
+                    const animationDelay = Math.abs(delayHash) % 401;
                     return (
                       <td
                         key={`${party}:${active ? "in" : "out"}`}
@@ -216,6 +220,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                               type="button"
                               onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })}
                               className="tn-target inline-flex min-h-11! min-w-11 items-center justify-center gap-1 rounded-full border border-[#B91C1C] bg-[#DC2626] px-2.5 text-[11px] font-bold text-white shadow-sm"
+                              style={{ animationDelay: `${animationDelay}ms` }}
                               title="AIADMK+ below average here: open campaigns"
                               aria-label="Target Campaign. AIADMK+ below average here: open campaigns"
                             >
