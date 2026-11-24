@@ -175,9 +175,14 @@ async function clickTab(page: Page, name: RegExp) {
     record("/case-studies/tamil-nadu", "Party cards", "client", "5 expected cards", partyCards.filter((label) => partyBody.includes(label)).length + " / 5", partyCards.every((label) => partyBody.includes(label)));
     record("/case-studies/tamil-nadu", "Hero lead", "client", "leads by", partyBody.includes("leads by") ? "visible" : "missing", partyBody.includes("leads by"));
     record("/case-studies/tamil-nadu", "Removed copy", "client", "no title, dates, note or method", [!partyBody.includes("Opinion, Exit & Result Survey Analysis"), !partyBody.includes("28 Mar 2026 to 07 May 2026"), !partyBody.includes("actual vs prediction"), !partyBody.includes("Method & caveats")].join(", "), !partyBody.includes("Opinion, Exit & Result Survey Analysis") && !partyBody.includes("28 Mar 2026 to 07 May 2026") && !partyBody.includes("actual vs prediction") && !partyBody.includes("Method & caveats"));
-    record("/case-studies/tamil-nadu", "Swing rows", "client", "6 rows", String(await page.locator("section[aria-label^='Zone:'] tbody tr").count()), await page.locator("section[aria-label^='Zone:'] tbody tr").count() === 6);
+    const removedPhrases = ["Coverage:", "groups under 30 answers are hidden", "Each cell shows the actual 2021", "Runner-up", "234 of 234 seats", "majority 118", "Projection: TVK", "The projected winner matches", "Projected winner calls compared"];
+    const foundPhrases = removedPhrases.filter((phrase) => partyBody.includes(phrase));
+    record("/case-studies/tamil-nadu", "Section 1 wording", "client", "0 removed phrases in the DOM", foundPhrases.length ? foundPhrases.join("; ") : "clean", foundPhrases.length === 0);
+    const badgeCount = await page.locator("[role='img'][aria-label$='symbol']").count();
+    record("/case-studies/tamil-nadu", "Party badges", "client", "all party badges render", String(badgeCount), badgeCount >= 5);
+    record("/case-studies/tamil-nadu", "Swing rows", "client", "6 rows", String(await page.locator("section[aria-label^='Zone swing'] tbody tr").count()), await page.locator("section[aria-label^='Zone swing'] tbody tr").count() === 6);
     record("/case-studies/tamil-nadu", "Swing switch removed", "client", "absent", String(await page.getByRole("combobox", { name: "Swing month" }).count()), (await page.getByRole("combobox", { name: "Swing month" }).count()) === 0);
-    record("/case-studies/tamil-nadu", "Seat total line", "client", "115 of 234 ACs", partyBody.includes("The projected winner matches the actual winner in 115 of 234 ACs") ? "visible" : "missing", partyBody.includes("The projected winner matches the actual winner in 115 of 234 ACs"));
+    record("/case-studies/tamil-nadu", "Seat notes removed", "client", "no majority, projection or hit line", [!partyBody.includes("majority 118"), !partyBody.includes("Projection: TVK"), !partyBody.includes("The projected winner matches")].join(", "), !partyBody.includes("majority 118") && !partyBody.includes("Projection: TVK") && !partyBody.includes("The projected winner matches"));
     record("/case-studies/tamil-nadu", "Time slots", "client", "All months, Mar 2026, Apr 2026", (await page.getByRole("group", { name: "Survey time slot" }).innerText()).replace(/\n+/g, ", "), (await page.getByRole("button", { name: /^All months/ }).isVisible()) && (await page.getByRole("button", { name: /^Apr 2026/ }).isVisible()));
     const navCount = await page.evaluate(() => performance.getEntriesByType("navigation").length);
     await page.getByRole("button", { name: /^Apr 2026/ }).click();
@@ -195,6 +200,16 @@ async function clickTab(page: Page, name: RegExp) {
     await page.getByRole("tab", { name: "Community" }).click();
     await page.waitForTimeout(400);
     record("/case-studies/tamil-nadu", "Profile heat map", "client", "community table", await page.getByRole("region", { name: /Community table/ }).isVisible().catch(() => false) ? "visible" : "missing", await page.getByRole("region", { name: /Community table/ }).isVisible().catch(() => false));
+    const partyChips = page.getByRole("group", { name: "Party columns" });
+    await partyChips.getByRole("button", { name: /NTK/ }).click();
+    await partyChips.getByRole("button", { name: /Others/ }).click();
+    await page.waitForTimeout(450);
+    const filteredLeading = await page.getByRole("button", { name: /^Leading \(selected\)/ }).isVisible().catch(() => false);
+    const filteredHeaders = await page.locator("section[aria-label^='Voter profile'] thead th").count();
+    record("/case-studies/tamil-nadu", "Party column filter", "client", "2 columns out, selected leading", `${filteredHeaders} headers`, filteredLeading && filteredHeaders === 5);
+    await partyChips.getByRole("button", { name: /^All/ }).click();
+    await page.waitForTimeout(450);
+    record("/case-studies/tamil-nadu", "Party column reset", "client", "All restores five parties", String((await page.locator("section[aria-label^='Voter profile'] thead th").count()) - 2), (await page.locator("section[aria-label^='Voter profile'] thead th").count()) === 7);
     const group = page.locator("button", { hasText: /^Vanniyar$/ }).first();
     if (await group.isVisible().catch(() => false)) {
       await group.click();
@@ -204,13 +219,20 @@ async function clickTab(page: Page, name: RegExp) {
       await page.getByRole("button", { name: /Back to survey/ }).click();
       await page.waitForTimeout(900);
     }
-    const target = page.getByRole("button", { name: "Target Campaign" }).first();
+    const target = page.getByRole("button", { name: /^Target Campaign/ }).first();
     if (await target.isVisible().catch(() => false)) {
+      await target.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(250);
+      const beforeTarget = await page.evaluate(() => window.scrollY);
       await target.click();
       await page.waitForTimeout(1500);
+      const targetSocialTop = await page.evaluate(() => Math.round(document.querySelector("section[aria-label='Social media']")?.getBoundingClientRect().top ?? -1));
       record("/case-studies/tamil-nadu", "Target to social", "client", "view=social and match=target", `${new URL(page.url()).searchParams.get("view")}/${new URL(page.url()).searchParams.get("match")}`, new URL(page.url()).searchParams.get("view") === "social" && new URL(page.url()).searchParams.get("match") === "target");
+      record("/case-studies/tamil-nadu", "Target opens at the top", "client", "filtered view under the nav", `${targetSocialTop}px`, targetSocialTop >= 80 && targetSocialTop <= 180);
       await page.getByRole("button", { name: /Back to survey/ }).click();
       await page.waitForTimeout(900);
+      const afterTarget = await page.evaluate(() => window.scrollY);
+      record("/case-studies/tamil-nadu", "Back restores scroll", "client", "exact previous position", `${beforeTarget} to ${afterTarget}`, Math.abs(afterTarget - beforeTarget) <= 2);
     }
     await page.getByRole("tab", { name: "Zone" }).click();
     await page.waitForTimeout(400);
@@ -222,19 +244,28 @@ async function clickTab(page: Page, name: RegExp) {
       await page.getByRole("button", { name: /Back to survey/ }).click();
       await page.waitForTimeout(900);
     }
-    const assembly = page.getByRole("button", { name: "assembly", exact: true });
-    if (await assembly.isVisible().catch(() => false)) {
-      await assembly.click();
-      await page.waitForTimeout(700);
-      record("/case-studies/tamil-nadu", "Map detail toggle", "client", "assembly pressed", String(await assembly.getAttribute("aria-pressed")), (await assembly.getAttribute("aria-pressed")) === "true");
-      const mapCanvas = page.locator("canvas[aria-label*='3D map']");
-      const box = await mapCanvas.boundingBox();
-      if (box) {
-        await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
-        await page.waitForTimeout(500);
-        const tooltip = await page.locator('[data-testid="map-tooltip"]').innerText().catch(() => "");
-        record("/case-studies/tamil-nadu", "Map AC popup", "client", "AC name, district, shares", tooltip.replace(/\n+/g, " / "), tooltip.includes("%") && tooltip.includes("responses"));
-      }
+    const mapSection = page.locator("section[aria-label='Tamil Nadu map']");
+    await mapSection.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(600);
+    record("/case-studies/tamil-nadu", "Single map", "client", "no District or Assembly toggle", String(await page.getByRole("button", { name: "assembly", exact: true }).count()), (await page.getByRole("button", { name: "assembly", exact: true }).count()) === 0);
+    const mapCanvas = page.locator("canvas[aria-label*='3D map']");
+    const box = await mapCanvas.boundingBox();
+    if (box) {
+      await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
+      await page.waitForTimeout(450);
+      const districtTip = await page.locator('[data-testid="map-tooltip"]').innerText().catch(() => "");
+      record("/case-studies/tamil-nadu", "Map district card", "client", "name and party shares only", districtTip.replace(/\n+/g, " / "), districtTip.includes("%") && !/responses|lead |pp/i.test(districtTip));
+      await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+      await page.waitForTimeout(1200);
+      const backChip = await page.getByRole("button", { name: /Back to state/ }).isVisible().catch(() => false);
+      record("/case-studies/tamil-nadu", "Map drills into a district", "client", "ACs and Back to state", backChip ? "drilled" : "missing", backChip);
+      await page.mouse.move(box.x + box.width * 0.52, box.y + box.height * 0.48);
+      await page.waitForTimeout(500);
+      const acTip = await page.locator('[data-testid="map-tooltip"]').innerText().catch(() => "");
+      record("/case-studies/tamil-nadu", "Map AC card", "client", "name and shares only", acTip.replace(/\n+/g, " / "), acTip.includes("%") && !/responses|lead |pp/i.test(acTip));
+      await page.getByRole("button", { name: /Back to state/ }).click();
+      await page.waitForTimeout(1000);
+      record("/case-studies/tamil-nadu", "Map back to state", "client", "district view returns", String(await page.getByRole("button", { name: /Back to state/ }).count()), (await page.getByRole("button", { name: /Back to state/ }).count()) === 0);
     }
     await page.goto(`${BASE}/case-studies/tamil-nadu?view=rs`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(800);

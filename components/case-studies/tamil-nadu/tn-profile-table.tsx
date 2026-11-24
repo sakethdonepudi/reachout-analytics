@@ -160,7 +160,6 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
           <tbody>
             {pageRows.map((row, rowIndex) => {
               const leader = leaderOfRow(row);
-              const dmkFlag = periodKey === "op" && parties[leader.index] === "DMK+" && !leader.tie;
               return (
                 <tr
                   key={row.g}
@@ -168,7 +167,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                   onMouseEnter={() => setHover((current) => ({ ...current, row: row.g }))}
                   onMouseLeave={() => setHover((current) => ({ ...current, row: null }))}
                 >
-                  <th scope="row" className={cn("sticky left-0 z-10 bg-white px-3 py-2.5 text-left font-semibold text-[#1f2937]", dmkFlag && "border-l-[3px] border-l-[#e52020]")}>
+                  <th scope="row" className="sticky left-0 z-10 bg-white px-3 py-2.5 text-left font-semibold text-[#1f2937]">
                     {clickableGroup ? (
                       <button type="button" onClick={() => onGroup(row.g)} className="group/link inline-flex min-h-11! items-center gap-0.5 text-left font-semibold text-[#002147] underline decoration-[#B8B8B8] decoration-1 underline-offset-2 hover:decoration-[#002147]" title={`Open campaigns for ${row.g}`}>
                         {row.g}
@@ -237,7 +236,6 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                         {leader.tie ? "Tie" : parties[leader.index]}
                       </span>
                     ) : "—"}
-                    {dmkFlag && <span className="ml-1 rounded-full border border-[#e52020] px-1 py-0.5 text-[10.5px] font-bold text-[#e52020]">Need Target promotion</span>}
                     {geo && (
                       <button type="button" onClick={() => onCampaigns({ kind: profileKey, place: row.g })} className="ml-1 inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#1f6fd1] px-2 text-[10.5px] font-bold text-[#1f6fd1] hover:bg-[#EFF6FF]">
                         Campaigns ↗
