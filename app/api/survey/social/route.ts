@@ -4,8 +4,9 @@ import { getSurveyCached } from "@/lib/survey/store";
 import { tnSocialAccount, tnSocialFiltered, tnSocialOverview } from "@/lib/survey/tn-view-dto";
 
 export const runtime = "nodejs";
+export const preferredRegion = "bom1";
 
-const headers = { "Cache-Control": "private, no-store", Vary: "Cookie" };
+const headers = { "Cache-Control": "private, max-age=300", Vary: "Cookie" };
 
 export async function GET(req: NextRequest) {
   const session = await getSession(req);

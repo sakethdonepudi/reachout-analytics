@@ -8,6 +8,7 @@ import { tnSocialOverview } from "@/lib/survey/tn-view-dto";
 import type { SurveyData, SurveyPeriod, SurveyShare } from "@/lib/survey/types";
 
 export const runtime = "nodejs";
+export const preferredRegion = "bom1";
 export const maxDuration = 60;
 
 const STATE = "Tamil Nadu";
