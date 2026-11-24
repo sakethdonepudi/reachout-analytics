@@ -62,6 +62,8 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
   const [accountPage, setAccountPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const rootRef = useRef<HTMLElement>(null);
+  const wantTop = useRef(Boolean(initialFilter));
 
   const load = useCallback(async (filter: SocialFilter | null | undefined) => {
     setLoading(true);
@@ -87,6 +89,12 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
   }, [stateSlug]);
 
   useEffect(() => { void load(initialFilter); }, [initialFilter, load]);
+  useEffect(() => { if (initialFilter) wantTop.current = true; }, [initialFilter]);
+  useEffect(() => {
+    if (loading || !wantTop.current) return;
+    wantTop.current = false;
+    requestAnimationFrame(() => rootRef.current?.scrollIntoView({ block: "start", behavior: "auto" }));
+  }, [loading]);
 
   async function toggleAccount(key: string) {
     if (openAccount === key) { setOpenAccount(null); return; }
@@ -117,7 +125,7 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
     : overview?.totals;
 
   return (
-    <section className="space-y-4" aria-label="Social media">
+    <section ref={rootRef} className="scroll-mt-28 space-y-4" aria-label="Social media">
       {filtered ? (
         <div className="rounded-2xl border border-[#EAEAEA] bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.035)]">
           <div className="flex flex-wrap items-start justify-between gap-4">

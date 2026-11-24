@@ -192,6 +192,7 @@ export default function TnSurveyDashboard({
   const profileCache = useRef(new Map<string, SurveyDemo>());
   const prefetched = useRef(new Set<string>());
   const fetchedProfile = useRef(new Set<string>());
+  const pendingRestore = useRef<number | null>(null);
 
   const periodKey = view === "social" ? "op" : view;
   const slots = model.slots[periodKey] ?? [];
@@ -367,11 +368,18 @@ export default function TnSurveyDashboard({
       const raw = JSON.parse(sessionStorage.getItem("ro:tn-survey-scroll") ?? "null") as (SearchState & { y?: number }) | null;
       saved = raw; y = raw?.y ?? 0;
     } catch { saved = null; }
+    pendingRestore.current = y;
     if (saved && saved.view !== "social") navigate(saved, true);
     else if (window.history.length > 1) window.history.back();
     else navigate({ view: "op", slot: "all", profile: "" }, true);
-    requestAnimationFrame(() => window.scrollTo({ top: y }));
   }, [navigate]);
+
+  useEffect(() => {
+    if (view === "social" || pendingRestore.current == null) return;
+    const y = pendingRestore.current;
+    pendingRestore.current = null;
+    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" })));
+  }, [profileKey, slotKey, socialFilter, view]);
 
   async function download() {
     setDownloading(true);
@@ -453,7 +461,7 @@ export default function TnSurveyDashboard({
         )}
 
         {socialMounted && (
-          <div className={cn("mt-4 scroll-mt-24", view === "social" ? "tn-crossfade" : "hidden")}><TnSocialMedia stateSlug="tamil-nadu" initialFilter={socialFilter} onClose={closeSocial} owner={owner} /></div>
+          <div className={cn("mt-4", view === "social" ? "tn-crossfade" : "hidden")}><TnSocialMedia stateSlug="tamil-nadu" initialFilter={socialFilter} onClose={closeSocial} owner={owner} /></div>
         )}
         <div className={view === "social" ? "hidden" : "tn-crossfade"}>
           <>

@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useEffect, useMemo, useState } from "react";
-import { ArrowUpDown, Check } from "lucide-react";
+import { ArrowUpDown, Check, Target } from "lucide-react";
 import type { SurveyDemo, SurveyDemoRow } from "@/lib/survey/types";
 import { cn } from "@/lib/utils";
 import { partyColour, partyNeedsWhiteInk } from "@/lib/tamil-nadu/party-brand";
@@ -212,15 +212,20 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                           {pct(value)}
                         </span>
                         {target && (
-                          <button
-                            type="button"
-                            onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })}
-                            className="tn-target relative z-10 mx-auto mt-1 flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#e52020] bg-white px-2 text-[11px] font-bold text-[#e52020] hover:bg-[#FEF2F2]"
-                            title="AIADMK+ below average here: open campaigns"
-                            aria-label="Target Campaign. AIADMK+ below average here: open campaigns"
-                          >
-                            Target Campaign
-                          </button>
+                          <span className="group/target relative z-10 mx-auto mt-1 flex justify-center">
+                            <button
+                              type="button"
+                              onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })}
+                              className="tn-target inline-flex min-h-11! min-w-11 items-center justify-center gap-1 rounded-full border border-[#B91C1C] bg-[#DC2626] px-2.5 text-[11px] font-bold text-white shadow-sm"
+                              title="AIADMK+ below average here: open campaigns"
+                              aria-label="Target Campaign. AIADMK+ below average here: open campaigns"
+                            >
+                              <Target className="size-3.5" aria-hidden /> Target Campaign
+                            </button>
+                            <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#0B0B0C] px-2.5 py-1.5 text-[10.5px] font-semibold text-white shadow-xl group-hover/target:block">
+                              AIADMK+ below average here: open campaigns
+                            </span>
+                          </span>
                         )}
                       </td>
                     );
