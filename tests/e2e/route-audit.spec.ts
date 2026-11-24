@@ -178,6 +178,8 @@ async function clickTab(page: Page, name: RegExp) {
     const partyCards = ["TVK · expected", "DMK+ · expected", "AIADMK+ · expected", "NTK · expected", "Others · expected"];
     const partyBody = await page.locator("body").innerText();
     record("/case-studies/tamil-nadu", "Party cards", "client", "5 expected cards", partyCards.filter((label) => partyBody.includes(label)).length + " / 5", partyCards.every((label) => partyBody.includes(label)));
+    record("/case-studies/tamil-nadu", "Updated response total", "client", "117,131 responses", partyBody.includes("1,17,131 responses") || partyBody.includes("117,131 responses") ? "visible" : "missing", partyBody.includes("1,17,131 responses") || partyBody.includes("117,131 responses"));
+    record("/case-studies/tamil-nadu", "Updated opinion values", "client", "TVK 38.6, DMK+ 21.5, AIADMK+ 31.9", partyBody.includes("TVK 38.6%") && partyBody.includes("DMK+ 21.5%") && partyBody.includes("AIADMK+ 31.9%") ? "visible" : "missing", partyBody.includes("TVK 38.6%") && partyBody.includes("DMK+ 21.5%") && partyBody.includes("AIADMK+ 31.9%"));
     record("/case-studies/tamil-nadu", "Hero lead", "client", "leads by", partyBody.includes("leads by") ? "visible" : "missing", partyBody.includes("leads by"));
     record("/case-studies/tamil-nadu", "Removed copy", "client", "no title, dates, note or method", [!partyBody.includes("Opinion, Exit & Result Survey Analysis"), !partyBody.includes("28 Mar 2026 to 07 May 2026"), !partyBody.includes("actual vs prediction"), !partyBody.includes("Method & caveats")].join(", "), !partyBody.includes("Opinion, Exit & Result Survey Analysis") && !partyBody.includes("28 Mar 2026 to 07 May 2026") && !partyBody.includes("actual vs prediction") && !partyBody.includes("Method & caveats"));
     const removedPhrases = ["Coverage:", "groups under 30 answers are hidden", "Each cell shows the actual 2021", "Runner-up", "234 of 234 seats", "majority 118", "Projection: TVK", "The projected winner matches", "Projected winner calls compared"];
@@ -194,7 +196,8 @@ async function clickTab(page: Page, name: RegExp) {
     record("/case-studies/tamil-nadu", "Swing rows", "client", "6 rows", String(await page.locator("section[aria-label^='Zone swing'] tbody tr").count()), await page.locator("section[aria-label^='Zone swing'] tbody tr").count() === 6);
     record("/case-studies/tamil-nadu", "Swing switch removed", "client", "absent", String(await page.getByRole("combobox", { name: "Swing month" }).count()), (await page.getByRole("combobox", { name: "Swing month" }).count()) === 0);
     record("/case-studies/tamil-nadu", "Seat notes removed", "client", "no majority, projection or hit line", [!fullBody.includes("majority 118"), !fullBody.includes("Projection: TVK"), !fullBody.includes("The projected winner matches")].join(", "), !fullBody.includes("majority 118") && !fullBody.includes("Projection: TVK") && !fullBody.includes("The projected winner matches"));
-    record("/case-studies/tamil-nadu", "Time slots", "client", "All months, Mar 2026, Apr 2026", (await page.getByRole("group", { name: "Survey time slot" }).innerText()).replace(/\n+/g, ", "), (await page.getByRole("button", { name: /^All months/ }).isVisible()) && (await page.getByRole("button", { name: /^Apr 2026/ }).isVisible()));
+    const slotText = (await page.getByRole("group", { name: "Survey time slot" }).innerText()).replace(/\n+/g, ", ");
+    record("/case-studies/tamil-nadu", "Time slots", "client", "All months plus six dated months, no February", slotText, ["Oct 2025", "Nov 2025", "Dec 2025", "Jan 2026", "Mar 2026", "Apr 2026"].every((label) => slotText.includes(label)) && !slotText.includes("Feb 2026"));
     const navCount = await page.evaluate(() => performance.getEntriesByType("navigation").length);
     await page.getByRole("button", { name: /^Apr 2026/ }).click();
     await page.waitForTimeout(500);
@@ -208,6 +211,7 @@ async function clickTab(page: Page, name: RegExp) {
     await page.getByRole("tab", { name: "Age group" }).click();
     await page.waitForTimeout(400);
     record("/case-studies/tamil-nadu", "Profile tab", "client", "profile=age", String(new URL(page.url()).searchParams.get("profile")), new URL(page.url()).searchParams.get("profile") === "age");
+    record("/case-studies/tamil-nadu", "Survey form tab", "client", "new profile present", String(await page.getByRole("tab", { name: "Survey form" }).count()), (await page.getByRole("tab", { name: "Survey form" }).count()) === 1);
     await page.getByRole("tab", { name: "Community" }).click();
     await page.waitForTimeout(400);
     record("/case-studies/tamil-nadu", "Profile heat map", "client", "community table", await page.getByRole("region", { name: /Community table/ }).isVisible().catch(() => false) ? "visible" : "missing", await page.getByRole("region", { name: /Community table/ }).isVisible().catch(() => false));
