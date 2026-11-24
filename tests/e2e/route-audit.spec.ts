@@ -167,6 +167,11 @@ async function clickTab(page: Page, name: RegExp) {
     record("/case-studies/andhra-pradesh-2024", "Post-poll year switch", "client", "year=2024", String(new URL(page.url()).searchParams.get("year")), new URL(page.url()).searchParams.get("year") === "2024");
     await page.goto(`${BASE}/case-studies/tamil-nadu?view=op`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2200);
+    let surveyRequests = 0;
+    page.on("request", (request) => {
+      const path = new URL(request.url()).pathname;
+      if (path.startsWith("/api/survey/")) surveyRequests += 1;
+    });
     const tnCards = await Promise.all([/Opinion poll/, /Exit poll/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)));
     record("/case-studies/tamil-nadu", "Period cards", "client", "Opinion, Exit, Social", tnCards.join(", "), tnCards.every(Boolean));
     record("/case-studies/tamil-nadu", "No Result card", "client", "absent", String(await page.getByRole("button", { name: /^Result 2026/ }).count()), (await page.getByRole("button", { name: /^Result 2026/ }).count()) === 0);
@@ -221,10 +226,10 @@ async function clickTab(page: Page, name: RegExp) {
     }
     const target = page.getByRole("button", { name: /^Target Campaign/ }).first();
     if (await target.isVisible().catch(() => false)) {
-      await target.scrollIntoViewIfNeeded();
+      await target.evaluate((element) => element.scrollIntoView({ block: "center" }));
       await page.waitForTimeout(250);
       const beforeTarget = await page.evaluate(() => window.scrollY);
-      await target.click();
+      await target.click({ force: true });
       await page.waitForTimeout(1500);
       const targetSocialTop = await page.evaluate(() => Math.round(document.querySelector("section[aria-label='Social media']")?.getBoundingClientRect().top ?? -1));
       record("/case-studies/tamil-nadu", "Target to social", "client", "view=social and match=target", `${new URL(page.url()).searchParams.get("view")}/${new URL(page.url()).searchParams.get("match")}`, new URL(page.url()).searchParams.get("view") === "social" && new URL(page.url()).searchParams.get("match") === "target");
@@ -233,6 +238,18 @@ async function clickTab(page: Page, name: RegExp) {
       await page.waitForTimeout(900);
       const afterTarget = await page.evaluate(() => window.scrollY);
       record("/case-studies/tamil-nadu", "Back restores scroll", "client", "exact previous position", `${beforeTarget} to ${afterTarget}`, Math.abs(afterTarget - beforeTarget) <= 2);
+      await page.getByRole("button", { name: /^Social Media/ }).first().click();
+      await page.waitForTimeout(1400);
+      const clearedUrl = new URL(page.url());
+      const staleTarget = await page.getByText("Target campaign").isVisible().catch(() => false);
+      const socialOverview = await page.getByRole("button", { name: /^All periods/ }).isVisible().catch(() => false);
+      record("/case-studies/tamil-nadu", "Social card clears target filter", "client", "unfiltered social view", `${clearedUrl.searchParams.get("match") ?? "no match"}/${staleTarget ? "target visible" : "target gone"}`, !clearedUrl.searchParams.get("match") && !staleTarget && socialOverview);
+      const beforePeriod = surveyRequests;
+      await page.locator("section[aria-label='Campaign periods']").getByRole("button", { name: /Opinion poll/ }).click();
+      await page.waitForTimeout(500);
+      record("/case-studies/tamil-nadu", "Period filter", "client", "client-side, 0 survey requests", `${surveyRequests - beforePeriod} requests`, surveyRequests === beforePeriod && (await page.getByText(/Showing Opinion poll/).isVisible().catch(() => false)));
+      await page.getByRole("button", { name: /^Opinion poll/ }).first().click();
+      await page.waitForTimeout(900);
     }
     await page.getByRole("tab", { name: "Zone" }).click();
     await page.waitForTimeout(400);

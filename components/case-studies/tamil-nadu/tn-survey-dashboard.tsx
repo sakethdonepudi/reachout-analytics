@@ -69,11 +69,12 @@ function seatTotal(seats: Record<string, unknown>, parties: string[]) {
 
 function CountUp({ value, decimals = 0, suffix = "" }: { value: number; decimals?: number; suffix?: string }) {
   const reduced = usePrefersReducedMotion();
-  const [shown, setShown] = useState(reduced ? value : 0);
-  const previous = useRef(reduced ? value : 0);
+  const [shown, setShown] = useState(value);
+  const previous = useRef(value);
   useEffect(() => {
     if (reduced) { setShown(value); previous.current = value; return; }
     const from = previous.current;
+    if (from === value) { setShown(value); return; }
     const started = performance.now();
     let frame = 0;
     const step = (now: number) => {

@@ -2175,14 +2175,14 @@ html { scroll-padding-top: 96px; }
 /* TN survey presentation motion. Fast, ease-out, and off for reduced motion. */
 @keyframes tn-fade-slide {
   from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: none; }
 }
-.tn-fade-slide { animation: tn-fade-slide 220ms ease-out both; }
-.tn-crossfade { animation: tn-fade-slide 240ms ease-out both; }
+.tn-fade-slide { animation: tn-fade-slide 220ms ease-out backwards; }
+.tn-crossfade { animation: tn-fade-slide 240ms ease-out backwards; }
 .tn-card { transition: transform 160ms ease-out, border-color 160ms ease-out, background-color 160ms ease-out, box-shadow 160ms ease-out; }
 .tn-card:active { transform: scale(0.985); }
 .tn-reveal { opacity: 0; transform: translateY(14px); transition: opacity 320ms ease-out, transform 320ms ease-out; }
-.tn-reveal-in { opacity: 1; transform: translateY(0); }
+.tn-reveal-in { opacity: 1; transform: none; }
 @keyframes tn-target-blink {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.12); opacity: 0.55; }

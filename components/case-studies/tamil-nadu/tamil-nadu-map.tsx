@@ -51,7 +51,7 @@ const LABEL_OFFSET: Record<string, { x: number; y: number }> = {
   Dharmapuri: { x: -60, y: -10 },
   Kallakurichi: { x: 42, y: -30 },
   Salem: { x: 12, y: -8 },
-  Kanniyakumari: { x: 18, y: 32 },
+  Kanniyakumari: { x: 62, y: 2 },
   "The Nilgiris": { x: -40, y: 12 },
   Cuddalore: { x: -18, y: 24 },
   Mayiladuthurai: { x: 30, y: 28 },
@@ -63,8 +63,8 @@ const LABEL_OFFSET: Record<string, { x: number; y: number }> = {
   Karur: { x: 30, y: -18 },
   Sivaganga: { x: 20, y: 6 },
   Ramanathapuram: { x: 34, y: 20 },
-  Thoothukudi: { x: -30, y: 26 },
-  Tirunelveli: { x: 12, y: 40 },
+  Thoothukudi: { x: 26, y: 18 },
+  Tirunelveli: { x: -34, y: 18 },
   Tenkasi: { x: -30, y: -16 },
   Virudhunagar: { x: -22, y: 10 },
   Madurai: { x: 14, y: -4 },
@@ -370,7 +370,7 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
     };
 
     let stateDist = 1400;
-    let cam = { tx: 0, tz: 0, ty: 0, dist: 2050, theta: 0, phi: 0.58 };
+    let cam = { tx: 0, tz: 0, ty: 0, dist: 2050, theta: 0, phi: 0.82 };
     let camTarget = { ...cam };
     let camAnim: { start: number; dur: number; from: typeof cam } | null = null;
     const startCamera = (target: typeof cam) => {
@@ -522,22 +522,23 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         const vw = Math.max(320, hostRect.width), vh = Math.max(320, hostRect.height);
         const wide = typeof window !== "undefined" && window.innerWidth > 1024;
         let centerX = 0, centerZ = 0, dist = 1450;
+        const phi = activeAC || activeD ? 0.58 : 0.82;
         if (bounds && Number.isFinite(bounds.minx)) {
           centerX = (bounds.minx + bounds.maxx) / 2; centerZ = (bounds.minz + bounds.maxz) / 2;
           const W = Math.max(1, bounds.maxx - bounds.minx), H = Math.max(1, bounds.maxz - bounds.minz);
           const availW = Math.max(220, vw - (wide ? 34 : 18));
-          const availH = Math.max(220, vh - (activeAC || activeD ? 96 : 118));
+          const availH = Math.max(220, vh - (activeAC || activeD ? 96 : 64));
           const fov = camera.fov * Math.PI / 180;
-          const fit = Math.max((H / 2) / Math.tan(fov / 2), (W / 2) / Math.tan(Math.atan(Math.tan(fov / 2) * (availW / availH)))) * (activeAC ? 1.32 : activeD ? 1.28 : 1.08);
+          const fit = Math.max((H / 2) / Math.tan(fov / 2), (W / 2) / Math.tan(Math.atan(Math.tan(fov / 2) * (availW / availH)))) * (activeAC ? 1.32 : activeD ? 1.28 : Math.cos(phi) * (vh / availH));
           dist = Math.max(45, Math.min(3600, fit));
         }
         if (!activeD && !activeAC) stateDist = dist;
-        startCamera({ tx: centerX, tz: centerZ, ty: activeAC ? 2.2 : activeD ? 0.8 : 0, dist, theta: 0, phi: 0.58 });
+        startCamera({ tx: centerX, tz: centerZ, ty: activeAC ? 2.2 : activeD ? 0.8 : 0, dist, theta: 0, phi });
       },
       resetCamera: () => {
         const width = Math.max(280, host.getBoundingClientRect().width);
         const dist = Math.max(1100, Math.min(2600, 1800 * (700 / width)));
-        startCamera({ tx: 0, tz: 0, ty: 0, dist, theta: 0, phi: 0.58 });
+        startCamera({ tx: 0, tz: 0, ty: 0, dist, theta: 0, phi: 0.82 });
       },
       zoomBy: (factor: number) => {
         if (factor < 1 && !live.current.district) {

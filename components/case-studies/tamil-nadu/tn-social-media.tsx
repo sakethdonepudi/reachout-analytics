@@ -26,11 +26,12 @@ function initialsOf(name: string) {
 
 function AnimatedNumber({ value, mode = "int" }: { value: number; mode?: "int" | "compact" }) {
   const reduced = usePrefersReducedMotion();
-  const [shown, setShown] = useState(reduced ? value : 0);
-  const previous = useRef(reduced ? value : 0);
+  const [shown, setShown] = useState(value);
+  const previous = useRef(value);
   useEffect(() => {
     if (reduced) { setShown(value); previous.current = value; return; }
     const from = previous.current;
+    if (from === value) { setShown(value); return; }
     const started = performance.now();
     let frame = 0;
     const step = (now: number) => {
@@ -189,6 +190,10 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
   const load = useCallback(async (filter: SocialFilter | null | undefined) => {
     setLoading(true);
     setError("");
+    setFiltered(null);
+    setAccount(null);
+    setOpenAccount(null);
+    if (!filter) setPeriodKey(null);
     try {
       if (filter) {
         const params = new URLSearchParams({ state: stateSlug, mode: "filter", match: filter.match, kind: filter.kind ?? "", place: filter.place ?? "", label: filter.label ?? "", value: filter.value ?? "", average: filter.average ?? "", group: filter.group ?? "" });
