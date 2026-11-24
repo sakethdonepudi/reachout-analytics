@@ -167,58 +167,78 @@ async function clickTab(page: Page, name: RegExp) {
     record("/case-studies/andhra-pradesh-2024", "Post-poll year switch", "client", "year=2024", String(new URL(page.url()).searchParams.get("year")), new URL(page.url()).searchParams.get("year") === "2024");
     await page.goto(`${BASE}/case-studies/tamil-nadu?view=op`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2200);
-    const tnCards = await Promise.all([/Opinion poll/, /Exit poll/, /Result 2026/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)));
-    record("/case-studies/tamil-nadu", "Period cards", "client", "Opinion, Exit, Result, Social", tnCards.join(", "), tnCards.every(Boolean));
-    record("/case-studies/tamil-nadu", "Header shares", "client", "TVK 40.0%", await page.getByText(/TVK 40\.0%/).first().isVisible().catch(() => false) ? "visible" : "missing", await page.getByText(/TVK 40\.0%/).first().isVisible().catch(() => false));
+    const tnCards = await Promise.all([/Opinion poll/, /Exit poll/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)));
+    record("/case-studies/tamil-nadu", "Period cards", "client", "Opinion, Exit, Social", tnCards.join(", "), tnCards.every(Boolean));
+    record("/case-studies/tamil-nadu", "No Result card", "client", "absent", String(await page.getByRole("button", { name: /^Result 2026/ }).count()), (await page.getByRole("button", { name: /^Result 2026/ }).count()) === 0);
     const partyCards = ["TVK · expected", "DMK+ · expected", "AIADMK+ · expected", "NTK · expected", "Others · expected"];
     const partyBody = await page.locator("body").innerText();
     record("/case-studies/tamil-nadu", "Party cards", "client", "5 expected cards", partyCards.filter((label) => partyBody.includes(label)).length + " / 5", partyCards.every((label) => partyBody.includes(label)));
-    record("/case-studies/tamil-nadu", "Party card note", "client", "overall accuracy note", partyBody.includes("actual vs prediction, overall vote-share accuracy") ? "visible" : "missing", partyBody.includes("actual vs prediction, overall vote-share accuracy"));
+    record("/case-studies/tamil-nadu", "Hero lead", "client", "leads by", partyBody.includes("leads by") ? "visible" : "missing", partyBody.includes("leads by"));
+    record("/case-studies/tamil-nadu", "Removed copy", "client", "no title, dates, note or method", [!partyBody.includes("Opinion, Exit & Result Survey Analysis"), !partyBody.includes("28 Mar 2026 to 07 May 2026"), !partyBody.includes("actual vs prediction"), !partyBody.includes("Method & caveats")].join(", "), !partyBody.includes("Opinion, Exit & Result Survey Analysis") && !partyBody.includes("28 Mar 2026 to 07 May 2026") && !partyBody.includes("actual vs prediction") && !partyBody.includes("Method & caveats"));
     record("/case-studies/tamil-nadu", "Swing rows", "client", "6 rows", String(await page.locator("section[aria-label^='Zone:'] tbody tr").count()), await page.locator("section[aria-label^='Zone:'] tbody tr").count() === 6);
+    record("/case-studies/tamil-nadu", "Swing switch removed", "client", "absent", String(await page.getByRole("combobox", { name: "Swing month" }).count()), (await page.getByRole("combobox", { name: "Swing month" }).count()) === 0);
     record("/case-studies/tamil-nadu", "Seat total line", "client", "115 of 234 ACs", partyBody.includes("The projected winner matches the actual winner in 115 of 234 ACs") ? "visible" : "missing", partyBody.includes("The projected winner matches the actual winner in 115 of 234 ACs"));
     record("/case-studies/tamil-nadu", "Time slots", "client", "All months, Mar 2026, Apr 2026", (await page.getByRole("group", { name: "Survey time slot" }).innerText()).replace(/\n+/g, ", "), (await page.getByRole("button", { name: /^All months/ }).isVisible()) && (await page.getByRole("button", { name: /^Apr 2026/ }).isVisible()));
+    const navCount = await page.evaluate(() => performance.getEntriesByType("navigation").length);
     await page.getByRole("button", { name: /^Apr 2026/ }).click();
-    await page.waitForTimeout(900);
-    record("/case-studies/tamil-nadu", "Month switch", "client", "slot=2026-04", String(new URL(page.url()).searchParams.get("slot")), new URL(page.url()).searchParams.get("slot") === "2026-04");
+    await page.waitForTimeout(500);
+    record("/case-studies/tamil-nadu", "Month switch", "client", "slot=2026-04 without page load", String(new URL(page.url()).searchParams.get("slot")), new URL(page.url()).searchParams.get("slot") === "2026-04" && (await page.evaluate(() => performance.getEntriesByType("navigation").length)) === navCount);
     const sub = page.getByRole("button", { name: /1.15 Apr/ }).first();
     if (await sub.isVisible().catch(() => false)) {
       await sub.click();
-      await page.waitForTimeout(900);
+      await page.waitForTimeout(500);
     }
     record("/case-studies/tamil-nadu", "Sub-period switch", "client", "slot=2026-04a", String(new URL(page.url()).searchParams.get("slot")), new URL(page.url()).searchParams.get("slot") === "2026-04a");
     await page.getByRole("tab", { name: "Age group" }).click();
-    await page.waitForTimeout(900);
+    await page.waitForTimeout(400);
     record("/case-studies/tamil-nadu", "Profile tab", "client", "profile=age", String(new URL(page.url()).searchParams.get("profile")), new URL(page.url()).searchParams.get("profile") === "age");
     await page.getByRole("tab", { name: "Community" }).click();
-    await page.waitForTimeout(900);
+    await page.waitForTimeout(400);
     record("/case-studies/tamil-nadu", "Profile heat map", "client", "community table", await page.getByRole("region", { name: /Community table/ }).isVisible().catch(() => false) ? "visible" : "missing", await page.getByRole("region", { name: /Community table/ }).isVisible().catch(() => false));
     const group = page.locator("button", { hasText: /^Vanniyar$/ }).first();
     if (await group.isVisible().catch(() => false)) {
       await group.click();
-      await page.waitForTimeout(1600);
+      await page.waitForTimeout(1500);
       record("/case-studies/tamil-nadu", "Group to social", "client", "view=social and match=group", `${new URL(page.url()).searchParams.get("view")}/${new URL(page.url()).searchParams.get("match")}`, new URL(page.url()).searchParams.get("view") === "social" && new URL(page.url()).searchParams.get("match") === "group");
       record("/case-studies/tamil-nadu", "Group social no money", "client", "no currency", /₹|\bspend\b|\bINR\b/i.test(await page.locator("body").innerText()) ? "money found" : "clean", !/₹|\bspend\b|\bINR\b/i.test(await page.locator("body").innerText()));
-      await page.getByRole("button", { name: /Close . back to survey/ }).click();
-      await page.waitForTimeout(1400);
+      await page.getByRole("button", { name: /Back to survey/ }).click();
+      await page.waitForTimeout(900);
     }
     const target = page.getByRole("button", { name: "Target Campaign" }).first();
     if (await target.isVisible().catch(() => false)) {
       await target.click();
-      await page.waitForTimeout(1600);
+      await page.waitForTimeout(1500);
       record("/case-studies/tamil-nadu", "Target to social", "client", "view=social and match=target", `${new URL(page.url()).searchParams.get("view")}/${new URL(page.url()).searchParams.get("match")}`, new URL(page.url()).searchParams.get("view") === "social" && new URL(page.url()).searchParams.get("match") === "target");
-      await page.getByRole("button", { name: /Close . back to survey/ }).click();
-      await page.waitForTimeout(1400);
+      await page.getByRole("button", { name: /Back to survey/ }).click();
+      await page.waitForTimeout(900);
+    }
+    await page.getByRole("tab", { name: "Zone" }).click();
+    await page.waitForTimeout(400);
+    const campaignsLink = page.getByRole("button", { name: "Campaigns" }).first();
+    if (await campaignsLink.isVisible().catch(() => false)) {
+      await campaignsLink.click();
+      await page.waitForTimeout(1500);
+      record("/case-studies/tamil-nadu", "Campaigns to social", "client", "view=social and match=campaigns", `${new URL(page.url()).searchParams.get("view")}/${new URL(page.url()).searchParams.get("match")}`, new URL(page.url()).searchParams.get("view") === "social" && new URL(page.url()).searchParams.get("match") === "campaigns");
+      await page.getByRole("button", { name: /Back to survey/ }).click();
+      await page.waitForTimeout(900);
     }
     const assembly = page.getByRole("button", { name: "assembly", exact: true });
     if (await assembly.isVisible().catch(() => false)) {
       await assembly.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(700);
       record("/case-studies/tamil-nadu", "Map detail toggle", "client", "assembly pressed", String(await assembly.getAttribute("aria-pressed")), (await assembly.getAttribute("aria-pressed")) === "true");
+      const mapCanvas = page.locator("canvas[aria-label*='3D map']");
+      const box = await mapCanvas.boundingBox();
+      if (box) {
+        await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
+        await page.waitForTimeout(500);
+        const tooltip = await page.locator('[data-testid="map-tooltip"]').innerText().catch(() => "");
+        record("/case-studies/tamil-nadu", "Map AC popup", "client", "AC name, district, shares", tooltip.replace(/\n+/g, " / "), tooltip.includes("%") && tooltip.includes("responses"));
+      }
     }
-    await page.getByRole("button", { name: /^Result 2026/ }).click();
-    await page.waitForTimeout(1400);
-    record("/case-studies/tamil-nadu", "Result view", "client", "view=rs", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "rs");
-    record("/case-studies/tamil-nadu", "Result block", "client", "Result 2026 vs survey projections", await page.getByRole("heading", { name: "Result 2026 vs survey projections" }).isVisible().catch(() => false) ? "visible" : "missing", await page.getByRole("heading", { name: "Result 2026 vs survey projections" }).isVisible().catch(() => false));
+    await page.goto(`${BASE}/case-studies/tamil-nadu?view=rs`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(800);
+    record("/case-studies/tamil-nadu", "Old rs link", "client", "redirects to op", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "op");
     await page.getByRole("button", { name: /^Social Media/ }).click();
     await page.waitForTimeout(1600);
     record("/case-studies/tamil-nadu", "Social view", "client", "view=social", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "social");
@@ -232,7 +252,7 @@ async function clickTab(page: Page, name: RegExp) {
     const unnamedVisible = await unnamed.isVisible().catch(() => false);
     if (unnamedVisible) {
       await unnamed.click();
-      await page.waitForTimeout(1600);
+      await page.waitForTimeout(1500);
       const rows = await page.locator("section[aria-label*='Campaigns'] tbody tr").count();
       record("/case-studies/tamil-nadu", "Expand unnamed account", "client", "campaigns load", String(rows), rows > 0);
     } else {
@@ -241,8 +261,8 @@ async function clickTab(page: Page, name: RegExp) {
     const clientFiltered = await page.evaluate(async () => (await fetch("/api/survey/social?state=tamil-nadu&mode=filter&match=group&group=Vanniyar")).json());
     record("/case-studies/tamil-nadu", "Filtered payload ids", "client", "no 14-17 digit number", /\d{14,17}/.test(JSON.stringify(clientFiltered)) ? "found" : "clean", !/\d{14,17}/.test(JSON.stringify(clientFiltered)));
     await page.goBack();
-    await page.waitForTimeout(1400);
-    record("/case-studies/tamil-nadu", "Back to survey", "client", "view=rs", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "rs");
+    await page.waitForTimeout(900);
+    record("/case-studies/tamil-nadu", "Back to survey", "client", "view=op", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "op");
     record("/case-studies/tamil-nadu", "Console and 404s", "client", "none", errors.length ? errors.join("; ") : "none", errors.length === 0);
     await context.close();
   }
@@ -267,7 +287,7 @@ async function clickTab(page: Page, name: RegExp) {
     record("/case-studies", "Owner shell", "owner", "sidebar visible", `${new URL(page.url()).pathname}`, new URL(page.url()).pathname === "/case-studies" && await page.locator('[aria-label="Owner navigation"]').isVisible());
     await page.goto(`${BASE}/case-studies/tamil-nadu`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1000);
-    record("/case-studies/tamil-nadu", "Owner cards", "owner", "Opinion, Exit, Result, Social", (await Promise.all([/Opinion poll/, /Exit poll/, /Result 2026/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)))).join(", "), (await Promise.all([/Opinion poll/, /Exit poll/, /Result 2026/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)))).every(Boolean));
+    record("/case-studies/tamil-nadu", "Owner cards", "owner", "Opinion, Exit, Social", (await Promise.all([/Opinion poll/, /Exit poll/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)))).join(", "), (await Promise.all([/Opinion poll/, /Exit poll/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)))).every(Boolean));
     record("/case-studies/tamil-nadu", "Owner download", "owner", "button visible", String(await page.getByRole("button", { name: /Download data/ }).count()), await page.getByRole("button", { name: /Download data/ }).first().isVisible().catch(() => false));
     const ownerSocial = await page.evaluate(async () => (await fetch("/api/survey/social?state=tamil-nadu")).json());
     const ownerAccounts = (ownerSocial.overview?.accounts ?? []) as Array<Record<string, unknown>>;
