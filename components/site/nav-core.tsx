@@ -33,7 +33,7 @@ function idleLabel(ms: number): string {
   const seconds = Math.max(0, Math.round(ms / 1000));
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
-const linkClass = "inline-flex shrink-0 whitespace-nowrap min-h-10 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45 max-[1100px]:px-2 max-[1100px]:text-[12px]";
+const linkClass = "inline-flex shrink-0 whitespace-nowrap min-h-11! items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold text-[var(--h-muted)] transition-colors hover:bg-[var(--h-surface-inset)] hover:text-[var(--h-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45 max-[1100px]:px-2 max-[1100px]:text-[12px]";
 
 function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
@@ -83,12 +83,12 @@ function Dropdown({ label, items, footer, active, align = "left" }: {
       </button>
       <div role="menu" aria-hidden={!open} data-open={open} data-align={align} className={cn("nav-menu site-group absolute top-[calc(100%+8px)] z-[var(--z-dropdown)] w-64 rounded-2xl p-1.5 text-[var(--h-ink)]", align === "right" ? "right-0" : "left-0")}>
           {items.map((item) => (
-            <Link key={item.href + item.label} href={item.href} prefetch={false} role="menuitem" onClick={() => setOpen(false)} className={cn("flex min-h-10 items-start gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium transition-colors hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45", item.active && "site-group-inset")}>
+            <Link key={item.href + item.label} href={item.href} prefetch={false} role="menuitem" onClick={() => setOpen(false)} className={cn("flex min-h-11! items-start gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium transition-colors hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45", item.active && "site-group-inset")}>
               {item.party ? <NavPartyMark party={item.party} /> : item.icon}
               <span className="min-w-0"><span className="block">{item.label}</span>{item.hint && <span className="mt-0.5 block text-[10px] font-normal text-[var(--h-muted)]">{item.hint}</span>}</span>
             </Link>
           ))}
-          {footer && <><div className="my-1 h-px bg-[var(--h-border)]/20" /><Link href={footer.href} role="menuitem" onClick={() => setOpen(false)} className="flex min-h-10 items-center gap-2 rounded-xl px-3 text-[11.5px] font-semibold text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">{footer.icon}{footer.label}</Link></>}
+          {footer && <><div className="my-1 h-px bg-[var(--h-border)]/20" /><Link href={footer.href} role="menuitem" onClick={() => setOpen(false)} className="flex min-h-11! items-center gap-2 rounded-xl px-3 text-[11.5px] font-semibold text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45">{footer.icon}{footer.label}</Link></>}
       </div>
     </div>
   );
@@ -182,13 +182,13 @@ export default function NavCore({ variant, displayName, username, organisation, 
           <div className="ml-auto flex items-center gap-1">
             {variant === "public" ? (
               <>
-                <a href={LOGIN.href} className="hit-expand hidden min-h-10 items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[12px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:inline-flex"><NavIcon name="login" /> {LOGIN.label}</a>
-                <a href={LOGIN.href} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#0B0B0C] px-3 text-[12px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:hidden"><NavIcon name="login" /> {LOGIN.label}</a>
+                <a href={LOGIN.href} className="hit-expand hidden min-h-11! items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[12px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:inline-flex"><NavIcon name="login" /> {LOGIN.label}</a>
+                <a href={LOGIN.href} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[#0B0B0C] px-3 text-[12px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:hidden"><NavIcon name="login" /> {LOGIN.label}</a>
               </>
             ) : (
               <>
                 <div ref={accountRef} className="relative hidden min-[900px]:block">
-                  <button type="button" onClick={() => setAccountOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountOpen} className={cn("inline-flex min-h-10 items-center gap-2 rounded-full px-2 text-[12px] font-semibold text-[var(--h-ink)] hover:bg-[var(--h-surface-inset)]", accountOpen && "site-group-inset")}>
+                  <button type="button" onClick={() => setAccountOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountOpen} className={cn("inline-flex min-h-11! items-center gap-2 rounded-full px-2 text-[12px] font-semibold text-[var(--h-ink)] hover:bg-[var(--h-surface-inset)]", accountOpen && "site-group-inset")}>
                     <span className="sr-only">Account menu</span>
                     <span className="grid size-7 place-items-center rounded-full bg-[#0B0B0C] text-[10px] font-bold text-white">{initials(displayName ?? "User")}</span>
                     <span className="hidden max-w-[110px] truncate lg:block">{variant === "client" ? displayName : "Account"}</span>
@@ -221,7 +221,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
                         </>
                       )}
                       {variant === "client" && <MenuLink item={ACCOUNT_ITEMS.account} />}
-                      <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-left text-[12px] font-medium text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)]"><NavIcon name="logout" /> {variant === "client" ? "Log out" : "Sign out"}</button>
+                      <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-11! w-full items-center gap-2 rounded-xl px-3 text-left text-[12px] font-medium text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)]"><NavIcon name="logout" /> {variant === "client" ? "Log out" : "Sign out"}</button>
                     </div>
                   )}
                 </div>
@@ -285,7 +285,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
 }
 
 function MenuLink({ item }: { item: NavItem }) {
-  return <Link href={item.href} role="menuitem" className="flex min-h-10 items-center gap-2 rounded-xl px-3 text-[12px] font-medium text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)]"><NavIcon name={item.icon} /> {item.label}</Link>;
+  return <Link href={item.href} role="menuitem" className="flex min-h-11! items-center gap-2 rounded-xl px-3 text-[12px] font-medium text-[var(--h-muted)] hover:bg-[var(--h-surface-inset)]"><NavIcon name={item.icon} /> {item.label}</Link>;
 }
 
 function MobileLink({ item }: { item: NavItem }) {

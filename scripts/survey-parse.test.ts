@@ -55,6 +55,14 @@ check("swing rows exist for every slot even without a stored baseline", () => {
     }
   }
 });
+check("messy spacing around window.TN_DATA still parses", () => {
+  const messy = fixture.replace("window.TN_DATA=", "window.TN_DATA = ").replace("};\n</script>", "};\n\n</script>");
+  const next = parseSurveyHtml(messy, "tamil-nadu");
+  assert.equal(next.periods.op.n, 40);
+});
+check("a file without the payload gets a clear error", () => {
+  assert.throws(() => parseSurveyHtml("<html><body>No dashboard here</body></html>", "tamil-nadu"), /does not contain window\.TN_DATA/);
+});
 check("renaming a month and adding a profile still parses", () => {
   const source = fixture
     .replace(/"2026-03"/g, '"2099-01"')

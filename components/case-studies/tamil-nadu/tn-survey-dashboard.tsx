@@ -399,11 +399,11 @@ export default function TnSurveyDashboard({
       <div className={cn("fixed left-0 top-0 z-50 h-0.5 bg-[#0B0B0C] transition-all duration-200", slowLoad ? "w-full opacity-100" : "w-0 opacity-0")} aria-hidden />
       <div className="mx-auto w-full max-w-[1680px] px-4 pb-20 pt-20 sm:px-6 sm:pt-20 xl:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link href="/case-studies" className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#CFCFCF] bg-white px-3.5 py-1.5 text-[14px] text-[#6B6B6B] transition-colors hover:border-[#0B0B0C] hover:text-[#0B0B0C]">
+          <Link href="/case-studies" className="inline-flex min-h-11! items-center gap-2 rounded-full border border-[#CFCFCF] bg-white px-3.5 py-1.5 text-[14px] text-[#6B6B6B] transition-colors hover:border-[#0B0B0C] hover:text-[#0B0B0C]">
             <ArrowLeft className="size-4" /> Back to Case Studies
           </Link>
           {owner && (
-            <button type="button" onClick={() => void download()} disabled={downloading} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[13px] font-semibold text-[#0B0B0C] hover:bg-[#0B0B0C] hover:text-white disabled:opacity-50">
+            <button type="button" onClick={() => void download()} disabled={downloading} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[13px] font-semibold text-[#0B0B0C] hover:bg-[#0B0B0C] hover:text-white disabled:opacity-50">
               <ArrowDownToLine className="size-4" /> {downloading ? "Preparing..." : "Download data"}
             </button>
           )}
@@ -441,7 +441,7 @@ export default function TnSurveyDashboard({
               return (
                 <div key={item.key} className="relative">
                   <button type="button" aria-pressed={slot.key === item.key || slot.monthKey === item.key} onMouseEnter={() => prefetch(periodKey, item.key)} onClick={() => navigate({ slot: item.key, profile: "" })}
-                    className={cn("min-h-10 rounded-full border px-4 text-[14px] font-semibold transition-all active:scale-[0.98]", slot.key === item.key || slot.monthKey === item.key ? "border-[#002147] shadow-[0_0_0_2px_white,0_0_0_3.5px_#002147]" : "border-[#C9CDD4] hover:border-[#0B0B0C]")}
+                    className={cn("min-h-11! rounded-full border px-4 text-[14px] font-semibold transition-all active:scale-[0.98]", slot.key === item.key || slot.monthKey === item.key ? "border-[#002147] shadow-[0_0_0_2px_white,0_0_0_3.5px_#002147]" : "border-[#C9CDD4] hover:border-[#0B0B0C]")}
                     style={{ background: slot.key === item.key || slot.monthKey === item.key ? colour(itemLead) : `${colour(itemLead)}22`, color: slot.key === item.key || slot.monthKey === item.key ? "#fff" : "#1f2937" }}>
                     {item.buttonLabel}{subs.length ? <ChevronDown className="ml-1 inline size-4" /> : null}
                   </button>
@@ -449,7 +449,7 @@ export default function TnSurveyDashboard({
               );
             })}
             {slots.filter((candidate) => candidate.subKey && candidate.monthKey === (slot.monthKey ?? "")).map((item) => (
-              <button key={item.key} type="button" aria-pressed={slot.key === item.key} onClick={() => navigate({ slot: item.key, profile: "" })} className={cn("min-h-9 rounded-full border px-3 text-[13px] font-semibold active:scale-[0.98]", slot.key === item.key ? "border-[#002147] bg-[#002147] text-white" : "border-[#D5D8DE] bg-white text-[#1f2937] hover:border-[#0B0B0C]")}>{item.buttonLabel}</button>
+              <button key={item.key} type="button" aria-pressed={slot.key === item.key} onClick={() => navigate({ slot: item.key, profile: "" })} className={cn("min-h-11! rounded-full border px-3 text-[13px] font-semibold active:scale-[0.98]", slot.key === item.key ? "border-[#002147] bg-[#002147] text-white" : "border-[#D5D8DE] bg-white text-[#1f2937] hover:border-[#0B0B0C]")}>{item.buttonLabel}</button>
             ))}
           </div>
         )}
@@ -480,10 +480,10 @@ export default function TnSurveyDashboard({
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <div className="inline-flex rounded-full bg-[#F4F4F5] p-1" role="group" aria-label="Map detail">
                   {(["district", "assembly"] as const).map((mode) => (
-                    <button key={mode} type="button" aria-pressed={mapMode === mode} onMouseEnter={() => prefetch(periodKey, slot.key)} onClick={() => setMapMode(mode)} className={cn("min-h-9 rounded-full px-4 text-[13px] font-semibold capitalize", mapMode === mode ? "bg-white text-[#0B0B0C] shadow-sm" : "text-[#6B6B6B]")}>{mode}</button>
+                    <button key={mode} type="button" aria-pressed={mapMode === mode} onMouseEnter={() => prefetch(periodKey, slot.key)} onClick={() => setMapMode(mode)} className={cn("min-h-11! rounded-full px-4 text-[13px] font-semibold capitalize", mapMode === mode ? "bg-white text-[#0B0B0C] shadow-sm" : "text-[#6B6B6B]")}>{mode}</button>
                   ))}
                 </div>
-                {(district || acNo != null) && <button type="button" onClick={() => { setDistrict(null); setAcNo(null); }} className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#0B0B0C] underline"><RotateCcw className="size-3.5" /> Reset map</button>}
+                {(district || acNo != null) && <button type="button" onClick={() => { setDistrict(null); setAcNo(null); }} className="inline-flex min-h-11! items-center gap-1 text-[13px] font-semibold text-[#0B0B0C] underline"><RotateCcw className="size-3.5" /> Reset map</button>}
               </div>
               <div className={cn("relative h-[380px] overflow-hidden rounded-xl border border-[#EAEAEA] bg-[#FBFAF7] transition-opacity md:h-[680px] xl:h-[700px]", mapLoading && "opacity-60")}>
                 {mapMounted ? <TamilNaduMap
@@ -520,7 +520,7 @@ export default function TnSurveyDashboard({
               <Section title={`Raw 2026 vote % by voter profile`} note={`${slot.label} · ${int(slot.n)} responses`} className="mt-3">
                 <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Voter profile">
                   {profiles.map((key) => (
-                    <button key={key} type="button" role="tab" aria-selected={activeProfile === key} onMouseEnter={() => prefetchProfile(key)} onClick={() => navigate({ profile: key })} className={cn("min-h-10 rounded-full border px-3.5 text-[13px] font-semibold active:scale-[0.98]", activeProfile === key ? "border-[#8C6A2F] bg-[#FBF3DF] text-[#0B0B0C]" : "border-[#D5D8DE] text-[#555] hover:border-[#0B0B0C]")}>
+                    <button key={key} type="button" role="tab" aria-selected={activeProfile === key} onMouseEnter={() => prefetchProfile(key)} onClick={() => navigate({ profile: key })} className={cn("min-h-11! rounded-full border px-3.5 text-[13px] font-semibold active:scale-[0.98]", activeProfile === key ? "border-[#8C6A2F] bg-[#FBF3DF] text-[#0B0B0C]" : "border-[#D5D8DE] text-[#555] hover:border-[#0B0B0C]")}>
                       {slot.demoCatalog[key]?.label ?? key}
                     </button>
                   ))}
@@ -624,7 +624,6 @@ function SeatsByZone({ data, parties, seats, periodKey, slotLabel }: { data: TnC
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-[12px] text-[#6B6B6B]">{periodKey === "rs" ? "Actual seats by zone." : "Projected winner calls compared with the actual 2026 winners."}</p>
     </Section>
   );
 }

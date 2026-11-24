@@ -738,8 +738,8 @@ export default function TamilNaduMap({ acs, districts, district, acNo, year, the
         <div ref={labelRef} className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden />
       </div>
       <div className="absolute right-2 top-2 z-10 flex flex-col overflow-hidden rounded-lg border border-[#D5D8DE] bg-white/95 shadow-sm">
-        <button type="button" aria-label="Zoom in" onClick={() => apiRef.current?.zoomBy(0.8)} className="grid size-8 place-items-center text-[18px] font-semibold text-[#0B0B0C] hover:bg-[#F4F4F5]">+</button>
-        <button type="button" aria-label="Zoom out" onClick={() => apiRef.current?.zoomBy(1.25)} className="grid size-8 place-items-center border-t border-[#EAEAEA] text-[18px] font-semibold text-[#0B0B0C] hover:bg-[#F4F4F5]">−</button>
+        <button type="button" aria-label="Zoom in" onClick={() => apiRef.current?.zoomBy(0.8)} className="grid size-11! place-items-center text-[20px] font-semibold text-[#0B0B0C] hover:bg-[#F4F4F5]">+</button>
+        <button type="button" aria-label="Zoom out" onClick={() => apiRef.current?.zoomBy(1.25)} className="grid size-11! place-items-center border-t border-[#EAEAEA] text-[20px] font-semibold text-[#0B0B0C] hover:bg-[#F4F4F5]">−</button>
       </div>
       <p className="pointer-events-none absolute bottom-2 left-2 z-10 rounded bg-white/80 px-2 py-1 text-[9px] text-[#6B6B6B]">Ctrl + scroll to zoom</p>
       {tip && <div data-testid="map-tooltip" className="pointer-events-none fixed z-[var(--z-dropdown)] max-w-[240px] rounded-lg border border-border bg-card/95 px-2.5 py-2 text-[10px] shadow-xl" style={{ left: Math.min(tip.x + 12, window.innerWidth - 255), top: Math.max(8, tip.y - 12) }}>

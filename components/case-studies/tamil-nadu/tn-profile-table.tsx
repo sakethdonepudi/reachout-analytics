@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { ArrowUpDown } from "lucide-react";
 import type { SurveyDemo, SurveyDemoRow } from "@/lib/survey/types";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,7 @@ type Props = {
 
 function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, average, onTarget, onCampaigns, onGroup }: Props) {
   const [sort, setSort] = useState<{ column: number; asc: boolean } | null>(null);
+  const [page, setPage] = useState(0);
   const isV21 = profileKey === "v21";
   const geo = profileKey === "dist" || profileKey === "ac" || profileKey === "zone";
   const clickableGroup = periodKey === "op" ? ["age", "caste", "prof"].includes(profileKey) : profileKey === "age";
@@ -45,6 +46,11 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
     return list;
   }, [demo.rows, parties.length, sort]);
 
+  const pageSize = rows.length > 40 ? 30 : rows.length;
+  const pageCount = Math.max(1, Math.ceil(rows.length / Math.max(1, pageSize)));
+  const currentPage = Math.min(page, pageCount - 1);
+  const pageRows = rows.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+  useEffect(() => { setPage(0); }, [demo, sort]);
   const total = demo.rows.reduce((sum, row) => sum + row.n, 0);
   const weighted = parties.map((_, index) => (total ? demo.rows.reduce((sum, row) => sum + (row.v[index] ?? 0) * row.n, 0) / total : 0));
   const totalLeader = weighted.indexOf(Math.max(...weighted));
@@ -67,7 +73,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
               <th className="sticky left-0 z-20 bg-[#FAFAFA] px-2 py-2 font-semibold">{isV21 ? "2021 voted / 2026 vote" : demo.label}</th>
               {parties.map((party, index) => (
                 <th key={party} className="px-1.5 py-2 text-center font-semibold">
-                  <button type="button" onClick={() => toggleSort(index)} className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-black/5" title={`Sort by ${party}`}>
+                  <button type="button" onClick={() => toggleSort(index)} className="inline-flex min-h-11! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-black/5" title={`Sort by ${party}`}>
                     <span className="size-1.5 rounded-sm" style={{ background: colourOf(party) }} />
                     {party}
                     <ArrowUpDown className={cn("size-2.5 opacity-50", sort?.column === index && "opacity-100")} />
@@ -75,12 +81,12 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                 </th>
               ))}
               <th className="px-2 py-2 text-left font-semibold">
-                <button type="button" onClick={() => toggleSort(parties.length)} className="inline-flex items-center gap-1 rounded px-1 py-0.5 hover:bg-black/5" title="Sort by leading party">Leading <ArrowUpDown className="size-2.5 opacity-50" /></button>
+                <button type="button" onClick={() => toggleSort(parties.length)} className="inline-flex min-h-11! min-w-11 items-center justify-center gap-1 rounded px-1 py-0.5 hover:bg-black/5" title="Sort by leading party">Leading <ArrowUpDown className="size-2.5 opacity-50" /></button>
               </th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, rowIndex) => {
+            {pageRows.map((row, rowIndex) => {
               const ranked = [...row.v].sort((a, b) => b - a);
               const leader = row.v.indexOf(ranked[0]);
               const tie = ranked.length > 1 && ranked[0] === ranked[1];
@@ -89,7 +95,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                 <tr key={row.g} className={cn("border-t border-[#EAEAEA]", dmkFlag && "shadow-[inset_3px_0_0_#e52020]")}>
                   <th scope="row" className="sticky left-0 z-10 bg-white px-3 py-2.5 text-left font-semibold text-[#1f2937]">
                     {clickableGroup ? (
-                      <button type="button" onClick={() => onGroup(row.g)} className="text-left underline decoration-[#B8B8B8] decoration-dotted underline-offset-2 hover:text-[#0B0B0C]" title={`Open campaigns for ${row.g}`}>
+                      <button type="button" onClick={() => onGroup(row.g)} className="inline-flex min-h-11! items-center text-left underline decoration-[#B8B8B8] decoration-dotted underline-offset-2 hover:text-[#0B0B0C]" title={`Open campaigns for ${row.g}`}>
                         {row.g}
                       </button>
                     ) : profileKey === "zone" ? (row.g) : row.g}
@@ -102,7 +108,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                       <td key={index} className={cn("min-w-[96px] px-2 py-2.5 text-center tabular-nums", isLead && "font-extrabold ring-2 ring-inset ring-[#0B0B0C]")} style={{ background: `color-mix(in srgb, ${colourOf(parties[index])} ${alpha}%, white)` }}>
                         <span className="tn-heat inline-block" style={{ animationDelay: `${rowIndex * 14 + index * 8}ms` }}>{pct(value)}</span>
                         {target && (
-                          <button type="button" onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })} className="tn-target mx-auto mt-1 block rounded-full border border-[#e52020] bg-white px-1.5 py-0.5 text-[11px] font-bold text-[#e52020] hover:bg-[#FEF2F2]">
+                          <button type="button" onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })} className="tn-target mx-auto mt-1 flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#e52020] bg-white px-2 text-[11px] font-bold text-[#e52020] hover:bg-[#FEF2F2]">
                             Target Campaign
                           </button>
                         )}
@@ -114,7 +120,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                     {tie ? "Tie" : parties[leader]}
                     {dmkFlag && <span className="ml-1 rounded-full border border-[#e52020] px-1 py-0.5 text-[10.5px] font-bold text-[#e52020]">Need Target promotion</span>}
                     {geo && (
-                      <button type="button" onClick={() => onCampaigns({ kind: profileKey, place: row.g })} className="ml-1 rounded-full border border-[#1f6fd1] px-1.5 py-0.5 text-[10.5px] font-bold text-[#1f6fd1] hover:bg-[#EFF6FF]">
+                      <button type="button" onClick={() => onCampaigns({ kind: profileKey, place: row.g })} className="ml-1 inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#1f6fd1] px-2 text-[10.5px] font-bold text-[#1f6fd1] hover:bg-[#EFF6FF]">
                         Campaigns ↗
                       </button>
                     )}
@@ -134,7 +140,16 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
           )}
         </table>
       </div>
-      <p className="mt-1 text-[13px] text-[#6B6B6B]">{slotLabel} · groups under 30 answers are hidden. {int(demo.rows.reduce((sum, row) => sum + row.n, 0))} answers in this table.</p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-[#6B6B6B]">
+        <p>{slotLabel} · groups under 30 answers are hidden. {int(demo.rows.reduce((sum, row) => sum + row.n, 0))} answers in this table.</p>
+        {pageCount > 1 && (
+          <div className="flex items-center gap-2">
+            <span className="tabular-nums">{currentPage * pageSize + 1}-{Math.min(rows.length, (currentPage + 1) * pageSize)} of {rows.length}</span>
+            <button type="button" disabled={currentPage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#CFCFCF] px-3 font-semibold text-[#0B0B0C] disabled:opacity-40">Previous</button>
+            <button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#CFCFCF] px-3 font-semibold text-[#0B0B0C] disabled:opacity-40">Next</button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

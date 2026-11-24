@@ -248,8 +248,16 @@ async function clickTab(page: Page, name: RegExp) {
     const clientPrivate = clientAccounts.length > 0 && clientAccounts.every((account) => !("id" in account) && !("business" in account) && !("href" in account));
     record("/case-studies/tamil-nadu", "Social account privacy", "client", "names only, no business or id", clientPrivate ? "clean" : "leaked", clientPrivate);
     record("/case-studies/tamil-nadu", "Social payload ids", "client", "no 14-17 digit number", /\d{14,17}/.test(JSON.stringify(clientSocial)) ? "found" : "clean", !/\d{14,17}/.test(JSON.stringify(clientSocial)));
-    const unnamed = page.getByRole("button", { name: /^Ad account \d+/ }).first();
-    const unnamedVisible = await unnamed.isVisible().catch(() => false);
+    let unnamed = page.getByRole("button", { name: /^Ad account \d+/ }).first();
+    let unnamedVisible = await unnamed.isVisible().catch(() => false);
+    for (let pageIndex = 0; pageIndex < 5 && !unnamedVisible; pageIndex += 1) {
+      const next = page.getByRole("button", { name: "Next" }).last();
+      if (!(await next.isVisible().catch(() => false))) break;
+      await next.click();
+      await page.waitForTimeout(300);
+      unnamed = page.getByRole("button", { name: /^Ad account \d+/ }).first();
+      unnamedVisible = await unnamed.isVisible().catch(() => false);
+    }
     if (unnamedVisible) {
       await unnamed.click();
       await page.waitForTimeout(1500);

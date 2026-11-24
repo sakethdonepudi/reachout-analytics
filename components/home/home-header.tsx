@@ -21,7 +21,7 @@ function idleLabel(ms: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-const linkClass = "inline-flex shrink-0 whitespace-nowrap min-h-10 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-[#555] transition-colors hover:bg-[#F5F5F5] hover:text-[#0B0B0C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] max-[1100px]:px-2 max-[1100px]:text-[12.5px]";
+const linkClass = "inline-flex shrink-0 whitespace-nowrap min-h-11! items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-[#555] transition-colors hover:bg-[#F5F5F5] hover:text-[#0B0B0C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] max-[1100px]:px-2 max-[1100px]:text-[12.5px]";
 
 export default function HomeHeader({
   role,
@@ -103,7 +103,7 @@ export default function HomeHeader({
                         <div key={state} className="mb-1 last:mb-0">
                           <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">{state}</p>
                           {rows.map((row) => (
-                            <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} role="menuitem" onClick={() => setCasesOpen(false)} className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
+                            <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} role="menuitem" onClick={() => setCasesOpen(false)} className="flex min-h-11! items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
                               <NavPartyMark party={row.party} />
                               <span>{row.stateName} · {row.party}</span>
                             </Link>
@@ -122,10 +122,10 @@ export default function HomeHeader({
           <div className="ml-auto flex items-center gap-1">
             {role === "anon" ? (
               <>
-                <a href={LOGIN.href} className="hidden min-h-10 items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[13px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:inline-flex">
+                <a href={LOGIN.href} className="hidden min-h-11! items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[13px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:inline-flex">
                   <NavIcon name="login" /> {LOGIN.label}
                 </a>
-                <a href={LOGIN.href} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#0B0B0C] px-3 text-[12px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:hidden">
+                <a href={LOGIN.href} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[#0B0B0C] px-3 text-[12px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:hidden">
                   <NavIcon name="login" /> {LOGIN.label}
                 </a>
               </>
@@ -136,7 +136,7 @@ export default function HomeHeader({
                   aria-haspopup="menu"
                   aria-expanded={accountOpen}
                   onClick={() => setAccountOpen((value) => !value)}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-md px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]"
+                  className="inline-flex min-h-11! items-center gap-2 rounded-md px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]"
                 >
                   <span className="sr-only">Account menu</span>
                   <span className="grid size-7 place-items-center rounded-full bg-[#0B0B0C] text-[10px] font-bold text-white">{(displayName ?? "You").split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")}</span>
@@ -146,10 +146,10 @@ export default function HomeHeader({
                 <div role="menu" data-open={accountOpen} aria-hidden={!accountOpen} className="home-menu absolute right-0 top-[calc(100%+8px)] z-[var(--z-dropdown)] w-60 rounded-xl border border-[#E6E6E6] bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,.08)]">
                   <p className="px-2 pb-0.5 text-[12px] font-semibold text-[#0B0B0C]">{displayName ?? "Account"}</p>
                   <p className="px-2 pb-1 text-[11px] text-[#6B6B6B]">Signs out in {idleLabel(remainingMs)}</p>
-                  <Link href={ACCOUNT_ITEMS.account.href} role="menuitem" onClick={() => setAccountOpen(false)} className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
+                  <Link href={ACCOUNT_ITEMS.account.href} role="menuitem" onClick={() => setAccountOpen(false)} className="flex min-h-11! items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
                     <NavIcon name={ACCOUNT_ITEMS.account.icon} /> {ACCOUNT_ITEMS.account.label}
                   </Link>
-                  <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
+                  <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-11! w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
                     <LogOut className="size-4" /> Log out
                   </button>
                 </div>

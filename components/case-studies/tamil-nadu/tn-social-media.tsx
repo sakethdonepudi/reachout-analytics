@@ -58,6 +58,7 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
   const [filtered, setFiltered] = useState<TnSocialFiltered | null>(null);
   const [account, setAccount] = useState<TnSocialFiltered | null>(null);
   const [openAccount, setOpenAccount] = useState<string | null>(null);
+  const [accountPage, setAccountPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -105,6 +106,11 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
   }
 
   const active = filtered ?? overview;
+  const accountPageSize = 12;
+  const allAccounts = (active?.accounts ?? []) as TnSocialAccount[];
+  const accountPageCount = Math.max(1, Math.ceil(allAccounts.length / accountPageSize));
+  const currentAccountPage = Math.min(accountPage, accountPageCount - 1);
+  const pageAccounts = allAccounts.slice(currentAccountPage * accountPageSize, currentAccountPage * accountPageSize + accountPageSize);
   const totals = filtered
     ? { campaigns: filtered.totalMatching, reach: filtered.accounts.reduce((sum, item) => sum + item.reach, 0), impressions: filtered.accounts.reduce((sum, item) => sum + item.impressions, 0), views: filtered.accounts.reduce((sum, item) => sum + item.views, 0), clicks: filtered.accounts.reduce((sum, item) => sum + item.clicks, 0), engagements: filtered.accounts.reduce((sum, item) => sum + item.engagements, 0) }
     : overview?.totals;
@@ -120,7 +126,7 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
               <p className="mt-1 max-w-[70ch] text-[14px] leading-relaxed text-[#555]">{filtered.how}. {filtered.note}</p>
             </div>
             {onClose && (
-              <button type="button" onClick={onClose} className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[13px] font-semibold text-[#0B0B0C] hover:bg-[#0B0B0C] hover:text-white">
+              <button type="button" onClick={onClose} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[13px] font-semibold text-[#0B0B0C] hover:bg-[#0B0B0C] hover:text-white">
                 <X className="size-4" /> Back to survey
               </button>
             )}
@@ -178,10 +184,10 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
                   <tr><th className="px-4 py-2.5">Ad account</th><th className="px-3 py-2.5 text-right">Campaigns</th><th className="px-3 py-2.5 text-right">Reach</th><th className="px-3 py-2.5 text-right">Impressions</th><th className="px-3 py-2.5 text-right">Views</th><th className="px-3 py-2.5 text-right">Clicks</th><th className="px-3 py-2.5 text-right">Engagement</th></tr>
                 </thead>
                 <tbody>
-                  {(active.accounts ?? []).map((item) => (
+                  {pageAccounts.map((item) => (
                     <tr key={item.key} className="border-t border-[#EAEAEA] transition-colors hover:bg-[#FAFAFA] align-top">
                       <th scope="row" className="px-4 py-2.5 text-left font-semibold text-[#0B0B0C]">
-                        <button type="button" onClick={() => void toggleAccount(item.key)} className="inline-flex items-center gap-1 text-left hover:text-[#1f6fd1]">
+                        <button type="button" onClick={() => void toggleAccount(item.key)} className="inline-flex min-h-11! items-center gap-1 text-left hover:text-[#1f6fd1]">
                           {openAccount === item.key ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                           {item.name}
                         </button>
@@ -198,6 +204,15 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
                 </tbody>
               </table>
             </div>
+            {accountPageCount > 1 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#EAEAEA] px-4 py-2 text-[12.5px] text-[#6B6B6B]">
+                <span className="tabular-nums">{currentAccountPage * accountPageSize + 1}-{Math.min(allAccounts.length, (currentAccountPage + 1) * accountPageSize)} of {allAccounts.length}</span>
+                <div className="flex items-center gap-2">
+                  <button type="button" disabled={currentAccountPage === 0} onClick={() => setAccountPage((value) => Math.max(0, value - 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#CFCFCF] px-3 font-semibold text-[#0B0B0C] disabled:opacity-40">Previous</button>
+                  <button type="button" disabled={currentAccountPage >= accountPageCount - 1} onClick={() => setAccountPage((value) => Math.min(accountPageCount - 1, value + 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#CFCFCF] px-3 font-semibold text-[#0B0B0C] disabled:opacity-40">Next</button>
+                </div>
+              </div>
+            )}
           </section>
         )
       )}
@@ -223,6 +238,12 @@ function AccountCard({ account, maxReach, owner }: { account: TnSocialAccount; m
 }
 
 function CampaignTable({ title, campaigns, total }: { title: string; campaigns: TnSocialCampaign[]; total: number }) {
+  const [page, setPage] = useState(0);
+  const pageSize = 25;
+  const pageCount = Math.max(1, Math.ceil(campaigns.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  const pageRows = campaigns.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+  useEffect(() => { setPage(0); }, [campaigns]);
   const maxReach = Math.max(1, ...campaigns.map((campaign) => campaign.reach));
   const maxEng = Math.max(1, ...campaigns.map((campaign) => campaign.engagements));
   return (
@@ -237,9 +258,9 @@ function CampaignTable({ title, campaigns, total }: { title: string; campaigns: 
             <tr><th className="px-4 py-2.5">Campaign</th><th className="px-3 py-2.5">Period</th><th className="px-3 py-2.5">Status</th><th className="px-3 py-2.5">Start</th><th className="px-3 py-2.5 text-right">Reach</th><th className="px-3 py-2.5 text-right">Impressions</th><th className="px-3 py-2.5 text-right">Views</th><th className="px-3 py-2.5 text-right">Clicks</th><th className="px-3 py-2.5 text-right">Engagement</th></tr>
           </thead>
           <tbody>
-            {campaigns.map((campaign, index) => (
+            {pageRows.map((campaign, index) => (
               <tr key={campaign.id ?? `${campaign.name}-${index}`} className="border-t border-[#EAEAEA] transition-colors hover:bg-[#FAFAFA]">
-                <th scope="row" className="px-4 py-2 text-left font-medium text-[#0B0B0C]">{campaign.href ? <a href={campaign.href} target="_blank" rel="noopener" className="inline-flex items-center gap-1 text-[#002147] hover:underline">{campaign.name}<ArrowUpRight className="size-3" /></a> : campaign.name}</th>
+                <th scope="row" className="px-4 py-2 text-left font-medium text-[#0B0B0C]">{campaign.href ? <a href={campaign.href} target="_blank" rel="noopener" className="inline-flex min-h-11! items-center gap-1 text-[#002147] hover:underline">{campaign.name}<ArrowUpRight className="size-3" /></a> : campaign.name}</th>
                 <td className="px-3 py-2"><span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", periodStyle(campaign.period))}>{campaign.period}</span></td>
                 <td className="px-3 py-2"><span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", /on/i.test(campaign.status) ? "bg-[#DCFCE7] text-[#166534]" : "bg-[#F1F5F9] text-[#475569]")}>{campaign.status || "—"}</span></td>
                 <td className="px-3 py-2 whitespace-nowrap">{campaign.start}</td>
@@ -253,6 +274,15 @@ function CampaignTable({ title, campaigns, total }: { title: string; campaigns: 
           </tbody>
         </table>
       </div>
+      {pageCount > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#EAEAEA] px-4 py-2 text-[12.5px] text-[#6B6B6B]">
+          <span className="tabular-nums">{currentPage * pageSize + 1}-{Math.min(campaigns.length, (currentPage + 1) * pageSize)} of {campaigns.length}</span>
+          <div className="flex items-center gap-2">
+            <button type="button" disabled={currentPage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#CFCFCF] px-3 font-semibold text-[#0B0B0C] disabled:opacity-40">Previous</button>
+            <button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))} className="inline-flex min-h-11! min-w-11 items-center justify-center rounded-full border border-[#CFCFCF] px-3 font-semibold text-[#0B0B0C] disabled:opacity-40">Next</button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -2,20 +2,57 @@ import { readFileSync } from "node:fs";
 import { surveySchema } from "./schema";
 import type { SurveyData, SurveyPeriod } from "./types";
 
+function balancedJsonAt(source: string, start: number): unknown {
+  const first = source.indexOf("{", start);
+  if (first < 0) throw new Error("The survey payload does not contain a JSON object.");
+  let depth = 0;
+  let quoted = false;
+  let escaped = false;
+  for (let index = first; index < source.length; index += 1) {
+    const char = source[index];
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') quoted = false;
+      continue;
+    }
+    if (char === '"') { quoted = true; continue; }
+    if (char === "{") depth += 1;
+    else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return JSON.parse(source.slice(first, index + 1));
+    }
+  }
+  throw new Error("The survey payload JSON object is not closed.");
+}
+
+function parsePayload(source: string, start: number) {
+  try {
+    return balancedJsonAt(source, start);
+  } catch (error) {
+    const text = source.slice(start, start + 5000)
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+    try {
+      return balancedJsonAt(text, 0);
+    } catch {
+      throw error instanceof Error ? error : new Error("The survey payload is not valid JSON.");
+    }
+  }
+}
+
 function extractTn(source: string): unknown {
-  const marker = "window.TN_DATA=";
-  const start = source.indexOf(marker);
-  if (start < 0) throw new Error("This HTML does not contain window.TN_DATA.");
-  const stop = source.indexOf("</script>", start);
-  return JSON.parse(source.slice(start + marker.length, stop).replace(/;\s*$/, ""));
+  const text = source.replace(/^\uFEFF/, "");
+  const marker = /window\.TN_DATA\s*=\s*/.exec(text);
+  if (!marker) throw new Error("This HTML does not contain window.TN_DATA. Upload the survey dashboard HTML, not the workbook.");
+  return parsePayload(text, marker.index + marker[0].length);
 }
 
 function extractAp(source: string): unknown {
-  const end = source.lastIndexOf("</script>");
-  const idx = source.lastIndexOf("})(", end);
-  if (idx < 0) throw new Error("This HTML does not contain the Andhra Pradesh survey payload.");
-  const stop = source.lastIndexOf(");", end);
-  return JSON.parse(source.slice(idx + 3, stop));
+  const text = source.replace(/^\uFEFF/, "");
+  const end = text.lastIndexOf("</script>");
+  const idx = text.lastIndexOf("})(", end);
+  if (idx < 0) throw new Error("This HTML does not contain the Andhra Pradesh survey payload. Upload the Andhra Pradesh survey dashboard HTML.");
+  return parsePayload(text, idx + 3);
 }
 
 export function parseSurveyHtml(source: string, state: string): SurveyData {
