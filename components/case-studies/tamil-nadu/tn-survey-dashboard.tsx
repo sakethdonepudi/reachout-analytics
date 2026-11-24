@@ -229,6 +229,7 @@ export default function TnSurveyDashboard({
 
   const periodKey = view === "social" ? "op" : view;
   const targetMode = view === "rd" && config.target.postPollMode ? config.target.postPollMode : config.target.mode;
+  const activeTargetParty = targetMode === "gap" ? config.target.pillParty : config.target.party;
   const slots = model.slots[periodKey] ?? [];
   const slot: TnSlotModel = slots.find((item) => item.key === slotKey) ?? slots[0];
   const mapKey = `${periodKey}:${slot.key}`;
@@ -253,7 +254,7 @@ export default function TnSurveyDashboard({
     strip.scrollTo({ left: node.offsetLeft - strip.clientWidth / 2 + node.offsetWidth / 2, behavior: "auto" });
   }, [activeProfile]);
   const demo = slot.profiles[activeProfile] ?? lazyProfiles[`${mapKey}:${activeProfile}`] ?? (activeProfile === "ac" ? undefined : null);
-  const average = demo ? weightedPartyAverage(demo.rows, parties, config.target.party) : 0;
+  const average = demo ? weightedPartyAverage(demo.rows, parties, activeTargetParty) : 0;
 
   const setState = useCallback((next: SearchState, filter?: SocialFilter | null, replace = false) => {
     const query = searchFrom(next, filter);
@@ -476,7 +477,6 @@ export default function TnSurveyDashboard({
 
   return (
     <main className="tn-dashboard relative min-h-0 bg-[color:var(--theme-surface)] text-[16px] text-[var(--p-ink)]">
-      <h1 className="sr-only">{config.stateName} election case study</h1>
       <div className={cn("fixed left-0 top-0 z-50 h-0.5 bg-[color:var(--theme-text)] transition-all duration-200", slowLoad ? "w-full opacity-100" : "w-0 opacity-0")} aria-hidden />
       <div className="mx-auto w-full max-w-[1680px] px-4 pb-20 pt-20 sm:px-6 sm:pt-20 xl:px-8">
         <header className="flex flex-wrap items-center gap-3">
@@ -486,7 +486,7 @@ export default function TnSurveyDashboard({
             </span>
           </Link>
           <div className="inline-flex min-h-11! shrink-0 items-center gap-2 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] py-1.5 pl-1.5 pr-4">
-            <span className="grid size-11 place-items-center rounded-full bg-[color:var(--theme-surface-2)]">
+            <span data-identity-logo className="grid size-11 place-items-center rounded-full bg-[color:var(--party-badge-surface)] ring-1 ring-black/5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={config.identity.logo} alt={`${config.identity.name} symbol`} width={40} height={27} className="h-auto w-10 object-contain" />
             </span>
@@ -637,8 +637,8 @@ export default function TnSurveyDashboard({
                 <div className="mt-3">
                   <LazyMount minHeight={540}>
                     {!demo && activeProfile === "ac" ? <div className="rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface-3)] p-6 text-[14px] text-[color:var(--theme-text-3)]">Loading assembly table...</div> :
-                      demo ? <div key={`${slot.key}:${activeProfile}`} className="tn-fade-slide"><TnProfileTable demo={demo} parties={parties} profileKey={activeProfile} periodKey={view} slotLabel={slot.label} average={average} slotLeader={leadParty ?? parties[0] ?? ""} targetParty={config.target.party} targetMode={targetMode} targetPillParty={config.target.pillParty} targetTooltip={targetMode === "gap" ? config.target.tooltipGap ?? config.target.tooltipGeo : ["zone", "area", "dist", "ac"].includes(activeProfile) ? config.target.tooltipGeo : config.target.tooltipOther} allowTarget={config.target.periods.includes(view)} showCampaignsLink={config.cardStyle !== "ap"}
-                        onTarget={(payload) => openSocial({ match: "target", kind: payload.kind, place: payload.place, label: `${payload.label} · ${payload.place} · ${config.target.party} ${targetMode === "leads" ? "leads" : `${payload.value.toFixed(1)}% (average ${payload.average.toFixed(1)})`}`, value: String(payload.value), average: String(payload.average) })}
+                      demo ? <div key={`${slot.key}:${activeProfile}`} className="tn-fade-slide"><TnProfileTable demo={demo} parties={parties} profileKey={activeProfile} periodKey={view} slotLabel={slot.label} average={average} slotLeader={leadParty ?? parties[0] ?? ""} targetParty={activeTargetParty} targetMode={targetMode} targetPillParty={config.target.pillParty} targetTooltip={targetMode === "gap" ? config.target.tooltipGap ?? config.target.tooltipGeo : ["zone", "area", "dist", "ac"].includes(activeProfile) ? config.target.tooltipGeo : config.target.tooltipOther} allowTarget={config.target.periods.includes(view)} showCampaignsLink={config.cardStyle !== "ap"}
+                        onTarget={(payload) => openSocial({ match: "target", kind: payload.kind, place: payload.place, label: `${payload.label} · ${payload.place} · ${activeTargetParty} ${targetMode === "leads" ? "leads" : `${payload.value.toFixed(1)}% (average ${payload.average.toFixed(1)})`}`, value: String(payload.value), average: String(payload.average) })}
                         onCampaigns={(payload) => openSocial({ match: "campaigns", kind: payload.kind, place: payload.place, label: payload.place })}
                         onGroup={(group) => openSocial({ match: "group", group, label: group })}
                       /></div> : null}
@@ -767,6 +767,10 @@ function SeatsByZone({ data, parties, seats, periodKey, slotLabel, config }: { d
   const actualParties = config.actualParties;
   const majority = projectedMajority(seats, summaryParties, config.map.majority);
   const showActualColumns = config.cardStyle !== "ap";
+  const compactSeatTable = !showActualColumns;
+  const numberColumns = summaryParties.length + (showActualColumns ? actualParties.length : 0);
+  const zoneWidth = compactSeatTable ? 34 : 26;
+  const acsWidth = compactSeatTable ? 11 : 9;
   return (
     <Section title={`Seats by zone · ${slotLabel}`} className="mt-3">
       <div className={cn("mt-3 grid gap-3", summaryParties.length === 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4")}>
@@ -778,26 +782,33 @@ function SeatsByZone({ data, parties, seats, periodKey, slotLabel, config }: { d
           </div>
         ))}
       </div>
-      <div className="edge-fade-right mt-3 overflow-x-auto rounded-xl border border-[color:var(--theme-border)]" tabIndex={0} role="region" aria-label={`${config.cardStyle === "ap" ? "Region" : "Zone"} swing table`}>
-        <table className="w-full min-w-[780px] border-collapse text-[15px]" aria-label={majority.status === "majority" ? `${majority.leader} projected majority with ${majority.seats} seats` : "Projected assembly is hung"} >
+      <div className={cn("mt-3 overflow-x-auto rounded-xl border border-[color:var(--theme-border)]", !compactSeatTable && "edge-fade-right")} tabIndex={0} role="region" aria-label={`${config.cardStyle === "ap" ? "Seats by region" : "Seats by zone"} table`}>
+        <table className={cn("w-full table-fixed border-collapse text-[15px]", showActualColumns ? "min-w-[1080px]" : "min-w-0")} aria-label={majority.status === "majority" ? `${majority.leader} projected majority with ${majority.seats} seats` : "Projected assembly is hung"}>
+          <colgroup>
+            <col style={{ width: `${zoneWidth}%` }} />
+            <col style={{ width: `${acsWidth}%` }} />
+            {Array.from({ length: numberColumns }, (_value, index) => (
+              <col key={index} style={{ width: `${(100 - zoneWidth - acsWidth) / numberColumns}%` }} />
+            ))}
+          </colgroup>
           <thead className="bg-[color:var(--theme-surface-3)] text-left text-[13px] uppercase tracking-wide text-[color:var(--theme-text-3)]">
-            <tr><th rowSpan={2} className="px-4 py-3">Zone</th><th rowSpan={2} className="px-4 py-3 text-right">ACs</th><th colSpan={summaryParties.length} className="px-4 py-3 text-center">Projected</th>{showActualColumns && <th colSpan={actualParties.length} className="px-4 py-3 text-center">Actual {config.cardStyle === "ap" ? "2024" : "2026"}</th>}</tr>
-            <tr>{summaryParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={20} />{party}</span></th>)}{showActualColumns && actualParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={20} />{party}</span></th>)}</tr>
+            <tr><th rowSpan={2} className="break-words px-1.5 py-3 text-[13.5px] sm:px-4 sm:text-[13px]">Zone</th><th rowSpan={2} className="px-1.5 py-3 text-right sm:px-3">ACs</th><th colSpan={summaryParties.length} className="px-4 py-3 text-center">Projected</th>{showActualColumns && <th colSpan={actualParties.length} className="px-4 py-3 text-center">Actual {config.cardStyle === "ap" ? "2024" : "2026"}</th>}</tr>
+            <tr>{summaryParties.map((party) => <th key={party} className="px-1.5 py-2 text-right sm:px-3"><span className="inline-flex items-center gap-1.5 whitespace-nowrap"><PartyBadge party={party} size={20} />{party}</span></th>)}{showActualColumns && actualParties.map((party) => <th key={party} className="px-1.5 py-2 text-right sm:px-3"><span className="inline-flex items-center gap-1.5 whitespace-nowrap"><PartyBadge party={party} size={20} />{party}</span></th>)}</tr>
           </thead>
           <tbody>
             {Object.entries(zones).map(([zone, row]) => (
               <tr key={zone} className="border-t border-[color:var(--theme-border)]">
-                <th scope="row" className="px-4 py-2.5 text-left font-semibold">{data.zonelabels?.[zone] ?? zone}</th>
-                <td className="px-4 py-2.5 text-right tabular-nums">{int(Number(row.acs ?? 0))}</td>
-                {summaryParties.map((party) => <td key={party} className="px-4 py-2.5 text-right tabular-nums">{int(Number(row[party] ?? 0))}</td>)}
-                {showActualColumns && actualParties.map((party) => <td key={party} className="px-4 py-2.5 text-right tabular-nums">{int(Number(actualZones[zone]?.[party] ?? 0))}</td>)}
+                <th scope="row" className="break-words px-1.5 py-2.5 text-left text-[13.5px] font-semibold sm:px-4 sm:text-[15px]">{data.zonelabels?.[zone] ?? zone}</th>
+                <td className="px-1.5 py-2.5 text-right tabular-nums sm:px-3">{int(Number(row.acs ?? 0))}</td>
+                {summaryParties.map((party) => <td key={party} className="px-1.5 py-2.5 text-right tabular-nums sm:px-3">{int(Number(row[party] ?? 0))}</td>)}
+                {showActualColumns && actualParties.map((party) => <td key={party} className="px-1.5 py-2.5 text-right tabular-nums sm:px-3">{int(Number(actualZones[zone]?.[party] ?? 0))}</td>)}
               </tr>
             ))}
             <tr className="border-t-2 border-[color:var(--theme-text)] font-bold">
-              <th scope="row" className="px-4 py-3 text-left">{config.stateName}</th>
-              <td className="px-4 py-3 text-right tabular-nums">{config.map.totalSeats}</td>
-              {summaryParties.map((party) => <td key={party} className="px-4 py-3 text-right tabular-nums">{int(Number(seats[party] ?? 0))}</td>)}
-              {showActualColumns && actualParties.map((party) => <td key={party} className="px-4 py-3 text-right tabular-nums">{int(Number(actualSeats[party] ?? 0))}</td>)}
+              <th scope="row" className="break-words px-1.5 py-3 text-left text-[13.5px] sm:px-4 sm:text-[15px]">{config.stateName}</th>
+              <td className="px-1.5 py-3 text-right tabular-nums sm:px-3">{config.map.totalSeats}</td>
+              {summaryParties.map((party) => <td key={party} className="px-1.5 py-3 text-right tabular-nums sm:px-3">{int(Number(seats[party] ?? 0))}</td>)}
+              {showActualColumns && actualParties.map((party) => <td key={party} className="px-1.5 py-3 text-right tabular-nums sm:px-3">{int(Number(actualSeats[party] ?? 0))}</td>)}
             </tr>
           </tbody>
         </table>

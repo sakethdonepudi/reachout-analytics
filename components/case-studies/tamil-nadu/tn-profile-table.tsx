@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Check } from "lucide-react";
 import type { SurveyDemo, SurveyDemoRow } from "@/lib/survey/types";
 import { cn } from "@/lib/utils";
 import { inkOnTint, partyColour } from "@/lib/tamil-nadu/party-brand";
+import { selectGapRows } from "@/lib/survey/target-gaps";
 import { useTheme } from "@/components/site/theme";
 import { PartyBadge } from "./party-badge";
 import { Pill, PillRow } from "@/components/case-studies/shared/pill-row";
@@ -66,13 +67,9 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
   const gapRows = useMemo(() => {
     const targetIndex = parties.indexOf(targetParty);
     if (targetMode !== "gap" || targetIndex < 0) return new Set<string>();
-    return new Set(
-      demo.rows
-        .filter((row) => (row.v[targetIndex] ?? 0) < average)
-        .map((row) => ({ g: row.g, gap: average - (row.v[targetIndex] ?? 0), n: row.n }))
-        .sort((left, right) => right.gap - left.gap || right.n - left.n)
-        .slice(0, 3)
-        .map((row) => row.g),
+    return selectGapRows(
+      demo.rows.map((row) => ({ key: row.g, value: row.v[targetIndex] ?? 0, n: row.n })),
+      average,
     );
   }, [average, demo.rows, parties, targetMode, targetParty]);
 

@@ -125,7 +125,7 @@ export const AP_CONFIG: CaseStudyConfig = {
     ex: [{ label: "Region", keys: ["zone", "area", "dist", "ac"] }],
     rd: [{ label: "Region", keys: ["zone", "area", "dist", "ac"] }, { label: "Vote & feedback", keys: ["v24", "govt", "mla", "scheme", "super6", "corrupt", "leader", "expect", "caste"] }],
   },
-  target: { party: "YSRCP", mode: "leads", periods: ["op", "ex", "rd"], pillParty: "NDA", tooltipGeo: "YSRCP leads: open look-alike ad campaigns", tooltipOther: "YSRCP leads in this voter group: open post-2024 campaigns to retarget", postPollMode: "gap", tooltipGap: "YSRCP below its average here: open look-alike campaigns" },
+  target: { party: "YSRCP", mode: "leads", periods: ["op", "ex", "rd"], pillParty: "NDA", tooltipGeo: "YSRCP leads: open look-alike ad campaigns", tooltipOther: "YSRCP leads in this voter group: open post-2024 campaigns to retarget", postPollMode: "gap", tooltipGap: "NDA below its average here: open look-alike campaigns" },
   swing: { fromLabel: { op: "19→24", ex: "19→24", rd: "24→29" }, toLabel: { op: "19→24", ex: "19→24", rd: "24→29" }, showActual: ["op", "ex"] },
   map: { heading: "Andhra Pradesh", totalSeats: 175, majority: 88, districtAlias: { Anantapur: "Ananthapuramu", ASR: "Alluri Sitharama Raju" }, labelOffset: AP_LABEL_OFFSET, mobileLabelOffset: {}, shareKey: { NDA: "NDA", YSRCP: "YSRCP", INC: "INC", Others: "Others" }, fillMode: "flat", mobileLabelCount: 8, tilt: 0.6, fit: 1, centerZ: 35, rotation: 0.22, credit: "Map: DataMeet, CC BY 2.5 IN", creditHref: "https://github.com/datameet/maps" },
   social: { stateName: "Andhra Pradesh", targetName: "YSRCP", fallbackPattern: "ysrcp|jagan|yeduguri|saila|fan", fallbackLabel: "YSRCP campaigns" },

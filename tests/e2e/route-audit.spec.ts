@@ -158,6 +158,8 @@ async function clickTab(page: Page, name: RegExp) {
 
     await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=op`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2600);
+    const apH1 = await page.locator("h1").allTextContents();
+    record("/case-studies/andhra-pradesh-2024", "One h1", "client", "exactly one h1", apH1.join(" | "), apH1.length === 1);
     const apBody = await page.locator("body").innerText();
     const apCards = ["Opinion poll", "Exit poll", "Post-poll (Live tracking)", "Social Media"].map((label) => apBody.includes(label));
     record("/case-studies/andhra-pradesh-2024", "Top cards", "client", "Opinion, Exit, Post-poll, Social", apCards.join(", "), apCards.every(Boolean));
@@ -195,7 +197,7 @@ async function clickTab(page: Page, name: RegExp) {
     await page.locator("section[aria-label^='Voter profile']").scrollIntoViewIfNeeded();
     await page.waitForTimeout(900);
     const apTargets = await page.locator('button[aria-label^="Target Campaign"]:visible').count();
-    record("/case-studies/andhra-pradesh-2024", "Target rows", "client", "YSRCP lead rows flagged", String(apTargets), apTargets >= 3);
+    record("/case-studies/andhra-pradesh-2024", "Target rows", "client", "two Post-poll gap rows flagged", String(apTargets), apTargets === 2);
     const apTarget = page.locator('button[aria-label^="Target Campaign"]:visible').first();
     await apTarget.evaluate((element) => (element as HTMLElement).click());
     await page.waitForTimeout(1800);
@@ -237,13 +239,17 @@ async function clickTab(page: Page, name: RegExp) {
     await page.locator("section[aria-label='Andhra Pradesh map']").scrollIntoViewIfNeeded();
     await page.waitForTimeout(900);
     record("/case-studies/andhra-pradesh-2024", "Map credit", "client", "DataMeet CC BY 2.5 IN link", String(await page.getByRole("link", { name: /Map: DataMeet/ }).count()), (await page.getByRole("link", { name: /Map: DataMeet/ }).count()) === 1);
-    for (const [tab, expected] of [["zone", 3], ["area", 2], ["dist", 3], ["govt", 3]] as const) {
+    for (const [tab, expected] of [["zone", 2], ["area", 1], ["dist", 3], ["govt", 2]] as const) {
       await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd&profile=${tab}`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(1600);
       await page.locator("section[aria-label^='Voter profile']").scrollIntoViewIfNeeded();
       await page.waitForTimeout(700);
       const count = await page.locator('button[aria-label^="Target Campaign"]:visible').count();
       record("/case-studies/andhra-pradesh-2024", `Post-poll targets ${tab}`, "client", `${expected} gap rows flagged`, String(count), count === expected);
+      if (tab === "zone") {
+        const ringRows = await page.evaluate(() => [...document.querySelectorAll('button[aria-label^="Target Campaign"]')].filter((element) => (element as HTMLElement).getClientRects().length > 0).map((element) => (element.closest("tr")?.querySelector("th")?.textContent ?? "").trim()));
+        record("/case-studies/andhra-pradesh-2024", "Post-poll gap rows", "client", "South Coastal and Rayalaseema only", ringRows.join(", "), ringRows.length === 2 && ringRows.every((row) => /South Coastal|Rayalaseema/.test(row)));
+      }
     }
     await page.goto(`${BASE}/case-studies/tamil-nadu?view=op`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2200);
@@ -256,6 +262,8 @@ async function clickTab(page: Page, name: RegExp) {
     record("/case-studies/tamil-nadu", "Period cards", "client", "Opinion, Exit, Social", tnCards.join(", "), tnCards.every(Boolean));
     record("/case-studies/tamil-nadu", "No Result card", "client", "absent", String(await page.getByRole("button", { name: /^Result 2026/ }).count()), (await page.getByRole("button", { name: /^Result 2026/ }).count()) === 0);
     const partyCards = ["TVK · expected", "DMK+ · expected", "AIADMK+ · expected", "NTK · expected", "Others · expected"];
+    const tnH1 = await page.locator("h1").allTextContents();
+    record("/case-studies/tamil-nadu", "One h1", "client", "exactly one h1", tnH1.join(" | "), tnH1.length === 1);
     const partyBody = await page.locator("body").innerText();
     record("/case-studies/tamil-nadu", "Party cards", "client", "5 expected cards", partyCards.filter((label) => partyBody.includes(label)).length + " / 5", partyCards.every((label) => partyBody.includes(label)));
     record("/case-studies/tamil-nadu", "Updated response total", "client", "117,131 responses", partyBody.includes("1,17,131 responses") || partyBody.includes("117,131 responses") ? "visible" : "missing", partyBody.includes("1,17,131 responses") || partyBody.includes("117,131 responses"));
@@ -453,14 +461,15 @@ async function clickTab(page: Page, name: RegExp) {
       const nav = document.querySelector("header");
       const first = document.querySelector("main .mx-auto > :first-child") as HTMLElement | null;
       const overlap = nav && first ? first.getBoundingClientRect().top < nav.getBoundingClientRect().bottom - 1 : false;
-      const targets = [...document.querySelectorAll("button,a,[role=button]")].filter((el) => {
+      const badTargets = [...document.querySelectorAll("button,a,[role=button]")].filter((el) => {
         const e = el as HTMLElement;
         const s = getComputedStyle(e);
         const r = e.getBoundingClientRect();
         if (s.visibility === "hidden" || s.display === "none" || r.width === 0 || r.height === 0) return false;
         if (e.closest("[aria-hidden='true']") || e.classList.contains("tn-target") || e.classList.contains("target-ring")) return false;
         return r.width < 44 || r.height < 44;
-      }).length;
+      }).map((el) => `${el.tagName}.${(el as HTMLElement).className.split(" ").slice(0,2).join(".")}:${Math.round((el as HTMLElement).getBoundingClientRect().width)}x${Math.round((el as HTMLElement).getBoundingClientRect().height)}:${(el.textContent ?? "").trim().slice(0, 16)}`);
+      const targets = badTargets.length;
       const small = [...document.querySelectorAll("body *")].filter((el) => {
         const e = el as HTMLElement;
         const s = getComputedStyle(e);
@@ -470,7 +479,7 @@ async function clickTab(page: Page, name: RegExp) {
         const hasText = [...e.childNodes].some((node) => node.nodeType === 3 && (node.textContent ?? "").trim());
         return hasText && parseFloat(s.fontSize) < 12;
       }).length;
-      return { scroll: doc.scrollWidth, client: doc.clientWidth, overlap, targets, small };
+      return { scroll: doc.scrollWidth, client: doc.clientWidth, overlap, targets, small, bad: badTargets.slice(0, 6) };
     });
     for (const theme of ["light", "dark"] as const) {
       const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
@@ -486,7 +495,7 @@ async function clickTab(page: Page, name: RegExp) {
         await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
         await page.waitForTimeout(180);
         const result = await deviceCheck(page);
-        record("/case-studies/tamil-nadu", `Device ${theme} ${width} survey`, "client", "no h-scroll, nav clear, tap >=44, text >=12", `scroll ${result.scroll}/${result.client}, overlap ${result.overlap}, targets ${result.targets}, small ${result.small}`, result.scroll <= result.client + 1 && !result.overlap && result.targets === 0 && result.small === 0);
+        record("/case-studies/tamil-nadu", `Device ${theme} ${width} survey`, "client", "no h-scroll, nav clear, tap >=44, text >=12", `scroll ${result.scroll}/${result.client}, overlap ${result.overlap}, targets ${result.targets}, small ${result.small}${result.targets ? `, ${result.bad.join(" | ")}` : ""}`, result.scroll <= result.client + 1 && !result.overlap && result.targets === 0 && result.small === 0);
       }
       await page.goto(`${BASE}/case-studies/tamil-nadu?view=social`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(1000);
@@ -494,7 +503,7 @@ async function clickTab(page: Page, name: RegExp) {
         await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
         await page.waitForTimeout(180);
         const result = await deviceCheck(page);
-        record("/case-studies/tamil-nadu", `Device ${theme} ${width} social`, "client", "no h-scroll, nav clear, tap >=44, text >=12", `scroll ${result.scroll}/${result.client}, overlap ${result.overlap}, targets ${result.targets}, small ${result.small}`, result.scroll <= result.client + 1 && !result.overlap && result.targets === 0 && result.small === 0);
+        record("/case-studies/tamil-nadu", `Device ${theme} ${width} social`, "client", "no h-scroll, nav clear, tap >=44, text >=12", `scroll ${result.scroll}/${result.client}, overlap ${result.overlap}, targets ${result.targets}, small ${result.small}${result.targets ? `, ${result.bad.join(" | ")}` : ""}`, result.scroll <= result.client + 1 && !result.overlap && result.targets === 0 && result.small === 0);
       }
       await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=op`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(1200);
@@ -505,7 +514,7 @@ async function clickTab(page: Page, name: RegExp) {
         await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
         await page.waitForTimeout(180);
         const result = await deviceCheck(page);
-        record("/case-studies/andhra-pradesh-2024", `Device ${theme} ${width} survey`, "client", "no h-scroll, nav clear, tap >=44, text >=12", `scroll ${result.scroll}/${result.client}, overlap ${result.overlap}, targets ${result.targets}, small ${result.small}`, result.scroll <= result.client + 1 && !result.overlap && result.targets === 0 && result.small === 0);
+        record("/case-studies/andhra-pradesh-2024", `Device ${theme} ${width} survey`, "client", "no h-scroll, nav clear, tap >=44, text >=12", `scroll ${result.scroll}/${result.client}, overlap ${result.overlap}, targets ${result.targets}, small ${result.small}${result.targets ? `, ${result.bad.join(" | ")}` : ""}`, result.scroll <= result.client + 1 && !result.overlap && result.targets === 0 && result.small === 0);
       }
       await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=social`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(1600);
@@ -513,7 +522,7 @@ async function clickTab(page: Page, name: RegExp) {
         await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
         await page.waitForTimeout(180);
         const result = await deviceCheck(page);
-        record("/case-studies/andhra-pradesh-2024", `Device ${theme} ${width} social`, "client", "no h-scroll, nav clear, tap >=44, text >=12", `scroll ${result.scroll}/${result.client}, overlap ${result.overlap}, targets ${result.targets}, small ${result.small}`, result.scroll <= result.client + 1 && !result.overlap && result.targets === 0 && result.small === 0);
+        record("/case-studies/andhra-pradesh-2024", `Device ${theme} ${width} social`, "client", "no h-scroll, nav clear, tap >=44, text >=12", `scroll ${result.scroll}/${result.client}, overlap ${result.overlap}, targets ${result.targets}, small ${result.small}${result.targets ? `, ${result.bad.join(" | ")}` : ""}`, result.scroll <= result.client + 1 && !result.overlap && result.targets === 0 && result.small === 0);
       }
       await context.close();
     }
