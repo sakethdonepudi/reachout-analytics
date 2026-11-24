@@ -17,7 +17,7 @@ import { projectedMajority } from "@/lib/tamil-nadu/majority";
 import { swingLabel, swingTone } from "@/lib/tamil-nadu/swing";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import { cn } from "@/lib/utils";
-import { ReachSparkline, SocialGlyphs } from "./social-icons";
+import { ReachSparkline, SocialCluster } from "./social-icons";
 
 const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
   ssr: false,
@@ -418,21 +418,24 @@ export default function TnSurveyDashboard({
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {model.cards.map((card) => (
             <button key={card.key} type="button" aria-pressed={view === card.key} onMouseEnter={() => prefetch(card.key, "all")} onClick={() => { setDistrict(null); setAcNo(null); navigate({ view: card.key, slot: "all", profile: "", filter: null }); }}
-              className={cn("tn-card rounded-2xl border-2 p-4 text-left transition-all", view === card.key ? "border-[#002147] bg-[#002147] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#002147]" : "border-[#D5D8DE] bg-[#F7F8FA] text-[#0B0B0C] hover:-translate-y-0.5 hover:border-[#9AA3AF]")}>
+              className={cn("tn-card flex min-h-[112px] flex-col justify-center rounded-2xl border-2 p-4 text-left transition-all min-[1360px]:min-h-[120px]", view === card.key ? "border-[#002147] bg-[#002147] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#002147]" : "border-[#D5D8DE] bg-[#F7F8FA] text-[#0B0B0C] hover:-translate-y-0.5 hover:border-[#9AA3AF]")}>
               <p className="text-[17px] font-bold">{card.label}</p>
               <p className={cn("mt-1.5 text-[14px] font-semibold", view === card.key ? "text-white/90" : "text-[#555]")}>{parties.slice(0, 3).map((party) => `${party} ${pct(card.expected[party])}`).join(" · ")}</p>
               <p className={cn("mt-1.5 text-[14px] font-bold", view === card.key ? "text-[#4ade80]" : "text-[#15803D]")}>accuracy {card.accuracy.toFixed(1)}%</p>
             </button>
           ))}
-          <button type="button" aria-pressed={view === "social"} onMouseEnter={() => { void fetch("/api/survey/social?state=tamil-nadu").catch(() => {}); }} onClick={() => openSocial()} className={cn("tn-card rounded-2xl border-2 p-4 text-left transition-all", view === "social" ? "border-[#1877F2] bg-[#002147] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#1877F2]" : "border-[#D5D8DE] bg-[#F7F8FA] text-[#0B0B0C] hover:-translate-y-0.5 hover:border-[#9AA3AF]")}>
-            <div className="flex items-start justify-between gap-2">
-              <p className="flex items-center gap-2 text-[17px] font-bold"><Megaphone className="size-5" /> Social Media</p>
-              <span className="flex items-center gap-2" aria-hidden>
-                <SocialGlyphs size={22} className="flex items-center gap-1" />
-                <ReachSparkline className="hidden h-7 w-[60px] sm:block" />
+          <button type="button" aria-pressed={view === "social"} onMouseEnter={() => { void fetch("/api/survey/social?state=tamil-nadu").catch(() => {}); }} onClick={() => openSocial()} className={cn("tn-card group flex min-h-[112px] items-center rounded-2xl border-2 p-4 text-left transition-all min-[1360px]:min-h-[120px]", view === "social" ? "border-[#1877F2] bg-[#002147] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#1877F2]" : "border-[#D5D8DE] bg-[#F7F8FA] text-[#0B0B0C] hover:-translate-y-0.5 hover:border-[#9AA3AF]")}>
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-[17px] font-bold"><Megaphone className="size-5" /> Social Media</p>
+                <p className={cn("mt-1.5 whitespace-nowrap text-[13px] font-semibold", view === "social" ? "text-white/80" : "text-[#555]")}>Ads · reach & engagement</p>
+              </div>
+              <span className="flex shrink-0 items-center gap-2.5">
+                <SocialCluster iconSize={22} tileSize={30} columns={2} className="flex min-[1360px]:hidden" />
+                <SocialCluster iconSize={30} tileSize={42} columns={2} className="hidden min-[1360px]:grid" />
+                <ReachSparkline className="hidden h-11 w-[140px] min-[1360px]:block" />
               </span>
             </div>
-            <p className={cn("mt-1.5 text-[14px] font-semibold", view === "social" ? "text-white/80" : "text-[#555]")}>Ads · reach & engagement</p>
           </button>
         </div>
 

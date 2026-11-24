@@ -6,7 +6,7 @@ import type { SocialFilter, TnSocialAccount, TnSocialCampaign, TnSocialFiltered,
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 import { cn } from "@/lib/utils";
 import { PartyBadge } from "./party-badge";
-import { ReachSparkline, SocialGlyphs } from "./social-icons";
+import { ReachSparkline, SocialCluster } from "./social-icons";
 
 const number = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? "—" : new Intl.NumberFormat("en-IN").format(Math.round(value)));
 const compact = (value: number | null | undefined) => {
@@ -156,7 +156,7 @@ export default function TnSocialMedia({ stateSlug, initialFilter, onClose, owner
         <div className="rounded-2xl border border-[#EAEAEA] bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.035)]">
           <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-2 rounded-2xl bg-[#F7F8FA] px-3 py-2 ring-1 ring-black/[.06]"><SocialGlyphs size={26} className="flex items-center gap-2" /></span>
+              <span className="flex items-center gap-2 rounded-2xl bg-[#F7F8FA] px-3 py-2 ring-1 ring-black/[.06]"><SocialCluster iconSize={26} tileSize={38} columns={4} /></span>
               <div>
                 <h2 className="font-display text-[24px] font-semibold tracking-[-0.02em] text-[#0B0B0C] sm:text-[28px]">Social Media</h2>
                 <p className="mt-1 text-[14px] text-[#6B6B6B]">{overview?.range}{overview?.asOf ? ` · as of ${overview.asOf}` : ""}</p>
