@@ -2540,3 +2540,7 @@ body { transition: background-color 150ms ease, color 150ms ease; }
 [data-theme="dark"] { --warning: #f4c56a; --warning-bg: #332912; --danger: #ff9a9a; --danger-bg: #331818; --success: #6ee7a8; --success-bg: #153222; }
 
 .tn-number { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-variant-numeric: tabular-nums; }
+
+/* A 36px visual control with a 44px invisible touch target. */
+.tap-44 { position: relative; }
+.tap-44::after { content: ""; position: absolute; inset: -4px; border-radius: 999px; }

@@ -6,6 +6,7 @@ import type { SurveyDemo, SurveyDemoRow } from "@/lib/survey/types";
 import { cn } from "@/lib/utils";
 import { partyColour, partyNeedsWhiteInk } from "@/lib/tamil-nadu/party-brand";
 import { PartyBadge } from "./party-badge";
+import { Pill, PillRow } from "@/components/case-studies/shared/pill-row";
 
 const colourOf = partyColour;
 const pct = (value: number) => `${value.toFixed(1)}%`;
@@ -18,6 +19,10 @@ type Props = {
   periodKey: string;
   slotLabel: string;
   average: number;
+  slotLeader: string;
+  targetParty: string;
+  targetMode: "below-average" | "leads";
+  allowTarget: boolean;
   onTarget: (payload: { kind: string; place: string; label: string; value: number; average: number }) => void;
   onCampaigns: (payload: { kind: string; place: string }) => void;
   onGroup: (group: string) => void;
@@ -25,7 +30,7 @@ type Props = {
 
 const LEADING_KEY = "__leading";
 
-function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, average, onTarget, onCampaigns, onGroup }: Props) {
+function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, average, slotLeader, targetParty, targetMode, allowTarget, onTarget, onCampaigns, onGroup }: Props) {
   const [sort, setSort] = useState<{ key: string; asc: boolean } | null>(null);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<string[]>(parties);
@@ -101,10 +106,13 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
   return (
     <div>
       {isV21 && <p className="text-[14px] leading-relaxed text-[color:var(--theme-text-3)]">Cross-tabulation: each row is how people who voted for that alliance in 2021 say they will vote in 2026. Row % - each row adds up to 100%.</p>}
-      <div className="scroll-fade-x no-scrollbar mt-2 flex flex-nowrap items-center gap-2 overflow-x-auto pb-1 snap-x" role="group" aria-label="Party columns">
-        <button
-          type="button"
-          aria-pressed={allSelected}
+      <PillRow label="PARTIES" ariaLabel="Party columns" className="mt-2">
+        <Pill
+          selected={allSelected}
+          colour={colourOf(slotLeader)}
+          party={slotLeader}
+          label="All parties"
+          check
           onClick={(event) => {
             selectAll();
             const strip = event.currentTarget.closest(".no-scrollbar") as HTMLElement | null;
@@ -113,39 +121,29 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
               strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "smooth" });
             }
           }}
-          className={cn(
-            "inline-flex min-h-11! shrink-0 snap-start items-center gap-1 rounded-full border px-3.5 text-[13px] font-semibold transition-colors",
-            allSelected ? "border-[color:var(--theme-text)] bg-[color:var(--theme-text)] text-[color:var(--theme-surface)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] text-[color:var(--theme-text-2)] hover:border-[color:var(--theme-text)]",
-          )}
         >
-          {allSelected && <Check className="size-3.5" />} All
-        </button>
-        {parties.map((party) => {
-          const active = selected.includes(party);
-          return (
-            <button
-              key={party}
-              type="button"
-              aria-pressed={active}
-              onClick={(event) => {
-                toggle(party);
-                const strip = event.currentTarget.closest(".no-scrollbar") as HTMLElement | null;
-                if (strip) {
-                  const sr = strip.getBoundingClientRect(), br = event.currentTarget.getBoundingClientRect();
-                  strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "smooth" });
-                }
-              }}
-              className={cn(
-                "inline-flex min-h-11! shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold transition-colors",
-                active ? "border-[color:var(--theme-text)] bg-[color:var(--theme-text)] text-[color:var(--theme-surface)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] text-[color:var(--theme-text-2)] hover:border-[color:var(--theme-text)]",
-              )}
-            >
-              <PartyBadge party={party} size={16} />
-              {party}
-            </button>
-          );
-        })}
-      </div>
+          All
+        </Pill>
+        {parties.map((party) => (
+          <Pill
+            key={party}
+            selected={selected.includes(party)}
+            colour={colourOf(party)}
+            party={party}
+            onClick={(event) => {
+              toggle(party);
+              const strip = event.currentTarget.closest(".no-scrollbar") as HTMLElement | null;
+              if (strip) {
+                const sr = strip.getBoundingClientRect(), br = event.currentTarget.getBoundingClientRect();
+                strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "smooth" });
+              }
+            }}
+          >
+            <PartyBadge party={party} size={16} />
+            {party}
+          </Pill>
+        ))}
+      </PillRow>
       <div className="mt-2 hidden max-h-[520px] overflow-auto rounded-xl border border-[color:var(--theme-border)] min-[640px]:block" tabIndex={0} role="region" aria-label={`${demo.label} table`}>
         <table className="w-full min-w-[760px] border-collapse text-[15px]">
           <thead className="sticky top-0 z-10">
@@ -195,7 +193,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                     const value = row.v[index] ?? 0;
                     const alpha = 6 + (value / maxByParty[index]) * 82;
                     const isLead = active && index === leader.index && !leader.tie;
-                    const target = active && party === "AIADMK+" && value < average;
+                    const target = allowTarget && active && (targetMode === "leads" ? leader.index === parties.indexOf(targetParty) && !leader.tie : party === targetParty && value < average);
                     const lightText = active && alpha > 52 && partyNeedsWhiteInk(party);
                     const delayKey = `${row.g}:${party}`;
                     let delayHash = 0;
@@ -300,7 +298,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                   const alpha = 6 + (value / maxByParty[index]) * 82;
                   const isLead = index === leader.index && !leader.tie;
                   const lightText = alpha > 52 && partyNeedsWhiteInk(party);
-                  const target = party === "AIADMK+" && value < average;
+                  const target = allowTarget && (targetMode === "leads" ? leader.index === parties.indexOf(targetParty) && !leader.tie : party === targetParty && value < average);
                   return (
                     <div
                       key={party}

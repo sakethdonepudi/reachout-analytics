@@ -22,6 +22,7 @@ import { usePrefersReducedMotion } from "@/components/case-studies/telangana/cha
 import { cn } from "@/lib/utils";
 import { SocialCluster } from "./social-icons";
 import { TrendChart } from "./trend-chart";
+import { Pill, PillRow } from "@/components/case-studies/shared/pill-row";
 import { useTheme } from "@/components/site/theme";
 
 const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
@@ -62,6 +63,15 @@ function searchFrom(state: SearchState, filter?: SocialFilter | null) {
 function leaderOf(shares: SurveyShare | null | undefined, parties: string[]) {
   if (!shares) return null;
   return [...parties].sort((a, b) => (shares[b] ?? 0) - (shares[a] ?? 0))[0] ?? null;
+}
+
+function weightedLeader(demo: SurveyDemo | undefined, parties: string[]) {
+  if (!demo?.rows.length) return null;
+  const total = demo.rows.reduce((sum, row) => sum + row.n, 0);
+  if (!total) return null;
+  const weighted = parties.map((party, index) => ({ party, value: demo.rows.reduce((sum, row) => sum + (row.v[index] ?? 0) * row.n, 0) / total }));
+  weighted.sort((a, b) => b.value - a.value);
+  return weighted[0]?.party ?? null;
 }
 
 function seatParties(seats: Record<string, unknown>, parties: string[]) {
@@ -461,17 +471,17 @@ export default function TnSurveyDashboard({
       <div className={cn("fixed left-0 top-0 z-50 h-0.5 bg-[color:var(--theme-text)] transition-all duration-200", slowLoad ? "w-full opacity-100" : "w-0 opacity-0")} aria-hidden />
       <div className="mx-auto w-full max-w-[1680px] px-4 pb-20 pt-20 sm:px-6 sm:pt-20 xl:px-8">
         <header className="flex flex-wrap items-center gap-3">
-          <Link href="/case-studies" className="inline-flex min-h-11! shrink-0 items-center gap-2 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3.5 py-1.5 text-[14px] text-[color:var(--theme-text-3)] transition-colors hover:border-[color:var(--theme-text)] hover:text-[color:var(--theme-text)]">
-            <ArrowLeft className="size-4" /><span className="hidden sm:inline">Back to Case Studies</span><span className="sm:hidden">Back</span>
+          <Link href="/case-studies" className="tap-44 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3 text-[12.5px] text-[color:var(--theme-text-3)] transition-colors hover:border-[color:var(--theme-text)] hover:text-[color:var(--theme-text)]">
+            <ArrowLeft className="size-3.5" /><span className="hidden sm:inline">Back to Case Studies</span><span className="sm:hidden">Back</span>
           </Link>
-          <div className="inline-flex min-h-11! shrink-0 items-center gap-2 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] py-1 pl-1 pr-3">
-            <span className="grid size-8 place-items-center rounded-full bg-[color:var(--theme-surface-2)]">
+          <div className="inline-flex min-h-11! shrink-0 items-center gap-2 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] py-1.5 pl-1.5 pr-4">
+            <span className="grid size-11 place-items-center rounded-full bg-[color:var(--theme-surface-2)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/parties/aiadmk.png" alt="AIADMK symbol" width={28} height={19} className="h-auto w-7 object-contain" />
+              <img src="/parties/aiadmk.png" alt="AIADMK symbol" width={40} height={27} className="h-auto w-10 object-contain" />
             </span>
             <span className="leading-tight">
-              <span className="block text-[13px] font-bold text-[color:var(--theme-text)]">AIADMK</span>
-              <span className="block text-[12px] text-[color:var(--theme-text-3)]">Tamil Nadu</span>
+              <span className="block text-[17px] font-bold text-[color:var(--theme-text)]">AIADMK</span>
+              <span className="block text-[14px] text-[color:var(--theme-text-3)]">Tamil Nadu</span>
             </span>
           </div>
           {owner && (
@@ -509,7 +519,7 @@ export default function TnSurveyDashboard({
         {view !== "social" && (
           <div className="mt-4 flex items-center gap-2">
             <span className="shrink-0 text-[12px] font-bold uppercase tracking-[0.12em] text-[color:var(--theme-warning)]">{view === "ex" ? "Day" : "Month"}</span>
-            <div className="scroll-fade-x no-scrollbar flex flex-1 flex-nowrap items-center gap-2 overflow-x-auto pb-1 snap-x" role="group" aria-label="Survey time slot">
+            <div className="no-scrollbar flex flex-1 flex-nowrap items-center gap-2 overflow-x-auto pb-1 snap-x" role="group" aria-label="Survey time slot">
             {slots.filter((item) => !item.subKey).map((item) => {
               const itemLead = leaderOf(item.expected[STATE] ?? {}, parties) ?? "TVK";
               const subs = slots.filter((candidate) => candidate.subKey && candidate.monthKey === item.key);
@@ -530,9 +540,17 @@ export default function TnSurveyDashboard({
                 </div>
               );
             })}
-            {slots.filter((candidate) => candidate.subKey && candidate.monthKey === (slot.monthKey ?? "")).map((item) => (
-              <button key={item.key} type="button" aria-pressed={slot.key === item.key} onClick={() => navigate({ slot: item.key, profile: "" })} className={cn("min-h-11! shrink-0 snap-start rounded-full border px-3 text-[13px] font-semibold active:scale-[0.98]", slot.key === item.key ? "border-[color:var(--theme-selected)] bg-[color:var(--theme-selected)] text-white" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] text-[color:var(--theme-text-2)] hover:border-[color:var(--theme-text)]")}>{item.buttonLabel}</button>
-            ))}
+            {slots.filter((candidate) => candidate.subKey && candidate.monthKey === (slot.monthKey ?? "")).map((item) => {
+              const subLead = leaderOf(item.expected[STATE] ?? {}, parties) ?? "TVK";
+              return <Pill key={item.key} selected={slot.key === item.key} colour={colour(subLead)} party={subLead} label={item.buttonLabel} onClick={(event) => {
+                navigate({ slot: item.key, profile: "" });
+                const strip = event.currentTarget.closest(".no-scrollbar") as HTMLElement | null;
+                if (strip) {
+                  const sr = strip.getBoundingClientRect(), br = event.currentTarget.getBoundingClientRect();
+                  strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "smooth" });
+                }
+              }}>{item.buttonLabel}</Pill>;
+            })}
           </div>
           </div>
         )}
@@ -559,9 +577,51 @@ export default function TnSurveyDashboard({
 
             <div className="mt-3"><VoteShareHero expected={expected} parties={parties} slotKey={slot.key} /></div>
 
+
+
+            {profiles.length > 0 && (
+              <Section title={`Voter profile · ${slot.buttonLabel}`} className="mt-3">
+                <PillRow label="PROFILE" ariaLabel="Voter profile" className="mt-3">
+                  {profiles.map((key) => {
+                    const profileLead = weightedLeader(slot.profiles[key], parties) ?? leadParty ?? parties[0] ?? "Others";
+                    return (
+                      <Pill
+                        key={key}
+                        selected={activeProfile === key}
+                        colour={colour(profileLead)}
+                        party={profileLead}
+                        profileTab={key}
+                        label={slot.demoCatalog[key]?.label ?? key}
+                        onClick={(event) => {
+                          navigate({ profile: key });
+                          const strip = event.currentTarget.closest(".no-scrollbar") as HTMLElement | null;
+                          if (strip) {
+                            const sr = strip.getBoundingClientRect(), br = event.currentTarget.getBoundingClientRect();
+                            strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "smooth" });
+                          }
+                        }}
+                      >
+                        {slot.demoCatalog[key]?.label ?? key}
+                      </Pill>
+                    );
+                  })}
+                </PillRow>
+                <div className="mt-3">
+                  <LazyMount minHeight={540}>
+                    {!demo && activeProfile === "ac" ? <div className="rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface-3)] p-6 text-[14px] text-[color:var(--theme-text-3)]">Loading assembly table...</div> :
+                      demo ? <div key={`${slot.key}:${activeProfile}`} className="tn-fade-slide"><TnProfileTable demo={demo} parties={parties} profileKey={activeProfile} periodKey={view} slotLabel={slot.label} average={average} slotLeader={leadParty ?? parties[0] ?? ""} targetParty="AIADMK+" targetMode="below-average" allowTarget={view === "op"}
+                        onTarget={(payload) => openSocial({ match: "target", kind: payload.kind, place: payload.place, label: `${payload.label} · ${payload.place} · AIADMK+ ${payload.value.toFixed(1)}% (average ${payload.average.toFixed(1)}%)`, value: String(payload.value), average: String(payload.average) })}
+                        onCampaigns={(payload) => openSocial({ match: "campaigns", kind: payload.kind, place: payload.place, label: payload.place })}
+                        onGroup={(group) => openSocial({ match: "group", group, label: group })}
+                      /></div> : null}
+                  </LazyMount>
+                </div>
+              </Section>
+            )}
+            <LazyMount minHeight={380}><SwingSection data={model} swing={model.swing} parties={parties} period={view === "ex" ? "ex" : "op"} slot={slot.key} /></LazyMount>
             <section ref={mapHostRef} className="relative mt-3 scroll-mt-28 rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-3 shadow-[0_10px_30px_rgba(0,0,0,0.035)] sm:p-4" aria-label="Tamil Nadu map">
               <div className="mb-2 flex h-11 items-center justify-between gap-2">
-                <p className="text-[13px] font-semibold text-[color:var(--theme-text-3)]">{district ?? (acNo != null ? `Assembly constituency ${acNo}` : "Tamil Nadu districts")}</p>
+                <p className="text-[13px] font-semibold text-[color:var(--theme-text-3)]">{district ?? (acNo != null ? `Assembly constituency ${acNo}` : "Tamil Nadu")}</p>
                 {(district || acNo != null) && (
                   <button type="button" onClick={() => { setDistrict(null); setAcNo(null); }} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3.5 text-[13px] font-semibold text-[color:var(--theme-text)] transition-colors hover:border-[color:var(--theme-text)] hover:bg-[color:var(--theme-surface-3)]">
                     <ArrowLeft className="size-4" /> Back to state
@@ -600,36 +660,6 @@ export default function TnSurveyDashboard({
                 <span className="inline-flex items-center gap-1.5"><span className="h-3 w-6 rounded-[2px] bg-[#94A3B8] ring-1 ring-inset ring-black/10" />No data / under 30</span>
               </div>
             </section>
-
-            {profiles.length > 0 && (
-              <Section title={`Voter profile · ${slot.buttonLabel}`} className="mt-3">
-                <div className="scroll-fade-x no-scrollbar mt-3 flex flex-nowrap gap-2 overflow-x-auto pb-1 snap-x" role="tablist" aria-label="Voter profile">
-                  {profiles.map((key) => (
-                    <button key={key} type="button" role="tab" data-profile-tab={key} aria-selected={activeProfile === key} onMouseEnter={() => prefetchProfile(key)} onClick={(event) => {
-                      navigate({ profile: key });
-                      const strip = event.currentTarget.closest(".no-scrollbar") as HTMLElement | null;
-                      if (strip) {
-                        const sr = strip.getBoundingClientRect(), br = event.currentTarget.getBoundingClientRect();
-                        strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "smooth" });
-                      }
-                    }} className={cn("min-h-11! shrink-0 snap-start rounded-full border px-3.5 text-[13px] font-semibold active:scale-[0.98]", activeProfile === key ? "border-[color:var(--theme-warning)] bg-[color:var(--theme-warning-soft)] text-[color:var(--theme-text)]" : "border-[color:var(--theme-border)] text-[color:var(--theme-text-2)] hover:border-[color:var(--theme-text)]")}>
-                      {slot.demoCatalog[key]?.label ?? key}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-3">
-                  <LazyMount minHeight={540}>
-                    {!demo && activeProfile === "ac" ? <div className="rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface-3)] p-6 text-[14px] text-[color:var(--theme-text-3)]">Loading assembly table...</div> :
-                      demo ? <div key={`${slot.key}:${activeProfile}`} className="tn-fade-slide"><TnProfileTable demo={demo} parties={parties} profileKey={activeProfile} periodKey={view} slotLabel={slot.label} average={average}
-                        onTarget={(payload) => openSocial({ match: "target", kind: payload.kind, place: payload.place, label: `${payload.label} · ${payload.place} · AIADMK+ ${payload.value.toFixed(1)}% (average ${payload.average.toFixed(1)}%)`, value: String(payload.value), average: String(payload.average) })}
-                        onCampaigns={(payload) => openSocial({ match: "campaigns", kind: payload.kind, place: payload.place, label: payload.place })}
-                        onGroup={(group) => openSocial({ match: "group", group, label: group })}
-                      /></div> : null}
-                  </LazyMount>
-                </div>
-              </Section>
-            )}
-            <LazyMount minHeight={380}><SwingSection data={model} swing={model.swing} parties={parties} period={view === "ex" ? "ex" : "op"} slot={slot.key} /></LazyMount>
             <LazyMount minHeight={520}><SeatsByZone data={model} parties={parties} seats={seats} periodKey={view} slotLabel={slot.label} /></LazyMount>
           </>
         </div>
