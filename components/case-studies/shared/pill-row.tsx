@@ -38,6 +38,7 @@ export function Pill({
   dataActive,
   party,
   profileTab,
+  onMouseEnter,
 }: {
   selected: boolean;
   colour: string;
@@ -50,16 +51,22 @@ export function Pill({
   dataActive?: boolean;
   party?: string;
   profileTab?: string;
+  onMouseEnter?: () => void;
 }) {
   const white = party ? partyNeedsWhiteInk(party) : false;
   return (
     <button
       type="button"
+      role={profileTab ? "tab" : undefined}
       aria-pressed={selected}
+      aria-selected={profileTab ? selected : undefined}
       aria-label={label}
       title={title}
       data-slot-active={dataActive ? "true" : undefined}
       data-profile-tab={profileTab}
+      onMouseEnter={onMouseEnter}
+      data-pill-party={party}
+      data-pill-selected={selected ? "true" : "false"}
       onClick={onClick}
       className={cn(
         "inline-flex min-h-11! shrink-0 snap-start items-center gap-1.5 rounded-full border px-4 text-[14px] font-semibold transition-all active:scale-[0.98]",

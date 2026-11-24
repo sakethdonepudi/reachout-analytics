@@ -2323,6 +2323,10 @@ html { scroll-padding-top: 96px; }
   --tn-party-aiadmk: #138808;
   --tn-party-ntk: #7b3fa0;
   --tn-party-others: #8c8f96;
+  --ap-party-nda: #c98a00;
+  --ap-party-ysrcp: #1f6fd1;
+  --ap-party-inc: #138a52;
+  --ap-party-others: #8c8f96;
   --tn-x-icon: #000000;
   --tn-soft-violet: #f3e8ff;
   --tn-soft-blue: #eff6ff;
@@ -2369,6 +2373,10 @@ html { scroll-padding-top: 96px; }
   --tn-party-aiadmk: #1fa36f;
   --tn-party-ntk: #a46cd0;
   --tn-party-others: #8f939b;
+  --ap-party-nda: #d4960f;
+  --ap-party-ysrcp: #4f8ef7;
+  --ap-party-inc: #1fa36f;
+  --ap-party-others: #8f939b;
   --tn-x-icon: #ffffff;
   --tn-soft-violet: #2b1d3a;
   --tn-soft-blue: #16243a;
@@ -2544,3 +2552,25 @@ body { transition: background-color 150ms ease, color 150ms ease; }
 /* A 36px visual control with a 44px invisible touch target. */
 .tap-44 { position: relative; }
 .tap-44::after { content: ""; position: absolute; inset: -4px; border-radius: 999px; }
+
+.target-ring { animation: ringpulse 1.2s ease-out infinite, ringblink 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .target-ring { animation: none !important; } }
+
+.target-ring { position: relative; }
+.target-ring::after { content: ""; position: absolute; inset: -17px; border-radius: 999px; }
+
+/* Dark party fills are lighter, so blue and green need dark ink for AA. */
+[data-theme="dark"] [data-pill-party="YSRCP"][data-pill-selected="true"],
+[data-theme="dark"] [data-pill-party="INC"][data-pill-selected="true"],
+[data-theme="dark"] [data-pill-party="NDA"][data-pill-selected="true"],
+[data-theme="dark"] [data-pill-party="Others"][data-pill-selected="true"] {
+  color: #0B0B0C !important;
+}
+[data-theme="dark"] [data-bar-party="YSRCP"],
+[data-theme="dark"] [data-bar-party="INC"] {
+  color: #0B0B0C !important;
+  text-shadow: none !important;
+}
+[data-pill-party="INC"][data-pill-selected="true"] { color: #000000 !important; }
+
+.tn-dashboard { overflow-anchor: none; }

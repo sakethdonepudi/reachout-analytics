@@ -12,8 +12,8 @@ export type TnSerializedMap = {
   resultRows: Record<string, { acs: number; seats: Record<string, number>; total: number }>;
 };
 
-export type TnSwingSource = { key: string; label: string; expected: Record<string, SurveyShare>; seats: Record<string, unknown>; n: number };
-export type TnSwingPayload = { sources: Record<"op" | "ex", TnSwingSource[]> };
+export type TnSwingSource = { key: string; label: string; expected: Record<string, SurveyShare>; seats: Record<string, unknown>; n: number; base?: Record<string, SurveyShare>; last?: string; target?: string };
+export type TnSwingPayload = { sources: Record<string, TnSwingSource[]> };
 
 export type TnSlotModel = {
   key: string;
@@ -32,11 +32,13 @@ export type TnSlotModel = {
 };
 
 export type TnCardModel = {
-  key: "op" | "ex";
+  key: string;
   label: string;
   n: number;
   expected: SurveyShare;
-  accuracy: number;
+  accuracy?: number;
+  showAccuracy?: boolean;
+  seats?: Record<string, number>;
 };
 
 export type TnClientModel = {
@@ -49,7 +51,7 @@ export type TnClientModel = {
   actualSeats: Record<string, unknown>;
   actualZones: Record<string, Record<string, unknown>>;
   cards: TnCardModel[];
-  slots: Record<"op" | "ex", TnSlotModel[]>;
+  slots: Record<string, TnSlotModel[]>;
   swing: TnSwingPayload;
   initialMap: TnSerializedMap;
   socialMonthly: TnSocialMonth[];

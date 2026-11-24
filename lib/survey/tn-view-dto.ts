@@ -49,6 +49,8 @@ export function tnSurveyForClient(data: SurveyData): SurveyData {
   };
 }
 
+const cleanCampaignName = (name: string) => name.replace(/₹\s?[\d,.]+/g, "").replace(/\b(?:INR|Rs\.?)\s?[\d,.]+/gi, "").replace(/\s{2,}/g, " ").trim();
+
 function safeAccountName(raw: unknown, rank: number, id: string, owner: boolean) {
   const name = text(raw).trim();
   if (owner) return name || id;
@@ -72,7 +74,7 @@ function accountRows(data: SurveyData, links: boolean, owner: boolean): { accoun
     const source = Array.isArray(camps[id]) ? camps[id] as AnyRecord[] : [];
     const campaigns: TnSocialCampaign[] = source.map((campaign) => ({
       ...(owner ? { id: text(campaign.id) } : {}),
-      name: text(campaign.name),
+      name: owner ? text(campaign.name) : cleanCampaignName(text(campaign.name)),
       period: text(campaign.per),
       status: text(campaign.st),
       start: text(campaign.start),

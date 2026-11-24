@@ -28,7 +28,8 @@
     "test:tn-map": "tsx --conditions react-server scripts/tn-map.test.ts",
     "seed:tn-map": "tsx --conditions react-server scripts/seed-tn-map.ts",
     "test:session-loop": "tsx --conditions react-server scripts/session-loop.test.ts",
-    "test:heartbeat": "tsx --conditions react-server scripts/heartbeat.test.ts"
+    "test:heartbeat": "tsx --conditions react-server scripts/heartbeat.test.ts",
+    "test:ap-map": "tsx --conditions react-server scripts/ap-map.test.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",

@@ -22,6 +22,8 @@ type Props = {
   slotLeader: string;
   targetParty: string;
   targetMode: "below-average" | "leads";
+  targetPillParty: string;
+  targetTooltip: string;
   allowTarget: boolean;
   onTarget: (payload: { kind: string; place: string; label: string; value: number; average: number }) => void;
   onCampaigns: (payload: { kind: string; place: string }) => void;
@@ -30,7 +32,7 @@ type Props = {
 
 const LEADING_KEY = "__leading";
 
-function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, average, slotLeader, targetParty, targetMode, allowTarget, onTarget, onCampaigns, onGroup }: Props) {
+function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, average, slotLeader, targetParty, targetMode, targetPillParty, targetTooltip, allowTarget, onTarget, onCampaigns, onGroup }: Props) {
   const [sort, setSort] = useState<{ key: string; asc: boolean } | null>(null);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<string[]>(parties);
@@ -172,6 +174,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
           <tbody>
             {pageRows.map((row, rowIndex) => {
               const leader = leaderOfRow(row);
+              const rowTarget = allowTarget && targetMode === "leads" && leader.index === parties.indexOf(targetParty) && !leader.tie;
               return (
                 <tr
                   key={row.g}
@@ -180,12 +183,14 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                   onMouseLeave={() => setHover((current) => ({ ...current, row: null }))}
                 >
                   <th scope="row" className="sticky left-0 z-10 h-12 bg-[color:var(--theme-surface)] px-3 py-1 text-left font-semibold text-[color:var(--theme-text-2)]">
+                    {rowTarget && <button type="button" onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value: row.v[parties.indexOf(targetParty)] ?? 0, average })} className="target-ring mr-1.5 inline-block size-2.5 rounded-full border border-white bg-[#e52020] align-middle" title={targetTooltip} aria-label={targetTooltip} />}
                     {clickableGroup ? (
                       <button type="button" onClick={() => onGroup(row.g)} className="group/link inline-flex min-h-11! items-center gap-0.5 text-left font-semibold text-[color:var(--theme-link)] underline decoration-[#B8B8B8] decoration-1 underline-offset-2 hover:decoration-[color:var(--theme-link)]" title={`Open campaigns for ${row.g}`}>
                         {row.g}
                         <span aria-hidden className="opacity-0 transition-opacity duration-150 group-hover/link:opacity-100">↗</span>
                       </button>
                     ) : row.g}
+                    {row.n < 30 && <span className="ml-1 text-[12px] font-normal text-[color:var(--theme-text-3)]" title={`Only ${row.n} answers – rough signal`}>· {int(row.n)}</span>}
                   </th>
                   {visible.map((party) => {
                     const index = parties.indexOf(party);
@@ -193,7 +198,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                     const value = row.v[index] ?? 0;
                     const alpha = 6 + (value / maxByParty[index]) * 82;
                     const isLead = active && index === leader.index && !leader.tie;
-                    const target = allowTarget && active && (targetMode === "leads" ? leader.index === parties.indexOf(targetParty) && !leader.tie : party === targetParty && value < average);
+                    const target = allowTarget && active && (targetMode === "leads" ? rowTarget && party === targetPillParty : party === targetParty && value < average);
                     const lightText = active && alpha > 52 && partyNeedsWhiteInk(party);
                     const delayKey = `${row.g}:${party}`;
                     let delayHash = 0;
@@ -213,6 +218,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                           background: active ? `color-mix(in srgb, ${colourOf(party)} ${alpha}%, var(--theme-surface))` : "white",
                           outline: isLead ? `2px solid ${colourOf(party)}` : undefined,
                           outlineOffset: isLead ? -2 : undefined,
+                          boxShadow: rowTarget && party === visible.find((item) => selectedSet.has(item)) ? "inset 3px 0 0 #e52020" : undefined,
                         }}
                         onMouseEnter={() => setHover((current) => ({ ...current, column: party }))}
                         onMouseLeave={() => setHover((current) => ({ ...current, column: null }))}
@@ -228,8 +234,8 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                                 onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })}
                                 className="tn-target"
                                 style={{ "--tn-target-delay": `${animationDelay}ms` } as React.CSSProperties}
-                                title="AIADMK+ below average here: open campaigns"
-                                aria-label="Target Campaign. AIADMK+ below average here: open campaigns"
+                                title={targetTooltip}
+                                aria-label={`Target Campaign. ${targetTooltip}`}
                               >
                                 Target Campaign
                               </button>
@@ -278,14 +284,19 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
       <div className="mt-2 space-y-3 min-[640px]:hidden">
         {pageRows.map((row) => {
           const leader = leaderOfRow(row);
+          const rowTarget = allowTarget && targetMode === "leads" && leader.index === parties.indexOf(targetParty) && !leader.tie;
           return (
             <article key={row.g} className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-3">
               <div className="flex items-start justify-between gap-2">
-                {clickableGroup ? (
-                  <button type="button" onClick={() => onGroup(row.g)} className="inline-flex min-h-11! items-center gap-1 text-left text-[14px] font-semibold text-[color:var(--theme-link)] underline decoration-[#B8B8B8] underline-offset-2">
-                    {row.g}<span aria-hidden>↗</span>
-                  </button>
-                ) : <p className="text-[14px] font-semibold text-[color:var(--theme-text)]">{row.g}</p>}
+                <span className="flex items-center gap-1.5">
+                  {rowTarget && <button type="button" onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value: row.v[parties.indexOf(targetParty)] ?? 0, average })} className="target-ring inline-block size-2.5 rounded-full border border-white bg-[#e52020]" title={targetTooltip} aria-label={targetTooltip} />}
+                  {clickableGroup ? (
+                    <button type="button" onClick={() => onGroup(row.g)} className="inline-flex min-h-11! items-center gap-1 text-left text-[14px] font-semibold text-[color:var(--theme-link)] underline decoration-[#B8B8B8] underline-offset-2">
+                      {row.g}<span aria-hidden>↗</span>
+                    </button>
+                  ) : <span className="text-[14px] font-semibold text-[color:var(--theme-text)]">{row.g}</span>}
+                  {row.n < 30 && <span className="text-[12px] font-normal text-[color:var(--theme-text-3)]" title={`Only ${row.n} answers – rough signal`}>· {int(row.n)}</span>}
+                </span>
                 <span className="inline-flex items-center gap-1 text-[12px] text-[color:var(--theme-text-3)]">
                   {leader.index >= 0 && <PartyBadge party={parties[leader.index]} size={16} />}
                   {leader.tie ? "Tie" : parties[leader.index]}
@@ -298,7 +309,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                   const alpha = 6 + (value / maxByParty[index]) * 82;
                   const isLead = index === leader.index && !leader.tie;
                   const lightText = alpha > 52 && partyNeedsWhiteInk(party);
-                  const target = allowTarget && (targetMode === "leads" ? leader.index === parties.indexOf(targetParty) && !leader.tie : party === targetParty && value < average);
+                  const target = allowTarget && (targetMode === "leads" ? rowTarget && party === targetPillParty : party === targetParty && value < average);
                   return (
                     <div
                       key={party}
@@ -322,8 +333,8 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                             onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })}
                             className="tn-target"
                             style={{ "--tn-target-delay": `${(row.g.length * 17 + index * 43) % 400}ms` } as React.CSSProperties}
-                            title="AIADMK+ below average here: open campaigns"
-                            aria-label="Target Campaign. AIADMK+ below average here: open campaigns"
+                            title={targetTooltip}
+                            aria-label={`Target Campaign. ${targetTooltip}`}
                           >
                             Target Campaign
                           </button>

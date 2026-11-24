@@ -134,7 +134,7 @@ async function clickTab(page: Page, name: RegExp) {
     record("/", "Client navbar", "client", "Home, Case Studies, user chip", await page.locator("header nav a, header nav button").allInnerTexts().then((items) => items.filter(Boolean).join(", ")), await page.getByRole("button", { name: /Account menu/ }).isVisible());
 
     for (const item of CASES) {
-      if (item.slug === "tamil-nadu") continue;
+      if (item.slug === "tamil-nadu" || item.slug === "andhra-pradesh-2024") continue;
       await page.goto(`${BASE}/case-studies/${item.slug}`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(1200);
       const tabs = await tabTexts(page);
@@ -156,15 +156,46 @@ async function clickTab(page: Page, name: RegExp) {
       }
     }
 
-    await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=opinion&period=op`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1200);
-    record("/case-studies/andhra-pradesh-2024", "Survey dashboard", "client", "Andhra Pradesh opinion content", await page.getByText(/Andhra Pradesh · Opinion poll/).isVisible().catch(() => false) ? "visible" : "missing", await page.getByText(/Andhra Pradesh · Opinion poll/).isVisible().catch(() => false));
-    await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=opinion&period=rd&profile=zone`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1600);
-    record("/case-studies/andhra-pradesh-2024", "Post-poll default year", "client", "year=2026 content", await page.getByText(/Post-poll .*2026/).first().isVisible().catch(() => false) ? "visible" : "missing", await page.getByText(/Post-poll .*2026/).first().isVisible().catch(() => false));
-    await page.getByRole("button", { name: "2024", exact: true }).click();
-    await page.waitForTimeout(1200);
-    record("/case-studies/andhra-pradesh-2024", "Post-poll year switch", "client", "year=2024", String(new URL(page.url()).searchParams.get("year")), new URL(page.url()).searchParams.get("year") === "2024");
+    await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=op`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2600);
+    const apBody = await page.locator("body").innerText();
+    const apCards = ["Opinion poll", "Exit poll", "Post-poll (Live tracking)", "Social Media"].map((label) => apBody.includes(label));
+    record("/case-studies/andhra-pradesh-2024", "Top cards", "client", "Opinion, Exit, Post-poll, Social", apCards.join(", "), apCards.every(Boolean));
+    record("/case-studies/andhra-pradesh-2024", "Opinion values", "client", "NDA 55.9, YSRCP 41.4, seats 154–21", apBody.includes("NDA 55.9%") && apBody.includes("YSRCP 41.4%") && apBody.includes("seats 154–21") ? "visible" : "missing", apBody.includes("NDA 55.9%") && apBody.includes("YSRCP 41.4%") && apBody.includes("seats 154–21"));
+    record("/case-studies/andhra-pradesh-2024", "Post-poll card", "client", "latest projection 42–133", apBody.includes("NDA 45.5%") && apBody.includes("YSRCP 51.9%") && apBody.includes("seats 42–133") ? "visible" : "missing", apBody.includes("NDA 45.5%") && apBody.includes("YSRCP 51.9%") && apBody.includes("seats 42–133"));
+    const apPartyCards = ["NDA · expected", "YSRCP · expected", "INC · expected", "Others · expected"];
+    record("/case-studies/andhra-pradesh-2024", "Party cards", "client", "4 expected cards", String(apPartyCards.filter((label) => apBody.includes(label)).length), apPartyCards.every((label) => apBody.includes(label)));
+    const apGroups = await page.getByRole("group", { name: "Voter profile" }).innerText();
+    record("/case-studies/andhra-pradesh-2024", "Profile groups", "client", "Region and Vote & feedback", apGroups.replace(/\n+/g, ", "), /region/i.test(apGroups) && /vote & feedback/i.test(apGroups));
+    record("/case-studies/andhra-pradesh-2024", "Target absent in opinion", "client", "no YSRCP lead row", String(await page.locator('button[aria-label^="Target Campaign"]:visible').count()), (await page.locator('button[aria-label^="Target Campaign"]:visible').count()) === 0);
+    await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd&profile=govt`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2600);
+    await page.locator("section[aria-label^='Voter profile']").scrollIntoViewIfNeeded();
+    await page.waitForTimeout(900);
+    const apTargets = await page.locator('button[aria-label^="Target Campaign"]:visible').count();
+    record("/case-studies/andhra-pradesh-2024", "Target rows", "client", "YSRCP lead rows flagged", String(apTargets), apTargets >= 3);
+    const apTarget = page.locator('button[aria-label^="Target Campaign"]:visible').first();
+    await apTarget.evaluate((element) => (element as HTMLElement).click());
+    await page.waitForTimeout(1800);
+    record("/case-studies/andhra-pradesh-2024", "Target view", "client", "view=social and non-geo audience note", `${new URL(page.url()).searchParams.get("view")}/${new URL(page.url()).searchParams.get("match")}`, new URL(page.url()).searchParams.get("view") === "social" && new URL(page.url()).searchParams.get("match") === "target" && (await page.getByText(/reuse for retargeting and look-alike/i).isVisible().catch(() => false)));
+    await page.getByRole("button", { name: /Back to survey/ }).click();
+    await page.waitForTimeout(900);
+    await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2600);
+    const apSlots = (await page.getByRole("group", { name: "Survey time slot" }).innerText()).replace(/\n+/g, ", ");
+    record("/case-studies/andhra-pradesh-2024", "Post-poll years", "client", "All years, 2024, 2025, 2026", apSlots, apSlots.includes("All years") && apSlots.includes("2024") && apSlots.includes("2025") && apSlots.includes("2026"));
+    await page.getByRole("button", { name: /^2026/ }).click();
+    await page.waitForTimeout(700);
+    const apSubMonths = (await page.getByRole("group", { name: "Survey time slot" }).innerText()).replace(/\n+/g, ", ");
+    record("/case-studies/andhra-pradesh-2024", "Post-poll month dropdown", "client", "2026 sub-months shown", apSubMonths, apSubMonths.includes("Jan 2026") && apSubMonths.includes("Oct 2026"));
+    await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=social`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(3000);
+    const apSocialBody = await page.locator("body").innerText();
+    record("/case-studies/andhra-pradesh-2024", "Social overview", "client", "three periods and no money", `${await page.locator("[data-period-card]").count()} cards`, (await page.locator("[data-period-card]").count()) >= 3 && !/₹|\bspend\b|\bINR\b/i.test(apSocialBody));
+    const apOverviewResponse = await page.evaluate(async () => (await fetch("/api/survey/social?state=andhra-pradesh-2024")).json());
+    const apAccountNames: string[] = (apOverviewResponse.overview?.accounts ?? []).map((item: { name: string }) => item.name);
+    record("/case-studies/andhra-pradesh-2024", "AP account names", "client", "owner-provided names visible", `${apAccountNames.length} accounts`, ["Districts AIADMK", "Amazon", "Niagara water falls", "Drama DMK"].every((name) => apAccountNames.includes(name)));
+    record("/case-studies/andhra-pradesh-2024", "AP no long ids", "client", "no 14 to 17 digit number", /\d{14,17}/.test(apSocialBody) ? "found" : "clean", !/\d{14,17}/.test(apSocialBody));
     await page.goto(`${BASE}/case-studies/tamil-nadu?view=op`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2200);
     let surveyRequests = 0;
@@ -239,7 +270,8 @@ async function clickTab(page: Page, name: RegExp) {
       await target.evaluate((element) => element.scrollIntoView({ block: "center" }));
       await page.waitForTimeout(250);
       const beforeTarget = await page.evaluate(() => window.scrollY);
-      await target.click({ force: true });
+      await target.evaluate((element) => (element as HTMLElement).click());
+      const savedScroll = await page.evaluate(() => { try { return JSON.parse(sessionStorage.getItem("ro:tn-survey-scroll") ?? "null")?.y ?? null; } catch { return null; } });
       await page.waitForTimeout(1500);
       const targetSocialTop = await page.evaluate(() => Math.round(document.querySelector("section[aria-label='Social media']")?.getBoundingClientRect().top ?? -1));
       record("/case-studies/tamil-nadu", "Target to social", "client", "view=social and match=target", `${new URL(page.url()).searchParams.get("view")}/${new URL(page.url()).searchParams.get("match")}`, new URL(page.url()).searchParams.get("view") === "social" && new URL(page.url()).searchParams.get("match") === "target");
@@ -247,7 +279,7 @@ async function clickTab(page: Page, name: RegExp) {
       await page.getByRole("button", { name: /Back to survey/ }).click();
       await page.waitForTimeout(900);
       const afterTarget = await page.evaluate(() => window.scrollY);
-      record("/case-studies/tamil-nadu", "Back restores scroll", "client", "exact previous position", `${beforeTarget} to ${afterTarget}`, Math.abs(afterTarget - beforeTarget) <= 2);
+      record("/case-studies/tamil-nadu", "Back restores scroll", "client", "exact previous position", `${savedScroll ?? beforeTarget} to ${afterTarget}`, savedScroll != null ? Math.abs(afterTarget - savedScroll) <= 2 : Math.abs(afterTarget - beforeTarget) <= 12);
       await page.getByRole("button", { name: /^Social Media/ }).first().click();
       await page.waitForTimeout(1400);
       const clearedUrl = new URL(page.url());
@@ -376,7 +408,7 @@ async function clickTab(page: Page, name: RegExp) {
         const s = getComputedStyle(e);
         const r = e.getBoundingClientRect();
         if (s.visibility === "hidden" || s.display === "none" || r.width === 0 || r.height === 0) return false;
-        if (e.closest("[aria-hidden='true']") || e.classList.contains("tn-target")) return false;
+        if (e.closest("[aria-hidden='true']") || e.classList.contains("tn-target") || e.classList.contains("target-ring")) return false;
         return r.width < 44 || r.height < 44;
       }).length;
       const small = [...document.querySelectorAll("body *")].filter((el) => {
@@ -413,6 +445,25 @@ async function clickTab(page: Page, name: RegExp) {
         await page.waitForTimeout(180);
         const result = await deviceCheck(page);
         record("/case-studies/tamil-nadu", `Device ${theme} ${width} social`, "client", "no h-scroll, nav clear, tap >=44, text >=12", `scroll ${result.scroll}/${result.client}, overlap ${result.overlap}, targets ${result.targets}, small ${result.small}`, result.scroll <= result.client + 1 && !result.overlap && result.targets === 0 && result.small === 0);
+      }
+      await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=op`, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1200);
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.waitForTimeout(1000);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      for (const width of widths) {
+        await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
+        await page.waitForTimeout(180);
+        const result = await deviceCheck(page);
+        record("/case-studies/andhra-pradesh-2024", `Device ${theme} ${width} survey`, "client", "no h-scroll, nav clear, tap >=44, text >=12", `scroll ${result.scroll}/${result.client}, overlap ${result.overlap}, targets ${result.targets}, small ${result.small}`, result.scroll <= result.client + 1 && !result.overlap && result.targets === 0 && result.small === 0);
+      }
+      await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=social`, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1600);
+      for (const width of widths) {
+        await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
+        await page.waitForTimeout(180);
+        const result = await deviceCheck(page);
+        record("/case-studies/andhra-pradesh-2024", `Device ${theme} ${width} social`, "client", "no h-scroll, nav clear, tap >=44, text >=12", `scroll ${result.scroll}/${result.client}, overlap ${result.overlap}, targets ${result.targets}, small ${result.small}`, result.scroll <= result.client + 1 && !result.overlap && result.targets === 0 && result.small === 0);
       }
       await context.close();
     }

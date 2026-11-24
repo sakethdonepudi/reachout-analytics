@@ -10,6 +10,8 @@ export type TnPartyBrand = {
   mask?: boolean;
   /** Fallback badge text when no symbol is available. */
   monogram?: string;
+  /** A small alliance count shown at the lower right. */
+  plus?: number;
 };
 
 export const TN_PARTY_BRAND: Record<string, TnPartyBrand> = {
@@ -19,6 +21,9 @@ export const TN_PARTY_BRAND: Record<string, TnPartyBrand> = {
   NTK: { color: "var(--tn-party-ntk)", logo: "/parties/ntk.png" },
   Others: { color: "var(--tn-party-others)", monogram: "OTH" },
   NOTA: { color: "var(--tn-party-others)", monogram: "NOTA" },
+  NDA: { color: "var(--ap-party-nda)", logo: "/parties/tdp.png", plus: 2 },
+  YSRCP: { color: "var(--ap-party-ysrcp)", logo: "/parties/ysrcp.svg", mask: true },
+  INC: { color: "var(--ap-party-inc)", logo: "/parties/inc.png" },
 };
 
 /** Light-theme hexes used only for contrast calculations. */
@@ -29,6 +34,9 @@ const TN_PARTY_HEX: Record<string, string> = {
   NTK: "#7b3fa0",
   Others: "#8c8f96",
   NOTA: "#8c8f96",
+  NDA: "#c98a00",
+  YSRCP: "#1f6fd1",
+  INC: "#138a52",
 };
 
 export function partyBrand(party: string): TnPartyBrand {
@@ -41,6 +49,8 @@ export function partyColour(party: string): string {
 
 /** True when white type is the readable choice on a near-full party fill. */
 export function partyNeedsWhiteInk(party: string): boolean {
+  if (party === "TVK" || party === "NDA" || party === "Others" || party === "NOTA") return false;
+  if (party === "YSRCP") return true;
   const hex = (TN_PARTY_HEX[party] ?? "#64748B").replace("#", "");
   if (hex.length !== 6) return false;
   const channel = (value: number) => {

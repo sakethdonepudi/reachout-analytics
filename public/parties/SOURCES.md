@@ -15,6 +15,11 @@ politician portraits or endorsements.
 | `tvk.svg` | Tamilaga Vettri Kazhagam (TVK) | [Indian Election Symbol Whistle — Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Indian_Election_Symbol_Whistle.svg) (Election Commission of India, CC0 1.0). Retrieved 24 November 2026. |
 | `dmk.svg` | Dravida Munnetra Kazhagam (DMK) | [Indian election symbol rising sun — Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Indian_election_symbol_rising_sun.svg) (by Furfur, CC BY-SA 4.0, attribution required). Retrieved 24 November 2026. |
 | `ntk.png` | Naam Tamilar Katchi (NTK) | [NTK-EC-Symbol — Wikimedia Commons](https://commons.wikimedia.org/wiki/File:NTK-EC-Symbol.jpg) (by Mohantry-3009, CC0 1.0). Hand-drawn scan cleaned to a transparent, tinted 256 px PNG; the artist signature is cropped out. Retrieved 24 November 2026. |
+| `ysrcp.svg` | YSR Congress Party (YSRCP) | [Indian Election Symbol Ceiling Fan — Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Indian_Election_Symbol_Ceiling_Fan.svg) (by Abilngeorge, CC BY-SA 4.0, attribution required). Retrieved 24 November 2026. |
+| `jsp.svg` | Janasena Party (JSP) | [Indian election symbol glass tumbler — Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Indian_election_symbol_glass_tumbler.svg) (by Eelelectric25, CC BY-SA 4.0, attribution required). Retrieved 24 November 2026. |
+
+`ysrcp.svg` and `jsp.svg` are the original paths with editor metadata removed
+and coordinates rounded to one decimal place; they are tinted the same way.
 
 `tvk.svg` and `dmk.svg` are optimised line art (SVGO, integer precision,
 under 5 KB) tinted with the case-study party colour through a CSS mask at run

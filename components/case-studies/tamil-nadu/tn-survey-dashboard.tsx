@@ -24,8 +24,13 @@ import { SocialCluster } from "./social-icons";
 import { TrendChart } from "./trend-chart";
 import { Pill, PillRow } from "@/components/case-studies/shared/pill-row";
 import { useTheme } from "@/components/site/theme";
+import { TN_CONFIG, type CaseStudyConfig } from "@/lib/case-study/config";
 
 const TamilNaduMap = dynamic(() => import("./tamil-nadu-map"), {
+  ssr: false,
+  loading: () => <div className="grid h-full min-h-[420px] w-full place-items-center text-[14px] text-[color:var(--theme-text-3)]">Loading map...</div>,
+});
+const ApMap = dynamic(() => import("../andhra-pradesh/ap-map"), {
   ssr: false,
   loading: () => <div className="grid h-full min-h-[420px] w-full place-items-center text-[14px] text-[color:var(--theme-text-3)]">Loading map...</div>,
 });
@@ -34,14 +39,8 @@ const int = (value: number) => new Intl.NumberFormat("en-IN").format(Math.round(
 const pct = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? "—" : `${value.toFixed(1)}%`);
 const pct2 = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? "—" : `${value.toFixed(2)}%`);
 const colour = partyColour;
-const STATE = "Tamil Nadu";
-const GROUP_KEY = TN_GROUP_KEY;
-const PROFILE_ORDER: Record<string, string[]> = {
-  op: ["age", "caste", "prof", "zone", "dist", "ac", "v21", "app"],
-  ex: ["zone", "dist", "ac", "v21", "age", "caste", "prof", "form", "religion", "app"],
-};
 
-type SearchState = { view: "op" | "ex" | "social"; slot: string; profile: string };
+type SearchState = { view: string; slot: string; profile: string };
 
 function searchFrom(state: SearchState, filter?: SocialFilter | null) {
   const params = new URLSearchParams();
@@ -140,7 +139,7 @@ function LazyMount({ children, minHeight = 420 }: { children: React.ReactNode; m
   return <div ref={ref} style={{ minHeight: shown ? undefined : minHeight }}>{shown ? children : null}</div>;
 }
 
-function VoteShareHero({ expected, parties, slotKey }: { expected: SurveyShare; parties: string[]; slotKey: string }) {
+function VoteShareHero({ expected, parties, slotKey, label }: { expected: SurveyShare; parties: string[]; slotKey: string; label: string }) {
   const reduced = usePrefersReducedMotion();
   const [grown, setGrown] = useState(reduced);
   useEffect(() => {
@@ -162,13 +161,13 @@ function VoteShareHero({ expected, parties, slotKey }: { expected: SurveyShare; 
             <p className="font-display text-[22px] font-semibold leading-none tracking-[-0.02em] text-[color:var(--theme-text)]">{lead} leads by {margin.toFixed(1)} pts</p>
           </div>
         </div>
-        <p className="text-[13px] font-semibold text-[color:var(--theme-text-3)]">2026 vote share</p>
+        <p className="text-[13px] font-semibold text-[color:var(--theme-text-3)]">{label}</p>
       </div>
       <div className="mt-4 flex h-10 w-full overflow-hidden rounded-full bg-[color:var(--theme-surface-2)] ring-1 ring-inset ring-black/5" role="img" aria-label="Vote share distribution">
         {parties.map((party) => {
           const value = Math.max(0, expected[party] ?? 0);
           return (
-            <span key={party} title={`${party} ${pct(expected[party])}`} className="flex min-w-0 items-center justify-center overflow-hidden whitespace-nowrap text-[12px] font-bold transition-[width] duration-300 ease-out" style={{ width: grown ? `${value}%` : "0%", background: colour(party), color: partyNeedsWhiteInk(party) ? "#fff" : "#0B0B0C", textShadow: partyNeedsWhiteInk(party) ? "0 1px 2px rgba(0,0,0,.45)" : "none" }}>
+            <span key={party} data-bar-party={party} title={`${party} ${pct(expected[party])}`} className="flex min-w-0 items-center justify-center overflow-hidden whitespace-nowrap text-[12px] font-bold transition-[width] duration-300 ease-out" style={{ width: grown ? `${value}%` : "0%", background: colour(party), color: partyNeedsWhiteInk(party) ? "#fff" : "#0B0B0C", textShadow: partyNeedsWhiteInk(party) ? "0 1px 2px rgba(0,0,0,.45)" : "none" }}>
               {value >= 14 ? <span className="hidden items-center gap-1.5 lg:inline-flex"><PartyBadge party={party} size={16} />{party} {value.toFixed(1)}%</span> : ""}
             </span>
           );
@@ -192,16 +191,18 @@ export default function TnSurveyDashboard({
   initialSlot,
   initialProfile,
   initialSocialFilter,
+  config = TN_CONFIG,
 }: {
   model: TnClientModel;
   owner: boolean;
-  initialView: "op" | "ex" | "social";
+  config?: CaseStudyConfig;
+  initialView: string;
   initialSlot?: string | null;
   initialProfile?: string | null;
   initialSocialFilter?: SocialFilter | null;
 }) {
   const { theme } = useTheme();
-  const [view, setView] = useState<"op" | "ex" | "social">(initialView);
+  const [view, setView] = useState<string>(initialView);
   const [socialMounted, setSocialMounted] = useState(initialView === "social");
   const [slotKey, setSlotKey] = useState(initialSlot ?? "all");
   const [profileKey, setProfileKey] = useState(initialProfile ?? "");
@@ -218,7 +219,8 @@ export default function TnSurveyDashboard({
   const socialPrefetched = useRef(false);
   const socialChunkLoaded = useRef(false);
   const mapHostRef = useRef<HTMLElement>(null);
-  const mapCache = useRef(new Map<string, TnSerializedMap>([[`${initialView === "ex" ? "ex" : "op"}:${initialSlot ?? "all"}`, model.initialMap]]));
+  const initialMapKey = initialView === "ex" ? "ex" : initialView === "rd" ? "rd" : "op";
+  const mapCache = useRef(new Map<string, TnSerializedMap>([[`${initialMapKey}:${initialSlot ?? "all"}`, model.initialMap]]));
   const mapInflight = useRef(new Map<string, Promise<TnSerializedMap | null>>());
   const profileCache = useRef(new Map<string, SurveyDemo>());
   const prefetched = useRef(new Set<string>());
@@ -231,17 +233,17 @@ export default function TnSurveyDashboard({
   const mapKey = `${periodKey}:${slot.key}`;
   const map = mapCache.current.get(mapKey) ?? model.initialMap;
   const parties = model.parties;
-  const expected = slot.expected[STATE] ?? {};
-  const actual = model.actual[STATE] ?? {};
+  const expected = slot.expected[config.stateName] ?? {};
+  const actual = model.actual[config.stateName] ?? {};
   const seats = slot.seats ?? {};
   const leadParty = leaderOf(expected, parties);
   const profiles = useMemo(() => {
     const catalog = slot.demoCatalog ?? {};
-    const order = PROFILE_ORDER[periodKey] ?? [];
+    const order = config.profileOrder[periodKey] ?? [];
     const keys = order.filter((key) => catalog[key]);
     for (const key of Object.keys(catalog)) if (!keys.includes(key)) keys.push(key);
     return keys;
-  }, [periodKey, slot.demoCatalog]);
+  }, [config.profileOrder, periodKey, slot.demoCatalog]);
   const activeProfile = profiles.includes(profileKey) ? profileKey : profiles[0] ?? "";
   useEffect(() => {
     const node = document.querySelector<HTMLElement>(`[data-profile-tab="${activeProfile}"]`);
@@ -295,13 +297,13 @@ export default function TnSurveyDashboard({
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  const fetchMap = useCallback(async (period: "op" | "ex", key: string) => {
+  const fetchMap = useCallback(async (period: string, key: string) => {
     const cacheKey = `${period}:${key}`;
     const cached = mapCache.current.get(cacheKey);
     if (cached) return cached;
     const existing = mapInflight.current.get(cacheKey);
     if (existing) return existing;
-    const request = fetch(`/api/survey/tn/map?state=tamil-nadu&period=${period}&slot=${encodeURIComponent(key)}`, { headers: { "Cache-Control": "max-age=300" } })
+    const request = fetch(`${config.apiBase}/map?state=${config.slug}&period=${period}&slot=${encodeURIComponent(key)}`, { headers: { "Cache-Control": "max-age=300" } })
       .then((response) => response.json())
       .then((payload) => {
         if (!payload.ok) return null;
@@ -356,7 +358,7 @@ export default function TnSurveyDashboard({
     const cacheKey = `${mapKey}:ac`;
     if (profileCache.current.has(cacheKey)) return;
     fetchedProfile.current.add(cacheKey);
-    void fetch(`/api/survey/tn/profile?state=tamil-nadu&period=${periodKey}&slot=${encodeURIComponent(slot.key)}&profile=ac`, { headers: { "Cache-Control": "max-age=300" } })
+    void fetch(`${config.apiBase}/profile?state=${config.slug}&period=${periodKey}&slot=${encodeURIComponent(slot.key)}&profile=ac`, { headers: { "Cache-Control": "max-age=300" } })
       .then((response) => response.json())
       .then((payload) => {
         if (payload.ok) { profileCache.current.set(cacheKey, payload.demo as SurveyDemo); setLazyProfiles((current) => ({ ...current, [cacheKey]: payload.demo as SurveyDemo })); }
@@ -364,7 +366,7 @@ export default function TnSurveyDashboard({
       .catch(() => {});
   }, [mapKey, periodKey, slot.key]);
 
-  const prefetch = useCallback((period: "op" | "ex", key: string) => {
+  const prefetch = useCallback((period: string, key: string) => {
     const cacheKey = `${period}:${key}`;
     if (prefetched.current.has(cacheKey) || mapCache.current.has(cacheKey)) return;
     prefetched.current.add(cacheKey);
@@ -378,7 +380,7 @@ export default function TnSurveyDashboard({
     if (activeProfile !== "ac" || lazyProfiles[cacheKey]) return;
     let cancelled = false;
     setLazyLoading(true);
-    void fetch(`/api/survey/tn/profile?state=tamil-nadu&period=${periodKey}&slot=${encodeURIComponent(slot.key)}&profile=ac`, { headers: { "Cache-Control": "max-age=300" } })
+    void fetch(`${config.apiBase}/profile?state=${config.slug}&period=${periodKey}&slot=${encodeURIComponent(slot.key)}&profile=ac`, { headers: { "Cache-Control": "max-age=300" } })
       .then((response) => response.json())
       .then((payload) => {
         if (cancelled || !payload.ok) return;
@@ -411,7 +413,7 @@ export default function TnSurveyDashboard({
     }
     if (socialPrefetched.current) return;
     socialPrefetched.current = true;
-    void fetch("/api/survey/social?state=tamil-nadu")
+    void fetch(`/api/survey/social?state=${config.slug}`)
       .then((response) => response.json())
       .then((payload) => { if (payload.ok) socialOverviewRef.current = payload.overview as TnSocialOverview; })
       .catch(() => { socialPrefetched.current = false; });
@@ -444,19 +446,24 @@ export default function TnSurveyDashboard({
     if (view === "social" || pendingRestore.current == null) return;
     const y = pendingRestore.current;
     pendingRestore.current = null;
-    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" })));
+    const restore = () => window.scrollTo({ top: y, behavior: "auto" });
+    const timer = window.setTimeout(restore, 320);
+    const late = window.setTimeout(restore, 640);
+    const settle = window.setTimeout(restore, 850);
+    const frame = requestAnimationFrame(() => requestAnimationFrame(restore));
+    return () => { cancelAnimationFrame(frame); window.clearTimeout(timer); window.clearTimeout(late); window.clearTimeout(settle); };
   }, [profileKey, slotKey, socialFilter, view]);
 
   async function download() {
     setDownloading(true);
     try {
-      const response = await fetch("/api/survey/download?state=tamil-nadu");
+      const response = await fetch(`/api/survey/download?state=${config.slug}`);
       if (!response.ok) throw new Error("That data could not be downloaded.");
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = "tamil-nadu-survey-export.xlsx";
+      anchor.download = `${config.slug}-survey-export.xlsx`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -467,21 +474,23 @@ export default function TnSurveyDashboard({
   }
 
   return (
-    <main className="relative min-h-0 bg-[color:var(--theme-surface)] text-[16px] text-[var(--p-ink)]">
+    <main className="tn-dashboard relative min-h-0 bg-[color:var(--theme-surface)] text-[16px] text-[var(--p-ink)]">
       <div className={cn("fixed left-0 top-0 z-50 h-0.5 bg-[color:var(--theme-text)] transition-all duration-200", slowLoad ? "w-full opacity-100" : "w-0 opacity-0")} aria-hidden />
       <div className="mx-auto w-full max-w-[1680px] px-4 pb-20 pt-20 sm:px-6 sm:pt-20 xl:px-8">
         <header className="flex flex-wrap items-center gap-3">
-          <Link href="/case-studies" className="tap-44 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3 text-[12.5px] text-[color:var(--theme-text-3)] transition-colors hover:border-[color:var(--theme-text)] hover:text-[color:var(--theme-text)]">
-            <ArrowLeft className="size-3.5" /><span className="hidden sm:inline">Back to Case Studies</span><span className="sm:hidden">Back</span>
+          <Link href="/case-studies" className="tap-44 inline-flex min-h-11 shrink-0 items-center">
+            <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3 text-[12.5px] text-[color:var(--theme-text-3)] transition-colors hover:border-[color:var(--theme-text)] hover:text-[color:var(--theme-text)]">
+              <ArrowLeft className="size-3.5" /><span className="hidden sm:inline">Back to Case Studies</span><span className="sm:hidden">Back</span>
+            </span>
           </Link>
           <div className="inline-flex min-h-11! shrink-0 items-center gap-2 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] py-1.5 pl-1.5 pr-4">
             <span className="grid size-11 place-items-center rounded-full bg-[color:var(--theme-surface-2)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/parties/aiadmk.png" alt="AIADMK symbol" width={40} height={27} className="h-auto w-10 object-contain" />
+              <img src={config.identity.logo} alt={`${config.identity.name} symbol`} width={40} height={27} className="h-auto w-10 object-contain" />
             </span>
             <span className="leading-tight">
-              <span className="block text-[17px] font-bold text-[color:var(--theme-text)]">AIADMK</span>
-              <span className="block text-[14px] text-[color:var(--theme-text-3)]">Tamil Nadu</span>
+              <span className="block text-[17px] font-bold text-[color:var(--theme-text)]">{config.identity.name}</span>
+              <span className="block text-[14px] text-[color:var(--theme-text-3)]">{config.identity.state}</span>
             </span>
           </div>
           {owner && (
@@ -492,13 +501,13 @@ export default function TnSurveyDashboard({
           <p className={cn("w-full text-[15px] font-medium text-[color:var(--theme-text-2)] sm:w-auto sm:text-right", owner ? "sm:ml-0" : "sm:ml-auto")}>{int(model.n_total)} responses</p>
         </header>
 
-        <div className="mt-4 grid grid-cols-1 gap-3 min-[900px]:grid-cols-3">
+        <div className={cn("mt-4 grid grid-cols-1 gap-3", model.cards.length + 1 >= 4 ? "min-[900px]:grid-cols-2 min-[1600px]:grid-cols-4" : "min-[900px]:grid-cols-3")}>
           {model.cards.map((card) => (
             <button key={card.key} type="button" aria-pressed={view === card.key} onMouseEnter={() => prefetch(card.key, "all")} onClick={() => { setDistrict(null); setAcNo(null); navigate({ view: card.key, slot: "all", profile: "", filter: null }); }}
               className={cn("tn-card flex min-h-[112px] flex-col justify-center rounded-2xl border-2 p-4 text-left transition-all min-[1360px]:min-h-[120px]", view === card.key ? "border-[color:var(--theme-selected)] bg-[color:var(--theme-selected)] text-white shadow-[0_0_0_2px_var(--theme-surface),0_0_0_4px_var(--theme-selected)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface-2)] text-[color:var(--theme-text)] hover:-translate-y-0.5 hover:border-[color:var(--theme-border)]")}>
               <p className="text-[17px] font-bold">{card.label}</p>
-              <p className={cn("mt-1.5 text-[14px] font-semibold", view === card.key ? "text-white/90" : "text-[color:var(--theme-text-2)]")}>{parties.slice(0, 3).map((party) => `${party} ${pct(card.expected[party])}`).join(" · ")}</p>
-              <p className={cn("mt-1.5 text-[14px] font-bold", view === card.key ? "text-[#4ade80]" : "text-[color:var(--theme-positive)]")}>accuracy {card.accuracy.toFixed(1)}%</p>
+              <p className={cn("mt-1.5 text-[14px] font-semibold", view === card.key ? "text-white/90" : "text-[color:var(--theme-text-2)]")}>{parties.slice(0, config.cardStyle === "ap" ? 2 : 3).map((party) => `${party} ${pct(card.expected[party])}`).join(" · ")}{config.cardStyle === "ap" && card.seats ? ` · seats ${int(card.seats[config.actualParties[0]] ?? 0)}–${int(card.seats[config.actualParties[1]] ?? 0)}` : ""}</p>
+              {card.showAccuracy !== false && <p className={cn("mt-1.5 text-[14px] font-bold", view === card.key ? "text-[#4ade80]" : "text-[color:var(--theme-positive)]")}>accuracy {(card.accuracy ?? 0).toFixed(1)}%</p>}
             </button>
           ))}
           <button type="button" aria-pressed={view === "social"} onMouseEnter={() => prefetchSocial()} onPointerDown={() => prefetchSocial()} onFocus={() => prefetchSocial()} onClick={() => openSocial()} className={cn("tn-card group flex min-h-[112px] items-center rounded-2xl border-2 p-4 text-left transition-all min-[1360px]:min-h-[120px]", view === "social" ? "border-[#1877F2] bg-[color:var(--theme-selected)] text-white shadow-[0_0_0_2px_var(--theme-surface),0_0_0_4px_var(--theme-selected)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface-2)] text-[color:var(--theme-text)] hover:-translate-y-0.5 hover:border-[color:var(--theme-border)]")}>
@@ -518,10 +527,10 @@ export default function TnSurveyDashboard({
 
         {view !== "social" && (
           <div className="mt-4 flex items-center gap-2">
-            <span className="shrink-0 text-[12px] font-bold uppercase tracking-[0.12em] text-[color:var(--theme-warning)]">{view === "ex" ? "Day" : "Month"}</span>
+            <span className="shrink-0 text-[12px] font-bold uppercase tracking-[0.12em] text-[color:var(--theme-warning)]">{config.periodLabels[view] ?? config.monthLabel}</span>
             <div className="no-scrollbar flex flex-1 flex-nowrap items-center gap-2 overflow-x-auto pb-1 snap-x" role="group" aria-label="Survey time slot">
             {slots.filter((item) => !item.subKey).map((item) => {
-              const itemLead = leaderOf(item.expected[STATE] ?? {}, parties) ?? "TVK";
+              const itemLead = leaderOf(item.expected[config.stateName] ?? {}, parties) ?? config.parties[0];
               const subs = slots.filter((candidate) => candidate.subKey && candidate.monthKey === item.key);
               return (
                 <div key={item.key} className="relative shrink-0 snap-start">
@@ -541,8 +550,8 @@ export default function TnSurveyDashboard({
               );
             })}
             {slots.filter((candidate) => candidate.subKey && candidate.monthKey === (slot.monthKey ?? "")).map((item) => {
-              const subLead = leaderOf(item.expected[STATE] ?? {}, parties) ?? "TVK";
-              return <Pill key={item.key} selected={slot.key === item.key} colour={colour(subLead)} party={subLead} label={item.buttonLabel} onClick={(event) => {
+              const subLead = leaderOf(item.expected[config.stateName] ?? {}, parties) ?? config.parties[0];
+              return <Pill key={item.key} selected={slot.key === item.key} colour={colour(subLead)} party={subLead} label={item.buttonLabel} onMouseEnter={() => prefetch(periodKey, item.key)} onClick={(event) => {
                 navigate({ slot: item.key, profile: "" });
                 const strip = event.currentTarget.closest(".no-scrollbar") as HTMLElement | null;
                 if (strip) {
@@ -556,11 +565,11 @@ export default function TnSurveyDashboard({
         )}
 
         {socialMounted && (
-          <div className={cn("mt-4", view === "social" ? "tn-crossfade" : "hidden")}><TnSocialMedia stateSlug="tamil-nadu" initialFilter={socialFilter} initialOverview={socialOverviewRef.current} onClose={closeSocial} owner={owner} /></div>
+          <div className={cn("mt-4", view === "social" ? "tn-crossfade" : "hidden")}><TnSocialMedia stateSlug={config.slug} config={config} initialFilter={socialFilter} initialOverview={socialOverviewRef.current} onClose={closeSocial} owner={owner} /></div>
         )}
         <div className={view === "social" ? "hidden" : undefined}>
           <>
-            <div className="no-scrollbar mt-4 grid grid-cols-2 gap-3 min-[640px]:flex min-[640px]:snap-x min-[640px]:overflow-x-auto min-[640px]:pb-1 min-[1100px]:grid min-[1100px]:grid-cols-5">
+            <div className={cn("no-scrollbar mt-4 grid grid-cols-2 gap-3 min-[640px]:flex min-[640px]:snap-x min-[640px]:overflow-x-auto min-[640px]:pb-1 min-[1100px]:grid", parties.length === 4 ? "min-[1100px]:grid-cols-4" : "min-[1100px]:grid-cols-5")}>
               {parties.map((party, partyIndex) => {
                 const value = expected[party] ?? 0;
                 const perParty = Math.max(0, 100 - Math.abs(value - (actual[party] ?? 0)));
@@ -568,49 +577,65 @@ export default function TnSurveyDashboard({
                   <div key={party} className={cn("min-w-0 rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.03)] min-[640px]:min-w-[160px] min-[640px]:flex-1 min-[640px]:snap-start min-[1100px]:min-w-0", partyIndex === 4 && "col-span-2 min-[640px]:col-span-1")} style={{ borderTopColor: colour(party), borderTopWidth: 3 }}>
                     <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[color:var(--theme-text-2)]"><PartyBadge party={party} size={24} />{party} · {view === "ex" ? "share" : "expected"}</p>
                     <p className="tn-number mt-1 text-[38px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[color:var(--theme-text)]"><CountUp value={value} decimals={2} suffix="%" /></p>
-                    <p className="mt-1.5 text-[12.5px] font-semibold text-[color:var(--theme-negative)]">Actual 2026: {pct2(actual[party])}</p>
-                    <p className="mt-0.5 text-[12.5px] font-semibold text-[color:var(--theme-positive)]">Accuracy {perParty.toFixed(1)}%</p>
+                    <p className="mt-1.5 text-[12.5px] font-semibold text-[color:var(--theme-negative)]">Actual {config.cardStyle === "ap" ? "2024" : "2026"}: {pct2(actual[party])}</p>
+                    {!(config.cardStyle === "ap" && view === "rd") && <p className="mt-0.5 text-[12.5px] font-semibold text-[color:var(--theme-positive)]">Accuracy {perParty.toFixed(1)}%</p>}
                   </div>
                 );
               })}
             </div>
 
-            <div className="mt-3"><VoteShareHero expected={expected} parties={parties} slotKey={slot.key} /></div>
+            <div className="mt-3"><VoteShareHero expected={expected} parties={parties} slotKey={slot.key} label={config.shareLabel[view] ?? "Vote share"} /></div>
 
 
 
             {profiles.length > 0 && (
               <Section title={`Voter profile · ${slot.buttonLabel}`} className="mt-3">
                 <PillRow label="PROFILE" ariaLabel="Voter profile" className="mt-3">
-                  {profiles.map((key) => {
-                    const profileLead = weightedLeader(slot.profiles[key], parties) ?? leadParty ?? parties[0] ?? "Others";
-                    return (
-                      <Pill
-                        key={key}
-                        selected={activeProfile === key}
-                        colour={colour(profileLead)}
-                        party={profileLead}
-                        profileTab={key}
-                        label={slot.demoCatalog[key]?.label ?? key}
-                        onClick={(event) => {
-                          navigate({ profile: key });
-                          const strip = event.currentTarget.closest(".no-scrollbar") as HTMLElement | null;
-                          if (strip) {
-                            const sr = strip.getBoundingClientRect(), br = event.currentTarget.getBoundingClientRect();
-                            strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "smooth" });
-                          }
-                        }}
-                      >
-                        {slot.demoCatalog[key]?.label ?? key}
-                      </Pill>
-                    );
-                  })}
+                  {(() => {
+                    const configured = config.profileGroups?.[periodKey];
+                    const groups = configured?.length
+                      ? configured.map((group) => ({ label: group.label, keys: group.keys.filter((key) => profiles.includes(key)) })).filter((group) => group.keys.length)
+                      : [{ label: "", keys: profiles }];
+                    return groups.map((group, groupIndex) => (
+                      <span key={`${group.label}-${groupIndex}`} className="contents">
+                        {group.label && (
+                          <span className="flex shrink-0 items-center gap-1.5 pl-1 text-[12px] font-bold uppercase tracking-[0.12em] text-[color:var(--theme-text-3)]">
+                            {groupIndex > 0 && <span className="mr-1 h-5 w-px bg-[color:var(--theme-border)]" aria-hidden />}
+                            {group.label}
+                          </span>
+                        )}
+                        {group.keys.map((key) => {
+                          const profileLead = weightedLeader(slot.profiles[key], parties) ?? leadParty ?? parties[0] ?? "Others";
+                          return (
+                            <Pill
+                              key={key}
+                              selected={activeProfile === key}
+                              colour={colour(profileLead)}
+                              party={profileLead}
+                              profileTab={key}
+                              label={slot.demoCatalog[key]?.label ?? key}
+                              onClick={(event) => {
+                                navigate({ profile: key });
+                                const strip = event.currentTarget.closest(".no-scrollbar") as HTMLElement | null;
+                                if (strip) {
+                                  const sr = strip.getBoundingClientRect(), br = event.currentTarget.getBoundingClientRect();
+                                  strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "smooth" });
+                                }
+                              }}
+                            >
+                              {slot.demoCatalog[key]?.label ?? key}
+                            </Pill>
+                          );
+                        })}
+                      </span>
+                    ));
+                  })()}
                 </PillRow>
                 <div className="mt-3">
                   <LazyMount minHeight={540}>
                     {!demo && activeProfile === "ac" ? <div className="rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface-3)] p-6 text-[14px] text-[color:var(--theme-text-3)]">Loading assembly table...</div> :
-                      demo ? <div key={`${slot.key}:${activeProfile}`} className="tn-fade-slide"><TnProfileTable demo={demo} parties={parties} profileKey={activeProfile} periodKey={view} slotLabel={slot.label} average={average} slotLeader={leadParty ?? parties[0] ?? ""} targetParty="AIADMK+" targetMode="below-average" allowTarget={view === "op"}
-                        onTarget={(payload) => openSocial({ match: "target", kind: payload.kind, place: payload.place, label: `${payload.label} · ${payload.place} · AIADMK+ ${payload.value.toFixed(1)}% (average ${payload.average.toFixed(1)}%)`, value: String(payload.value), average: String(payload.average) })}
+                      demo ? <div key={`${slot.key}:${activeProfile}`} className="tn-fade-slide"><TnProfileTable demo={demo} parties={parties} profileKey={activeProfile} periodKey={view} slotLabel={slot.label} average={average} slotLeader={leadParty ?? parties[0] ?? ""} targetParty={config.target.party} targetMode={config.target.mode} targetPillParty={config.target.pillParty} targetTooltip={["zone", "area", "dist", "ac"].includes(activeProfile) ? config.target.tooltipGeo : config.target.tooltipOther} allowTarget={config.target.periods.includes(view)}
+                        onTarget={(payload) => openSocial({ match: "target", kind: payload.kind, place: payload.place, label: `${payload.label} · ${payload.place} · ${config.target.party} ${config.target.mode === "leads" ? "leads" : `${payload.value.toFixed(1)}% (average ${payload.average.toFixed(1)})`}`, value: String(payload.value), average: String(payload.average) })}
                         onCampaigns={(payload) => openSocial({ match: "campaigns", kind: payload.kind, place: payload.place, label: payload.place })}
                         onGroup={(group) => openSocial({ match: "group", group, label: group })}
                       /></div> : null}
@@ -618,10 +643,10 @@ export default function TnSurveyDashboard({
                 </div>
               </Section>
             )}
-            <LazyMount minHeight={380}><SwingSection data={model} swing={model.swing} parties={parties} period={view === "ex" ? "ex" : "op"} slot={slot.key} /></LazyMount>
-            <section ref={mapHostRef} className="relative mt-3 scroll-mt-28 rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-3 shadow-[0_10px_30px_rgba(0,0,0,0.035)] sm:p-4" aria-label="Tamil Nadu map">
+            <LazyMount minHeight={380}><SwingSection data={model} swing={model.swing} parties={parties} period={view} slot={slot.key} config={config} /></LazyMount>
+            <section ref={mapHostRef} className="relative mt-3 scroll-mt-28 rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-3 shadow-[0_10px_30px_rgba(0,0,0,0.035)] sm:p-4" aria-label={`${config.stateName} map`}>
               <div className="mb-2 flex h-11 items-center justify-between gap-2">
-                <p className="text-[13px] font-semibold text-[color:var(--theme-text-3)]">{district ?? (acNo != null ? `Assembly constituency ${acNo}` : "Tamil Nadu")}</p>
+                <p className="text-[13px] font-semibold text-[color:var(--theme-text-3)]">{district ?? (acNo != null ? `Assembly constituency ${acNo}` : config.map.heading)}</p>
                 {(district || acNo != null) && (
                   <button type="button" onClick={() => { setDistrict(null); setAcNo(null); }} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3.5 text-[13px] font-semibold text-[color:var(--theme-text)] transition-colors hover:border-[color:var(--theme-text)] hover:bg-[color:var(--theme-surface-3)]">
                     <ArrowLeft className="size-4" /> Back to state
@@ -629,7 +654,26 @@ export default function TnSurveyDashboard({
                 )}
               </div>
               <div className={cn("relative h-[380px] overflow-hidden rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface-2)] transition-opacity md:h-[680px] xl:h-[700px]", mapLoading && "opacity-60")}>
-                {mapMounted ? <TamilNaduMap
+                {mapMounted ? (config.slug === "andhra-pradesh-2024" ? <ApMap
+                  acs={map.acs}
+                  districts={map.districts}
+                  district={district}
+                  acNo={acNo}
+                  year="2026"
+                  theme={theme}
+                  fitKey={0}
+                  onSelectDistrict={(name) => { setDistrict(name); setAcNo(null); }}
+                  onSelectAc={(no) => setAcNo(no)}
+                  onReset={() => { setDistrict(null); setAcNo(null); }}
+                  tooltip={(payload) => {
+                    const row = payload.kind === "district" ? map.districtRows[payload.name] : payload.no != null ? map.acRows[String(payload.no)] : undefined;
+                    const shares = row?.shares as Record<string, number> | null | undefined;
+                    const ranked = parties
+                      .map((party) => ({ party, value: Number(shares?.[config.map.shareKey[party] ?? party] ?? 0) * 100 }))
+                      .sort((a, b) => b.value - a.value);
+                    return { title: payload.name, leader: shares && ranked[0] && ranked[0].value > 0 ? ranked[0].party : null, rows: shares ? ranked : [] };
+                  }}
+                /> : <TamilNaduMap
                   acs={map.acs}
                   districts={map.districts}
                   district={district}
@@ -644,15 +688,11 @@ export default function TnSurveyDashboard({
                     const row = payload.kind === "district" ? map.districtRows[canonicalDistrictName(payload.name)] : payload.no != null ? map.acRows[String(payload.no)] : undefined;
                     const shares = row?.shares as Record<string, number> | null | undefined;
                     const ranked = parties
-                      .map((party) => ({ party, value: Number(shares?.[GROUP_KEY[party] ?? party] ?? 0) * 100 }))
+                      .map((party) => ({ party, value: Number(shares?.[config.map.shareKey[party] ?? party] ?? 0) * 100 }))
                       .sort((a, b) => b.value - a.value);
-                    return {
-                      title: payload.name,
-                      leader: shares && ranked[0] && ranked[0].value > 0 ? ranked[0].party : null,
-                      rows: shares ? ranked : [],
-                    };
+                    return { title: payload.name, leader: shares && ranked[0] && ranked[0].value > 0 ? ranked[0].party : null, rows: shares ? ranked : [] };
                   }}
-                /> : <div className="grid h-full place-items-center text-[14px] text-[color:var(--theme-text-3)]">Preparing map...</div>}
+                />) : <div className="grid h-full place-items-center text-[14px] text-[color:var(--theme-text-3)]">Preparing map...</div>}
                 {mapLoading && <p role="status" className="absolute inset-0 grid place-items-center text-[14px] font-semibold text-[color:var(--theme-text-3)]">Loading map...</p>}
               </div>
               <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-[color:var(--theme-text-2)]">
@@ -660,7 +700,7 @@ export default function TnSurveyDashboard({
                 <span className="inline-flex items-center gap-1.5"><span className="h-3 w-6 rounded-[2px] bg-[#94A3B8] ring-1 ring-inset ring-black/10" />No data / under 30</span>
               </div>
             </section>
-            <LazyMount minHeight={520}><SeatsByZone data={model} parties={parties} seats={seats} periodKey={view} slotLabel={slot.label} /></LazyMount>
+            <LazyMount minHeight={520}><SeatsByZone data={model} parties={parties} seats={seats} periodKey={view} slotLabel={slot.label} config={config} /></LazyMount>
           </>
         </div>
       </div>
@@ -668,19 +708,21 @@ export default function TnSurveyDashboard({
   );
 }
 
-function SwingSection({ data, swing, parties, period, slot }: { data: TnClientModel; swing: TnSwingPayload; parties: string[]; period: "op" | "ex"; slot: string }) {
-  const state = "Tamil Nadu";
+function SwingSection({ data, swing, parties, period, slot, config }: { data: TnClientModel; swing: TnSwingPayload; parties: string[]; period: string; slot: string; config: CaseStudyConfig }) {
+  const state = config.stateName;
   const sources = swing.sources[period] ?? [];
   const source = sources.find((item) => item.key === slot) ?? sources[0];
-  if (!source) return <Section title={`Zone swing · ${period === "ex" ? "Exit poll" : "Opinion poll"}`} className="mt-3"><p className="mt-2 text-[14px] text-[color:var(--theme-text-3)]">No swing data in this upload.</p></Section>;
+  if (!source) return <Section title={`${config.cardStyle === "ap" ? "Region swing" : "Zone swing"} · ${period === "ex" ? "Exit poll" : "Opinion poll"}`} className="mt-3"><p className="mt-2 text-[14px] text-[color:var(--theme-text-3)]">No swing data in this upload.</p></Section>;
+  const fromLabel = config.swing.fromLabel[period] ?? "";
+  const showActual = config.swing.showActual.includes(period);
   return (
-    <Section title={`Zone swing · ${source.label}`} className="mt-3">
+    <Section title={`${config.cardStyle === "ap" ? "Region swing" : "Zone swing"} · ${source.label}`} className="mt-3">
       <div className="mt-3 overflow-x-auto rounded-xl border border-[color:var(--theme-border)]">
         <table className="w-full min-w-[980px] border-collapse text-[15px]">
-          <thead className="bg-[color:var(--theme-surface-3)] text-left text-[13px] uppercase tracking-wide text-[color:var(--theme-text-3)]"><tr><th className="px-4 py-3">Zone</th>{parties.map((party) => <th key={party} className="px-4 py-3 text-center"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party} 21→26</span></th>)}</tr></thead>
+          <thead className="bg-[color:var(--theme-surface-3)] text-left text-[13px] uppercase tracking-wide text-[color:var(--theme-text-3)]"><tr><th className="px-4 py-3">{config.cardStyle === "ap" ? "Region" : "Zone"}</th>{parties.map((party) => <th key={party} className="px-4 py-3 text-center"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party} {fromLabel}</span></th>)}</tr></thead>
           <tbody>
             {data.regions.map((region) => {
-              const before = data.base?.[region] ?? TN_2021_BASE[region];
+              const before = source.base?.[region] ?? data.base?.[region] ?? TN_2021_BASE[region as keyof typeof TN_2021_BASE];
               const after = source.expected[region];
               if (!before || !after) return null;
               return (
@@ -689,7 +731,7 @@ function SwingSection({ data, swing, parties, period, slot }: { data: TnClientMo
                   {parties.map((party) => {
                     const swing = (after[party] ?? 0) - (before[party] ?? 0);
                     const tone = swingTone(swing);
-                    return <td key={party} className="px-4 py-2.5 text-center tabular-nums">{pct(before[party])} → {pct(after[party])} <span className={cn("ml-1 rounded px-1.5 py-0.5 text-[12px] font-bold", tone === "up" ? "bg-[color:var(--theme-positive-soft)] text-[color:var(--theme-positive)]" : tone === "down" ? "bg-[color:var(--theme-negative-soft)] text-[color:var(--theme-negative)]" : "text-[color:var(--theme-text-3)]")}>{swingLabel(swing)}</span>{region === state && data.actual[region]?.[party] != null && <span className="mt-0.5 block text-[12px] font-bold text-[color:var(--theme-negative)]">Actual 2026: {pct(data.actual[region][party])}</span>}</td>;
+                    return <td key={party} className="px-4 py-2.5 text-center tabular-nums">{pct(before[party])} → {pct(after[party])} <span className={cn("ml-1 rounded px-1.5 py-0.5 text-[12px] font-bold", tone === "up" ? "bg-[color:var(--theme-positive-soft)] text-[color:var(--theme-positive)]" : tone === "down" ? "bg-[color:var(--theme-negative-soft)] text-[color:var(--theme-negative)]" : "text-[color:var(--theme-text-3)]")}>{swingLabel(swing)}</span>{showActual && region === state && data.actual[region]?.[party] != null && <span className="mt-0.5 block text-[12px] font-bold text-[color:var(--theme-negative)]">Actual {config.cardStyle === "ap" ? "2024" : "2026"}: {pct(data.actual[region][party])}</span>}</td>;
                   })}
                 </tr>
               );
@@ -701,13 +743,14 @@ function SwingSection({ data, swing, parties, period, slot }: { data: TnClientMo
   );
 }
 
-function SeatsByZone({ data, parties, seats, periodKey, slotLabel }: { data: TnClientModel; parties: string[]; seats: Record<string, unknown>; periodKey: string; slotLabel: string }) {
+function SeatsByZone({ data, parties, seats, periodKey, slotLabel, config }: { data: TnClientModel; parties: string[]; seats: Record<string, unknown>; periodKey: string; slotLabel: string; config: CaseStudyConfig }) {
   const zones = (seats.zones as Record<string, Record<string, unknown>> | undefined) ?? {};
   const actualZones = (data.actualZones as Record<string, Record<string, unknown>> | undefined) ?? {};
   const actualSeats = data.actualSeats as Record<string, unknown>;
-  const summaryParties = ["TVK", "DMK+", "AIADMK+", "NTK"];
-  const actualParties = ["TVK", "DMK+", "AIADMK+"];
-  const majority = projectedMajority(seats, summaryParties);
+  const summaryParties = config.seatParties;
+  const actualParties = config.actualParties;
+  const majority = projectedMajority(seats, summaryParties, config.map.majority);
+  const showActualColumns = config.cardStyle !== "ap";
   return (
     <Section title={`Seats by zone · ${slotLabel}`} className="mt-3">
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -722,8 +765,8 @@ function SeatsByZone({ data, parties, seats, periodKey, slotLabel }: { data: TnC
       <div className="mt-3 overflow-x-auto rounded-xl border border-[color:var(--theme-border)]">
         <table className="w-full min-w-[780px] border-collapse text-[15px]" aria-label={majority.status === "majority" ? `${majority.leader} projected majority with ${majority.seats} seats` : "Projected assembly is hung"} >
           <thead className="bg-[color:var(--theme-surface-3)] text-left text-[13px] uppercase tracking-wide text-[color:var(--theme-text-3)]">
-            <tr><th rowSpan={2} className="px-4 py-3">Zone</th><th rowSpan={2} className="px-4 py-3 text-right">ACs</th><th colSpan={4} className="px-4 py-3 text-center">Projected</th><th colSpan={3} className="px-4 py-3 text-center">Actual 2026</th></tr>
-            <tr>{summaryParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party}</span></th>)}{actualParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party}</span></th>)}</tr>
+            <tr><th rowSpan={2} className="px-4 py-3">Zone</th><th rowSpan={2} className="px-4 py-3 text-right">ACs</th><th colSpan={summaryParties.length} className="px-4 py-3 text-center">Projected</th>{showActualColumns && <th colSpan={actualParties.length} className="px-4 py-3 text-center">Actual {config.cardStyle === "ap" ? "2024" : "2026"}</th>}</tr>
+            <tr>{summaryParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party}</span></th>)}{showActualColumns && actualParties.map((party) => <th key={party} className="px-4 py-2 text-right"><span className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={16} />{party}</span></th>)}</tr>
           </thead>
           <tbody>
             {Object.entries(zones).map(([zone, row]) => (
@@ -731,14 +774,14 @@ function SeatsByZone({ data, parties, seats, periodKey, slotLabel }: { data: TnC
                 <th scope="row" className="px-4 py-2.5 text-left font-semibold">{data.zonelabels?.[zone] ?? zone}</th>
                 <td className="px-4 py-2.5 text-right tabular-nums">{int(Number(row.acs ?? 0))}</td>
                 {summaryParties.map((party) => <td key={party} className="px-4 py-2.5 text-right tabular-nums">{int(Number(row[party] ?? 0))}</td>)}
-                {actualParties.map((party) => <td key={party} className="px-4 py-2.5 text-right tabular-nums">{int(Number(actualZones[zone]?.[party] ?? 0))}</td>)}
+                {showActualColumns && actualParties.map((party) => <td key={party} className="px-4 py-2.5 text-right tabular-nums">{int(Number(actualZones[zone]?.[party] ?? 0))}</td>)}
               </tr>
             ))}
             <tr className="border-t-2 border-[color:var(--theme-text)] font-bold">
-              <th scope="row" className="px-4 py-3 text-left">Tamil Nadu</th>
-              <td className="px-4 py-3 text-right tabular-nums">234</td>
+              <th scope="row" className="px-4 py-3 text-left">{config.stateName}</th>
+              <td className="px-4 py-3 text-right tabular-nums">{config.map.totalSeats}</td>
               {summaryParties.map((party) => <td key={party} className="px-4 py-3 text-right tabular-nums">{int(Number(seats[party] ?? 0))}</td>)}
-              {actualParties.map((party) => <td key={party} className="px-4 py-3 text-right tabular-nums">{int(Number(actualSeats[party] ?? 0))}</td>)}
+              {showActualColumns && actualParties.map((party) => <td key={party} className="px-4 py-3 text-right tabular-nums">{int(Number(actualSeats[party] ?? 0))}</td>)}
             </tr>
           </tbody>
         </table>

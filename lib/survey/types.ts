@@ -29,6 +29,7 @@ export type SurveyPeriod = {
   subperiod?: string;
   last?: string;
   target?: string;
+  base2019?: Record<string, SurveyShare>;
 };
 
 export type SurveyAdsSummary = {
@@ -48,6 +49,8 @@ export type SurveyData = {
   actual: Record<string, SurveyShare>;
   /** 2021 alliance baseline by region, used by the zone swing table. */
   base?: Record<string, SurveyShare>;
+  /** AP keeps the 2019 baseline on each period. */
+  base2019?: Record<string, SurveyShare>;
   ads: SurveyAdsSummary;
   n_total: number;
   geo?: unknown;

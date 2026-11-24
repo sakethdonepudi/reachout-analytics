@@ -5,13 +5,14 @@ import { requireAdmin } from "@/lib/auth";
 import { getActiveSurvey } from "@/lib/survey/store";
 import { getActiveTnMap } from "@/lib/tamil-nadu/map-store";
 import { tnSocialOverview } from "@/lib/survey/tn-view-dto";
+import { apSocialOverview } from "@/lib/survey/ap-view-dto";
 import type { SurveyData, SurveyPeriod, SurveyShare } from "@/lib/survey/types";
 
 export const runtime = "nodejs";
 export const preferredRegion = "bom1";
 export const maxDuration = 60;
 
-const STATE = "Tamil Nadu";
+const STATE_NAMES: Record<string, string> = { "tamil-nadu": "Tamil Nadu", "andhra-pradesh-2024": "Andhra Pradesh" };
 const headers = { "Cache-Control": "private, no-store", Vary: "Cookie" };
 
 function leading(shares: SurveyShare | undefined, parties: string[]) {
@@ -35,20 +36,21 @@ export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req);
   if ("deny" in auth) return auth.deny;
   const state = new URL(req.url).searchParams.get("state") ?? "tamil-nadu";
-  if (state !== "tamil-nadu") return Response.json({ ok: false, error: "Only Tamil Nadu is available." }, { status: 400, headers });
-  const record = await getActiveSurvey("tamil-nadu");
+  const stateName = STATE_NAMES[state];
+  if (!stateName) return Response.json({ ok: false, error: "That survey is not available." }, { status: 400, headers });
+  const record = await getActiveSurvey(state);
   if (!record) return Response.json({ ok: false, error: "Survey dashboard not uploaded." }, { status: 404, headers });
   const data = record.data;
   const parties = data.parties;
-  const map = await getActiveTnMap();
-  const social = await tnSocialOverview(data, true);
+  const map = state === "tamil-nadu" ? await getActiveTnMap() : null;
+  const social = await (state === "andhra-pradesh-2024" ? apSocialOverview(data, true) : tnSocialOverview(data, true));
   const workbook = XLSX.utils.book_new();
   const sheet = (name: string, rows: unknown[][]) => XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), name);
 
   sheet("Meta", [
     ["key", "value"],
-    ["state", "tamil-nadu"],
-    ["state_name", STATE],
+    ["state", state],
+    ["state_name", stateName],
     ["survey_version", record.version],
     ["survey_file", record.fileName ?? ""],
     ["n_total", data.n_total],
@@ -61,7 +63,7 @@ export async function GET(req: NextRequest) {
   sheet("Periods", [
     ["period", "label", "n", "nw", "from", "to", "actual", "last", "target", ...parties],
     ...Object.entries(data.periods).map(([key, period]) => {
-      const shares = period.expected[STATE] ?? {};
+      const shares = period.expected[stateName] ?? {};
       return [key, period.label, period.n, period.nw ?? "", period.from ?? "", period.to ?? "", period.actual == null ? "" : String(period.actual), period.last ?? "", period.target ?? "", ...parties.map((party) => shares[party] ?? "")];
     }),
   ]);
@@ -70,7 +72,7 @@ export async function GET(req: NextRequest) {
   sheet("Slots", [
     ["period", "slot", "label", "n", "from", "to", "leading", ...parties, "seat_total", "seat_hit"],
     ...flat.map((item) => {
-      const shares = item.period.expected[STATE] ?? {};
+      const shares = item.period.expected[stateName] ?? {};
       const seats = item.period.seats as Record<string, unknown>;
       const total = parties.reduce((sum, party) => sum + (typeof seats[party] === "number" ? Number(seats[party]) : 0), 0);
       return [item.periodKey, item.slotKey, item.label, item.period.n, item.period.from ?? "", item.period.to ?? "", leading(shares, parties), ...parties.map((party) => shares[party] ?? ""), total, typeof seats.hit === "number" ? seats.hit : ""];
@@ -90,7 +92,7 @@ export async function GET(req: NextRequest) {
   const zoneRows: unknown[][] = [["period", "slot", "region", "n", "baseline", ...parties]];
   for (const item of flat) {
     for (const [region, shares] of Object.entries(item.period.expected)) {
-      const baseline = data.base?.[region];
+      const baseline = (data.periods[item.periodKey]?.base2019 ?? data.base)?.[region];
       zoneRows.push([item.periodKey, item.slotKey, region, data.periods[item.periodKey]?.demo?.zone?.rows.find((row) => row.g === region)?.n ?? "", baseline ? parties.map((party) => baseline[party] ?? "").join(", ") : "", ...parties.map((party) => shares[party] ?? "")]);
     }
   }
@@ -104,19 +106,23 @@ export async function GET(req: NextRequest) {
   }
   sheet("Seats", seatRows);
 
-  const districtRows: unknown[][] = [["district", "acs", "TVK", "DMK+", "AIADMK+", "top"]];
-  for (const row of data.periods.rs?.dist ?? []) {
-    const top = ["TVK", "DMK+", "AIADMK+"].sort((a, b) => Number(row[b] ?? 0) - Number(row[a] ?? 0))[0];
-    districtRows.push([row.d, row.acs, row["TVK"] ?? 0, row["DMK+"] ?? 0, row["AIADMK+"] ?? 0, top]);
+  if (state === "tamil-nadu") {
+    const districtRows: unknown[][] = [["district", "acs", "TVK", "DMK+", "AIADMK+", "top"]];
+    for (const row of data.periods.rs?.dist ?? []) {
+      const top = ["TVK", "DMK+", "AIADMK+"].sort((a, b) => Number(row[b] ?? 0) - Number(row[a] ?? 0))[0];
+      districtRows.push([row.d, row.acs, row["TVK"] ?? 0, row["DMK+"] ?? 0, row["AIADMK+"] ?? 0, top]);
+    }
+    sheet("ResultDistricts", districtRows);
   }
-  sheet("ResultDistricts", districtRows);
 
-  const mapRows: unknown[][] = [["version", "slot", "label", "kind", "level", "name", "n", ...parties]];
-  for (const slot of Object.values(map?.slots ?? {})) {
-    for (const [name, row] of Object.entries(slot.districts)) mapRows.push([map?.version ?? "", slot.key, slot.label, slot.kind, "district", name, row.n, ...parties.map((party) => row.shares?.[party] ?? "")]);
-    for (const [name, row] of Object.entries(slot.acs)) mapRows.push([map?.version ?? "", slot.key, slot.label, slot.kind, "ac", name, row.n, ...parties.map((party) => row.shares?.[party] ?? "")]);
+  if (map) {
+    const mapRows: unknown[][] = [["version", "slot", "label", "kind", "level", "name", "n", ...parties]];
+    for (const slot of Object.values(map.slots ?? {})) {
+      for (const [name, row] of Object.entries(slot.districts)) mapRows.push([map.version ?? "", slot.key, slot.label, slot.kind, "district", name, row.n, ...parties.map((party) => row.shares?.[party] ?? "")]);
+      for (const [name, row] of Object.entries(slot.acs)) mapRows.push([map.version ?? "", slot.key, slot.label, slot.kind, "ac", name, row.n, ...parties.map((party) => row.shares?.[party] ?? "")]);
+    }
+    sheet("MapAggregates", mapRows);
   }
-  sheet("MapAggregates", mapRows);
 
   const socialRows: unknown[][] = [["level", "key", "label", "campaigns", "reach", "impressions", "views", "clicks", "engagement", "responses"]];
   socialRows.push(["total", "all", social.label, social.totals.campaigns, social.totals.reach, social.totals.impressions, social.totals.views, social.totals.clicks, social.totals.engagements, ""]);
@@ -125,12 +131,12 @@ export async function GET(req: NextRequest) {
   sheet("Social", socialRows);
 
   const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
-  await audit({ action: "survey_download", role: "owner", meta: { state: "tamil-nadu", surveyVersion: record.version, mapVersion: map?.version ?? null } });
+  await audit({ action: "survey_download", role: "owner", meta: { state, surveyVersion: record.version, mapVersion: map?.version ?? null } });
   return new Response(new Uint8Array(buffer), {
     headers: {
       ...headers,
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="tamil-nadu-survey-export.xlsx"`,
+      "Content-Disposition": `attachment; filename="${state}-survey-export.xlsx"`,
     },
   });
 }

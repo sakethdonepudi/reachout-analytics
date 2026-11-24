@@ -26,7 +26,8 @@ export function PartyBadge({
   return (
     <span
       className={cn(
-        "relative inline-grid shrink-0 place-items-center overflow-hidden rounded-full border align-middle",
+        "relative inline-grid shrink-0 place-items-center rounded-full border align-middle",
+        brand.plus ? "overflow-visible" : "overflow-hidden",
         monogram ? "text-white" : "bg-white",
         className,
       )}
@@ -77,6 +78,9 @@ export function PartyBadge({
           {monogram ?? party.slice(0, 3).toUpperCase()}
         </span>
       )}
+      {brand.plus ? (
+        <span aria-hidden className="absolute -bottom-0.5 -right-0.5 grid size-3.5 place-items-center rounded-full border border-white bg-[color:var(--theme-text)] text-[8px] font-bold leading-none text-[color:var(--theme-surface)]">+{brand.plus}</span>
+      ) : null}
     </span>
   );
 }

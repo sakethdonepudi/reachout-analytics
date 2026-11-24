@@ -7,6 +7,7 @@
  */
 import assert from "node:assert/strict";
 import { tnSocialFiltered, tnSocialMonthly, tnSocialOverview } from "@/lib/survey/tn-view-dto";
+import { apSocialFiltered, apSocialOverview } from "@/lib/survey/ap-view-dto";
 import type { SurveyData } from "@/lib/survey/types";
 
 let pass = 0;
@@ -60,6 +61,42 @@ const data = {
     assert.equal(sum("engagements"), overview.totals.engagements);
     assert.equal(monthly.reduce((total, row) => total + row.campaigns, 0), overview.totals.campaigns);
   });
+
+  console.log("\n1b. Andhra Pradesh client overview");
+  const apData = {
+    parties: ["NDA", "YSRCP", "INC", "Others"],
+    regions: ["Andhra Pradesh"],
+    periods: {},
+    actual: { "Andhra Pradesh": { NDA: 55.3 } },
+    ads: {
+      label: "Meta ads", range: "2023 – 2026",
+      total: { n: 2, reach: 300, impr: 600, views: 300, clicks: 20, eng: 40 },
+      accounts: [
+        { acct: ACCOUNT_ID, acct_name: ACCOUNT_ID, business: "Secret Business", n: 1, reach: 200, impr: 400, views: 200, clicks: 10, eng: 20 },
+        { acct: NAMED_ID, acct_name: "Districts AIADMK", business: "Named Business", n: 1, reach: 100, impr: 200, views: 100, clicks: 10, eng: 20 },
+      ],
+      camps: {
+        [ACCOUNT_ID]: [campaign("120210000000001", "Kuppam look-alike ₹37,350 crore", 200)],
+        [NAMED_ID]: [campaign("120210000000002", "YSRCP retargeting", 100)],
+      },
+      periods: { op: { label: "Opinion poll", responses: 55773, n: 1, reach: 200, impr: 400, views: 200, clicks: 10, eng: 20 } },
+    },
+    n_total: 95389,
+  } as unknown as SurveyData;
+  const apOverview = await apSocialOverview(apData, false);
+  const apOverviewText = JSON.stringify(apOverview);
+  check("AP numeric account becomes Ad account <rank>", () => assert.equal(apOverview.accounts.find((item) => item.key === "acct-1")?.name, "Ad account 1"));
+  check("AP client payload keeps permitted account names", () => assert.ok(apOverview.accounts.some((item) => item.name === "Districts AIADMK")));
+  check("AP overview has no 14-17 digit number", () => assert.ok(!/\d{14,17}/.test(apOverviewText)));
+  check("AP overview has no business name or href", () => {
+    const account = apOverview.accounts.find((item) => item.key === "acct-2");
+    assert.equal(account?.business, undefined);
+    assert.equal(account?.href, undefined);
+  });
+  const apFiltered = await apSocialFiltered(apData, { match: "target", kind: "govt", place: "Not good", label: "Govt performance · Not good" }, false);
+  check("AP target view has no ids or long numbers", () => assert.ok(!/\d{14,17}/.test(JSON.stringify(apFiltered))));
+  check("AP client campaign names strip currency amounts", () => assert.ok(!/₹|\bINR\b|\bRs\.?\b/i.test(JSON.stringify(apFiltered))));
+  check("AP target view labels non-geo audiences", () => assert.match(apFiltered.how, /reuse for retargeting and look-alike/i));
 
   console.log("\n2. Client filtered view");
   const filtered = await tnSocialFiltered(data, { match: "group", group: "Vanniyar" }, false);
