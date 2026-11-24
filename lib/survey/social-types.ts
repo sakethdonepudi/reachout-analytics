@@ -20,7 +20,7 @@ export type TnSocialOverview = {
   totals: TnSocialTotals; accounts: TnSocialAccount[]; periods: TnSocialPeriod[];
 };
 export type TnSocialFiltered = {
-  title: string; note: string; how: string;
+  title: string; place?: string; note: string; how: string;
   accounts: TnSocialAccount[]; campaigns: TnSocialCampaign[]; totalMatching: number;
 };
 export type SocialFilter = {
