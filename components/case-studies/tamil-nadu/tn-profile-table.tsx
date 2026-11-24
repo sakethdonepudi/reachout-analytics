@@ -167,7 +167,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                   onMouseEnter={() => setHover((current) => ({ ...current, row: row.g }))}
                   onMouseLeave={() => setHover((current) => ({ ...current, row: null }))}
                 >
-                  <th scope="row" className="sticky left-0 z-10 bg-white px-3 py-2.5 text-left font-semibold text-[#1f2937]">
+                  <th scope="row" className="sticky left-0 z-10 h-[54px] bg-white px-3 py-1 text-left font-semibold text-[#1f2937]">
                     {clickableGroup ? (
                       <button type="button" onClick={() => onGroup(row.g)} className="group/link inline-flex min-h-11! items-center gap-0.5 text-left font-semibold text-[#002147] underline decoration-[#B8B8B8] decoration-1 underline-offset-2 hover:decoration-[#002147]" title={`Open campaigns for ${row.g}`}>
                         {row.g}
@@ -191,7 +191,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                       <td
                         key={`${party}:${active ? "in" : "out"}`}
                         className={cn(
-                          "relative min-w-[96px] px-2 py-2.5 text-center tabular-nums",
+                          "h-[54px] min-w-[132px] px-2 py-1 text-center align-middle tabular-nums",
                           active ? "tn-col-in" : "tn-col-out",
                           hover.column === party && "tn-col-hover",
                           hover.row === row.g && "tn-row-hover",
@@ -205,36 +205,35 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                         onMouseEnter={() => setHover((current) => ({ ...current, column: party }))}
                         onMouseLeave={() => setHover((current) => ({ ...current, column: null }))}
                       >
-                        <span className="pointer-events-none absolute inset-x-2 bottom-1 h-1 overflow-hidden rounded-full bg-black/10" aria-hidden>
-                          <span className="block h-full rounded-full opacity-70" style={{ width: `${Math.max(2, value)}%`, background: lightText ? "rgba(255,255,255,.7)" : colourOf(party) }} />
-                        </span>
-                        <span
-                          className={cn("relative z-10 inline-block", isLead && "font-extrabold", lightText ? "text-white" : "text-[#0B0B0C]")}
-                          style={{ animationDelay: `${rowIndex * 14 + index * 8}ms` }}
-                        >
-                          {pct(value)}
-                        </span>
-                        {target && (
-                          <span className="group/target relative z-10 mx-auto mt-1 flex justify-center">
-                            <button
-                              type="button"
-                              onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })}
-                              className="tn-target inline-flex min-h-11! min-w-11 items-center justify-center gap-1 rounded-full border border-[#B91C1C] bg-[#DC2626] px-2.5 text-[11px] font-bold text-white shadow-sm"
-                              style={{ animationDelay: `${animationDelay}ms` }}
-                              title="AIADMK+ below average here: open campaigns"
-                              aria-label="Target Campaign. AIADMK+ below average here: open campaigns"
-                            >
-                              <Target className="size-3.5" aria-hidden /> Target Campaign
-                            </button>
-                            <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#0B0B0C] px-2.5 py-1.5 text-[10.5px] font-semibold text-white shadow-xl group-hover/target:block">
-                              AIADMK+ below average here: open campaigns
-                            </span>
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span
+                            className={cn("text-[15px] tabular-nums", isLead && "font-extrabold", lightText ? "text-white" : "text-[#0B0B0C]")}
+                            style={{ animationDelay: `${rowIndex * 14 + index * 8}ms` }}
+                          >
+                            {pct(value)}
                           </span>
-                        )}
+                          {target && (
+                            <span className="group/target relative shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })}
+                                className="tn-target inline-flex h-11 items-center justify-center gap-1 rounded-full border border-[#B91C1C] bg-[#DC2626] px-2 text-[10.5px] font-bold text-white shadow-sm"
+                                style={{ animationDelay: `${animationDelay}ms` }}
+                                title="AIADMK+ below average here: open campaigns"
+                                aria-label="Target Campaign. AIADMK+ below average here: open campaigns"
+                              >
+                                <Target className="size-3.5" aria-hidden /> Target
+                              </button>
+                              <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#0B0B0C] px-2.5 py-1.5 text-[10.5px] font-semibold text-white shadow-xl group-hover/target:block">
+                                AIADMK+ below average here: open campaigns
+                              </span>
+                            </span>
+                          )}
+                        </div>
                       </td>
                     );
                   })}
-                  <td className="whitespace-nowrap px-2 py-1.5 text-left font-semibold">
+                  <td className="h-[54px] whitespace-nowrap px-2 py-1 text-left font-semibold align-middle">
                     {leader.index >= 0 ? (
                       <span className="mr-1 inline-flex items-center gap-1 align-middle">
                         <PartyBadge party={parties[leader.index]} size={16} />
