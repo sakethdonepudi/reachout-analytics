@@ -10,6 +10,7 @@ import { PartyMark } from "@/components/site/party-mark";
 import STATES from "@/lib/data/india-states.json";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@/lib/use-navigate";
+import { useTheme } from "@/components/site/theme";
 
 /* Map outline data: "India" by svg-maps (github.com/VictorCazanave/svg-maps), CC BY 4.0 */
 
@@ -28,6 +29,8 @@ type Stop = { kind: "hero" | "case" | "final"; c?: CaseStudy; t: THREE.Vector3; 
  */
 export default function IndiaMap() {
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const dark = theme === "dark";
 
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -70,20 +73,20 @@ export default function IndiaMap() {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
 
-    const BG = 0xffffff;
+    const BG = dark ? 0x121211 : 0xffffff;
     const scene = new THREE.Scene();
     scene.background = null;
     scene.fog = new THREE.Fog(BG, 1400, 5200);
     const camera = new THREE.PerspectiveCamera(35, vw / vh, 1, 12000);
 
     /* ---------- lights ---------- */
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xf4f4f4, 1.15));
-    const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+    scene.add(new THREE.HemisphereLight(0xffffff, dark ? 0x1a1a19 : 0xf4f4f4, dark ? 0.7 : 1.15));
+    const sun = new THREE.DirectionalLight(0xffffff, dark ? 1.35 : 2.2);
     sun.position.set(-380, 720, 460);
     sun.shadow.bias = -0.0006;
     sun.shadow.radius = 4;
     scene.add(sun);
-    const rim = new THREE.DirectionalLight(0xffffff, 0.35);
+    const rim = new THREE.DirectionalLight(dark ? 0x8fb0ff : 0xffffff, dark ? 0.25 : 0.35);
     rim.position.set(500, 180, -600);
     scene.add(rim);
     const hubLight = new THREE.PointLight(0xffffff, 0, 150, 0);
@@ -110,17 +113,17 @@ export default function IndiaMap() {
     });
 
     /* ---------- ground ---------- */
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshStandardMaterial({ color: 0xfcfcfc, roughness: 1 }));
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshStandardMaterial({ color: dark ? 0x1a1a19 : 0xfcfcfc, roughness: 1 }));
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
-    const grid = new THREE.GridHelper(9000, 300, 0xcfcfcf, 0xe6e6e6);
+    const grid = new THREE.GridHelper(9000, 300, dark ? 0x3a3a37 : 0xcfcfcf, dark ? 0x2e2e2c : 0xe6e6e6);
     grid.position.y = 0.05;
     (grid.material as THREE.Material).transparent = true;
-    (grid.material as THREE.Material).opacity = 0.3;
+    (grid.material as THREE.Material).opacity = dark ? 0.45 : 0.3;
     scene.add(grid);
     const underGlow = new THREE.Mesh(
       new THREE.PlaneGeometry(1200, 1200),
-      new THREE.MeshBasicMaterial({ map: radialTex, color: 0xcfcfcf, transparent: true, opacity: 0.04, blending: THREE.AdditiveBlending, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ map: radialTex, color: dark ? 0x8fb0ff : 0xcfcfcf, transparent: true, opacity: dark ? 0.08 : 0.04, blending: THREE.AdditiveBlending, depthWrite: false }),
     );
     underGlow.rotation.x = -Math.PI / 2;
     underGlow.position.y = 0.2;
@@ -131,9 +134,9 @@ export default function IndiaMap() {
     type St = { g: THREE.Group; cap: THREE.MeshStandardMaterial; side: THREE.MeshStandardMaterial; line: THREE.LineBasicMaterial; partner: boolean; name: string; lift: number; heat: number; hover: number };
     const states: Record<string, St> = {};
     const pickables: THREE.Mesh[] = [];
-    const C_BASE = new THREE.Color(0xf4f4f4), C_PARTNER = new THREE.Color(0xd7ebe3), C_HOT = new THREE.Color(0x1d9e75);
-    const C_HOVER = new THREE.Color(0xd9d9d9), C_HERO = new THREE.Color(0x1f4e78);
-    const S_BASE = new THREE.Color(0xe6e6e6), S_HOT = new THREE.Color(0x0f6e56);
+    const C_BASE = new THREE.Color(dark ? 0x262624 : 0xf4f4f4), C_PARTNER = new THREE.Color(dark ? 0x22344f : 0xd7ebe3), C_HOT = new THREE.Color(dark ? 0x5eead4 : 0x1d9e75);
+    const C_HOVER = new THREE.Color(dark ? 0x3a3a37 : 0xd9d9d9), C_HERO = new THREE.Color(dark ? 0x38424f : 0x1f4e78);
+    const S_BASE = new THREE.Color(dark ? 0x3a3a37 : 0xe6e6e6), S_HOT = new THREE.Color(dark ? 0x5eead4 : 0x0f6e56);
     for (const s of STATES as { id: string; name: string; d: string }[]) {
       const data = loader.parse(`<svg xmlns="http://www.w3.org/2000/svg"><path d="${s.d}"/></svg>`);
       const shapes = data.paths.flatMap((p) => SVGLoader.createShapes(p));
@@ -158,7 +161,7 @@ export default function IndiaMap() {
       shapes.forEach((sh) => { addLoop(sh.getPoints()); sh.holes.forEach((h) => addLoop(h.getPoints())); });
       const lg = new THREE.BufferGeometry();
       lg.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-      const line = new THREE.LineBasicMaterial({ color: partner ? 0xffb866 : 0xcfcfcf, transparent: true, opacity: partner ? 0.8 : 0.55 });
+      const line = new THREE.LineBasicMaterial({ color: partner ? 0xffb866 : dark ? 0x5a5a54 : 0xcfcfcf, transparent: true, opacity: partner ? 0.8 : 0.55 });
       g.add(new THREE.LineSegments(lg, line));
       scene.add(g);
       pickables.push(mesh);
@@ -169,14 +172,14 @@ export default function IndiaMap() {
     type Mk = { m: THREE.Group; beam: THREE.Mesh; core: THREE.Mesh; halo: THREE.Sprite; rings: THREE.Mesh[]; act: number };
     const markers: Record<string, Mk> = {};
     CASES.forEach((c, i) => {
-      const HUE = c.tour ? 0x1f4e78 : 0x1d9e75, HALO = 0x1d9e75;
+      const HUE = c.tour ? dark ? 0x8fb0ff : 0x1f4e78 : dark ? 0x5eead4 : 0x1d9e75, HALO = dark ? 0x5eead4 : 0x1d9e75;
       const m = new THREE.Group();
       m.position.set(wx(c.x), DEPTH, wz(c.y));
       const beam = new THREE.Mesh(
         new THREE.CylinderGeometry(1.3, 1.3, 1, 24, 1, true),
         new THREE.MeshBasicMaterial({ map: beamTex, color: HUE, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
       );
-      const core = new THREE.Mesh(new THREE.SphereGeometry(2, 24, 16), new THREE.MeshBasicMaterial({ color: c.tour ? 0xffffff : 0x1d9e75 }));
+      const core = new THREE.Mesh(new THREE.SphereGeometry(2, 24, 16), new THREE.MeshBasicMaterial({ color: c.tour ? 0xffffff : dark ? 0x5eead4 : 0x1d9e75 }));
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTex, color: HALO, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
       const rings = [0, 0.5].map((ph) => {
         const r = new THREE.Mesh(
@@ -200,7 +203,7 @@ export default function IndiaMap() {
     for (let i = 0; i < PN; i++) { pp[i * 3] = (Math.random() - 0.5) * 1300; pp[i * 3 + 1] = 10 + Math.random() * 320; pp[i * 3 + 2] = (Math.random() - 0.5) * 1100; }
     const pg = new THREE.BufferGeometry();
     pg.setAttribute("position", new THREE.BufferAttribute(pp, 3));
-    const particles = new THREE.Points(pg, new THREE.PointsMaterial({ size: 2.4, map: radialTex, color: 0xcfcfcf, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const particles = new THREE.Points(pg, new THREE.PointsMaterial({ size: 2.4, map: radialTex, color: dark ? 0x8fb0ff : 0xcfcfcf, transparent: true, opacity: dark ? 0.2 : 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
     scene.add(particles);
 
     /* ---------- post ---------- */
@@ -425,24 +428,24 @@ export default function IndiaMap() {
         (Array.isArray(mat) ? mat : mat ? [mat] : []).forEach((x) => x.dispose());
       });
     };
-  }, []);
+  }, [dark]);
 
   const tourIndex = cardCase ? TOUR.indexOf(cardCase) : -1;
   const labels = ["Home", ...TOUR.map((c) => c.label), "All India"];
 
   return (
-    <div ref={stageRef} className="absolute inset-0 overflow-hidden">
+    <div ref={stageRef} className="absolute inset-0 overflow-hidden bg-[color:var(--theme-bg)]">
       <canvas ref={canvasRef} className="absolute inset-0 z-0 block h-full w-full" aria-label="3D map of India with ReachOut Analytics campaigns" />
-      <div className="pointer-events-none absolute inset-0 z-10 opacity-50" aria-hidden style={{ backgroundImage: "radial-gradient(circle, #CFCFCF 0.7px, transparent 0.9px)", backgroundSize: "24px 24px", maskImage: "linear-gradient(to bottom, transparent 0%, #000 35%, #000 82%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 35%, #000 82%, transparent 100%)" }} />
-      <svg className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[80vw] w-[80vw] -translate-x-1/2 -translate-y-1/2 opacity-30" viewBox="0 0 600 600" fill="none" aria-hidden><g stroke="#CFCFCF" strokeWidth="0.7" transform="rotate(-22 300 300)"><ellipse cx="300" cy="300" rx="270" ry="196" /><ellipse cx="300" cy="300" rx="220" ry="154" strokeDasharray="2 4" /></g></svg>
+      <div className="india-map-dots pointer-events-none absolute inset-0 z-10 opacity-50" aria-hidden />
+      <svg className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[80vw] w-[80vw] -translate-x-1/2 -translate-y-1/2 opacity-30" viewBox="0 0 600 600" fill="none" aria-hidden><g className="india-map-orbit" strokeWidth="0.7" transform="rotate(-22 300 300)"><ellipse cx="300" cy="300" rx="270" ry="196" /><ellipse cx="300" cy="300" rx="220" ry="154" strokeDasharray="2 4" /></g></svg>
 
       {/* leader line */}
       <svg ref={leaderRef} className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible" aria-hidden>
         <defs>
-          <linearGradient id="lg" x1="0" x2="1"><stop offset="0" stopColor="#CFCFCF" /><stop offset="1" stopColor="#CFCFCF" stopOpacity=".3" /></linearGradient>
+          <linearGradient id="lg" x1="0" x2="1"><stop offset="0" stopColor="var(--theme-text-3)" /><stop offset="1" stopColor="var(--theme-text-3)" stopOpacity=".3" /></linearGradient>
         </defs>
         <path ref={leaderPath} fill="none" stroke="url(#lg)" strokeWidth="1.5" strokeDasharray="4 5" />
-        <circle ref={leaderDot} r="4" fill="#0B0B0C" />
+        <circle ref={leaderDot} r="4" fill="var(--theme-text)" />
       </svg>
 
       {/* small glass case card */}
@@ -462,19 +465,18 @@ export default function IndiaMap() {
           if (e.key !== "Enter" || !cardCase) return;
           navigate.push(caseUrl(cardCase.slug), { cover: { title: cardCase.title, eyebrow: cardCase.label, subtitle: cardCase.region } });
         }}
-        style={{ background: "#ffffff" }}
-        className="invisible absolute left-0 top-0 z-30 w-[calc(100%-32px)] max-w-[300px] cursor-pointer rounded-[16px] border border-[#E6E6E6] p-4 opacity-0 shadow-[0_10px_30px_rgba(0,0,0,.08)] transition-[box-shadow] hover:shadow-[0_18px_40px_rgba(0,0,0,.12)] sm:w-[300px]"
+        className="invisible absolute left-0 top-0 z-30 w-[calc(100%-32px)] max-w-[300px] cursor-pointer rounded-[16px] border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-4 opacity-0 shadow-[0_10px_30px_rgba(0,0,0,.08)] transition-[box-shadow] hover:shadow-[0_18px_40px_rgba(0,0,0,.12)] sm:w-[300px]"
       >
         <span className="pointer-events-none absolute inset-0 rounded-[16px] border border-transparent" aria-hidden>
-          <span className="absolute left-0 top-0 size-3 border-l border-t border-[#0B0B0C]" style={{ margin: "-5px" }} />
-          <span className="absolute right-0 top-0 size-3 border-r border-t border-[#0B0B0C]" style={{ margin: "-5px" }} />
-          <span className="absolute bottom-0 left-0 size-3 border-b border-l border-[#0B0B0C]" style={{ margin: "-5px" }} />
-          <span className="absolute bottom-0 right-0 size-3 border-b border-r border-[#0B0B0C]" style={{ margin: "-5px" }} />
+          <span className="absolute left-0 top-0 size-3 border-l border-t border-[color:var(--theme-text)]" style={{ margin: "-5px" }} />
+          <span className="absolute right-0 top-0 size-3 border-r border-t border-[color:var(--theme-text)]" style={{ margin: "-5px" }} />
+          <span className="absolute bottom-0 left-0 size-3 border-b border-l border-[color:var(--theme-text)]" style={{ margin: "-5px" }} />
+          <span className="absolute bottom-0 right-0 size-3 border-b border-r border-[color:var(--theme-text)]" style={{ margin: "-5px" }} />
         </span>
         {cardCase && (
           <>
             <div className="mb-3 flex items-center justify-between">
-              <span className="rounded-full border border-[#E6E6E6] bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8A8A8A]">{cardCase.badge}</span>
+              <span className="rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface-2)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--theme-text-3)]">{cardCase.badge}</span>
               <div className="flex items-center gap-2">
                 {tourIndex >= 0 && <span className="text-[10px] font-semibold tracking-[0.16em] text-[var(--r-muted)]">{String(tourIndex + 1).padStart(2, "0")} / {String(TOUR.length).padStart(2, "0")}</span>}
               </div>
@@ -484,7 +486,7 @@ export default function IndiaMap() {
               <div className="min-w-0">
                 <h3 className="font-display text-xl font-semibold leading-tight text-[var(--r-ink)]">{cardCase.title}</h3>
                 <p className="flex items-center gap-2 truncate text-xs">
-                  <b className="shrink-0 font-bold text-[#0B0B0C]">{cardCase.party}</b>
+                  <b className="shrink-0 font-bold text-[color:var(--theme-text)]">{cardCase.party}</b>
                   <span className="truncate text-[var(--r-muted)]">{cardCase.stateName}</span>
                 </p>
               </div>
@@ -492,12 +494,12 @@ export default function IndiaMap() {
             <p className="mb-3 text-[13px] leading-relaxed text-[var(--r-muted)]">{cardCase.summary}</p>
             <div className="mb-3.5 flex flex-wrap gap-1.5">
               {cardCase.tags.map((t, i) => (
-                <span key={t} className={cn("rounded-md px-2 py-1 text-[10.5px] font-semibold", "border border-[#E6E6E6] bg-white text-[#555]")}>{t}</span>
+                <span key={t} className={cn("rounded-md px-2 py-1 text-[10.5px] font-semibold", "border border-[color:var(--theme-border)] bg-[color:var(--theme-surface-2)] text-[color:var(--theme-text-2)]")}>{t}</span>
               ))}
             </div>
             <div className="flex items-center justify-between border-t border-[var(--r-line)] pt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--r-ink)]">
               View case study
-              <span className="grid size-7 place-items-center rounded-full bg-[#0B0B0C] text-white"><ArrowUpRight className="size-4" /></span>
+              <span className="grid size-7 place-items-center rounded-full bg-[color:var(--theme-text)] text-[color:var(--theme-surface)]"><ArrowUpRight className="size-4" /></span>
             </div>
           </>
         )}
@@ -508,13 +510,13 @@ export default function IndiaMap() {
         {labels.map((label, i) => (
           <button key={label} onClick={() => scrollToStop(i)} className="group flex items-center justify-end gap-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--r-muted)]">
             <span className={cn("translate-x-1.5 opacity-0 transition group-hover:translate-x-0 group-hover:opacity-100", activeStop === i && "translate-x-0 text-[var(--r-ink)] opacity-100")}>{label}</span>
-            <i className={cn("block h-2 w-px bg-[#BDBDBD] transition-all duration-300", activeStop === i && "h-4 w-0.5 bg-[#0B0B0C]")} />
+            <i className={cn("block h-2 w-px bg-[color:var(--theme-border)] transition-all duration-300", activeStop === i && "h-4 w-0.5 bg-[color:var(--theme-text)]")} />
           </button>
         ))}
       </nav>
 
       {/* small interaction hint */}
-      <p className="pointer-events-none absolute bottom-6 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#6B6B6B]">Drag to rotate · Select a state</p>
+      <p className="pointer-events-none absolute bottom-6 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[color:var(--theme-text-2)]">Drag to rotate · Select a state</p>
 
       {/* labels over markers in the zoomed-out view */}
       {CASES.map((c) => (
@@ -523,18 +525,18 @@ export default function IndiaMap() {
           ref={(el) => { pinRefs.current[c.slug] = el; }}
           data-ui
           onClick={() => { navigate.prefetch(caseUrl(c.slug)); navigate.push(caseUrl(c.slug), { cover: { title: c.title, eyebrow: c.label, subtitle: c.region } }); }}
-          className="glass absolute left-0 top-0 z-20 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold opacity-0 transition-opacity"
+          className="absolute left-0 top-0 z-20 whitespace-nowrap rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3 py-1.5 text-xs font-semibold text-[color:var(--theme-text)] opacity-0 shadow-sm transition-opacity"
           style={{ pointerEvents: "none" }}
         >
           {c.party} · {c.label}
         </button>
       ))}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-20 bg-gradient-to-t from-white via-white/70 to-transparent" aria-hidden />
+      <div className="india-map-fade pointer-events-none absolute inset-x-0 bottom-0 z-10 h-20" aria-hidden />
 
-      <div ref={tipRef} className={cn("pointer-events-none absolute left-0 top-0 z-30 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-opacity glass", tip ? "opacity-100" : "opacity-0")}>
+      <div ref={tipRef} className={cn("pointer-events-none absolute left-0 top-0 z-30 whitespace-nowrap rounded-lg border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3 py-2 text-xs font-semibold text-[color:var(--theme-text)] shadow-lg transition-opacity", tip ? "opacity-100" : "opacity-0")}>
         {tip?.name}
-        {tip?.sub && <small className="mt-0.5 block text-[10px] uppercase tracking-[0.12em] text-[#555]">{tip.sub}</small>}
+        {tip?.sub && <small className="mt-0.5 block text-[10px] uppercase tracking-[0.12em] text-[color:var(--theme-text-2)]">{tip.sub}</small>}
       </div>
     </div>
   );

@@ -67,7 +67,7 @@ export function Pill({
       data-pill-selected={selected ? "true" : "false"}
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-11! shrink-0 snap-start items-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-[14px] font-semibold transition-all active:scale-[0.98]",
+        "inline-flex min-h-[45px]! shrink-0 snap-start items-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-[14px] font-semibold transition-all active:scale-[0.98]",
         selected ? "shadow-[0_0_0_2px_var(--theme-surface),0_0_0_3.5px_var(--theme-selected)]" : "hover:border-[color:var(--theme-text)]",
         className,
       )}

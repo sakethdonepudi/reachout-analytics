@@ -80,9 +80,9 @@ export default async function CaseStudyPage({ params, searchParams }: { params: 
         panels={{
           ...(tabs.includes("exit") ? { exit: <NotUploaded label="Exit poll data" owner={session.role === "owner"} /> } : {}),
           opinion: (
-      <main className="app-chrome relative min-h-0 overflow-hidden bg-white text-[var(--p-ink)]">
+      <main className="app-chrome relative min-h-0 overflow-hidden bg-[color:var(--theme-bg)] text-[color:var(--theme-text)]">
         <div className="relative mx-auto max-w-6xl px-6 pb-16 pt-0 sm:px-10">
-          <CaseBackLink className="tap inline-flex items-center gap-2 rounded-full border border-[#CFCFCF] bg-white px-3 py-1.5 text-[12.5px] text-[#6B6B6B] transition-colors hover:border-[#0B0B0B] hover:text-[#0B0B0B]">
+          <CaseBackLink className="tap inline-flex items-center gap-2 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3 py-1.5 text-[12.5px] text-[color:var(--theme-text-2)] transition-colors hover:border-[color:var(--theme-text)] hover:text-[color:var(--theme-text)]">
             <ArrowLeft className="size-4" /> Back to case studies
           </CaseBackLink>
 
@@ -93,11 +93,11 @@ export default async function CaseStudyPage({ params, searchParams }: { params: 
                 <>
                   <PartyCard party={c.party} state={c.stateName} className="max-w-[320px]" />
                   <p className="mt-5 flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="size-4 text-[#0B0B0C]" /> {c.region}
+                    <MapPin className="size-4 text-[color:var(--theme-text)]" /> {c.region}
                   </p>
                 </>
               ) : (
-                <span className="rounded-full border border-[#E6E6E6] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#555]">Upcoming</span>
+                <span className="rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--theme-text-2)]">Upcoming</span>
               )}
               <p className={c ? "mt-6 max-w-xl text-xl leading-relaxed text-foreground/80" : "mt-6 max-w-xl text-xl leading-relaxed text-foreground/80"}>
                 {c?.summary ?? "We're preparing for this election cycle. Get in touch to discuss how data can shape your campaign."}
@@ -111,17 +111,13 @@ export default async function CaseStudyPage({ params, searchParams }: { params: 
               <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {c.tags.map((t, i) => (
                   <div key={t} className="report-card p-4">
-                    <span className="text-[11px] font-semibold text-[#6B6B6B]">{String(i + 1).padStart(2, "0")}</span>
-                    <h3 className="mt-2 text-[15px] font-semibold text-[#0B0B0C]">{t}</h3>
+                    <span className="text-[11px] font-semibold text-[color:var(--theme-text-3)]">{String(i + 1).padStart(2, "0")}</span>
+                    <h3 className="mt-2 text-[15px] font-semibold text-[color:var(--theme-text)]">{t}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{CAPABILITIES[t] ?? ""}</p>
                   </div>
                 ))}
               </div>
 
-              {/* TODO: replace with verified results for this campaign */}
-              <div className="report-note mt-6">
-                <b>Results</b>: add verified outcomes for this campaign here (seats, vote share, accuracy of predictions).
-              </div>
             </>
           )}
 

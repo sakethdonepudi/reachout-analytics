@@ -11,8 +11,10 @@ import { useNavigate } from "@/lib/use-navigate";
 import { useDelayedFlag } from "@/lib/use-delayed-flag";
 import { shakeElement } from "@/lib/shake";
 import ThemeToggle from "@/components/site/theme-toggle";
+import { useTheme } from "@/components/site/theme";
 
 function LoginClient({ turnstileEnabled, nonce, expired = false }: { turnstileEnabled: boolean; nonce?: string; expired?: boolean }) {
+  const { theme } = useTheme();
   const search = useSearchParams();
   const navigate = useNavigate();
   const [step, setStep] = useState<"password" | "totp">("password");
@@ -147,7 +149,7 @@ function LoginClient({ turnstileEnabled, nonce, expired = false }: { turnstileEn
                 </div>
               </label>
               {capsLock && <p className="text-[11.5px] text-[var(--warning)]">Caps Lock is on.</p>}
-              {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="login" /></div>}
+              {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} action="login" /></div>}
               <button type="submit" disabled={loading || success || (turnstileEnabled && !token)} className="report-btn w-full disabled:opacity-60">
                 {success ? <Check className="success-pop size-4" /> : showSpinner ? <Loader2 className="size-4 animate-spin" /> : null} Continue
               </button>
@@ -169,7 +171,7 @@ function LoginClient({ turnstileEnabled, nonce, expired = false }: { turnstileEn
                   <input value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value)} autoComplete="off" className="mt-1 min-h-11 w-full rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-canvas)] px-3 font-mono text-[14px] outline-none focus:border-[var(--accent-brass)]" />
                 </label>
               )}
-              {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="totp" /></div>}
+              {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} action="totp" /></div>}
               <button type="submit" disabled={loading || success || (turnstileEnabled && !token) || (!recovery && digits.join("").length !== 6)} className="report-btn w-full disabled:opacity-60">
                 {success ? <Check className="success-pop size-4" /> : showSpinner ? <Loader2 className="size-4 animate-spin" /> : null} Verify
               </button>

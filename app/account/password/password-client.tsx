@@ -5,12 +5,14 @@ import { Check, Loader2 } from "lucide-react";
 import Turnstile from "@/components/site/turnstile";
 import { passwordStrength } from "@/lib/password-policy";
 import { useNavigate } from "@/lib/use-navigate";
+import { useTheme } from "@/components/site/theme";
 import { useDelayedFlag } from "@/lib/use-delayed-flag";
 import { shakeElement } from "@/lib/shake";
 
 const STRENGTH = ["", "Weak", "Fair", "Good", "Strong"];
 
 export default function PasswordClient({ first, turnstileEnabled, nonce }: { first: boolean; turnstileEnabled: boolean; nonce?: string }) {
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const [form, setForm] = useState({ current: "", password: "", confirm: "" });
   const [token, setToken] = useState("");
@@ -61,7 +63,7 @@ export default function PasswordClient({ first, turnstileEnabled, nonce }: { fir
             </div>
           </div>
           <Field label="Confirm new password" type="password" value={form.confirm} onChange={(value) => setForm((current) => ({ ...current, confirm: value }))} autoComplete="new-password" />
-          {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme="light" resetNonce={resetNonce} nonce={nonce} action="password" /></div>}
+          {turnstileEnabled && <div className="flex justify-center"><Turnstile onVerify={onVerify} theme={theme} resetNonce={resetNonce} nonce={nonce} action="password" /></div>}
           <button type="submit" disabled={busy || success || (turnstileEnabled && !token)} className="report-btn w-full disabled:opacity-60">
             {success ? <Check className="success-pop size-4" /> : showSpinner ? <Loader2 className="size-4 animate-spin" /> : null} Save password
           </button>

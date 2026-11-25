@@ -43,6 +43,7 @@ export default function PartyDisc({
       )}
     >
       <span
+        data-party-mark="true"
         className={cn(
           "party-disc-face relative block h-full w-full overflow-hidden rounded-full transition duration-500",
           active && "party-disc-face--active",
@@ -51,7 +52,7 @@ export default function PartyDisc({
             : "border border-white/15 shadow-[0_18px_44px_-22px_rgba(0,0,0,.85)]",
         )}
       >
-        <span className="absolute inset-0 bg-[#fbfaf7]" aria-hidden />
+        <span className="absolute inset-0 bg-[color:var(--party-badge-surface)]" aria-hidden />
         {!failed ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -66,7 +67,7 @@ export default function PartyDisc({
             className="absolute left-1/2 top-1/2 h-[52%] w-[56%] -translate-x-1/2 -translate-y-1/2 object-contain"
           />
         ) : (
-          <span className="absolute inset-0 grid place-items-center font-display text-3xl font-semibold text-[#08063E]">{party.name}</span>
+          <span className="absolute inset-0 grid place-items-center font-display text-3xl font-semibold text-[color:var(--party-badge-ink)]">{party.name}</span>
         )}
         <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-inset ring-black/[.04]" aria-hidden />
         <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#08063E]/90 via-[#08063E]/55 to-transparent pb-2 pt-7 text-center">

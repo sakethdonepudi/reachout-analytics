@@ -18,6 +18,7 @@ import type { ClientHistoryBundle } from "@/lib/telangana/history-runtime";
 import TelanganaRail, { type ScopeResult } from "./telangana-rail";
 import CaseBackLink from "@/components/site/case-back-link";
 import CaseStudySplit from "@/components/case-studies/shared/case-study-split";
+import { useTheme } from "@/components/site/theme";
 import type { MapTheme } from "./telangana-map";
 
 const TelanganaMap = dynamic(() => import("./telangana-map"), {
@@ -33,7 +34,7 @@ const TelanganaAnalysis = dynamic(() => import("./telangana-analysis"), {
 
 type Tab = "change" | "share" | "seats";
 
-const LABEL = "text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6B6B6B]";
+const LABEL = "text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--theme-text-2)]";
 
 type Option = { value: string; label: string; hint?: string };
 
@@ -103,8 +104,8 @@ function SearchSelect({
             {filtered.map((o, i) => (
               <li key={o.value || "all"} role="option" aria-selected={o.value === value}>
                 <button type="button" onClick={() => choose(o)} onMouseEnter={() => setActive(i)}
-                  className={cn("flex min-h-10 w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px]", i === active ? "bg-muted/50" : "",
-                    o.value === value ? "font-semibold text-foreground" : "text-muted-foreground")}>
+                  className={cn("flex min-h-10 w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px]", i === active ? "bg-[color:var(--theme-surface-2)]" : "",
+                    o.value === value ? "font-semibold text-[color:var(--theme-text)]" : "text-[color:var(--theme-text-2)]")}>
                   <span className="min-w-0 flex-1 truncate">{o.label}</span>
                   {o.hint && <span className="shrink-0 text-[9px] uppercase tracking-wide opacity-60">{o.hint}</span>}
                   {o.value === value && <Check className="size-3 shrink-0 text-teal-deep" />}
@@ -120,7 +121,7 @@ function SearchSelect({
 }
 
 export default function TelanganaDashboard({ aggregates, history }: { aggregates: Oct26; history: ClientHistoryBundle }) {
-  const theme = "light" as const;
+  const { theme } = useTheme();
   const data = aggregates;
   useState(() => { setHistoryBundle(history); return true; });
 
@@ -233,7 +234,7 @@ export default function TelanganaDashboard({ aggregates, history }: { aggregates
   const isStatewide = !district && !currentAc;
 
   return (
-    <div className="app-chrome relative min-h-0 bg-white text-[var(--p-ink)]">
+    <div className="app-chrome relative min-h-0 bg-[color:var(--theme-bg)] text-[color:var(--theme-text)]">
 
       <section className="case-study-viewport relative isolate mx-auto max-w-[1720px] px-4 pb-4 pt-0 sm:px-6 xl:flex xl:h-[calc(100svh-9.5rem)] xl:min-h-[600px] xl:flex-col xl:overflow-hidden xl:px-6">
         <CaseStudySplit
@@ -250,7 +251,7 @@ export default function TelanganaDashboard({ aggregates, history }: { aggregates
           controls={(
             <div className="relative z-30 lg:min-h-0">
               <Link href="/case-studies"
-                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#CFCFCF] bg-white px-3 py-1.5 text-[12.5px] text-[#6B6B6B] transition-colors hover:border-[#0B0B0B] hover:text-[#0B0B0B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60">
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3 py-1.5 text-[12.5px] text-[color:var(--theme-text-2)] transition-colors hover:border-[color:var(--theme-text)] hover:text-[color:var(--theme-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--theme-link)]">
                 <ArrowLeft className="size-3.5" /> Back to Case Studies
               </Link>
 
@@ -259,11 +260,11 @@ export default function TelanganaDashboard({ aggregates, history }: { aggregates
               <div className="mt-5 space-y-3 pb-2">
                 <div>
                   <span className={LABEL}>Election year</span>
-                  <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-[#E6E6E6] p-0.5" role="group" aria-label="Election year">
+                  <div className="mt-1 grid grid-cols-2 gap-1 rounded-lg border border-[color:var(--theme-border)] p-0.5" role="group" aria-label="Election year">
                     {ELECTION_YEARS.map((y) => (
                       <button key={y} type="button" aria-pressed={year === y} onClick={() => setYear(y)}
                         className={cn("min-h-10 rounded-md px-2 py-1.5 text-[10.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60",
-                          year === y ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
+                          year === y ? "bg-[color:var(--theme-selected)] text-[color:var(--theme-selected-ink)]" : "text-muted-foreground hover:text-foreground")}>
                         {YEAR_LABEL[y]}
                       </button>
                     ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Check } from "lucide-react";
 import type { SurveyDemo, SurveyDemoRow } from "@/lib/survey/types";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import { selectGapRows } from "@/lib/survey/target-gaps";
 import { useTheme } from "@/components/site/theme";
 import { PartyBadge } from "./party-badge";
 import { Pill, PillRow } from "@/components/case-studies/shared/pill-row";
+import PortalTip from "@/components/ui/portal-tip";
 
 const colourOf = partyColour;
 const pct = (value: number) => `${value.toFixed(1)}%`;
@@ -34,6 +35,31 @@ type Props = {
 };
 
 const LEADING_KEY = "__leading";
+
+function TargetCampaign({ tooltip, delay, onClick }: { tooltip: string; delay: number; onClick: () => void }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex flex-col items-center">
+      <button
+        ref={ref}
+        type="button"
+        onClick={onClick}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        className="tn-target"
+        style={{ "--tn-target-delay": `${delay}ms` } as React.CSSProperties}
+        title={tooltip}
+        aria-label={`Target Campaign. ${tooltip}`}
+      >
+        Target Campaign
+      </button>
+      <PortalTip open={open} anchorRef={ref}>{tooltip}</PortalTip>
+    </span>
+  );
+}
 
 function SortIcon({ active, asc }: { active: boolean; asc: boolean }) {
   if (!active) return <ArrowUpDown className="size-2.5 opacity-50" aria-hidden />;
@@ -175,7 +201,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                 const active = selectedSet.has(party);
                 return (
                   <th key={`${party}:${active ? "in" : "out"}`} scope="col" className={cn("px-1.5 py-2 text-center font-semibold", active ? "tn-col-in" : "tn-col-out")}>
-                    <button type="button" onClick={() => toggleSort(party)} className="inline-flex min-h-11! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[color:var(--theme-surface)]/10" title={`Sort by ${party}`}>
+                    <button type="button" onClick={() => toggleSort(party)} className="inline-flex min-h-[45px]! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[color:var(--theme-surface)]/10" title={`Sort by ${party}`}>
                       <PartyBadge party={party} size={20} />
                       {party}
                       <SortIcon active={sort?.key === party} asc={Boolean(sort?.asc)} />
@@ -184,7 +210,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                 );
               })}
               <th scope="col" className="px-2 py-2 text-left font-semibold">
-                <button type="button" onClick={() => toggleSort(LEADING_KEY)} className="inline-flex min-h-11! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[color:var(--theme-surface)]/10" title="Sort by leading party">
+                <button type="button" onClick={() => toggleSort(LEADING_KEY)} className="inline-flex min-h-[45px]! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[color:var(--theme-surface)]/10" title="Sort by leading party">
                   {allSelected ? "Leading" : "Leading (selected)"} <SortIcon active={sort?.key === LEADING_KEY} asc={Boolean(sort?.asc)} />
                 </button>
               </th>
@@ -247,21 +273,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                             {pct(value)}
                           </span>
                           {target && (
-                            <span className="group/target relative inline-flex flex-col items-center">
-                              <button
-                                type="button"
-                                onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })}
-                                className="tn-target"
-                                style={{ "--tn-target-delay": `${animationDelay}ms` } as React.CSSProperties}
-                                title={targetTooltip}
-                                aria-label={`Target Campaign. ${targetTooltip}`}
-                              >
-                                Target Campaign
-                              </button>
-                              <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-[color:var(--theme-text)] px-2.5 py-1.5 text-[12px] font-semibold text-[color:var(--theme-surface)] shadow-xl group-hover/target:block">
-                                AIADMK+ below average here: open campaigns
-                              </span>
-                            </span>
+                            <TargetCampaign tooltip={targetTooltip} delay={animationDelay} onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })} />
                           )}
                         </div>
                       </td>
@@ -348,16 +360,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                       </div>
                       {target && (
                         <div className="mt-1.5 flex justify-center">
-                          <button
-                            type="button"
-                            onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })}
-                            className="tn-target"
-                            style={{ "--tn-target-delay": `${(row.g.length * 17 + index * 43) % 400}ms` } as React.CSSProperties}
-                            title={targetTooltip}
-                            aria-label={`Target Campaign. ${targetTooltip}`}
-                          >
-                            Target Campaign
-                          </button>
+                          <TargetCampaign tooltip={targetTooltip} delay={(row.g.length * 17 + index * 43) % 400} onClick={() => onTarget({ kind: profileKey, place: row.g, label: demo.label, value, average })} />
                         </div>
                       )}
                     </div>

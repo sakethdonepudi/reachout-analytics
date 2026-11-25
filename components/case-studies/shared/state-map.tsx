@@ -20,7 +20,7 @@ export default function StateMap({
   const neighbourFill = (id: string) => {
     if (id === stateCode) return fill;
     if (northEast && NORTH_EAST_STATES.includes(id)) return fill;
-    return "#eeece5";
+    return "var(--state-map-neighbour)";
   };
   const neighbourOpacity = (id: string) => (id === stateCode ? 1 : northEast && NORTH_EAST_STATES.includes(id) ? 0.22 : 0.55);
 
@@ -36,7 +36,7 @@ export default function StateMap({
               d={state.d}
               fill={neighbourFill(state.id)}
               fillOpacity={neighbourOpacity(state.id)}
-              stroke={state.id === stateCode ? "#1f4e78" : "#c9c6bc"}
+              stroke={state.id === stateCode ? "var(--theme-link)" : "var(--theme-border)"}
               strokeWidth={state.id === stateCode ? 1.2 : 0.5}
               vectorEffect="non-scaling-stroke"
             />
@@ -45,14 +45,14 @@ export default function StateMap({
         <div className="shrink-0">
           <svg viewBox={insetViewBox} aria-hidden="true" className="h-[110px] w-[86px]">
             {INDIA_STATES.map((state) => (
-              <path key={state.id} d={state.d} fill={state.id === stateCode ? fill : "#e4e2da"} stroke={state.id === stateCode ? "#1f4e78" : "#ffffff"} strokeWidth={0.5} vectorEffect="non-scaling-stroke" />
+              <path key={state.id} d={state.d} fill={state.id === stateCode ? fill : "var(--state-map-inset)"} stroke={state.id === stateCode ? "var(--theme-link)" : "var(--theme-border)"} strokeWidth={0.5} vectorEffect="non-scaling-stroke" />
             ))}
           </svg>
-          <p className="mt-1 text-center text-[9px] text-[var(--r-muted)]">India</p>
+          <p className="mt-1 text-center text-[9px] text-[color:var(--theme-text-3)]">India</p>
         </div>
       </div>
-      <p className="mt-2 text-[12px] font-semibold text-[var(--r-navy)]">{label} · {year}</p>
-      <p className="mt-1 text-[11px] text-[var(--r-muted)]">State outline. District boundaries are not available for this case study.</p>
+      <p className="mt-2 text-[12px] font-semibold text-[color:var(--theme-link)]">{label} · {year}</p>
+      <p className="mt-1 text-[11px] text-[color:var(--theme-text-2)]">State outline. District boundaries are not available for this case study.</p>
     </section>
   );
 }

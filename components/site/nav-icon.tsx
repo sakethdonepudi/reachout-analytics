@@ -50,16 +50,18 @@ export function NavIcon({ name, className }: { name: NavIconName; className?: st
 export function NavPartyMark({ party }: { party: PartyId }) {
   const info = PARTIES[party];
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={info.logo}
-      alt=""
-      width={info.width}
-      height={info.height}
-      loading="lazy"
-      decoding="async"
-      draggable={false}
-      className="size-6 shrink-0 object-contain"
-    />
+    <span data-party-mark="true" className="grid size-6 shrink-0 place-items-center overflow-hidden rounded-full bg-[color:var(--party-badge-surface)] ring-1 ring-black/10" aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={info.logo}
+        alt=""
+        width={info.width}
+        height={info.height}
+        loading="lazy"
+        decoding="async"
+        draggable={false}
+        className="h-[18px] w-[18px] object-contain"
+      />
+    </span>
   );
 }

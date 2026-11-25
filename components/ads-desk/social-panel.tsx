@@ -134,8 +134,8 @@ export default function SocialPanel({ regions, compact = false, campaign, period
   }, [region]);
 
   const periodNotice = period ? (
-    <div className="mt-3 rounded-lg border border-[#EAEAEA] bg-[#FAFAFA] px-3 py-2 text-[11.5px] text-[#555]" role="status">
-      Opened from the <b className="font-semibold text-[#0B0B0B]">{SURVEY_PERIODS[period] ?? period}</b> survey period. Campaigns below come from the Ads Desk.
+    <div className="mt-3 rounded-lg border border-[color:var(--theme-border)] bg-[color:var(--theme-surface-2)] px-3 py-2 text-[11.5px] text-[color:var(--theme-text-2)]" role="status">
+      Opened from the <b className="font-semibold text-[color:var(--theme-text)]">{SURVEY_PERIODS[period] ?? period}</b> survey period. Campaigns below come from the Ads Desk.
     </div>
   ) : null;
 
@@ -146,18 +146,18 @@ export default function SocialPanel({ regions, compact = false, campaign, period
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }, (_, index) => (
             <div key={index} className="report-card p-4">
-              <div className="h-2.5 w-20 animate-pulse rounded-full bg-[#F0F0F0]" />
-              <div className="mt-3 h-8 w-24 animate-pulse rounded-md bg-[#F4F4F4]" />
+              <div className="h-2.5 w-20 animate-pulse rounded-full bg-[color:var(--theme-surface-2)]" />
+              <div className="mt-3 h-8 w-24 animate-pulse rounded-md bg-[color:var(--theme-surface-2)]" />
             </div>
           ))}
         </div>
         <div className="report-card p-4">
-          <div className="h-3 w-32 animate-pulse rounded-full bg-[#F0F0F0]" />
+          <div className="h-3 w-32 animate-pulse rounded-full bg-[color:var(--theme-surface-2)]" />
           <div className="mt-4 space-y-2">
-            {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-9 animate-pulse rounded-lg bg-[#F7F7F7]" />)}
+            {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-9 animate-pulse rounded-lg bg-[color:var(--theme-surface-2)]" />)}
           </div>
         </div>
-        <p className="text-[12px] text-[#6B6B6B]">Social data not uploaded yet.</p>
+        <p className="text-[12px] text-[color:var(--theme-text-2)]">Social data not uploaded yet.</p>
       </section>
     );
   }

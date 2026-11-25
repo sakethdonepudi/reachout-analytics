@@ -457,7 +457,7 @@ html[data-motion-tier="c"] .hero-party { animation: none !important; }
 .case-disc-view::after { content: "View case study"; }
 .case-disc-face { box-shadow: 0 10px 30px rgba(0, 0, 0, .08); transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
 .case-disc:hover .case-disc-face { transform: translateY(-2px); box-shadow: 0 16px 34px rgba(0, 0, 0, .12); }
-.case-disc:focus-visible .case-disc-face { outline: 2px solid #0B0B0C; outline-offset: 3px; }
+.case-disc:focus-visible .case-disc-face { outline: 2px solid var(--theme-link); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {
   .hero-orbit-turn, .hero-orbit-drift { animation: none !important; }
   .case-disc { transition: none !important; }
@@ -2335,6 +2335,10 @@ html { scroll-padding-top: 96px; }
   --tn-soft-pink: #fdf2f8;
   --tn-soft-rose: #fff1f2;
   --party-badge-surface: #ffffff;
+  --party-badge-ink: #0b0b0c;
+  --party-badge-muted: #555555;
+  --state-map-neighbour: #eeece5;
+  --state-map-inset: #e4e2da;
 }
 
 [data-theme="dark"] {
@@ -2370,6 +2374,8 @@ html { scroll-padding-top: 96px; }
   --theme-chart-views: #f4b860;
   --theme-chart-clicks: #5eead4;
   --party-badge-surface: #f1f1ed;
+  --state-map-neighbour: #3a3a37;
+  --state-map-inset: #2e2e2c;
   --tn-party-tvk: #e8b923;
   --tn-party-dmk: #f0544f;
   --tn-party-aiadmk: #1fa36f;
@@ -2601,3 +2607,75 @@ body { transition: background-color 150ms ease, color 150ms ease; }
 @media (min-width: 1280px) {
   .edge-fade-right { -webkit-mask-image: none; mask-image: none; }
 }
+
+/* Home map scene follows the theme. */
+.india-map-dots {
+  background-image: radial-gradient(circle, var(--theme-border) 0.7px, transparent 0.9px);
+  background-size: 24px 24px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 35%, #000 82%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 35%, #000 82%, transparent 100%);
+}
+.india-map-orbit { stroke: var(--theme-border); }
+.india-map-fade { background: linear-gradient(to top, var(--theme-bg), color-mix(in srgb, var(--theme-bg) 70%, transparent), transparent); }
+
+/* Company tiles are the one intentional light surface in dark mode. */
+.company-eyebrow { color: var(--theme-text-3); }
+[data-theme="dark"] .company-tile {
+  background: var(--party-badge-surface);
+  border-color: color-mix(in srgb, var(--theme-text-3) 35%, transparent);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .28);
+}
+[data-theme="dark"] .company-tile:hover,
+[data-theme="dark"] .company-tile:focus-visible {
+  border-color: color-mix(in srgb, var(--theme-text-3) 55%, transparent);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .36);
+}
+
+/* Loading and route chrome follow the theme from the first paint. */
+[data-theme="dark"] .signal-loader {
+  background: color-mix(in srgb, var(--r-bg) 94%, transparent);
+  color: var(--r-ink);
+}
+[data-theme="dark"] .signal-loader__label,
+[data-theme="dark"] .signal-loader__top { color: var(--r-muted); }
+[data-theme="dark"] .signal-loader__contours path { stroke: var(--theme-accent); }
+[data-theme="dark"] .signal-loader__line { stroke: var(--theme-accent); }
+[data-theme="dark"] .signal-loader__node { fill: var(--theme-accent); }
+[data-theme="dark"] .signal-loader__mark { fill: var(--theme-accent); stroke: var(--theme-text); }
+[data-theme="dark"] .signal-loader__dots span { background: var(--theme-accent); }
+[data-theme="dark"] .nav-progress span { background: var(--theme-link); }
+[data-theme="dark"] .app-chrome { background: var(--r-bg); color: var(--r-ink); }
+[data-theme="dark"] .app-chrome .report-card { background: var(--r-card); border-color: var(--r-line); }
+
+/* Older case-study social page in dark mode. */
+[data-theme="dark"] .case-social .social-panel.report-card,
+[data-theme="dark"] .case-social .social-stats .report-stat,
+[data-theme="dark"] .case-social .social-chart.report-card {
+  background: var(--r-card);
+  border-color: var(--r-line);
+  box-shadow: none;
+}
+[data-theme="dark"] .case-social .social-title,
+[data-theme="dark"] .case-social .social-stats .report-stat-value { color: var(--r-ink); }
+[data-theme="dark"] .case-social .social-sub,
+[data-theme="dark"] .case-social .social-stats .report-stat-label,
+[data-theme="dark"] .case-social .social-stats .report-stat-note { color: var(--r-muted); }
+[data-theme="dark"] .case-social .social-table-wrap { border-color: var(--r-line); }
+[data-theme="dark"] .case-social .social-account-row:hover { background: var(--r-bg); }
+[data-theme="dark"] .case-social .social-search,
+[data-theme="dark"] .case-social .social-showall,
+[data-theme="dark"] .case-social .social-chevron { background: var(--r-card); border-color: var(--r-line); color: var(--r-ink); }
+[data-theme="dark"] .case-study-switch-bar { background: color-mix(in srgb, var(--theme-surface) 92%, transparent); border-color: var(--theme-border); }
+.social-chart-track { background: var(--theme-surface-2); }
+.social-chart-bar { background: var(--theme-accent); }
+
+.portal-tip {
+  background: var(--theme-selected);
+  color: var(--theme-selected-ink);
+  border: 1px solid color-mix(in srgb, var(--theme-selected-ink) 22%, transparent);
+}
+
+.logo-dark { display: none; }
+[data-theme="dark"] .logo-light { display: none; }
+[data-theme="dark"] .logo-dark { display: contents; }
+[data-theme="dark"] .report-pill.soon { background: var(--theme-surface-2); color: var(--theme-text-2); }

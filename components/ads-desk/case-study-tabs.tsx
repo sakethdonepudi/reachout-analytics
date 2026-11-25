@@ -88,17 +88,17 @@ export default function CaseStudyTabs({
   return (
     <>
       <div className="case-study-top-spacer pt-16">
-        <div className="case-study-switch-bar sticky top-16 z-30 border-b border-[#EAEAEA] bg-white/90 backdrop-blur-md">
+        <div className="case-study-switch-bar sticky top-16 z-30 border-b border-[color:var(--theme-border)] bg-[color:var(--theme-surface)]/90 backdrop-blur-md">
           <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-center px-4 sm:px-6 lg:px-10">
             <div
               role="tablist"
               aria-label="Case study views"
               onKeyDown={onKeyDown}
-              className={cn("relative flex h-10 w-full items-center rounded-full bg-[#F4F4F5] p-1", count === 3 ? "lg:w-[420px]" : "lg:w-[300px]")}
+              className={cn("relative flex h-10 w-full items-center rounded-full bg-[color:var(--theme-surface-2)] p-1", count === 3 ? "lg:w-[420px]" : "lg:w-[300px]")}
             >
               <span
                 aria-hidden
-                className="case-tab-pill pointer-events-none absolute inset-y-1 left-1 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,.06),0_4px_12px_rgba(0,0,0,.05)] transition-transform duration-[180ms] ease-out"
+                className="case-tab-pill pointer-events-none absolute inset-y-1 left-1 rounded-full bg-[color:var(--theme-surface)] shadow-[0_1px_2px_rgba(0,0,0,.06),0_4px_12px_rgba(0,0,0,.05)] transition-transform duration-[180ms] ease-out"
                 style={{ width: `calc((100% - 8px) / ${count})`, transform: `translateX(${index * 100}%)` }}
               />
               {tabs.map((id, i) => {
@@ -115,8 +115,8 @@ export default function CaseStudyTabs({
                     tabIndex={tab === id ? 0 : -1}
                     onClick={() => select(id)}
                     className={cn(
-                      "relative z-10 flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full px-1 text-[12px] font-semibold transition-colors after:absolute after:inset-x-0 after:inset-y-[-4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0B0B0C]/60",
-                      tab === id ? "text-[#0B0B0C]" : "text-[#6B6B6B] hover:text-[#0B0B0C]",
+                      "relative z-10 flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full px-1 text-[12px] font-semibold transition-colors after:absolute after:inset-x-0 after:inset-y-[-4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--theme-link)]",
+                      tab === id ? "text-[color:var(--theme-text)]" : "text-[color:var(--theme-text-2)] hover:text-[color:var(--theme-text)]",
                     )}
                   >
                     <Icon className="size-3.5 shrink-0" strokeWidth={1.9} aria-hidden />
@@ -142,15 +142,15 @@ export default function CaseStudyTabs({
           >
             {id === "social" ? (
               <div className="mx-auto w-full max-w-[1200px] px-4 pb-16 sm:px-6">
-                <div className="flex items-center gap-3 border-b border-[#EAEAEA] pb-5">
+                <div className="flex items-center gap-3 border-b border-[color:var(--theme-border)] pb-5">
                   {party && (
-                    <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#E6E6E6] bg-white">
+                    <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--party-badge-surface)]">
                       <PartyMark party={party} size="sm" />
                     </span>
                   )}
                   <div className="min-w-0">
-                    <h2 className="font-display text-[22px] font-semibold leading-tight tracking-[-0.02em] text-[#0B0B0C]">Social Media</h2>
-                    <p className="mt-0.5 truncate text-[12px] text-[#6B6B6B]">{stateName ?? "All regions"}</p>
+                    <h2 className="font-display text-[22px] font-semibold leading-tight tracking-[-0.02em] text-[color:var(--theme-text)]">Social Media</h2>
+                    <p className="mt-0.5 truncate text-[12px] text-[color:var(--theme-text-2)]">{stateName ?? "All regions"}</p>
                   </div>
                 </div>
                 <div className="case-social pt-6">{panels.social}</div>

@@ -27,7 +27,8 @@ export function PartyMark({
   const info = PARTIES[party];
   return (
     <span
-      className={cn("grid shrink-0 place-items-center border border-black/[.06] bg-[#fbfaf7] shadow-[inset_0_1px_0_rgba(255,255,255,.8)]", MARK_SIZE[size], className)}
+      data-party-mark="true"
+      className={cn("grid shrink-0 place-items-center border border-[color:var(--theme-border)] bg-[color:var(--party-badge-surface)] shadow-[inset_0_1px_0_rgba(255,255,255,.35)]", MARK_SIZE[size], className)}
       title={info.fullName}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}

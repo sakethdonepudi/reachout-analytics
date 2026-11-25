@@ -29,7 +29,7 @@ export default function Experience() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="tour" className="pointer-events-auto relative h-[600vh] bg-white">
+    <section ref={sectionRef} id="tour" className="pointer-events-auto relative h-[600vh] bg-[color:var(--theme-bg)]">
       <div className="sticky top-16 h-[calc(100svh-4rem)] overflow-hidden">
         {mount ? (
           <IndiaMap />
@@ -38,7 +38,7 @@ export default function Experience() {
             className="absolute inset-0"
             aria-hidden
             style={{
-              backgroundImage: "radial-gradient(circle, #CFCFCF 0.7px, transparent 0.9px)",
+              backgroundImage: "radial-gradient(circle, var(--theme-border) 0.7px, transparent 0.9px)",
               backgroundSize: "24px 24px",
               maskImage: "linear-gradient(to bottom, transparent 0%, #000 30%)",
               WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 30%)",

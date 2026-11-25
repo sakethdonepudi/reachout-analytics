@@ -168,16 +168,16 @@ export default function TelanganaRail({
   };
 
   return (
-    <section aria-label="Telangana comparison" className="rounded-2xl border border-[#E6E6E6] bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,.04)]">
+    <section aria-label="Telangana comparison" className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-4 shadow-[0_10px_30px_rgba(0,0,0,.04)]">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="font-display text-[22px] font-semibold leading-tight tracking-[-0.02em]">Telangana comparison</h2>
-          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6B6B6B]">
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--theme-text-2)]">
             {isStatewide ? "Statewide" : scope.label}
           </p>
         </div>
         <button type="button" onClick={onExpand} aria-label="Open the large history chart"
-          className="grid size-10 shrink-0 place-items-center rounded-full border border-[#CFCFCF] text-[#6B6B6B] sm:size-7 hover:border-[#0B0B0B] hover:text-[#0B0B0B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0B]/40">
+          className="grid size-10 shrink-0 place-items-center rounded-full border border-[color:var(--theme-border)] text-[color:var(--theme-text-2)] sm:size-7 hover:border-[color:var(--theme-text)] hover:text-[color:var(--theme-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--theme-link)]">
           <Maximize2 className="size-3" />
         </button>
       </div>
@@ -202,7 +202,7 @@ export default function TelanganaRail({
                 </th>
                 <td className={cn("px-1 text-right tabular-nums text-muted-foreground", rowPad)}>{fmtPct(scope.baseline[x])}</td>
                 <td className={cn("px-1 text-right tabular-nums font-semibold", rowPad)}>{fmtPct(scope.prediction[x])}</td>
-                <td className={cn("px-1 text-right tabular-nums", rowPad, scope.change[x] > 0 ? "text-emerald-700" : scope.change[x] < 0 ? "text-rose-700" : "text-muted-foreground")}>
+                <td className={cn("px-1 text-right tabular-nums", rowPad, scope.change[x] > 0 ? "text-[color:var(--theme-positive)]" : scope.change[x] < 0 ? "text-[color:var(--theme-negative)]" : "text-muted-foreground")}>
                   {signed(scope.change[x])}
                 </td>
               </tr>
@@ -216,7 +216,7 @@ export default function TelanganaRail({
         {TABS.map((t) => (
           <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => { setOpened((current) => ({ ...current, [t.id]: true })); startTransition(() => setTab(t.id)); }}
             className={cn("min-h-10 rounded-md px-2 py-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60 sm:min-h-7",
-              tab === t.id ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground")}>
+              tab === t.id ? "bg-[color:var(--theme-selected)] text-[color:var(--theme-selected-ink)] shadow-sm" : "text-muted-foreground hover:bg-muted/40 hover:text-foreground")}>
             {t.label}
           </button>
         ))}

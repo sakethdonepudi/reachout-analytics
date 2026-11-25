@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, LogOut, Menu } from "lucide-react";
 import { Logo } from "@/components/site/brand";
+import ThemeToggle from "@/components/site/theme-toggle";
 import { Sheet } from "@/components/ui/sheet";
 import { useIdle } from "@/components/auth/idle-provider";
 import { announceOpening } from "@/lib/use-navigate";
@@ -21,7 +22,7 @@ function idleLabel(ms: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-const linkClass = "inline-flex shrink-0 whitespace-nowrap min-h-11! items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-[#555] transition-colors hover:bg-[#F5F5F5] hover:text-[#0B0B0C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] max-[1100px]:px-2 max-[1100px]:text-[12.5px]";
+const linkClass = "inline-flex shrink-0 whitespace-nowrap min-h-11! items-center gap-1.5 rounded-md px-3 text-[13px] font-medium text-[color:var(--theme-text-2)] transition-colors hover:bg-[color:var(--theme-surface-2)] hover:text-[color:var(--theme-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--theme-link)] max-[1100px]:px-2 max-[1100px]:text-[12.5px]";
 
 export default function HomeHeader({
   role,
@@ -79,9 +80,9 @@ export default function HomeHeader({
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-[var(--z-nav)] h-16 border-b border-[#E6E6E6] bg-white">
+      <header className="fixed inset-x-0 top-0 z-[var(--z-nav)] h-16 border-b border-[color:var(--theme-border)] bg-[color:var(--theme-surface)]">
         <div className="mx-auto flex h-full max-w-[1440px] items-center gap-4 px-5 sm:px-8 lg:px-16">
-          <Logo variant="light" className="h-8 w-[124px] shrink-0" />
+          <Logo variant="auto" className="h-8 w-[124px] shrink-0" />
 
           <nav ref={navRef} className="relative ml-2 hidden items-center gap-0.5 min-[900px]:flex" aria-label="Primary">
             {items.map((item) => {
@@ -98,12 +99,12 @@ export default function HomeHeader({
                     >
                       <NavIcon name="casesOpen" /> Case Studies <ChevronDown className={casesOpen ? "size-3 rotate-180 transition-transform duration-150" : "size-3 transition-transform duration-150"} aria-hidden />
                     </button>
-                    <div role="menu" data-open={casesOpen} aria-hidden={!casesOpen} className="home-menu absolute left-0 top-[calc(100%+8px)] z-[var(--z-dropdown)] max-h-[70vh] w-72 overflow-y-auto rounded-xl border border-[#E6E6E6] bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,.08)]">
+                    <div role="menu" data-open={casesOpen} aria-hidden={!casesOpen} className="home-menu absolute left-0 top-[calc(100%+8px)] z-[var(--z-dropdown)] max-h-[70vh] w-72 overflow-y-auto rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-2 shadow-[0_10px_30px_rgba(0,0,0,.08)]">
                       {Object.entries(grouped).map(([state, rows]) => (
                         <div key={state} className="mb-1 last:mb-0">
-                          <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">{state}</p>
+                          <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--theme-text-3)]">{state}</p>
                           {rows.map((row) => (
-                            <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} role="menuitem" onClick={() => setCasesOpen(false)} className="flex min-h-11! items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
+                            <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} role="menuitem" onClick={() => setCasesOpen(false)} className="flex min-h-11! items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[color:var(--theme-text)] hover:bg-[color:var(--theme-surface-2)]">
                               <NavPartyMark party={row.party} />
                               <span>{row.stateName} · {row.party}</span>
                             </Link>
@@ -120,12 +121,13 @@ export default function HomeHeader({
           </nav>
 
           <div className="ml-auto flex items-center gap-1">
+            <span className="hidden min-[900px]:inline-flex"><ThemeToggle /></span>
             {role === "anon" ? (
               <>
-                <a href={LOGIN.href} className="hidden min-h-11! items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[13px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:inline-flex">
+                <a href={LOGIN.href} className="hidden min-h-11! items-center gap-1.5 rounded-full border border-[color:var(--theme-text)] px-4 text-[13px] font-semibold text-[color:var(--theme-text)] transition-colors hover:bg-[color:var(--theme-text)] hover:text-[color:var(--theme-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--theme-link)] focus-visible:ring-offset-2 min-[900px]:inline-flex">
                   <NavIcon name="login" /> {LOGIN.label}
                 </a>
-                <a href={LOGIN.href} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[#0B0B0C] px-3 text-[12px] font-semibold text-[#0B0B0C] transition-colors hover:bg-[#0B0B0C] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B0B0C] focus-visible:ring-offset-2 min-[900px]:hidden">
+                <a href={LOGIN.href} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[color:var(--theme-text)] px-3 text-[12px] font-semibold text-[color:var(--theme-text)] transition-colors hover:bg-[color:var(--theme-text)] hover:text-[color:var(--theme-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--theme-link)] focus-visible:ring-offset-2 min-[900px]:hidden">
                   <NavIcon name="login" /> {LOGIN.label}
                 </a>
               </>
@@ -136,27 +138,27 @@ export default function HomeHeader({
                   aria-haspopup="menu"
                   aria-expanded={accountOpen}
                   onClick={() => setAccountOpen((value) => !value)}
-                  className="inline-flex min-h-11! items-center gap-2 rounded-md px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]"
+                  className="inline-flex min-h-11! items-center gap-2 rounded-md px-2 text-[13px] font-medium text-[color:var(--theme-text)] hover:bg-[color:var(--theme-surface-2)]"
                 >
                   <span className="sr-only">Account menu</span>
-                  <span className="grid size-7 place-items-center rounded-full bg-[#0B0B0C] text-[10px] font-bold text-white">{(displayName ?? "You").split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")}</span>
+                  <span className="grid size-7 place-items-center rounded-full bg-[color:var(--theme-text)] text-[10px] font-bold text-[color:var(--theme-surface)]">{(displayName ?? "You").split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")}</span>
                   <span className="max-w-[110px] truncate">{displayName ?? "Account"}</span>
-                  <span className="text-[9.5px] tabular-nums text-[#6B6B6B]">{idleLabel(remainingMs)}</span>
+                  <span className="text-[9.5px] tabular-nums text-[color:var(--theme-text-3)]">{idleLabel(remainingMs)}</span>
                 </button>
-                <div role="menu" data-open={accountOpen} aria-hidden={!accountOpen} className="home-menu absolute right-0 top-[calc(100%+8px)] z-[var(--z-dropdown)] w-60 rounded-xl border border-[#E6E6E6] bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,.08)]">
-                  <p className="px-2 pb-0.5 text-[12px] font-semibold text-[#0B0B0C]">{displayName ?? "Account"}</p>
-                  <p className="px-2 pb-1 text-[11px] text-[#6B6B6B]">Signs out in {idleLabel(remainingMs)}</p>
-                  <Link href={ACCOUNT_ITEMS.account.href} role="menuitem" onClick={() => setAccountOpen(false)} className="flex min-h-11! items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
+                <div role="menu" data-open={accountOpen} aria-hidden={!accountOpen} className="home-menu absolute right-0 top-[calc(100%+8px)] z-[var(--z-dropdown)] w-60 rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-2 shadow-[0_10px_30px_rgba(0,0,0,.08)]">
+                  <p className="px-2 pb-0.5 text-[12px] font-semibold text-[color:var(--theme-text)]">{displayName ?? "Account"}</p>
+                  <p className="px-2 pb-1 text-[11px] text-[color:var(--theme-text-2)]">Signs out in {idleLabel(remainingMs)}</p>
+                  <Link href={ACCOUNT_ITEMS.account.href} role="menuitem" onClick={() => setAccountOpen(false)} className="flex min-h-11! items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[color:var(--theme-text)] hover:bg-[color:var(--theme-surface-2)]">
                     <NavIcon name={ACCOUNT_ITEMS.account.icon} /> {ACCOUNT_ITEMS.account.label}
                   </Link>
-                  <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-11! w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] font-medium text-[#0B0B0C] hover:bg-[#F5F5F5]">
+                  <button type="button" role="menuitem" onClick={() => void signOut()} className="flex min-h-11! w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] font-medium text-[color:var(--theme-text)] hover:bg-[color:var(--theme-surface-2)]">
                     <LogOut className="size-4" /> Log out
                   </button>
                 </div>
               </div>
             )}
 
-            <button type="button" aria-label="Open menu" onClick={() => setMenuOpen(true)} className="grid size-11 place-items-center rounded-md text-[#0B0B0C] hover:bg-[#F5F5F5] min-[900px]:hidden">
+            <button type="button" aria-label="Open menu" onClick={() => setMenuOpen(true)} className="grid size-11 place-items-center rounded-md text-[color:var(--theme-text)] hover:bg-[color:var(--theme-surface-2)] min-[900px]:hidden">
               <Menu className="size-5" />
             </button>
           </div>
@@ -168,37 +170,39 @@ export default function HomeHeader({
           {role === "client" ? (
             <>
               <MobileLink item={CLIENT_NAV[0]} />
-              <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">Case Studies</p>
+              <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--theme-text-3)]">Case Studies</p>
               {cases.map((row) => (
-                <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#0B0B0C]">
+                <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[color:var(--theme-text)]">
                   <NavPartyMark party={row.party} />
                   <span>{row.stateName} · {row.party}</span>
                 </Link>
               ))}
               {CLIENT_NAV.slice(2).map((item) => <MobileLink key={item.key} item={item} />)}
-              <div className="my-1 h-px bg-[#E6E6E6]" />
+              <div className="my-1 h-px bg-[color:var(--theme-border)]" />
               <MobileLink item={ACCOUNT_ITEMS.account} />
-              <p className="px-3 pt-2 text-[11px] text-[#6B6B6B]">Signs out in {idleLabel(remainingMs)}</p>
-              <button type="button" onClick={() => void signOut()} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-[14px] font-medium text-[#0B0B0C]">
+              <p className="px-3 pt-2 text-[11px] text-[color:var(--theme-text-2)]">Signs out in {idleLabel(remainingMs)}</p>
+              <button type="button" onClick={() => void signOut()} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-[14px] font-medium text-[color:var(--theme-text)]">
                 <LogOut className="size-4" /> Log out
               </button>
             </>
           ) : (
             <>
               <MobileLink item={PUBLIC_NAV[0]} />
-              <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B6B6B]">Case Studies</p>
+              <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--theme-text-3)]">Case Studies</p>
               {cases.map((row) => (
-                <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[#0B0B0C]">
+                <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[color:var(--theme-text)]">
                   <NavPartyMark party={row.party} />
                   <span>{row.stateName} · {row.party}</span>
                 </Link>
               ))}
-              <div className="my-1 h-px bg-[#E6E6E6]" />
-              <a href={LOGIN.href} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-semibold text-[#0B0B0C]">
+              <div className="my-1 h-px bg-[color:var(--theme-border)]" />
+              <a href={LOGIN.href} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-semibold text-[color:var(--theme-text)]">
                 <NavIcon name="login" /> {LOGIN.label}
               </a>
             </>
           )}
+          <div className="my-1 h-px bg-[color:var(--theme-border)]" />
+          <ThemeToggle withLabel />
         </div>
       </Sheet>
     </>
@@ -207,7 +211,7 @@ export default function HomeHeader({
 
 function HomeNavLink({ item, active, className }: { item: NavItem; active: boolean; className: string }) {
   return (
-    <Link href={item.href} data-tab-active={active || undefined} aria-current={active ? "page" : undefined} className={`${className} ${active ? "text-[#0B0B0C]" : ""}`}>
+    <Link href={item.href} data-tab-active={active || undefined} aria-current={active ? "page" : undefined} className={`${className} ${active ? "text-[color:var(--theme-text)]" : ""}`}>
       <NavIcon name={item.icon} />
       <span>{item.label}</span>
     </Link>
@@ -216,7 +220,7 @@ function HomeNavLink({ item, active, className }: { item: NavItem; active: boole
 
 function MobileLink({ item }: { item: NavItem }) {
   return (
-    <Link href={item.href} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-semibold text-[#0B0B0C]">
+    <Link href={item.href} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-semibold text-[color:var(--theme-text)]">
       <NavIcon name={item.icon} /> {item.label}
     </Link>
   );

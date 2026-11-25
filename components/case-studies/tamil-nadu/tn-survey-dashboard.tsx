@@ -496,7 +496,7 @@ export default function TnSurveyDashboard({
             </span>
           </div>
           {owner && (
-            <button type="button" onClick={() => void download()} disabled={downloading} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[color:var(--theme-text)] px-4 text-[13px] font-semibold text-[color:var(--theme-text)] hover:bg-[color:var(--theme-text)] hover:text-white disabled:opacity-50 sm:ml-auto">
+            <button type="button" onClick={() => void download()} disabled={downloading} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[color:var(--theme-text)] px-4 text-[13px] font-semibold text-[color:var(--theme-text)] hover:bg-[color:var(--theme-text)] hover:text-[color:var(--theme-surface)] disabled:opacity-50 sm:ml-auto">
               <ArrowDownToLine className="size-4" /> {downloading ? "Preparing..." : "Download data"}
             </button>
           )}
@@ -572,7 +572,7 @@ export default function TnSurveyDashboard({
         )}
         <div className={view === "social" ? "hidden" : undefined}>
           <>
-            <div className={cn("edge-fade-right no-scrollbar mt-4 grid grid-cols-2 gap-3 min-[640px]:flex min-[640px]:snap-x min-[640px]:overflow-x-auto min-[640px]:pb-1 min-[1100px]:grid", parties.length === 4 ? "min-[1100px]:grid-cols-4" : "min-[1100px]:grid-cols-5")}>
+            <div tabIndex={0} role="region" aria-label="Party cards" className={cn("edge-fade-right no-scrollbar mt-4 grid grid-cols-2 gap-3 min-[640px]:flex min-[640px]:snap-x min-[640px]:overflow-x-auto min-[640px]:pb-1 min-[1100px]:grid", parties.length === 4 ? "min-[1100px]:grid-cols-4" : "min-[1100px]:grid-cols-5")}>
               {parties.map((party, partyIndex) => {
                 const value = expected[party] ?? 0;
                 const perParty = Math.max(0, 100 - Math.abs(value - (actual[party] ?? 0)));

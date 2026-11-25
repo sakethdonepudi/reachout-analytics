@@ -26,6 +26,14 @@ function initialsOf(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((word) => word[0] ?? "").join("").toUpperCase() || "AD";
 }
 
+function aliasRank(name: string) {
+  return /^Ad account (\d+)$/.exec(name.trim())?.[1] ?? null;
+}
+
+function aliasText(name: string) {
+  return aliasRank(name) ?? initialsOf(name);
+}
+
 function AnimatedNumber({ value, mode = "int" }: { value: number; mode?: "int" | "compact" }) {
   const reduced = usePrefersReducedMotion();
   const [shown, setShown] = useState(value);
@@ -353,7 +361,7 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
               <p className="mt-1 max-w-[70ch] text-[14px] leading-relaxed text-[color:var(--theme-text-2)]">{filtered.how}. {filtered.note}</p>
             </div>
             {onClose && (
-              <button type="button" onClick={onClose} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[#0B0B0C] px-4 text-[13px] font-semibold text-[color:var(--theme-text)] hover:bg-[#0B0B0C] hover:text-white">
+              <button type="button" onClick={onClose} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[color:var(--theme-text)] px-4 text-[13px] font-semibold text-[color:var(--theme-text)] hover:bg-[color:var(--theme-text)] hover:text-[color:var(--theme-surface)]">
                 <X className="size-4" /> Back to survey
               </button>
             )}
@@ -438,7 +446,7 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
                     <tr className="border-t border-[color:var(--theme-border)] transition-colors hover:bg-[color:var(--theme-surface-3)] align-middle">
                       <th scope="row" className="sticky left-0 z-10 bg-[color:var(--theme-surface)] px-4 py-2.5 text-left font-semibold text-[color:var(--theme-text)]">
                         <button type="button" onClick={() => void toggleAccount(item.key)} className="inline-flex min-h-11! items-center gap-2 align-middle text-left hover:text-[color:var(--theme-link)]">
-                          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[color:var(--tn-soft-blue)] text-[12px] font-bold text-[color:var(--theme-link)]" aria-hidden>{initialsOf(item.name)}</span>
+                          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[color:var(--tn-soft-blue)] text-[12px] font-bold text-[color:var(--theme-link)]" aria-hidden>{aliasText(item.name)}</span>
                           {item.name}
                           {openAccount === item.key ? <ChevronDown className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}
                         </button>
@@ -471,7 +479,7 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
               {pageAccounts.map((item) => (
                 <div key={item.key} className="rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-3">
                   <button type="button" onClick={() => void toggleAccount(item.key)} className="flex min-h-11! w-full items-center gap-2 text-left">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[color:var(--tn-soft-blue)] text-[12px] font-bold text-[color:var(--theme-link)]" aria-hidden>{initialsOf(item.name)}</span>
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[color:var(--tn-soft-blue)] text-[12px] font-bold text-[color:var(--theme-link)]" aria-hidden>{aliasText(item.name)}</span>
                     <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-semibold text-[color:var(--theme-text)]">{item.name}</span>{owner && item.id && <span className="block truncate text-[12px] text-[color:var(--theme-text-3)]">{item.business || "Ad account"} · {item.id}</span>}</span>
                     {openAccount === item.key ? <ChevronDown className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}
                   </button>
@@ -511,12 +519,12 @@ function AccountCard({ account, maxReach, owner }: { account: TnSocialAccount; m
   return (
     <div className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-3 shadow-[0_6px_18px_rgba(0,0,0,0.025)] transition-transform duration-200 ease-out hover:-translate-y-0.5">
       <div className="flex items-center gap-2">
-        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[color:var(--tn-soft-blue)] text-[12px] font-bold text-[color:var(--theme-link)]" aria-hidden>{initialsOf(account.name)}</span>
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[color:var(--tn-soft-blue)] text-[12px] font-bold text-[color:var(--theme-link)]" aria-hidden>{aliasText(account.name)}</span>
         <p className="truncate text-[13px] font-semibold text-[color:var(--theme-text)]">{account.name}</p>
       </div>
       {owner && account.id && <p className="mt-0.5 truncate text-[12px] text-[color:var(--theme-text-3)]">{account.business || "Ad account"} · {account.id}</p>}
       <p className="mt-1 text-[12px] text-[color:var(--theme-text-2)]">{number(account.campaignCount)} campaigns · reach <span title={number(account.reach)}>{compact(account.reach)}</span></p>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[color:var(--theme-surface-2)]" title={`Reach ${number(account.reach)}`}><span className="block h-full rounded-full bg-[#0B0B0C]" style={{ width: `${Math.max(4, (account.reach / maxReach) * 100)}%` }} /></div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[color:var(--theme-grid)]" title={`Reach ${number(account.reach)}`}><span className="block h-full rounded-full bg-[color:var(--theme-text)]" style={{ width: `${Math.max(4, (account.reach / maxReach) * 100)}%` }} /></div>
     </div>
   );
 }
@@ -598,8 +606,8 @@ function CellBar({ value, max, tone = "navy" }: { value: number; max: number; to
   return (
     <span className="flex w-full min-w-[76px] flex-col items-end gap-1" title={number(value)}>
       <span>{compact(value)}</span>
-      <span className={cn("h-[2px] w-full overflow-hidden rounded-full", tone === "sky" ? "bg-[color:var(--tn-soft-blue)]" : "bg-[color:var(--theme-surface-2)]")} aria-hidden>
-        <span className={cn("block h-full rounded-full", tone === "sky" ? "bg-[#1f6fd1]" : "bg-[#0B0B0C]/45")} style={{ width: `${Math.max(2, (value / max) * 100)}%` }} />
+      <span className="h-[3px] w-full overflow-hidden rounded-full bg-[color:var(--theme-grid)]" aria-hidden>
+        <span className="block h-full rounded-full" style={{ width: `${Math.max(2, (value / max) * 100)}%`, background: tone === "sky" ? "var(--theme-chart-reach)" : "color-mix(in srgb, var(--theme-text) 60%, transparent)" }} />
       </span>
     </span>
   );

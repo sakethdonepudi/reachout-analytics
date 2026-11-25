@@ -23,7 +23,7 @@ import { MAP_STYLE, addMapLights, createScreenLine, setScreenLinePoints, updateL
    official administrative boundary.
    ===================================================================== */
 
-export type MapTheme = "light";
+export type MapTheme = "light" | "dark";
 
 const BOX = 1000;
 const DEPTH = 10;
@@ -42,7 +42,7 @@ type Props = {
   district: string | null;
   ac: number | null;
   year: ElectionYear;
-  theme: "light";
+  theme: MapTheme;
   /** Increment after a split resize to refit without changing selection. */
   fitKey?: number;
   onSelectDistrict: (name: string) => void;
@@ -85,6 +85,7 @@ const signedArea = (r: number[][]) => {
 
 const PAL = {
   light: { none: "#e7ebef", side: "#d3d9e0", line: "rgb(40,58,78)", hover: "#1d4ed8", sel: "#111827", label: "#1b2430", halo: "rgba(255,255,255,.94)" },
+  dark: { none: "#232322", side: "#181817", line: "rgba(210,210,200,.38)", hover: "#8fb0ff", sel: "#f0efec", label: "#f0efec", halo: "rgba(18,18,17,.92)" },
 };
 
 export default function TelanganaMap({ acs, district, ac, year, theme, fitKey = 0, onSelectDistrict, onSelectAc, onReset }: Props) {
