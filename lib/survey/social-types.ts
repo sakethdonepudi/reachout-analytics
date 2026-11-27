@@ -32,7 +32,7 @@ export type TnSocialOverview = {
 };
 export type TnSocialFiltered = {
   title: string; place?: string; note: string; how: string;
-  accounts: TnSocialAccount[]; campaigns: TnSocialCampaign[]; totalMatching: number;
+  accounts: TnSocialAccount[]; campaigns: TnSocialCampaign[]; campaignsByAccount?: Record<string, TnSocialCampaign[]>; totalMatching: number;
 };
 export type SocialFilter = {
   match: "target" | "campaigns" | "group";

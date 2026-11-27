@@ -5,6 +5,7 @@
  */
 export type TnPartyBrand = {
   color: string;
+  border?: string;
   logo?: string;
   /** Black line art that is tinted with the party colour through a CSS mask. */
   mask?: boolean;
@@ -21,7 +22,7 @@ export const TN_PARTY_BRAND: Record<string, TnPartyBrand> = {
   NTK: { color: "var(--tn-party-ntk)", logo: "/parties/ntk.png" },
   Others: { color: "var(--tn-party-others)", monogram: "OTH" },
   NOTA: { color: "var(--tn-party-others)", monogram: "NOTA" },
-  NDA: { color: "var(--ap-party-nda)", logo: "/parties/tdp.png" },
+  NDA: { color: "var(--ap-party-nda)", border: "var(--ap-party-nda-deep)", logo: "/parties/tdp.png" },
   YSRCP: { color: "var(--ap-party-ysrcp)", logo: "/parties/ysrcp.svg", mask: true },
   INC: { color: "var(--ap-party-inc)", logo: "/parties/inc.png" },
 };
@@ -34,7 +35,7 @@ const TN_PARTY_HEX: Record<string, string> = {
   NTK: "#7b3fa0",
   Others: "#8c8f96",
   NOTA: "#8c8f96",
-  NDA: "#c98a00",
+  NDA: "#f7a325",
   YSRCP: "#1f6fd1",
   INC: "#0f7043",
 };
@@ -47,7 +48,7 @@ const TN_PARTY_HEX_DARK: Record<string, string> = {
   NTK: "#a46cd0",
   Others: "#8f939b",
   NOTA: "#8f939b",
-  NDA: "#d4960f",
+  NDA: "#ffb340",
   YSRCP: "#4f8ef7",
   INC: "#1fa36f",
 };
@@ -58,6 +59,11 @@ export function partyBrand(party: string): TnPartyBrand {
 
 export function partyColour(party: string): string {
   return partyBrand(party).color;
+}
+
+export function partyBorder(party: string): string {
+  const brand = partyBrand(party);
+  return brand.border ?? brand.color;
 }
 
 export function partyHex(party: string, dark = false): string {

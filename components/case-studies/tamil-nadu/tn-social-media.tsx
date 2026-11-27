@@ -31,8 +31,23 @@ function aliasRank(name: string) {
 }
 
 function aliasText(name: string) {
+  if (name === "All accounts") return "All";
   return aliasRank(name) ?? initialsOf(name);
 }
+
+type ExplorerMetric = "reach" | "impressions" | "views" | "clicks" | "engagements" | "campaigns";
+type AccountSortKey = "name" | ExplorerMetric;
+const EXPLORER_METRICS: Array<{ key: ExplorerMetric; label: string }> = [
+  { key: "reach", label: "Reach" },
+  { key: "impressions", label: "Impressions" },
+  { key: "views", label: "Views" },
+  { key: "clicks", label: "Clicks" },
+  { key: "engagements", label: "Engagement" },
+  { key: "campaigns", label: "Campaigns" },
+];
+const accountValue = (account: TnSocialAccount, metric: ExplorerMetric) => metric === "campaigns" ? account.campaignCount : account[metric];
+const campaignValue = (campaign: TnSocialCampaign, metric: ExplorerMetric) => metric === "campaigns" ? 0 : campaign[metric];
+const explorerNumber = (value: number, metric: ExplorerMetric) => metric === "campaigns" ? number(value) : compact(value);
 
 function AnimatedNumber({ value, mode = "int" }: { value: number; mode?: "int" | "compact" }) {
   const reduced = usePrefersReducedMotion();
@@ -241,6 +256,10 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
   const [accountPage, setAccountPage] = useState(0);
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({ key: "reach", asc: false });
   const [periodKey, setPeriodKey] = useState<string | null>(null);
+  const [explorerAccount, setExplorerAccount] = useState<string | null>(null);
+  const [explorerMetric, setExplorerMetric] = useState<ExplorerMetric>("reach");
+  const [explorerSort, setExplorerSort] = useState<{ key: AccountSortKey; asc: boolean }>({ key: "reach", asc: false });
+  const [explorerShowAll, setExplorerShowAll] = useState(false);
   const [loading, setLoading] = useState(!initialOverview);
   const [error, setError] = useState("");
   const rootRef = useRef<HTMLElement>(null);
@@ -288,6 +307,16 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
   }, [initialFilter, load, overview]);
   useEffect(() => { if (initialFilter) wantTop.current = true; }, [initialFilter]);
   useEffect(() => {
+    setExplorerAccount(null);
+    setExplorerMetric("reach");
+    setExplorerSort({ key: "reach", asc: false });
+    setExplorerShowAll(false);
+  }, [filtered]);
+  useEffect(() => {
+    if (explorerMetric === "campaigns" && explorerAccount) setExplorerMetric("reach");
+  }, [explorerAccount, explorerMetric]);
+  useEffect(() => { setExplorerShowAll(false); }, [explorerAccount, explorerMetric]);
+  useEffect(() => {
     if (loading || !wantTop.current) return;
     wantTop.current = false;
     requestAnimationFrame(() => rootRef.current?.scrollIntoView({ block: "start", behavior: "auto" }));
@@ -332,6 +361,34 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
   const pageAccounts = sortedAccounts.slice(currentAccountPage * accountPageSize, currentAccountPage * accountPageSize + accountPageSize);
   const maxAccountReach = Math.max(1, ...allAccounts.map((item) => item.reach));
   const maxAccountEng = Math.max(1, ...allAccounts.map((item) => item.engagements));
+  const explorerAccounts = (filtered?.accounts ?? []) as TnSocialAccount[];
+  const explorerSelected = explorerAccount ? explorerAccounts.find((item) => item.key === explorerAccount) ?? null : null;
+  const explorerCampaigns = explorerSelected ? filtered?.campaignsByAccount?.[explorerSelected.key] ?? [] : [];
+  const explorerRows = [...explorerAccounts].sort((left, right) => {
+    if (explorerSort.key === "name") return explorerSort.asc ? left.name.localeCompare(right.name) : right.name.localeCompare(left.name);
+    const a = accountValue(left, explorerSort.key), b = accountValue(right, explorerSort.key);
+    return explorerSort.asc ? a - b : b - a;
+  });
+  const allAccountsRow: TnSocialAccount = {
+    key: "all",
+    name: "All accounts",
+    campaignCount: explorerAccounts.reduce((sum, item) => sum + item.campaignCount, 0),
+    reach: explorerAccounts.reduce((sum, item) => sum + item.reach, 0),
+    impressions: explorerAccounts.reduce((sum, item) => sum + item.impressions, 0),
+    views: explorerAccounts.reduce((sum, item) => sum + item.views, 0),
+    clicks: explorerAccounts.reduce((sum, item) => sum + item.clicks, 0),
+    engagements: explorerAccounts.reduce((sum, item) => sum + item.engagements, 0),
+  };
+  const metricLabel = EXPLORER_METRICS.find((item) => item.key === explorerMetric)?.label ?? "Reach";
+  const chartRows = explorerSelected
+    ? [...explorerCampaigns].sort((left, right) => campaignValue(right, explorerMetric) - campaignValue(left, explorerMetric))
+    : [...explorerAccounts].sort((left, right) => accountValue(right, explorerMetric) - accountValue(left, explorerMetric));
+  const chartLimit = explorerSelected && !explorerShowAll ? 15 : chartRows.length;
+  const visibleChartRows = chartRows.slice(0, chartLimit);
+  const chartMax = Math.max(1, ...visibleChartRows.map((item) => explorerSelected ? campaignValue(item as TnSocialCampaign, explorerMetric) : accountValue(item as TnSocialAccount, explorerMetric)));
+  const tableCampaigns = explorerSelected ? explorerCampaigns : filtered?.campaigns ?? [];
+  const toggleExplorerSort = (key: AccountSortKey) => setExplorerSort((current) => current.key === key ? { key, asc: !current.asc } : { key, asc: key === "name" });
+  const chooseExplorerAccount = (key: string | null) => setExplorerAccount((current) => !key || current === key ? null : key);
   const sortLabel: Record<SortKey, string> = { name: "name", campaignCount: "campaigns", reach: "reach", impressions: "impressions", views: "views", clicks: "clicks", engagements: "engagement" };
   const monthly = filtered ? [] : overview?.monthly ?? [];
   const kpis = [
@@ -414,11 +471,93 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
 
       {active && (
         filtered ? (
-          <section aria-label="Ad accounts used">
-            <h3 className="mb-2 text-[16px] font-semibold text-[color:var(--theme-text)]">Ad accounts used</h3>
-            <div className={cn("grid grid-cols-2 gap-2", filtered ? "lg:grid-cols-6" : "lg:grid-cols-4")}>
-              {(active.accounts ?? []).map((item) => <AccountCard key={item.key} account={item} maxReach={Math.max(1, ...(active.accounts ?? []).map((accountItem) => accountItem.reach))} owner={owner} />)}
-            </div>
+          <section aria-label="Campaign explorer" className="grid gap-3 lg:grid-cols-[55fr_45fr]">
+            <section className="order-1 flex max-h-[520px] min-h-0 flex-col rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.03)] lg:order-2 lg:h-[560px] lg:max-h-none">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="text-[16px] font-semibold text-[color:var(--theme-text)]">{explorerSelected ? `Top campaigns · ${explorerSelected.name}` : `Ad accounts by ${metricLabel.toLowerCase()}`}</h3>
+                  <p className="mt-0.5 text-[12px] text-[color:var(--theme-text-3)]">{explorerSelected ? `${number(explorerCampaigns.length)} campaigns shown · choose All accounts to compare accounts` : `${number(explorerAccounts.length)} accounts · select a row to inspect its campaigns`}</p>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Explorer metric">
+                {EXPLORER_METRICS.filter((item) => !explorerSelected || item.key !== "campaigns").map((item) => (
+                  <button key={item.key} type="button" aria-pressed={explorerMetric === item.key} onClick={() => setExplorerMetric(item.key)} className={cn("min-h-9 rounded-full border px-3 text-[11.5px] font-semibold transition-colors", explorerMetric === item.key ? "border-[color:var(--theme-selected)] bg-[color:var(--theme-selected)] text-[color:var(--theme-selected-ink)]" : "border-[color:var(--theme-border)] text-[color:var(--theme-text-2)] hover:border-[color:var(--theme-text)] hover:text-[color:var(--theme-text)]")}>{item.label}</button>
+                ))}
+              </div>
+              <div className="relative mt-3 min-h-0 flex-1 overflow-y-auto pr-1" role="region" aria-label="Ranked chart" tabIndex={0}>
+                <div className="explorer-grid pointer-events-none absolute inset-y-0 left-[32%] right-0" aria-hidden />
+                <div className="relative space-y-2">
+                  {visibleChartRows.map((item, index) => {
+                    const isAccount = !explorerSelected;
+                    const name = isAccount ? (item as TnSocialAccount).name : (item as TnSocialCampaign).name;
+                    const value = isAccount ? accountValue(item as TnSocialAccount, explorerMetric) : campaignValue(item as TnSocialCampaign, explorerMetric);
+                    const width = Math.max(1, (value / chartMax) * 82);
+                    return (
+                      <div key={isAccount ? (item as TnSocialAccount).key : `${name}-${index}`} className="grid grid-cols-[minmax(72px,32%)_minmax(0,1fr)] items-center gap-2">
+                        <span className="truncate text-[11.5px] text-[color:var(--theme-text-2)]" title={name}>{name}</span>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="h-2.5 rounded-full bg-[color:var(--theme-chart-explorer)] transition-[width] duration-200 ease-out" style={{ width: `${width.toFixed(2)}%` }} />
+                          <span className="shrink-0 text-[11px] tabular-nums text-[color:var(--theme-text-2)]">{explorerNumber(value, explorerMetric)}</span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {explorerSelected && explorerCampaigns.length > 15 && (
+                <button type="button" onClick={() => setExplorerShowAll((value) => !value)} className="mt-2 inline-flex min-h-10 self-start rounded-full border border-[color:var(--theme-border)] px-3 text-[11.5px] font-semibold text-[color:var(--theme-link)] hover:border-[color:var(--theme-link)]">
+                  {explorerShowAll ? "Show top 15" : `Show more (${explorerCampaigns.length - 15})`}
+                </button>
+              )}
+            </section>
+
+            <section className="order-2 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] shadow-[0_10px_30px_rgba(0,0,0,0.03)] lg:order-1 lg:h-[560px]">
+              <div className="min-h-0 flex-1 overflow-auto">
+                <table className="w-full min-w-[680px] border-collapse text-[13px]">
+                  <thead className="sticky top-0 z-20 text-left text-[10.5px] uppercase tracking-wide">
+                    <tr>
+                      {([{ key: "name", label: "Ad account" }, { key: "reach", label: "Reach" }, { key: "impressions", label: "Impressions" }, { key: "views", label: "Views" }, { key: "clicks", label: "Clicks" }, { key: "engagements", label: "Engagement" }, { key: "campaigns", label: "Campaigns" }] as Array<{ key: AccountSortKey; label: string }>).map((column) => (
+                        <th key={column.key} scope="col" aria-sort={explorerSort.key === column.key ? (explorerSort.asc ? "ascending" : "descending") : "none"} className={cn("px-2.5 py-2 font-semibold", column.key === "name" ? "sticky left-0 z-30 bg-[color:var(--theme-selected)]" : column.key === "campaigns" ? "text-right" : "text-right")}>
+                          <button type="button" onClick={() => toggleExplorerSort(column.key)} className={cn("inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded px-1 hover:bg-white/10", column.key === "name" ? "text-left" : "justify-end")} title={`Sort by ${column.label}`}>
+                            {column.label}
+                            {explorerSort.key === column.key ? (explorerSort.asc ? <ArrowUp className="size-3" aria-hidden /> : <ArrowDown className="size-3" aria-hidden />) : <ArrowUpDown className="size-3 opacity-40" aria-hidden />}
+                          </button>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {([{ account: allAccountsRow, key: null, selected: explorerAccount === null }, ...explorerRows.map((account) => ({ account, key: account.key, selected: explorerAccount === account.key }))]).map(({ account, key, selected }) => (
+                      <tr
+                        key={key ?? "all"}
+                        tabIndex={0}
+                        aria-selected={selected}
+                        onClick={() => chooseExplorerAccount(key)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          event.preventDefault();
+                          chooseExplorerAccount(key);
+                        }}
+                        className={cn("cursor-pointer border-t border-[color:var(--theme-border)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--theme-link)]", selected ? "bg-[color:var(--theme-selected)] text-[color:var(--theme-selected-ink)]" : "hover:bg-[color:var(--theme-surface-2)]")}
+                      >
+                        <th scope="row" className={cn("sticky left-0 z-10 px-2.5 py-2 text-left font-semibold", selected ? "bg-[color:var(--theme-selected)]" : "bg-[color:var(--theme-surface)]")}>
+                          <span className="inline-flex items-center gap-2">
+                            <span className={cn("grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-bold", selected ? "bg-white/15" : "bg-[color:var(--theme-surface-2)] text-[color:var(--theme-link)]")} aria-hidden>{aliasText(account.name)}</span>
+                            <span className="min-w-0">
+                              <span className="block truncate">{account.name}</span>
+                              {owner && account.id && <span className={cn("mt-0.5 block truncate text-[10.5px] font-normal", selected ? "text-white/70" : "text-[color:var(--theme-text-3)]")}>{account.business || "Ad account"} · {account.id}</span>}
+                            </span>
+                          </span>
+                        </th>
+                        {(["reach", "impressions", "views", "clicks", "engagements", "campaigns"] as ExplorerMetric[]).map((metric) => (
+                          <td key={metric} className="px-2.5 py-2 text-right tabular-nums">{explorerNumber(accountValue(account, metric), metric)}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </section>
         ) : (
           <section className="overflow-hidden rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] shadow-[0_10px_30px_rgba(0,0,0,0.03)]" aria-label="Ad accounts">
@@ -510,22 +649,8 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
         )
       )}
 
-      {filtered && <CampaignTable title={`Top ${Math.min(100, filtered.campaigns.length)} campaigns`} campaigns={filtered.campaigns} total={filtered.totalMatching} />}
+      {filtered && <CampaignTable title={explorerSelected ? `Campaigns · ${explorerSelected.name}` : `Top ${Math.min(100, filtered.campaigns.length)} campaigns`} campaigns={tableCampaigns} total={explorerSelected ? tableCampaigns.length : filtered.totalMatching} />}
     </section>
-  );
-}
-
-function AccountCard({ account, maxReach, owner }: { account: TnSocialAccount; maxReach: number; owner: boolean }) {
-  return (
-    <div className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-3 shadow-[0_6px_18px_rgba(0,0,0,0.025)] transition-transform duration-200 ease-out hover:-translate-y-0.5">
-      <div className="flex items-center gap-2">
-        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[color:var(--tn-soft-blue)] text-[12px] font-bold text-[color:var(--theme-link)]" aria-hidden>{aliasText(account.name)}</span>
-        <p className="truncate text-[13px] font-semibold text-[color:var(--theme-text)]">{account.name}</p>
-      </div>
-      {owner && account.id && <p className="mt-0.5 truncate text-[12px] text-[color:var(--theme-text-3)]">{account.business || "Ad account"} · {account.id}</p>}
-      <p className="mt-1 text-[12px] text-[color:var(--theme-text-2)]">{number(account.campaignCount)} campaigns · reach <span title={number(account.reach)}>{compact(account.reach)}</span></p>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[color:var(--theme-grid)]" title={`Reach ${number(account.reach)}`}><span className="block h-full rounded-full bg-[color:var(--theme-text)]" style={{ width: `${Math.max(4, (account.reach / maxReach) * 100)}%` }} /></div>
-    </div>
   );
 }
 
@@ -546,7 +671,7 @@ function CampaignTable({ title, campaigns, total, periodLabel, flush = false }: 
         <p className="text-[12px] text-[color:var(--theme-text-3)]">{rows.length} of {total}</p>
       </div>
       {!rows.length && <p className="px-4 py-6 text-[14px] text-[color:var(--theme-text-3)]">No campaigns match this period. Try another period or clear the filter.</p>}
-      <div className={cn("edge-fade-right hidden min-[640px]:block", flush ? "overflow-x-auto" : "max-h-[520px] overflow-auto")}>
+      <div className={cn("edge-fade-right hidden min-[640px]:block", flush ? "overflow-x-auto" : "max-h-[520px] overflow-auto")} role="region" aria-label={`${title} table`} tabIndex={0}>
         <table className="tn-long-table w-full min-w-[980px] border-collapse text-[14px]">
           <thead className="sticky top-0 z-10 text-left text-[12px] uppercase tracking-wide">
             <tr><th scope="col" className="px-4 py-2.5">Campaign</th><th scope="col" className="px-3 py-2.5">Period</th><th scope="col" className="px-3 py-2.5">Status</th><th scope="col" className="px-3 py-2.5">Start</th><th scope="col" className="px-3 py-2.5 text-right">Reach</th><th scope="col" className="px-3 py-2.5 text-right">Impressions</th><th scope="col" className="px-3 py-2.5 text-right">Views</th><th scope="col" className="px-3 py-2.5 text-right">Clicks</th><th scope="col" className="px-3 py-2.5 text-right">Engagement</th></tr>

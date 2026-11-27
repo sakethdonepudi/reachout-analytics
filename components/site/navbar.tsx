@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { COOKIE, LEGACY_COOKIE, getSessionByToken } from "@/lib/auth";
 import { getUser } from "@/lib/users";
-import { CASES } from "@/lib/cases";
+import { isLiveCase, orderedCases } from "@/lib/cases";
 import { listCases } from "@/lib/case-registry";
 import PublicNavbar from "./public-navbar";
 import ClientNavbar from "./client-navbar";
@@ -28,13 +28,14 @@ export default async function Navbar() {
   const registry = await listCases().catch(() => []);
   const bySlug = new Map(registry.map((row) => [row.slug, row]));
   if (session.role === "owner") {
-    const cases = CASES.map((item) => ({
+    const cases = orderedCases().map((item) => ({
       slug: item.slug,
       title: item.title,
       state: item.stateName,
       party: item.party,
       year: bySlug.get(item.slug)?.electionYear ?? yearFor(item.slug),
       draft: (bySlug.get(item.slug)?.status ?? "draft") !== "published",
+      comingSoon: !isLiveCase(item.slug),
     }));
     return (
       <OwnerNavbar
@@ -48,13 +49,14 @@ export default async function Navbar() {
     );
   }
 
-  const cases = CASES.map((item) => ({
+  const cases = orderedCases().map((item) => ({
     slug: item.slug,
     title: item.title,
     state: item.stateName,
     party: item.party,
     year: bySlug.get(item.slug)?.electionYear ?? yearFor(item.slug),
     draft: false,
+    comingSoon: !isLiveCase(item.slug),
   }));
   return (
     <ClientNavbar

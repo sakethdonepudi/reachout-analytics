@@ -169,6 +169,8 @@ export async function apSocialFiltered(data: SurveyData, options: SocialFilter, 
     matched.sort((a, b) => b.reach - a.reach || b.clicks - a.clicks);
   }
   const limited = matched.slice(0, 100).map(({ accountId: _accountId, ...campaign }) => campaign);
+  const campaignsByAccount = new Map<string, TnSocialCampaign[]>();
+  const stripAccount = ({ accountId: _accountId, ...campaign }: TnSocialCampaign & { accountId: string }) => campaign;
   const byAccount = new Map<string, TnSocialAccount>();
   for (const campaign of matched) {
     const account = accountBySourceId.get(campaign.accountId);
@@ -181,13 +183,24 @@ export async function apSocialFiltered(data: SurveyData, options: SocialFilter, 
       current.views += campaign.views;
       current.clicks += campaign.clicks;
       current.engagements += campaign.engagements;
+      campaignsByAccount.set(account.key, [...(campaignsByAccount.get(account.key) ?? []), stripAccount(campaign)]);
     } else {
+      campaignsByAccount.set(account.key, [stripAccount(campaign)]);
       byAccount.set(account.key, { ...account, campaignCount: 1, reach: campaign.reach, impressions: campaign.impressions, views: campaign.views, clicks: campaign.clicks, engagements: campaign.engagements });
     }
   }
   const used = [...byAccount.values()].sort((a, b) => b.reach - a.reach);
   const title = mode === "target" ? `Target campaign · ${options.label ?? place}` : mode === "group" ? `${options.label ?? group} campaigns` : `${options.label ?? place} campaigns`;
-  return { title, place: nonGeo ? (options.label ?? options.place) : (options.place ?? options.label ?? group), note: `${matched.length} matching Andhra Pradesh campaigns across ${used.length} ad accounts.`, how, accounts: used, campaigns: limited, totalMatching: matched.length };
+  return {
+    title,
+    place: nonGeo ? (options.label ?? options.place) : (options.place ?? options.label ?? group),
+    note: `${matched.length} matching Andhra Pradesh campaigns across ${used.length} ad accounts.`,
+    how,
+    accounts: used,
+    campaigns: limited,
+    campaignsByAccount: Object.fromEntries([...campaignsByAccount].map(([key, list]) => [key, [...list].sort((a, b) => b.reach - a.reach || b.clicks - a.clicks).slice(0, 60)])),
+    totalMatching: matched.length,
+  };
 }
 
 function apSlots(data: SurveyData, periodKey: string): Array<{ key: string; label: string; monthKey?: string; subKey?: string }> {

@@ -7,7 +7,7 @@ import WorkShowcase from "@/components/site/work-showcase";
 import CompanyExperience from "@/components/site/company-marquee";
 import SiteFooter from "@/components/site/site-footer";
 import { COOKIE, LEGACY_COOKIE, getSessionByToken } from "@/lib/auth";
-import { CASES } from "@/lib/cases";
+import { isLiveCase, orderedCases } from "@/lib/cases";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export default async function Home() {
   const session = await getSessionByToken(jar.get(COOKIE)?.value ?? jar.get(LEGACY_COOKIE)?.value);
   if (session?.role === "owner") redirect("/dashboard");
 
-  const cases = CASES.map((item) => ({ slug: item.slug, party: item.party, stateName: item.stateName }));
+  const cases = orderedCases().map((item) => ({ slug: item.slug, party: item.party, stateName: item.stateName, comingSoon: !isLiveCase(item.slug) }));
 
   return (
     <>

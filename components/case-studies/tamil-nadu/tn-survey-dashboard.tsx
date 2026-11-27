@@ -15,7 +15,7 @@ import type { SurveyDemo, SurveyShare } from "@/lib/survey/types";
 import type { TnClientModel, TnSerializedMap, TnSlotModel, TnSwingPayload } from "@/lib/survey/tn-view-model";
 import { TN_2021_BASE } from "@/lib/tamil-nadu/baseline";
 import { canonicalDistrictName } from "@/lib/tamil-nadu/aliases";
-import { partyColour, partyNeedsWhiteInk, TN_GROUP_KEY } from "@/lib/tamil-nadu/party-brand";
+import { partyBorder, partyColour, partyNeedsWhiteInk, TN_GROUP_KEY } from "@/lib/tamil-nadu/party-brand";
 import { projectedMajority } from "@/lib/tamil-nadu/majority";
 import { swingLabel, swingTone } from "@/lib/tamil-nadu/swing";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
@@ -577,7 +577,7 @@ export default function TnSurveyDashboard({
                 const value = expected[party] ?? 0;
                 const perParty = Math.max(0, 100 - Math.abs(value - (actual[party] ?? 0)));
                 return (
-                  <div key={party} className={cn("min-w-0 rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.03)] min-[640px]:min-w-[160px] min-[640px]:flex-1 min-[640px]:snap-start min-[1100px]:min-w-0", partyIndex === 4 && "col-span-2 min-[640px]:col-span-1")} style={{ borderTopColor: colour(party), borderTopWidth: 3 }}>
+                  <div key={party} className={cn("min-w-0 rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.03)] min-[640px]:min-w-[160px] min-[640px]:flex-1 min-[640px]:snap-start min-[1100px]:min-w-0", partyIndex === 4 && "col-span-2 min-[640px]:col-span-1")} style={{ borderTopColor: partyBorder(party), borderTopWidth: 3 }}>
                     <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[color:var(--theme-text-2)]"><PartyBadge party={party} size={28} />{party} · {view === "ex" ? "share" : "expected"}</p>
                     <p className="tn-number mt-1 text-[38px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[color:var(--theme-text)]"><CountUp value={value} decimals={2} suffix="%" /></p>
                     <p className="mt-1.5 text-[12.5px] font-semibold text-[color:var(--theme-negative)]">Actual {config.cardStyle === "ap" ? "2024" : "2026"}: {pct2(actual[party])}</p>
@@ -702,7 +702,6 @@ export default function TnSurveyDashboard({
                 {parties.map((party) => <span key={party} className="inline-flex items-center gap-1.5"><PartyBadge party={party} size={20} />{party}</span>)}
                 <span className="inline-flex items-center gap-1.5"><span className="h-3 w-6 rounded-[2px] bg-[#94A3B8] ring-1 ring-inset ring-black/10" />No data / under 30</span>
               </div>
-              <a data-map-credit href={config.map.creditHref} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-11 items-center text-[11px] text-[color:var(--theme-text-3)] underline decoration-[color:var(--theme-border)] underline-offset-2 hover:text-[color:var(--theme-text)]">{config.map.credit}</a>
               <div className="sr-only">
               <table>
                 <caption>{config.stateName} district results</caption>

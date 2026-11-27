@@ -15,7 +15,7 @@ import ThemeToggle from "@/components/site/theme-toggle";
 import { ACCOUNT_ITEMS, CLIENT_NAV, LOGIN, OWNER_NAV, PUBLIC_NAV, type NavItem } from "@/lib/nav";
 import type { PartyId } from "@/lib/parties";
 
-type CaseItem = { slug: string; title: string; state: string; party: PartyId; year: number; draft: boolean };
+type CaseItem = { slug: string; title: string; state: string; party: PartyId; year: number; draft: boolean; comingSoon?: boolean };
 
 export type NavCoreProps = {
   variant: "public" | "client" | "owner";
@@ -152,7 +152,7 @@ export default function NavCore({ variant, displayName, username, organisation, 
   const caseItems = cases.map((row) => ({
     href: `/case-studies/${row.slug}`,
     label: `${row.state} · ${row.party}`,
-    hint: `${row.year}${row.draft ? " · Draft" : ""}`,
+    hint: row.comingSoon ? `Coming soon · ${row.year}` : `${row.year}${row.draft ? " · Draft" : ""}`,
     party: row.party,
   }));
 

@@ -1,5 +1,6 @@
 export type CasePartyBrand = {
   color: string;
+  border?: string;
   logo?: string;
   mask?: boolean;
   monogram?: string;
@@ -130,7 +131,7 @@ export const AP_CONFIG: CaseStudyConfig = {
   map: { heading: "Andhra Pradesh", totalSeats: 175, majority: 88, districtAlias: { Anantapur: "Ananthapuramu", ASR: "Alluri Sitharama Raju" }, labelOffset: AP_LABEL_OFFSET, mobileLabelOffset: {}, shareKey: { NDA: "NDA", YSRCP: "YSRCP", INC: "INC", Others: "Others" }, fillMode: "flat", mobileLabelCount: 8, tilt: 0.6, fit: 1, centerZ: 35, rotation: 0.22, credit: "Map: DataMeet, CC BY 2.5 IN", creditHref: "https://github.com/datameet/maps" },
   social: { stateName: "Andhra Pradesh", targetName: "YSRCP", fallbackPattern: "ysrcp|jagan|yeduguri|saila|fan", fallbackLabel: "YSRCP campaigns" },
   brand: {
-    NDA: { color: "var(--ap-party-nda)", logo: "/parties/tdp.png" },
+    NDA: { color: "var(--ap-party-nda)", border: "var(--ap-party-nda-deep)", logo: "/parties/tdp.png" },
     YSRCP: { color: "var(--ap-party-ysrcp)", logo: "/parties/ysrcp.svg", mask: true },
     INC: { color: "var(--ap-party-inc)", logo: "/parties/inc.png" },
     Others: { color: "var(--ap-party-others)", monogram: "OTH" },

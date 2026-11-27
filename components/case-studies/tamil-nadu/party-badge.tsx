@@ -35,7 +35,7 @@ export function PartyBadge({
       style={{
         width: px,
         height: px,
-        borderColor: brand.color,
+        borderColor: brand.border ?? brand.color,
         background: monogram && !dot ? brand.color : "var(--party-badge-surface)",
         color: ink,
       }}

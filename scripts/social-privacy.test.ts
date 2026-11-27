@@ -106,6 +106,18 @@ const data = {
   const apFiltered = await apSocialFiltered(apData, { match: "target", kind: "govt", place: "Not good", label: "Govt performance · Not good" }, false);
   check("AP target view has no ids or long numbers", () => assert.ok(!/\d{14,17}/.test(JSON.stringify(apFiltered))));
   check("AP client campaign names strip currency amounts", () => assert.ok(!/₹|\bINR\b|\bRs\.?\b/i.test(JSON.stringify(apFiltered))));
+  check("AP explorer payload has per-account campaigns", () => {
+    assert.ok(apFiltered.campaignsByAccount && Object.keys(apFiltered.campaignsByAccount).length > 0);
+    assert.ok(Object.values(apFiltered.campaignsByAccount).every((list) => list.length > 0));
+  });
+  check("AP explorer payload has no spend, ids, business names or Ads Manager links", () => {
+    const explorer = JSON.stringify(apFiltered.campaignsByAccount);
+    assert.ok(!/₹|\bINR\b|\bRs\.?\b|\bspend\b|\bcost\b|\bCPM\b|\bCPC\b/i.test(explorer));
+    assert.ok(!/\d{12,20}/.test(explorer));
+    assert.ok(!/Secret Business|Named Business|Districts AIADMK/i.test(explorer));
+    assert.ok(!/adsmanager|facebook\.com\/ads|business\.facebook/i.test(explorer));
+    assert.ok(Object.values(apFiltered.campaignsByAccount ?? {}).flat().every((campaign) => !("id" in campaign) && !("href" in campaign)));
+  });
   check("AP target view labels non-geo audiences", () => assert.match(apFiltered.how, /reuse for retargeting and look-alike/i));
 
   console.log("\n2. Client filtered view");

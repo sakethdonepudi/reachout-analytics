@@ -135,5 +135,13 @@ export const CONTACT = {
   instagram: "https://www.instagram.com/reachout_analytics_pvt_ltd/",
 };
 
+export const LIVE_CASE_SLUGS = ["tamil-nadu", "andhra-pradesh-2024"] as const;
+export function isLiveCase(slug: string): boolean {
+  return (LIVE_CASE_SLUGS as readonly string[]).includes(slug);
+}
+export function orderedCases(): CaseStudy[] {
+  const live = LIVE_CASE_SLUGS.map((slug) => CASES.find((item) => item.slug === slug)).filter(Boolean) as CaseStudy[];
+  return [...live, ...CASES.filter((item) => !isLiveCase(item.slug))];
+}
 export const caseBySlug = (slug: string) => CASES.find((c) => c.slug === slug);
 export const caseUrl = (slug: string) => `/case-studies/${slug}`;

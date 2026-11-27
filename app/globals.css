@@ -2318,12 +2318,14 @@ html { scroll-padding-top: 96px; }
   --theme-chart-impressions: #7c3aed;
   --theme-chart-views: #b45309;
   --theme-chart-clicks: #0f766e;
+  --theme-chart-explorer: #2f5b8f;
   --tn-party-tvk: #e6b800;
   --tn-party-dmk: #dd1100;
   --tn-party-aiadmk: #0f7007;
   --tn-party-ntk: #7b3fa0;
   --tn-party-others: #8c8f96;
-  --ap-party-nda: #c98a00;
+  --ap-party-nda: #f7a325;
+  --ap-party-nda-deep: #e08a00;
   --ap-party-ysrcp: #1f6fd1;
   --ap-party-inc: #0f7043;
   --ap-party-others: #8c8f96;
@@ -2373,6 +2375,7 @@ html { scroll-padding-top: 96px; }
   --theme-chart-impressions: #b794f6;
   --theme-chart-views: #f4b860;
   --theme-chart-clicks: #5eead4;
+  --theme-chart-explorer: #8fb0ff;
   --party-badge-surface: #f1f1ed;
   --state-map-neighbour: #3a3a37;
   --state-map-inset: #2e2e2c;
@@ -2381,7 +2384,8 @@ html { scroll-padding-top: 96px; }
   --tn-party-aiadmk: #1fa36f;
   --tn-party-ntk: #a46cd0;
   --tn-party-others: #8f939b;
-  --ap-party-nda: #d4960f;
+  --ap-party-nda: #ffb340;
+  --ap-party-nda-deep: #ffc266;
   --ap-party-ysrcp: #4f8ef7;
   --ap-party-inc: #1fa36f;
   --ap-party-others: #8f939b;
@@ -2679,3 +2683,10 @@ body { transition: background-color 150ms ease, color 150ms ease; }
 [data-theme="dark"] .logo-light { display: none; }
 [data-theme="dark"] .logo-dark { display: contents; }
 [data-theme="dark"] .report-pill.soon { background: var(--theme-surface-2); color: var(--theme-text-2); }
+
+/* Campaign explorer plot grid. */
+.explorer-grid {
+  background-image: linear-gradient(to right, var(--theme-border) 1px, transparent 1px);
+  background-size: 25% 100%;
+  opacity: .55;
+}

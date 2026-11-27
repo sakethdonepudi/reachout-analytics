@@ -15,7 +15,7 @@ import { useSlidingUnderline } from "@/components/ui/use-sliding-underline";
 import { ACCOUNT_ITEMS, CLIENT_NAV, LOGIN, PUBLIC_NAV, type NavItem } from "@/lib/nav";
 import type { PartyId } from "@/lib/parties";
 
-export type HomeCase = { slug: string; party: PartyId; stateName: string };
+export type HomeCase = { slug: string; party: PartyId; stateName: string; comingSoon?: boolean };
 
 function idleLabel(ms: number) {
   const seconds = Math.max(0, Math.round(ms / 1000));
@@ -106,7 +106,8 @@ export default function HomeHeader({
                           {rows.map((row) => (
                             <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} role="menuitem" onClick={() => setCasesOpen(false)} className="flex min-h-11! items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[color:var(--theme-text)] hover:bg-[color:var(--theme-surface-2)]">
                               <NavPartyMark party={row.party} />
-                              <span>{row.stateName} · {row.party}</span>
+                              <span className="min-w-0 flex-1 truncate">{row.stateName} · {row.party}</span>
+                              {row.comingSoon && <span className="shrink-0 rounded-full border border-[color:var(--theme-border)] px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.06em] text-[color:var(--theme-text-3)]">Coming soon</span>}
                             </Link>
                           ))}
                         </div>
@@ -174,7 +175,8 @@ export default function HomeHeader({
               {cases.map((row) => (
                 <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[color:var(--theme-text)]">
                   <NavPartyMark party={row.party} />
-                  <span>{row.stateName} · {row.party}</span>
+                  <span className="min-w-0 flex-1 truncate">{row.stateName} · {row.party}</span>
+                  {row.comingSoon && <span className="shrink-0 rounded-full border border-[color:var(--theme-border)] px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.06em] text-[color:var(--theme-text-3)]">Coming soon</span>}
                 </Link>
               ))}
               {CLIENT_NAV.slice(2).map((item) => <MobileLink key={item.key} item={item} />)}
@@ -192,7 +194,8 @@ export default function HomeHeader({
               {cases.map((row) => (
                 <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[color:var(--theme-text)]">
                   <NavPartyMark party={row.party} />
-                  <span>{row.stateName} · {row.party}</span>
+                  <span className="min-w-0 flex-1 truncate">{row.stateName} · {row.party}</span>
+                  {row.comingSoon && <span className="shrink-0 rounded-full border border-[color:var(--theme-border)] px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.06em] text-[color:var(--theme-text-3)]">Coming soon</span>}
                 </Link>
               ))}
               <div className="my-1 h-px bg-[color:var(--theme-border)]" />

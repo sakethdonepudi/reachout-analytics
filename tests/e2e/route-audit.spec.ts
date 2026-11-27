@@ -8,7 +8,7 @@
  */
 import { readFileSync } from "node:fs";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright-core";
-import { CASES } from "../../lib/cases";
+import { CASES, isLiveCase } from "../../lib/cases";
 
 const BASE = "http://localhost:3101";
 const owner = readFileSync(".context/owner-cookie.txt", "utf8").trim().split("=").slice(1).join("=");
@@ -79,7 +79,7 @@ async function clickTab(page: Page, name: RegExp) {
     record("/", "Case Studies dropdown", "signed out", "7 state entries, colour logos", `${count} entries`, count >= 7 && filters.every((value) => value === "none"));
     await page.keyboard.press("Escape");
 
-    for (const item of CASES) {
+    for (const item of CASES.filter((entry) => isLiveCase(entry.slug))) {
       await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(700);
       await page.locator(`.case-disc[href="/case-studies/${item.slug}"]`).first().click();
@@ -133,27 +133,19 @@ async function clickTab(page: Page, name: RegExp) {
     await page.waitForTimeout(1200);
     record("/", "Client navbar", "client", "Home, Case Studies, user chip", await page.locator("header nav a, header nav button").allInnerTexts().then((items) => items.filter(Boolean).join(", ")), await page.getByRole("button", { name: /Account menu/ }).isVisible());
 
+    await page.goto(`${BASE}/case-studies`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1000);
+    const caseCards = await page.locator('main a[href^="/case-studies/"]').allInnerTexts();
+    const caseListBody = await page.locator("main").innerText();
+    record("/case-studies", "Case order and count", "client", "Tamil Nadu then Andhra Pradesh, 2 live · 5 coming soon", caseCards.slice(0, 2).map((text) => text.replace(/\n+/g, " ").slice(0, 44)).join(" / "), /Tamil Nadu/.test(caseCards[0] ?? "") && /Andhra Pradesh/.test(caseCards[1] ?? "") && /2 live · 5 coming soon/i.test(caseListBody));
+
     for (const item of CASES) {
-      if (item.slug === "tamil-nadu" || item.slug === "andhra-pradesh-2024") continue;
+      if (isLiveCase(item.slug)) continue;
       await page.goto(`${BASE}/case-studies/${item.slug}`, { waitUntil: "domcontentloaded" });
-      await page.waitForTimeout(1200);
-      const tabs = await tabTexts(page);
-      const expected = item.tabs ?? ["opinion", "social"];
-      const labels = expected.map((id) => id === "exit" ? "Exit Poll" : id === "opinion" ? "Opinion Poll" : "Social Media");
-      record(`/case-studies/${item.slug}`, "Tabs", "client", labels.join(", "), tabs.join(", "), JSON.stringify(tabs) === JSON.stringify(labels));
-      for (const label of labels) {
-        const wasActive = (await selectedTab(page)) === label;
-        if (wasActive) {
-          const id = label === "Exit Poll" ? "exit" : label === "Opinion Poll" ? "opinion" : "social";
-          record(`/case-studies/${item.slug}`, `Tab ${label}`, "client", `default ${id} panel visible`, String(await page.locator(`#case-panel-${id}`).isVisible()), await page.locator(`#case-panel-${id}`).isVisible());
-          continue;
-        }
-        await clickTab(page, new RegExp(`^${label}$`));
-        const url = new URL(page.url());
-        const id = label === "Exit Poll" ? "exit" : label === "Opinion Poll" ? "opinion" : "social";
-        const panel = page.locator(`#case-panel-${id}`);
-        record(`/case-studies/${item.slug}`, `Tab ${label}`, "client", `view=${id} and panel visible`, `${url.searchParams.get("view")} / ${await panel.isVisible()}`, url.searchParams.get("view") === id && await panel.isVisible());
-      }
+      await page.waitForTimeout(1000);
+      const body = await page.locator("body").innerText();
+      record(`/case-studies/${item.slug}`, "Coming soon", "client", "title, project in progress and back button", `${item.party} · ${item.stateName}`, body.includes(`${item.party} · ${item.stateName}`) && /project in progress/i.test(body) && body.includes("This case study is being prepared. Please check back soon.") && (await page.getByRole("link", { name: /Back to case studies/i }).count()) >= 1);
+      record(`/case-studies/${item.slug}`, "No dashboard tabs", "client", "no case study tabs", String(await tabTexts(page).then((tabs) => tabs.length)), (await tabTexts(page)).length === 0);
     }
 
     await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=op`, { waitUntil: "domcontentloaded" });
@@ -202,6 +194,22 @@ async function clickTab(page: Page, name: RegExp) {
     await apTarget.evaluate((element) => (element as HTMLElement).click());
     await page.waitForTimeout(1800);
     record("/case-studies/andhra-pradesh-2024", "Target view", "client", "view=social and non-geo audience note", `${new URL(page.url()).searchParams.get("view")}/${new URL(page.url()).searchParams.get("match")}`, new URL(page.url()).searchParams.get("view") === "social" && new URL(page.url()).searchParams.get("match") === "target" && (await page.getByText(/reuse for retargeting and look-alike/i).isVisible().catch(() => false)));
+    const explorer = page.locator("section[aria-label='Campaign explorer']");
+    const explorerTitle = await explorer.locator("h3").first().innerText();
+    const explorerRows = await explorer.locator("tbody tr").count();
+    const metricPills = await explorer.getByRole("group", { name: "Explorer metric" }).getByRole("button").count();
+    record("/case-studies/andhra-pradesh-2024", "Campaign explorer", "client", "accounts table and ranked chart", `${explorerRows} rows / ${metricPills} pills / ${explorerTitle}`, explorerRows > 1 && metricPills === 6 && /Ad accounts by reach/i.test(explorerTitle));
+    record("/case-studies/andhra-pradesh-2024", "No Spent pill", "client", "no Spent metric for clients", /Spent/i.test(await page.locator("body").innerText()) ? "found" : "clean", !/Spent/i.test(await page.locator("body").innerText()));
+    const firstAccount = explorer.locator("tbody tr").filter({ hasText: "Ad account 1" }).first();
+    await firstAccount.click();
+    await page.waitForTimeout(300);
+    const selectedTitle = await explorer.locator("h3").first().innerText();
+    const selectedPills = await explorer.getByRole("group", { name: "Explorer metric" }).getByRole("button").count();
+    const tableTitle = await page.locator("section[aria-label^='Campaigns · Ad account 1']").innerText().catch(() => "");
+    record("/case-studies/andhra-pradesh-2024", "Explorer account selection", "client", "top campaigns and campaign table follow the account", `${selectedTitle} / ${tableTitle.slice(0, 40)}`, /Top campaigns · Ad account 1/i.test(selectedTitle) && selectedPills === 5 && /Campaigns · Ad account 1/i.test(tableTitle));
+    await firstAccount.click();
+    await page.waitForTimeout(300);
+    record("/case-studies/andhra-pradesh-2024", "Explorer clear selection", "client", "all accounts restored", await explorer.locator("h3").first().innerText(), /Ad accounts by reach/i.test(await explorer.locator("h3").first().innerText()));
     await page.getByRole("button", { name: /Back to survey/ }).click();
     await page.waitForTimeout(900);
     await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd`, { waitUntil: "domcontentloaded" });
@@ -238,7 +246,7 @@ async function clickTab(page: Page, name: RegExp) {
     await page.waitForTimeout(2200);
     await page.locator("section[aria-label='Andhra Pradesh map']").scrollIntoViewIfNeeded();
     await page.waitForTimeout(900);
-    record("/case-studies/andhra-pradesh-2024", "Map credit", "client", "DataMeet CC BY 2.5 IN link", String(await page.getByRole("link", { name: /Map: DataMeet/ }).count()), (await page.getByRole("link", { name: /Map: DataMeet/ }).count()) === 1);
+    record("/case-studies/andhra-pradesh-2024", "Map credit removed", "client", "no map credit line", String(await page.getByRole("link", { name: /Map: DataMeet/ }).count()), (await page.getByRole("link", { name: /Map: DataMeet/ }).count()) === 0);
     for (const [tab, expected] of [["zone", 2], ["area", 1], ["dist", 3], ["govt", 2]] as const) {
       await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd&profile=${tab}`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(1600);
@@ -413,7 +421,7 @@ async function clickTab(page: Page, name: RegExp) {
       await page.waitForTimeout(1000);
       record("/case-studies/tamil-nadu", "Map back to state", "client", "district view returns", String(await page.getByRole("button", { name: /Back to state/ }).count()), (await page.getByRole("button", { name: /Back to state/ }).count()) === 0);
     }
-    record("/case-studies/tamil-nadu", "Map credit", "client", "DataMeet CC BY 2.5 IN link", String(await page.getByRole("link", { name: /Map: DataMeet/ }).count()), (await page.getByRole("link", { name: /Map: DataMeet/ }).count()) === 1);
+    record("/case-studies/tamil-nadu", "Map credit removed", "client", "no map credit line", String(await page.getByRole("link", { name: /Map: DataMeet/ }).count()), (await page.getByRole("link", { name: /Map: DataMeet/ }).count()) === 0);
     await page.goto(`${BASE}/case-studies/tamil-nadu?view=rs`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(800);
     record("/case-studies/tamil-nadu", "Old rs link", "client", "redirects to op", String(new URL(page.url()).searchParams.get("view")), new URL(page.url()).searchParams.get("view") === "op");
@@ -589,6 +597,10 @@ async function clickTab(page: Page, name: RegExp) {
     await page.getByRole("link", { name: "Case Studies" }).click();
     await page.waitForTimeout(900);
     record("/case-studies", "Owner shell", "owner", "sidebar visible", `${new URL(page.url()).pathname}`, new URL(page.url()).pathname === "/case-studies" && await page.locator('[aria-label="Owner navigation"]').isVisible());
+    await page.goto(`${BASE}/case-studies/gujarat`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(900);
+    const ownerComing = await page.locator("body").innerText();
+    record("/case-studies/gujarat", "Owner coming soon", "owner", "same holding page for owners", ownerComing.includes("This case study is being prepared. Please check back soon.") ? "coming soon" : "dashboard", ownerComing.includes("This case study is being prepared. Please check back soon.") && !/Voter profile/i.test(ownerComing));
     await page.goto(`${BASE}/case-studies/tamil-nadu`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1000);
     record("/case-studies/tamil-nadu", "Owner cards", "owner", "Opinion, Exit, Social", (await Promise.all([/Opinion poll/, /Exit poll/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)))).join(", "), (await Promise.all([/Opinion poll/, /Exit poll/, /Social Media/].map((name) => page.getByRole("button", { name }).first().isVisible().catch(() => false)))).every(Boolean));

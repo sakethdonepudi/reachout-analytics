@@ -5,7 +5,7 @@ import { ArrowUpRight } from "lucide-react";
 import * as THREE from "three";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 import { rafLoop } from "@/lib/raf-loop";
-import { CASES, caseUrl, type CaseStudy } from "@/lib/cases";
+import { CASES, caseUrl, isLiveCase, type CaseStudy } from "@/lib/cases";
 import { PartyMark } from "@/components/site/party-mark";
 import STATES from "@/lib/data/india-states.json";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ import { useTheme } from "@/components/site/theme";
 
 /* Map outline data: "India" by svg-maps (github.com/VictorCazanave/svg-maps), CC BY 4.0 */
 
-const TOUR = CASES.filter((c) => c.tour);
+const TOUR = CASES.filter((c) => isLiveCase(c.slug));
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -143,7 +143,7 @@ export default function IndiaMap() {
       const geo = new THREE.ExtrudeGeometry(shapes, { depth: DEPTH, bevelEnabled: false, curveSegments: 2 });
       geo.rotateX(Math.PI / 2);
       geo.translate(-CX, DEPTH, -CZ);
-      const partner = CASES.some((c) => c.state === s.id);
+      const partner = TOUR.some((c) => c.state === s.id);
       const cap = new THREE.MeshStandardMaterial({ color: (partner ? C_PARTNER : C_BASE).clone(), roughness: 0.5, metalness: 0.25, emissive: 0x1d9e75, emissiveIntensity: 0 });
       const side = new THREE.MeshStandardMaterial({ color: S_BASE.clone(), roughness: 0.7, metalness: 0.3 });
       const mesh = new THREE.Mesh(geo, [cap, side]);
@@ -171,7 +171,7 @@ export default function IndiaMap() {
     /* ---------- markers ---------- */
     type Mk = { m: THREE.Group; beam: THREE.Mesh; core: THREE.Mesh; halo: THREE.Sprite; rings: THREE.Mesh[]; act: number };
     const markers: Record<string, Mk> = {};
-    CASES.forEach((c, i) => {
+    TOUR.forEach((c, i) => {
       const HUE = c.tour ? dark ? 0x8fb0ff : 0x1f4e78 : dark ? 0x5eead4 : 0x1d9e75, HALO = dark ? 0x5eead4 : 0x1d9e75;
       const m = new THREE.Group();
       m.position.set(wx(c.x), DEPTH, wz(c.y));
@@ -331,7 +331,7 @@ export default function IndiaMap() {
       }
 
       const sc = clamp(dist / 360, 0.8, 2.8);
-      CASES.forEach((c) => {
+      TOUR.forEach((c) => {
         const mk = markers[c.slug], on = !!active && active.slug === c.slug;
         mk.act += ((on ? 1 : 0) - mk.act) * fr(0.08);
         mk.m.position.y = DEPTH + states[c.state].lift;
@@ -519,7 +519,7 @@ export default function IndiaMap() {
       <p className="pointer-events-none absolute bottom-6 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[color:var(--theme-text-2)]">Drag to rotate · Select a state</p>
 
       {/* labels over markers in the zoomed-out view */}
-      {CASES.map((c) => (
+      {TOUR.map((c) => (
         <button
           key={c.slug}
           ref={(el) => { pinRefs.current[c.slug] = el; }}

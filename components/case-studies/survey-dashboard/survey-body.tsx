@@ -11,7 +11,7 @@ const TN_COLOURS: Record<string, string> = {
   TVK: "#F2C200", "DMK+": "#E23B2E", "AIADMK+": "#0F8A4A", NTK: "#F59E0B", Others: "#64748B",
 };
 const AP_COLOURS: Record<string, string> = {
-  NDA: "#F59E0B", YSRCP: "#2563EB", INC: "#16A34A", Others: "#64748B",
+  NDA: "#F7A325", YSRCP: "#2563EB", INC: "#16A34A", Others: "#64748B",
 };
 
 const int = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? "—" : new Intl.NumberFormat("en-IN").format(Math.round(value)));

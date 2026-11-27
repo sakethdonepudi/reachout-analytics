@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import PartyCard from "@/components/case-studies/shared/party-card";
 import StateMap from "@/components/case-studies/shared/state-map";
-import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl, resolveCaseTab, tabsForCase } from "@/lib/cases";
+import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl, isLiveCase, resolveCaseTab, tabsForCase } from "@/lib/cases";
+import ComingSoon from "@/components/case-studies/shared/coming-soon";
 import { requirePageSession } from "@/lib/require-session";
 import SocialPanel from "@/components/ads-desk/social-panel";
 import CaseStudyTabs from "@/components/ads-desk/case-study-tabs";
@@ -59,12 +60,15 @@ export default async function CaseStudyPage({ params, searchParams }: { params: 
   const { view } = await searchParams;
   const session = await requirePageSession(`/case-studies/${slug}`);
   if (!(await caseAllowed(session, slug))) redirect("/no-access");
-  const social = await socialForCase(slug, session.role === "owner");
   const c = caseBySlug(slug);
-  const tabs = tabsForCase(c);
-  const initialTab = resolveCaseTab(view, tabs);
   const upcoming = UPCOMING.find((u) => u.slug === slug);
   if (!c && !upcoming) notFound();
+  if (c && !isLiveCase(c.slug)) {
+    return <ComingSoon party={c.party} stateName={c.stateName} stateCode={c.state} year={yearFor(c.slug)} />;
+  }
+  const social = await socialForCase(slug, session.role === "owner");
+  const tabs = tabsForCase(c);
+  const initialTab = resolveCaseTab(view, tabs);
 
   const idx = c ? CASES.indexOf(c) : -1;
   const next = CASES[(idx + 1) % CASES.length];

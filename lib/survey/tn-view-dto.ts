@@ -261,6 +261,8 @@ export async function tnSocialFiltered(data: SurveyData, options: FilterOptions,
 
   matched.sort((a, b) => b.reach - a.reach || b.clicks - a.clicks);
   const limited = matched.slice(0, 100).map(({ accountId: _accountId, ...campaign }) => campaign);
+  const campaignsByAccount = new Map<string, TnSocialCampaign[]>();
+  const stripAccount = ({ accountId: _accountId, ...campaign }: TnSocialCampaign & { accountId: string }) => campaign;
   const byAccount = new Map<string, TnSocialAccount>();
   for (const campaign of matched) {
     const account = accountBySourceId.get(campaign.accountId);
@@ -273,7 +275,9 @@ export async function tnSocialFiltered(data: SurveyData, options: FilterOptions,
       current.views += campaign.views;
       current.clicks += campaign.clicks;
       current.engagements += campaign.engagements;
+      campaignsByAccount.set(account.key, [...(campaignsByAccount.get(account.key) ?? []), stripAccount(campaign)]);
     } else {
+      campaignsByAccount.set(account.key, [stripAccount(campaign)]);
       byAccount.set(account.key, {
         ...account,
         campaignCount: 1,
@@ -298,6 +302,7 @@ export async function tnSocialFiltered(data: SurveyData, options: FilterOptions,
     how,
     accounts: used,
     campaigns: limited,
+    campaignsByAccount: Object.fromEntries([...campaignsByAccount].map(([key, list]) => [key, [...list].sort((a, b) => b.reach - a.reach || b.clicks - a.clicks).slice(0, 60)])),
     totalMatching: matched.length,
   };
 }
