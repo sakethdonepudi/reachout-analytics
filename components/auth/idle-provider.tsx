@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Dialog } from "@/components/ui/dialog";
 import { announceOpening } from "@/lib/use-navigate";
 
-const IDLE_MS = 10 * 60 * 1000;
+const IDLE_MS = 25 * 60 * 1000;
 const WARN_MS = 60 * 1000;
 const HEARTBEAT_MS = 60 * 1000;
 const THROTTLE_MS = 5 * 1000;

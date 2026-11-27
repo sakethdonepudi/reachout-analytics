@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { parseSurveyHtml } from "../lib/survey/parse";
+import { parseSurveyUpload } from "../lib/survey/parse";
 import { publishSurvey } from "../lib/survey/store";
 import { SURVEY_STATES } from "../lib/survey/types";
 
@@ -15,8 +15,8 @@ function arg(name: string) {
   const meta = SURVEY_STATES[state];
   if (!meta) throw new Error(`Unknown survey state: ${state}`);
   const source = readFileSync(file, "utf8");
-  const data = parseSurveyHtml(source, state);
-  const version = await publishSurvey(state, file.split("/").pop() ?? file, data);
+  const data = parseSurveyUpload(source, state);
+  const version = await publishSurvey(state, file.split("/").pop() ?? file, data, "Seed");
   console.log(`Seeded ${meta.name} survey dashboard version ${version} (${data.periods ? Object.keys(data.periods).join(", ") : "no periods"})`);
   process.exit(0);
 })().catch((error) => {

@@ -11,7 +11,7 @@
  */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
-import { parseSurveyHtml } from "../lib/survey/parse";
+import { assertAdsSection, parseSurveyHtml, parseSurveyUpload } from "../lib/survey/parse";
 import type { SurveyDistrictSeat } from "../lib/survey/types";
 import { buildSurveyMap } from "../lib/tamil-nadu/survey-map";
 import { surveySlots } from "../lib/survey/tn-shared";
@@ -63,6 +63,9 @@ check("messy spacing around window.TN_DATA still parses", () => {
 check("a file without the payload gets a clear error", () => {
   assert.throws(() => parseSurveyHtml("<html><body>No dashboard here</body></html>", "tamil-nadu"), /does not contain window\.TN_DATA/);
 });
+check("a dashboard without ads is rejected before publish", () => {
+  assert.throws(() => assertAdsSection(parsed), /no ads section/i);
+});
 check("renaming a month and adding a profile still parses", () => {
   const source = fixture
     .replace(/"2026-03"/g, '"2099-01"')
@@ -85,8 +88,9 @@ for (const item of realFiles) {
     continue;
   }
   assert.ok(existsSync(path), `${item.env} points at a missing file: ${path}`);
-  check(`parses the real ${item.state} dashboard`, () => {
-    const data = parseSurveyHtml(readFileSync(path, "utf8"), item.state);
+  check(`parses and validates the real ${item.state} dashboard`, () => {
+    const source = readFileSync(path, "utf8");
+    const data = parseSurveyUpload(source, item.state);
     const required = item.state === "tamil-nadu" ? ["op", "ex", "rs"] : ["op", "ex", "rd"];
     assert.deepEqual(Object.keys(data.periods), required);
     if (item.expectDist) {
@@ -130,6 +134,8 @@ for (const item of realFiles) {
         }
       }
     }
+    const wrong = item.state === "tamil-nadu" ? "andhra-pradesh-2024" : "tamil-nadu";
+    assert.throws(() => parseSurveyUpload(source, wrong), /Tamil Nadu|Andhra Pradesh/);
   });
 }
 

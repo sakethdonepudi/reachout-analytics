@@ -124,7 +124,7 @@ function LoginClient({ turnstileEnabled, nonce, expired = false }: { turnstileEn
           </p>
 
           {(expired || idle) && step === "password" && (
-            <p role="status" className="mt-4 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-raised)] px-3 py-2 text-[12.5px] text-[var(--text-muted)]">{expired ? "Your session ended. Please sign in again." : "Signed out after 10 minutes of inactivity."}</p>
+            <p role="status" className="mt-4 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--surface-raised)] px-3 py-2 text-[12.5px] text-[var(--text-muted)]">{expired ? "Your session ended. Please sign in again." : "Signed out after 25 minutes of inactivity."}</p>
           )}
 
           {error && (

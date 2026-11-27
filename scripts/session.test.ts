@@ -23,16 +23,26 @@ function ok(name: string, condition: boolean, detail = "") {
   const token = await createSession(identity);
   const parsed = JSON.parse(Buffer.from(token.split(".")[0], "base64url").toString());
   await sessions.updateOne({ _id: parsed.sid }, { $set: { lastSeen: new Date(Date.now() - IDLE_MS - 1000) } });
-  ok("session dies after 10 minutes idle", (await getSessionByToken(token)) === null);
+  ok("session dies after 25 minutes idle", (await getSessionByToken(token)) === null);
   ok("expired session document removed", (await sessions.countDocuments({ _id: parsed.sid })) === 0);
 
-  console.log("\n1b. Ten-minute boundary");
+  console.log("\n1b. Twenty-five minute boundary");
+  ok("IDLE_MS is 25 minutes", IDLE_MS === 25 * 60 * 1000);
   const near = await createSession(identity);
   const nearParsed = JSON.parse(Buffer.from(near.split(".")[0], "base64url").toString());
-  await sessions.updateOne({ _id: nearParsed.sid }, { $set: { lastSeen: new Date(Date.now() - (10 * 60 * 1000 - 1000)) } });
-  ok("session survives 9:59", (await getSessionByToken(near)) !== null);
-  await sessions.updateOne({ _id: nearParsed.sid }, { $set: { lastSeen: new Date(Date.now() - (10 * 60 * 1000 + 1000)) } });
-  ok("session dies at 10:01", (await getSessionByToken(near)) === null);
+  await sessions.updateOne({ _id: nearParsed.sid }, { $set: { lastSeen: new Date(Date.now() - (24 * 60 * 1000)) } });
+  ok("session survives 24 minutes", (await getSessionByToken(near)) !== null);
+  await sessions.updateOne({ _id: nearParsed.sid }, { $set: { lastSeen: new Date(Date.now() - (25 * 60 * 1000 + 1000)) } });
+  ok("session dies after 25 minutes", (await getSessionByToken(near)) === null);
+
+  console.log("\n1c. Activity resets the timer");
+  const active = await createSession(identity);
+  const activeParsed = JSON.parse(Buffer.from(active.split(".")[0], "base64url").toString());
+  await sessions.updateOne({ _id: activeParsed.sid }, { $set: { lastSeen: new Date(Date.now() - 24 * 60 * 1000) } });
+  await heartbeat(activeParsed.sid);
+  const reset = (await sessions.findOne({ _id: activeParsed.sid }))?.lastSeen?.getTime() ?? 0;
+  ok("heartbeat resets a 24-minute idle session", reset > Date.now() - 5000);
+  ok("session survives after activity reset", (await getSessionByToken(active)) !== null);
 
   console.log("\n2. Polling does not extend a session");
   const token2 = await createSession(identity);

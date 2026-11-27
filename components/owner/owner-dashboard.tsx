@@ -1,39 +1,27 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
-import PollUploadCard from "@/components/owner/poll-upload-card";
-import MetaAdsCard from "@/components/owner/meta-ads-card";
-import MetaAnalytics from "@/components/owner/meta-analytics";
-import StateHealth from "@/components/owner/state-health";
 import SurveyUploadCard from "@/components/owner/survey-upload-card";
 import DownloadDataButton from "@/components/owner/download-data-button";
-import type { DashboardShell } from "@/lib/dashboard/data";
+import type { SurveyVersionRow } from "@/lib/survey/store";
 
-export default function OwnerDashboard({ shell, children }: { shell: DashboardShell; children: ReactNode }) {
-  const [uploadSlug, setUploadSlug] = useState<string | null>(null);
-  const pollRef = useRef<HTMLDivElement>(null);
-
-  function startUpload(slug: string) {
-    setUploadSlug(slug);
-    pollRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
+export default function OwnerDashboard({ tamilNadu, andhraPradesh }: { tamilNadu: SurveyVersionRow[]; andhraPradesh: SurveyVersionRow[] }) {
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#6B6B6B]">Owner dashboard</p>
-          <h1 className="mt-0.5 font-display text-[24px] font-semibold tracking-[-0.02em] text-[#0B0B0C]">Data and uploads</h1>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--theme-text-3)]">Owner dashboard</p>
+          <h1 className="mt-0.5 font-display text-[24px] font-semibold tracking-[-0.02em] text-[color:var(--theme-text)]">Data and uploads</h1>
+          <p className="mt-1 max-w-2xl text-[12.5px] text-[color:var(--theme-text-3)]">One HTML per live state. Each upload publishes the survey periods, months, profiles and social ads together.</p>
         </div>
-        <DownloadDataButton label="Download Tamil Nadu data" />
+        <div className="flex flex-wrap gap-2">
+          <DownloadDataButton state="tamil-nadu" label="Download Tamil Nadu data" />
+          <DownloadDataButton state="andhra-pradesh-2024" label="Download Andhra Pradesh data" />
+        </div>
       </div>
-      <div ref={pollRef} className="scroll-mt-24 grid items-start gap-4 lg:grid-cols-2">
-        <PollUploadCard initialSlug={uploadSlug} />
-        <MetaAdsCard versions={shell.versions} unmapped={shell.unmapped} cases={shell.cases} activeId={shell.activeId} />
+      <div className="grid items-start gap-4 xl:grid-cols-2">
+        <SurveyUploadCard state="tamil-nadu" stateName="Tamil Nadu" versions={tamilNadu} />
+        <SurveyUploadCard state="andhra-pradesh-2024" stateName="Andhra Pradesh" versions={andhraPradesh} />
       </div>
-      <SurveyUploadCard />
-      {children}
-      <StateHealth states={shell.states} onUpload={startUpload} />
     </div>
   );
 }

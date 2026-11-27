@@ -115,7 +115,7 @@ async function clickTab(page: Page, name: RegExp) {
       const url = new URL(page.url());
       record(route, "Route guard", "signed out", `/login?next=${route}`, `${url.pathname}?${url.searchParams.get("next")}`, url.pathname === "/login" && url.searchParams.get("next") === route);
     }
-    for (const api of ["/api/data/summary", "/api/ads/summaries"]) {
+    for (const api of ["/api/data/summary", "/api/survey/download?state=tamil-nadu"]) {
       const result = await context.request.get(`${BASE}${api}`);
       record(api, "API guard", "signed out", "401", String(result.status()), result.status() === 401);
     }
@@ -592,8 +592,12 @@ async function clickTab(page: Page, name: RegExp) {
     for (const label of ["Dashboard", "Case Studies", "Users", "Security"]) {
       record("/dashboard", `Sidebar ${label}`, "owner", "link exists", `${await page.getByRole("link", { name: label }).count()}`, await page.getByRole("link", { name: label }).count() > 0);
     }
-    record("/dashboard", "Survey upload", "owner", "HTML dashboard and state picker", `${await page.getByRole("heading", { name: "HTML survey dashboard" }).count()}`, await page.getByRole("heading", { name: "HTML survey dashboard" }).isVisible().catch(() => false) && await page.getByRole("group", { name: "Survey state" }).isVisible().catch(() => false));
-    record("/dashboard", "Survey state", "owner", "Tamil Nadu and Andhra Pradesh", `${await page.getByRole("group", { name: "Survey state" }).innerText().then((text) => text.replace(/\n+/g, ", "))}`, await page.getByRole("button", { name: "Tamil Nadu", exact: true }).isVisible().catch(() => false));
+    const uploadCards = await page.getByRole("heading", { name: /upload dashboard HTML$/ }).count();
+    const dashboardBody = await page.locator("main").innerText();
+    record("/dashboard", "Two state upload cards", "owner", "Tamil Nadu and Andhra Pradesh only", `${uploadCards} cards`, uploadCards === 2 && await page.getByRole("heading", { name: "Tamil Nadu: upload dashboard HTML" }).isVisible() && await page.getByRole("heading", { name: "Andhra Pradesh: upload dashboard HTML" }).isVisible());
+    record("/dashboard", "No Excel upload", "owner", "no workbook input or copy", /Excel \/ CSV|xlsx|\.xls|Drop a workbook|Download template/i.test(dashboardBody) ? "found" : "clean", !/Excel \/ CSV|xlsx|\.xls|Drop a workbook|Download template/i.test(dashboardBody));
+    record("/dashboard", "No Meta upload", "owner", "no separate Ads Manager card", /Drop the HTML report|HTML report|Meta report above/i.test(dashboardBody) ? "found" : "clean", !/Drop the HTML report|HTML report|Meta report above/i.test(dashboardBody));
+    record("/dashboard", "Live versions", "owner", "current file, time and owner shown", /current live version/i.test(dashboardBody) ? "shown" : "missing", /current live version/i.test(dashboardBody));
     await page.getByRole("link", { name: "Case Studies" }).click();
     await page.waitForTimeout(900);
     record("/case-studies", "Owner shell", "owner", "sidebar visible", `${new URL(page.url()).pathname}`, new URL(page.url()).pathname === "/case-studies" && await page.locator('[aria-label="Owner navigation"]').isVisible());
@@ -609,6 +613,23 @@ async function clickTab(page: Page, name: RegExp) {
     const ownerAccounts = (ownerSocial.overview?.accounts ?? []) as Array<Record<string, unknown>>;
     record("/case-studies/tamil-nadu", "Owner social identity", "owner", "id and business visible", ownerAccounts.length > 0 && ownerAccounts.every((account) => "id" in account && "business" in account) ? "visible" : "missing", ownerAccounts.length > 0 && ownerAccounts.every((account) => "id" in account && "business" in account));
     record("/case-studies/tamil-nadu", "Console and 404s", "owner", "none", errors.length ? errors.join("; ") : "none", errors.length === 0);
+    await context.close();
+  }
+
+  // Client: a sign-out in one tab closes the session in every other tab.
+  {
+    const context = await contextWith(browser, client, 1440);
+    const first = await context.newPage();
+    const second = await context.newPage();
+    await first.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
+    await second.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
+    await first.waitForTimeout(1200);
+    await second.waitForTimeout(1200);
+    await first.getByRole("button", { name: /Account menu/ }).click();
+    await first.getByRole("menuitem", { name: /Log out|Sign out/ }).click();
+    let redirected = false;
+    try { await second.waitForURL(/\/login/, { timeout: 7000 }); redirected = true; } catch { /* recorded below */ }
+    record("/", "Cross-tab sign-out", "client", "the other tab reaches login", new URL(second.url()).pathname, redirected);
     await context.close();
   }
 

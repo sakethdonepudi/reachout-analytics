@@ -19,8 +19,6 @@ const RULES: Rule[] = [
 /** Returns the roles allowed at a path, or null for public routes. */
 export function rolesForPath(pathname: string): Role[] | null {
   const path = pathname.split("?")[0].split("#")[0];
-  // The blank template is the explicit exception under /api/data.
-  if (path === "/api/data/template") return null;
   // Pending first-login flows have no session yet; the pages and routes check
   // their short-lived signed pending cookie themselves.
   if (path === "/account/password" || path === "/account/security/enroll") return null;

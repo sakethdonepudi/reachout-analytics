@@ -55,7 +55,29 @@ function extractAp(source: string): unknown {
   return parsePayload(text, idx + 3);
 }
 
+function surveyTitle(source: string) {
+  return /<title[^>]*>([^<]*)<\/title>/i.exec(source)?.[1]?.trim() ?? "";
+}
+
+function assertSurveyState(source: string, state: string) {
+  const title = surveyTitle(source);
+  const tnMarker = /window\.TN_DATA\s*=/.test(source);
+  const tnTitle = /Tamil Nadu/i.test(title);
+  const apTitle = /Andhra Pradesh/i.test(title);
+  if (state === "tamil-nadu" && !tnMarker) {
+    if (apTitle) throw new Error("This is the Andhra Pradesh dashboard. Use the Andhra Pradesh upload card.");
+    throw new Error("This HTML does not contain window.TN_DATA. Upload the Tamil Nadu dashboard HTML.");
+  }
+  if (state === "andhra-pradesh-2024" && tnMarker) {
+    throw new Error("This is the Tamil Nadu dashboard. Use the Tamil Nadu upload card.");
+  }
+  if (state === "andhra-pradesh-2024" && tnTitle && !apTitle) {
+    throw new Error("This is the Tamil Nadu dashboard. Use the Tamil Nadu upload card.");
+  }
+}
+
 export function parseSurveyHtml(source: string, state: string): SurveyData {
+  assertSurveyState(source, state);
   const raw = state === "tamil-nadu" ? extractTn(source) : extractAp(source);
   if (!raw || typeof raw !== "object") throw new Error("The survey payload is empty.");
   const parsed = surveySchema(state).safeParse(raw);
@@ -82,6 +104,25 @@ export function parseSurveyHtml(source: string, state: string): SurveyData {
     geo: data.geo,
     zonelabels: data.zonelabels as Record<string, string> | undefined,
   };
+}
+
+export function assertAdsSection(data: SurveyData): void {
+  const ads = data.ads as Record<string, unknown> | undefined;
+  const total = ads?.total as Record<string, unknown> | undefined;
+  const accounts = ads?.accounts;
+  const camps = ads?.camps;
+  const campaigns = Number(total?.n ?? 0);
+  const accountRows = Array.isArray(accounts) ? accounts.length : 0;
+  if (!ads || !total || !camps || accountRows === 0 || campaigns === 0) {
+    throw new Error("This dashboard has no ads section. Upload the full state dashboard HTML that includes the ads report.");
+  }
+}
+
+/** The owner upload path: parse the state payload, reject the wrong state and require ads. */
+export function parseSurveyUpload(source: string, state: string): SurveyData {
+  const data = parseSurveyHtml(source, state);
+  assertAdsSection(data);
+  return data;
 }
 
 export function parseSurveyFile(path: string, state: string): SurveyData {

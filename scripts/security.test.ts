@@ -43,7 +43,7 @@ eq("meta paths redirect outside access control", rolesForPath("/meta-ads/setting
 eq("case-studies manager client", canAccess("client", "/dashboard/case-studies"), false);
 eq("admin legacy redirects before access", rolesForPath("/admin"), null);
 eq("data client", canAccess("client", "/api/data/summary"), false);
-eq("template public", rolesForPath("/api/data/template"), null);
+eq("removed template is owner-only", rolesForPath("/api/data/template"), ["owner"]);
 eq("home public", rolesForPath("/"), null);
 eq("owner home", roleHome("owner"), "/dashboard");
 eq("client home", roleHome("client"), "/");

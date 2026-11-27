@@ -5,7 +5,8 @@ import type { SurveyData } from "./types";
 
 const COLLECTION = "survey_dashboards";
 
-type SurveyDoc = { state: string; version: number; uploadedAt: string; active: boolean; fileName?: string; data: SurveyData };
+type SurveyDoc = { state: string; version: number; uploadedAt: string; active: boolean; fileName?: string; uploadedBy?: string; data: SurveyData };
+export type SurveyVersionRow = { version: number; fileName: string; uploadedAt: string; uploadedBy?: string; active: boolean };
 
 async function db() {
   const promise = getMongo();
@@ -27,20 +28,21 @@ export function getSurveyCached(state: string) {
   return unstable_cache(() => getActiveSurvey(state), ["survey-dashboard", state], { tags: [`survey:${state}`] })();
 }
 
-export async function listSurveyVersions(state: string, limit = 10) {
+export async function listSurveyVersions(state: string, limit = 10): Promise<SurveyVersionRow[]> {
   const database = await db();
   if (!database) return [];
-  return database.collection<SurveyDoc>(COLLECTION).find({ state }, { projection: { data: 0 } }).sort({ version: -1 }).limit(limit).toArray();
+  const rows = await database.collection<SurveyDoc>(COLLECTION).find({ state }, { projection: { data: 0 } }).sort({ version: -1 }).limit(limit).toArray();
+  return rows.map((row) => ({ version: row.version, fileName: row.fileName ?? "dashboard.html", uploadedAt: row.uploadedAt, uploadedBy: row.uploadedBy, active: Boolean(row.active) }));
 }
 
-export async function publishSurvey(state: string, fileName: string, data: SurveyData) {
+export async function publishSurvey(state: string, fileName: string, data: SurveyData, uploadedBy = "Owner") {
   const database = await db();
   if (!database) throw new Error("Database not configured");
   const collection = database.collection<SurveyDoc>(COLLECTION);
   const latest = await collection.find({ state }).sort({ version: -1 }).limit(1).next();
   const version = (latest?.version ?? 0) + 1;
   await collection.updateMany({ state, active: true }, { $set: { active: false } });
-  await collection.insertOne({ state, version, fileName, uploadedAt: new Date().toISOString(), active: true, data });
+  await collection.insertOne({ state, version, fileName, uploadedAt: new Date().toISOString(), uploadedBy, active: true, data });
   try { revalidateTag(`survey:${state}`); } catch { /* seed scripts run outside a request */ }
   return version;
 }
