@@ -98,7 +98,7 @@ function Stat({
       </div>
       <p className="mt-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-[color:var(--theme-text-3)]">{label}</p>
       <p className="mt-1 font-display text-[28px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[color:var(--theme-text)]">{display ?? <AnimatedNumber value={value} mode={mode} />}</p>
-      <p className="mt-0.5 text-[12px] text-[color:var(--theme-text-3)]">{note}</p>
+      {note && <p className="mt-0.5 text-[12px] text-[color:var(--theme-text-3)]">{note}</p>}
       {chart && <TrendChart data={chart.data} series={[{ metric: chart.metric, label, color: chart.color }]} height={34} mode={chart.mode} label={`Monthly ${label.toLowerCase()}`} className="mt-auto h-9 w-full pt-2" />}
     </div>
   );
@@ -260,7 +260,7 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
   const [accountPage, setAccountPage] = useState(0);
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({ key: "reach", asc: false });
   const [periodKey, setPeriodKey] = useState<string | null>(null);
-  const [explorerAccount, setExplorerAccount] = useState<string | null>(null);
+  const [explorerAccount, setExplorerAccount] = useState<string | null>(() => initialOverview?.accounts?.length === 1 ? initialOverview.accounts[0].key : null);
   const [explorerMetric, setExplorerMetric] = useState<ExplorerMetric>("reach");
   const [explorerSort, setExplorerSort] = useState<{ key: AccountSortKey; asc: boolean }>({ key: "reach", asc: false });
   const [explorerShowAll, setExplorerShowAll] = useState(false);
@@ -311,11 +311,11 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
   }, [initialFilter, load, overview]);
   useEffect(() => { if (initialFilter) wantTop.current = true; }, [initialFilter]);
   useEffect(() => {
-    setExplorerAccount(null);
+    setExplorerAccount(filtered ? (filtered.accounts.length === 1 ? filtered.accounts[0].key : null) : (overview?.accounts.length === 1 ? overview.accounts[0].key : null));
     setExplorerMetric("reach");
     setExplorerSort({ key: "reach", asc: false });
     setExplorerShowAll(false);
-  }, [filtered]);
+  }, [filtered, overview]);
   useEffect(() => {
     if (explorerMetric === "campaigns" && explorerAccount) setExplorerMetric("reach");
   }, [explorerAccount, explorerMetric]);
@@ -401,7 +401,7 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
   const sortLabel: Record<SortKey, string> = { name: "name", campaignCount: "campaigns", reach: "reach", impressions: "impressions", views: "views", clicks: "clicks", engagements: "engagement" };
   const monthly = filtered ? [] : overview?.monthly ?? [];
   const kpis = [
-    { label: "Campaigns", value: totals?.campaigns ?? 0, note: `${number(totals?.campaigns)} campaign${totals?.campaigns === 1 ? "" : "s"}`, mode: "int" as const, metric: "campaigns" as const, color: "var(--theme-chart-campaigns)", icon: <Megaphone className="size-4" />, tint: "bg-[color:var(--tn-soft-blue)] text-[color:var(--theme-chart-campaigns)]" },
+    { label: "Campaigns", value: totals?.campaigns ?? 0, note: "", mode: "int" as const, metric: "campaigns" as const, color: "var(--theme-chart-campaigns)", icon: <Megaphone className="size-4" />, tint: "bg-[color:var(--tn-soft-blue)] text-[color:var(--theme-chart-campaigns)]" },
     { label: "Impressions", value: totals?.impressions ?? 0, note: number(totals?.impressions), mode: "compact" as const, metric: "impressions" as const, color: "var(--theme-chart-impressions)", icon: <Eye className="size-4" />, tint: "bg-[color:var(--tn-soft-violet)] text-[color:var(--theme-chart-impressions)]" },
     { label: "Views", value: totals?.views ?? 0, note: number(totals?.views), mode: "compact" as const, metric: "views" as const, color: "var(--theme-chart-views)", icon: <BarChart3 className="size-4" />, tint: "bg-[color:var(--theme-warning-soft)] text-[color:var(--theme-chart-views)]" },
     { label: "Clicks", value: totals?.clicks ?? 0, note: number(totals?.clicks), mode: "compact" as const, metric: "clicks" as const, color: "var(--theme-chart-clicks)", icon: <MousePointerClick className="size-4" />, tint: "bg-[color:var(--theme-positive-soft)] text-[color:var(--theme-chart-clicks)]" },
@@ -487,7 +487,7 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h3 className="text-[16px] font-semibold text-[color:var(--theme-text)]">{explorerSelected ? `Top campaigns · ${explorerSelected.name}` : `Ad accounts by ${metricLabel.toLowerCase()}`}</h3>
-                  <p className="mt-0.5 text-[12px] text-[color:var(--theme-text-3)]">{explorerSelected ? `${number(explorerCampaigns.length)} campaign${explorerCampaigns.length === 1 ? "" : "s"} shown · choose All accounts to compare accounts` : `${number(explorerAccounts.length)} account${explorerAccounts.length === 1 ? "" : "s"} · select a row to inspect its campaigns`}</p>
+                  {!activeConfig.minimalCopy && <p className="mt-0.5 text-[12px] text-[color:var(--theme-text-3)]">{explorerSelected ? `${number(explorerCampaigns.length)} campaign${explorerCampaigns.length === 1 ? "" : "s"} shown · choose All accounts to compare accounts` : `${number(explorerAccounts.length)} account${explorerAccounts.length === 1 ? "" : "s"} · select a row to inspect its campaigns`}</p>}
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Explorer metric">
@@ -504,7 +504,7 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
                     const value = isAccount ? accountValue(item as TnSocialAccount, explorerMetric) : campaignValue(item as TnSocialCampaign, explorerMetric);
                     const width = Math.max(1, (value / chartMax) * 82);
                     return (
-                      <div key={isAccount ? (item as TnSocialAccount).key : `${name}-${index}`} className="grid grid-cols-[minmax(72px,32%)_minmax(0,1fr)] items-center gap-2">
+                      <div key={isAccount ? (item as TnSocialAccount).key : `${name}-${index}`} className={cn("grid items-center gap-2", explorerSelected ? "grid-cols-[minmax(120px,42%)_minmax(0,1fr)]" : "grid-cols-[minmax(72px,32%)_minmax(0,1fr)]")}>
                         <span className="truncate text-[11.5px] text-[color:var(--theme-text-2)]" title={name}>{name}</span>
                         <span className="flex min-w-0 items-center gap-2">
                           <span className="h-2.5 rounded-full bg-[color:var(--theme-chart-explorer)] transition-[width] duration-200 ease-out" style={{ width: `${width.toFixed(2)}%` }} />

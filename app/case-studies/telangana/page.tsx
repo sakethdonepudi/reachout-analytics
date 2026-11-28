@@ -7,7 +7,7 @@ import NotUploaded from "@/components/case-studies/shared/not-uploaded";
 import { requirePageSession } from "@/lib/require-session";
 import { caseAllowed } from "@/lib/session-scope";
 import { getSurveyCached } from "@/lib/survey/store";
-import { tgClientModel } from "@/lib/survey/tg-view-dto";
+import { tgClientModel, tgSocialOverview } from "@/lib/survey/tg-view-dto";
 import { latestMonthFromData } from "@/lib/survey/post-poll";
 import { TG_CONFIG } from "@/lib/case-study/config";
 import type { SocialFilter } from "@/lib/survey/social-types";
@@ -53,6 +53,7 @@ export default async function TelanganaCaseStudyPage({
   }
   const initialSlot = params.slot ?? (record ? latestMonthFromData(record.data, "rd", false) : "all");
   const model = record ? tgClientModel(record.data, initialView, initialSlot) : null;
+  const socialOverview = record ? await tgSocialOverview(record.data, owner) : null;
   const socialFilter: SocialFilter | null = params.match && params.match !== "target"
     ? { match: params.match as SocialFilter["match"], kind: params.kind, place: params.place, label: params.label, value: params.value, average: params.average, group: params.group }
     : null;
@@ -71,7 +72,7 @@ export default async function TelanganaCaseStudyPage({
   return (
     <>
       <h1 className="sr-only">Telangana 2028 · Live Tracking Survey</h1>
-      <TnSurveyDashboard model={model} owner={owner} config={TG_CONFIG} initialView={initialView} initialSlot={initialSlot} initialProfile={params.profile ?? ""} initialSocialFilter={socialFilter} />
+      <TnSurveyDashboard model={model} owner={owner} config={TG_CONFIG} initialView={initialView} initialSlot={initialSlot} initialProfile={params.profile ?? ""} initialSocialFilter={socialFilter} initialSocialOverview={socialOverview} />
     </>
   );
 }

@@ -22,8 +22,6 @@ export type CaseStudyConfig = {
   actualYear?: string;
   hideMap?: boolean;
   neutralHeader?: string;
-  leaderKey?: Array<{ party: string; label: string }>;
-  leaderKeyNote?: string;
   sortPartyCards?: boolean;
   profileHeading?: string;
   showCampaignLinks?: boolean;
@@ -39,6 +37,8 @@ export type CaseStudyConfig = {
   seatsHeading?: string;
   /** Keep the explorer to reach, impressions and clicks (no campaigns metric). */
   explorerNoCampaigns?: boolean;
+  /** Client-ready minimal copy: no helper sentences or captions. */
+  minimalCopy?: boolean;
   defaultView: string;
   mapPeriod: string;
   apiBase: string;
@@ -49,7 +49,6 @@ export type CaseStudyConfig = {
   profileOrder: Record<string, string[]>;
   profileThresholds?: Record<string, number>;
   countBelowThreshold?: boolean;
-  methodNote?: string[];
   partyInk?: Record<string, "white" | "black">;
   /** Metrics the source does not report at all: omit them from every social view. */
   hiddenMetrics?: Array<"views" | "engagements">;
@@ -184,17 +183,6 @@ export const KA_CONFIG: CaseStudyConfig = {
   profileGroups: { rd: [{ label: "Region", keys: ["zone", "area", "dist", "ac"] }, { label: "Survey", keys: ["month"] }, { label: "Voter", keys: ["v23", "caste", "age", "cm", "issue"] }] },
   profileThresholds: { zone: 30, area: 30, month: 30, v23: 30, dist: 10, ac: 10, caste: 10, age: 10, cm: 10, issue: 10 },
   countBelowThreshold: true,
-  methodNote: [
-    "Data: 12,801 rows merged by entry ID and de-duplicated by device ID, then IP address, give 8,489 unique respondents; 6,595 answered the 2028 vote. Tracking runs 27 Oct to 28 Nov 2026.",
-    "Expected %: the 2023 result plus the swing among 5,124 people who answered both votes, with each community weighted to its SEES 2015 population share. The sample is about 70% Vokkaliga, and people who skipped the 2023 question count as new voters at 8%.",
-    "Past-vote weighting matches 2023 recall to the actual 2023 result and gives INC 36.7%, BJP 40.4% and JD(S) 16.4% with 62, 119 and 37 seats; those rows appear in the summary card above.",
-    "Raw %: the unweighted share of respondents in each group. It carries the sample's BJP-leaning 2023 recall, so use it to compare groups, not as a forecast.",
-    "Seat projection: a uniform swing by region on the actual 2023 AC results (ECI candidate votes). Each AC's 2023 INC, BJP and JD(S) share is shifted by its region's swing, Others keep the seat's own 2023 share, and the party ahead wins. Majority 113 of 224.",
-    "Region: AC to district to region. Kittur Karnataka 50 ACs, Kalyana Karnataka 41, Central 25, Coastal 19, Bengaluru 32, Old Mysore 57. North Karnataka is Kittur plus Kalyana (91); South Karnataka is Old Mysore plus Bengaluru (89). Only 1,334 of the 6,595 2028 answers named their AC, so region swings are shrunk toward the state figure: a region with n answers counts n/(n+300) of its own difference.",
-    "Tabs: months need 200+ answers, and inside a month every week with 30+ answers appears on hover. Profile groups need 30+ answers, or 10+ for districts, ACs, community, age, CM and issue. Groups under the threshold show their answer count.",
-    "No AC filter: every answer is used, unlike the Andhra Pradesh page where constituencies are removed.",
-    "Ad campaigns: figures for Karnataka swing OCT 27th are from the 22 Nov 2026 ad report.",
-  ],
   swing: { fromLabel: { rd: "23→28" }, toLabel: { rd: "23→28" }, showActual: [] },
   map: { heading: "Karnataka", totalSeats: 224, majority: 113, districtAlias: {}, labelOffset: KA_LABEL_OFFSET, mobileLabelOffset: { "Bengaluru Urban": { x: 40, y: 24 } }, shareKey: { INC: "INC", BJP: "BJP", JDS: "JDS", Others: "Others" }, fillMode: "flat", mobileLabelCount: 8, tilt: 0.6, fit: 1, centerZ: 35, rotation: 0.22, credit: "", creditHref: "" },
   social: { stateName: "Karnataka", targetName: "INC", fallbackPattern: "inc|congress|karnataka", fallbackLabel: "INC campaigns" },
@@ -202,8 +190,6 @@ export const KA_CONFIG: CaseStudyConfig = {
   hiddenMetrics: ["views", "engagements"],
   hideMap: true,
   neutralHeader: "Karnataka 2028 · Live Tracking Survey Analysis",
-  leaderKey: [{ party: "INC", label: "Congress ahead" }, { party: "BJP", label: "BJP ahead" }, { party: "JDS", label: "JD(S) ahead" }],
-  leaderKeyNote: "colour = party with the higher expected %",
   sortPartyCards: true,
   summaryCard: true,
   partyLabels: { JDS: "JD(S)" },
@@ -213,6 +199,7 @@ export const KA_CONFIG: CaseStudyConfig = {
   explorerOnOverview: true,
   seatsHeading: "Seats by region · 2028 projection",
   explorerNoCampaigns: true,
+  minimalCopy: true,
   profileHeading: "Raw 2028 vote % by voter profile",
   showCampaignLinks: false,
   brand: {
@@ -232,13 +219,11 @@ export const TG_CONFIG: CaseStudyConfig = {
   cardKeys: ["rd"], cardStyle: "ap", actualYear: "2023", defaultView: "rd", mapPeriod: "rd", apiBase: "/api/survey/tg", socialState: "telangana",
   periodLabels: { rd: "Month" }, monthLabel: "Month", latestSlot: "month",
   profileOrder: { rd: ["zone", "area", "dist", "ac", "v23", "age"] },
-  profileGroups: { rd: [{ label: "Region", keys: ["zone", "area", "dist", "ac"] }, { label: "Vote & age", keys: ["v23", "age"] }] },
+  profileGroups: { rd: [{ label: "Region", keys: ["zone", "area", "dist", "ac"] }, { label: "Voter", keys: ["v23", "age"] }] },
   profileThresholds: { zone: 30, area: 30, dist: 10, ac: 10, v23: 10, age: 10 },
   countBelowThreshold: true,
   hideMap: true,
   neutralHeader: "Telangana 2028 · Live Tracking Survey Analysis",
-  leaderKey: [{ party: "BRS", label: "BRS ahead" }, { party: "INC", label: "Congress ahead" }, { party: "BJP", label: "BJP ahead" }],
-  leaderKeyNote: "colour = party with the higher expected %",
   sortPartyCards: true,
   partyLabels: { JDS: "JD(S)" },
   socialCardTitle: "Social Media Dissemination",
@@ -247,20 +232,9 @@ export const TG_CONFIG: CaseStudyConfig = {
   explorerOnOverview: true,
   seatsHeading: "Seats by region · 2028 projection",
   explorerNoCampaigns: true,
+  minimalCopy: true,
   profileHeading: "Weighted 2028 vote % by voter profile",
   showCampaignLinks: false,
-  methodNote: [
-    "Data: 9,191 rows merged and de-duplicated by device ID, then IP address, keeping the first answer from each device: 5,453 unique respondents, 4,744 with a 2028 vote. Tracking runs 16 Jul to 28 Nov 2026. The live tracker counts every row (9,191); this page counts each device once.",
-    "Expected % (weighted): each respondent is weighted so the sample matches Telangana on two things at once. The 2023 vote is matched to the actual result (BRS 37.35, Congress 39.40, BJP 13.90, AIMIM 2.22, Others 7.13), with 8% of the weight kept for people who did not give a 2023 vote. The 10 old districts are weighted to their share of votes cast in 2023, and weights are trimmed at 5 times the average.",
-    "The 2028 question offers no independents or small parties, and AIMIM voters are barely reached online, so AIMIM and Others are held at their 2023 share and BRS, Congress and BJP are scaled into the rest. All months give BRS 50.5, INC 22.9 and BJP 17.3, with an effective sample of 2,788 of 4,744. Unweighted Method B gives 46.7, 27.5 and 16.3 for comparison.",
-    "Profile tables: the weighted 2028 vote share within each group, using the same weights without the AIMIM and Others adjustment. The answer count shown is the raw number of respondents. Age is not in the weights because the current form does not ask it.",
-    "Seat projection: a uniform swing by region on the 2023 AC results. Each AC's 2023 BRS, Congress, BJP and AIMIM share is shifted by its region's swing, Others keep the seat's own 2023 share, and the party ahead wins. Majority 60 of 119. The winner's and runner-up's 2023 share per AC are ECI figures; the other parties are estimated from the remaining votes so the state totals match. The 2023 tally comes out right: INC 64, BRS 39, BJP 8, AIMIM 7, CPI 1.",
-    "Region: AC to the 10 old districts. Adilabad 10 ACs, Nizamabad 9, Karimnagar 13, Medak 10, Rangareddy 14, Hyderabad 15, Mahabubnagar 14, Nalgonda 12, Warangal 12, Khammam 10. North Telangana is Adilabad, Nizamabad, Karimnagar, Medak and Warangal (54); Greater Hyderabad is Hyderabad and Rangareddy (29); South Telangana is Mahabubnagar, Nalgonda and Khammam (36). Region 2023 figures are summed from the AC results. Swings are shrunk toward the state figure: n/(n+300). Sirpur sends far more answers than any other AC.",
-    "Tabs: months need 200+ answers, and inside a month every week with 30+ answers appears on hover. Profile groups need 30+ answers for regions and areas, and 10+ for districts, ACs, 2023 vote and age. Groups under the threshold show their answer count. Age comes from the earlier form only.",
-    "No AC filter: every answer is used, unlike the Andhra Pradesh page where constituencies are removed.",
-    "Parties: TDP, Janasena and TDP + Janasena answers count as Others. NOTA in the 2023 question counts as Others.",
-    "Ad campaigns: figures for the three Telangana campaigns are from the 22 Nov 2026 ad report.",
-  ],
   swing: { fromLabel: { rd: "23→28" }, toLabel: { rd: "23→28" }, showActual: [] },
   map: { heading: "Telangana", totalSeats: 119, majority: 60, districtAlias: {}, labelOffset: {}, mobileLabelOffset: {}, shareKey: { BRS: "BRS", INC: "INC", BJP: "BJP", AIMIM: "AIMIM", Others: "Others" }, fillMode: "flat", mobileLabelCount: 8, tilt: 0.6, fit: 1, centerZ: 35, rotation: 0.22, credit: "", creditHref: "" },
   social: { stateName: "Telangana", targetName: "BRS", fallbackPattern: "brs|telangana", fallbackLabel: "BRS campaigns" },

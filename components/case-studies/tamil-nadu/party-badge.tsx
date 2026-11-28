@@ -1,4 +1,4 @@
-import { partyBrand, partyNeedsWhiteInk } from "@/lib/tamil-nadu/party-brand";
+import { partyBrand, partyDisplayName, partyNeedsWhiteInk } from "@/lib/tamil-nadu/party-brand";
 import { cn } from "@/lib/utils";
 
 const SIZES = [16, 20, 24, 28] as const;
@@ -36,15 +36,19 @@ export function PartyBadge({
         width: px,
         height: px,
         borderColor: brand.border ?? brand.color,
-        background: monogram && !dot ? brand.color : "var(--party-badge-surface)",
+        background: dot ? brand.color : monogram ? brand.color : "var(--party-badge-surface)",
         color: ink,
       }}
       data-party-badge="true"
       role="img"
-      aria-label={`${party} symbol`}
-      title={title ?? party}
+      aria-label={`${partyDisplayName(party)} symbol`}
+      title={title ?? partyDisplayName(party)}
     >
-      {brand.logo && brand.mask ? (
+      {dot ? (
+        <span aria-hidden className="flex items-center" style={{ gap: Math.max(1, Math.round(px * 0.06)) }}>
+          {[0, 1, 2].map((index) => <span key={index} className="block rounded-full bg-white" style={{ width: Math.max(3, Math.round(px * 0.13)), height: Math.max(3, Math.round(px * 0.13)) }} />)}
+        </span>
+      ) : brand.logo && brand.mask ? (
         <span
           aria-hidden
           className="block"

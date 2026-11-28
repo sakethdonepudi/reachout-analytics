@@ -51,7 +51,6 @@ for (const config of [KA_CONFIG, TG_CONFIG]) {
     assert.equal(config.target, undefined);
     assert.equal(config.singleTabBar, true);
     assert.ok(config.neutralHeader?.includes(String(config.stateName)));
-    assert.ok(config.leaderKey?.length);
     assert.equal(config.socialCardTitle, "Social Media Dissemination");
     assert.equal(config.socialCardSubtitle, "Survey ad campaigns · reach & engagement");
     assert.deepEqual(config.hiddenMetrics, ["views", "engagements"]);

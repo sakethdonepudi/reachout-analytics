@@ -7,7 +7,7 @@ import NotUploaded from "@/components/case-studies/shared/not-uploaded";
 import { requirePageSession } from "@/lib/require-session";
 import { caseAllowed } from "@/lib/session-scope";
 import { getSurveyCached } from "@/lib/survey/store";
-import { kaClientModel } from "@/lib/survey/ka-view-dto";
+import { kaClientModel, kaSocialOverview } from "@/lib/survey/ka-view-dto";
 import { latestMonthFromData } from "@/lib/survey/post-poll";
 import { KA_CONFIG } from "@/lib/case-study/config";
 import type { SocialFilter } from "@/lib/survey/social-types";
@@ -53,6 +53,7 @@ export default async function KarnatakaCaseStudyPage({
   }
   const initialSlot = params.slot ?? (record ? latestMonthFromData(record.data, "rd", false) : "all");
   const model = record ? kaClientModel(record.data, initialView, initialSlot) : null;
+  const socialOverview = record ? await kaSocialOverview(record.data, owner) : null;
   const socialFilter: SocialFilter | null = params.match && params.match !== "target"
     ? { match: params.match as SocialFilter["match"], kind: params.kind, place: params.place, label: params.label, value: params.value, average: params.average, group: params.group }
     : null;
@@ -71,7 +72,7 @@ export default async function KarnatakaCaseStudyPage({
   return (
     <>
       <h1 className="sr-only">Karnataka 2028 · Live Tracking Survey</h1>
-      <TnSurveyDashboard model={model} owner={owner} config={KA_CONFIG} initialView={initialView} initialSlot={initialSlot} initialProfile={params.profile ?? ""} initialSocialFilter={socialFilter} />
+      <TnSurveyDashboard model={model} owner={owner} config={KA_CONFIG} initialView={initialView} initialSlot={initialSlot} initialProfile={params.profile ?? ""} initialSocialFilter={socialFilter} initialSocialOverview={socialOverview} />
     </>
   );
 }

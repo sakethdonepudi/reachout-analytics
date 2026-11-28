@@ -7,6 +7,7 @@ import type { SocialFilter, TnSocialAccount, TnSocialCampaign, TnSocialFiltered,
 import type { TnCardModel, TnClientModel, TnSerializedMap, TnSlotModel, TnSwingPayload } from "./tn-view-model";
 import { tnSocialMonthly } from "./tn-view-dto";
 import { clientNote, clientText } from "./privacy";
+import { mergeProfiles } from "./demo-merge";
 const STATE = "Telangana";
 
 function canonicalTgDistrict(name: string): string { return name; }
@@ -253,7 +254,7 @@ export function tgClientModel(data: SurveyData, initialView: string, initialSlot
       const month = option.monthKey ? period.months?.[option.monthKey] : undefined;
       const sub = option.subKey ? month?.sub?.[option.subKey] : undefined;
       const base = sub ?? month ?? period;
-      const demos = sanitizeDemos(base.demo);
+      const demos = sanitizeDemos(mergeProfiles(base.demo, period.demo));
       if (demos.age) demos.age = { ...demos.age, cov: "Asked until 26 Oct only" };
       slots[key].push({
         key: option.key,

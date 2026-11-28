@@ -65,6 +65,10 @@ const TN_PARTY_HEX_DARK: Record<string, string> = {
   AIMIM: "#2fb894",
 };
 
+export function partyDisplayName(party: string): string {
+  return party === "JDS" ? "JD(S)" : party;
+}
+
 export function partyBrand(party: string): TnPartyBrand {
   return TN_PARTY_BRAND[party] ?? { color: "#64748B", monogram: party.slice(0, 3).toUpperCase() };
 }

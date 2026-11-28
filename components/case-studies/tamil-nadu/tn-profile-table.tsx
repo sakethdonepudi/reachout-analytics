@@ -225,7 +225,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
               const leader = leaderOfRow(row);
               const rowTarget = allowTarget && !leader.tie && (targetMode === "leads" ? leader.index === parties.indexOf(targetParty) : targetMode === "gap" ? gapRows.has(row.g) : false);
               if (countBelowThreshold && row.n < threshold) {
-                return <tr key={row.g} className="border-t border-[color:var(--theme-border)]"><th scope="row" className="sticky left-0 z-10 h-12 bg-[color:var(--theme-surface)] px-3 py-1 text-left font-semibold text-[color:var(--theme-text-2)]">{row.g} <span className="text-[12px] font-normal text-[color:var(--theme-text-3)]">· {int(row.n)} responses</span></th><td colSpan={visible.length + 1} className="px-3 py-2 text-[13px] text-[color:var(--theme-text-3)]">Too few responses to show</td></tr>;
+                return <tr key={row.g} className="border-t border-[color:var(--theme-border)]"><th scope="row" className="sticky left-0 z-10 h-12 bg-[color:var(--theme-surface)] px-3 py-1 text-left font-semibold text-[color:var(--theme-text-2)]">{row.g}</th><td colSpan={visible.length + 1} className="px-3 py-2 text-[13px] text-[color:var(--theme-text-3)]">{int(row.n)} answers, too few to show</td></tr>;
               }
               return (
                 <tr
@@ -323,6 +323,9 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
         {pageRows.map((row) => {
           const leader = leaderOfRow(row);
           const rowTarget = allowTarget && !leader.tie && (targetMode === "leads" ? leader.index === parties.indexOf(targetParty) : targetMode === "gap" ? gapRows.has(row.g) : false);
+          if (countBelowThreshold && row.n < threshold) {
+            return <article key={row.g} className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-3"><p className="text-[14px] font-semibold text-[color:var(--theme-text)]">{row.g}</p><p className="mt-1 text-[12.5px] text-[color:var(--theme-text-3)]">{int(row.n)} answers, too few to show</p></article>;
+          }
           return (
             <article key={row.g} className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-3">
               <div className="flex items-start justify-between gap-2">

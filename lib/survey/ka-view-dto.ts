@@ -8,6 +8,7 @@ import type { TnCardModel, TnClientModel, TnSerializedMap, TnSlotModel, TnSwingP
 import { tnSocialMonthly } from "./tn-view-dto";
 import { canonicalKaAcName, canonicalKaDistrict, splitKaAcLabel } from "@/lib/karnataka/aliases";
 import { clientNote, clientText } from "./privacy";
+import { mergeProfiles } from "./demo-merge";
 
 const STATE = "Karnataka";
 type AnyRecord = Record<string, unknown>;
@@ -251,6 +252,7 @@ export function kaClientModel(data: SurveyData, initialView: string, initialSlot
       const month = option.monthKey ? period.months?.[option.monthKey] : undefined;
       const sub = option.subKey ? month?.sub?.[option.subKey] : undefined;
       const base = sub ?? month ?? period;
+      const demos = sanitizeDemos(mergeProfiles(base.demo, period.demo));
       slots[key].push({
         key: option.key,
         label: sub ? `${month?.label ?? option.monthKey} · ${sub.label}` : month ? month.label : `${period.label} (all months)`,
@@ -262,8 +264,8 @@ export function kaClientModel(data: SurveyData, initialView: string, initialSlot
         to: base.to ?? period.to ?? "",
         expected: base.expected,
         seats: base.seats,
-        demoCatalog: Object.fromEntries(Object.entries(base.demo ?? {}).map(([profileKey, profile]) => [profileKey, { label: clientText(profile.label), cov: clientNote(profile.cov) }])),
-        profiles: sanitizeDemos(base.demo),
+        demoCatalog: Object.fromEntries(Object.entries(demos).map(([profileKey, profile]) => [profileKey, { label: profile.label, cov: profile.cov }])),
+        profiles: demos,
         lazyProfiles: [],
       });
       if (!option.subKey) swing.sources[key].push({ key: option.key, label: slots[key][slots[key].length - 1].label, expected: base.expected, seats: base.seats, n: base.n, base: data.actual, last: period.last, target: period.target });
