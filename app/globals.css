@@ -2179,8 +2179,28 @@ html { scroll-padding-top: 96px; }
 }
 .tn-fade-slide { animation: tn-fade-slide 220ms ease-out backwards; }
 .tn-crossfade { animation: tn-fade-slide 240ms ease-out backwards; }
-.tn-card { transition: transform 160ms ease-out, border-color 160ms ease-out, background-color 160ms ease-out, box-shadow 160ms ease-out; }
-.tn-card:active { transform: scale(0.985); }
+.tn-period-card {
+  --period-selected: var(--theme-selected);
+  min-height: 84px;
+  border: 1px solid var(--theme-border);
+  border-radius: 16px;
+  background: var(--theme-surface);
+  transition: transform 150ms ease-out, border-color 150ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.tn-period-card:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06); }
+.tn-period-card:active { transform: scale(0.99); }
+.tn-period-card[aria-pressed="true"] {
+  border: 1.5px solid var(--period-selected);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--period-selected) 15%, transparent);
+}
+.tn-period-card[aria-pressed="true"]:hover { transform: none; }
+[data-theme="dark"] .tn-period-card { --period-selected: var(--theme-link); }
+[data-theme="dark"] .tn-period-card:hover { box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); }
+@keyframes tn-live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--theme-positive) 30%, transparent); }
+  50% { opacity: 0.55; transform: scale(0.85); box-shadow: 0 0 0 3px transparent; }
+}
+.tn-live-dot { animation: tn-live-pulse 1.8s ease-in-out infinite; }
 .tn-reveal { opacity: 0; transform: translateY(14px); transition: opacity 320ms ease-out, transform 320ms ease-out; }
 .tn-reveal-in { opacity: 1; transform: none; }
 @keyframes ringblink {
@@ -2279,7 +2299,8 @@ html { scroll-padding-top: 96px; }
   .tn-target, .tn-target::before { animation: none !important; }
   .tn-target:hover { transform: none !important; }
   .tn-reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
-  .tn-card { transition: none !important; }
+  .tn-period-card { transition: none !important; }
+  .tn-live-dot { animation: none !important; }
 }
 
 .tn-long-table tbody tr { content-visibility: auto; contain-intrinsic-size: 34px; }

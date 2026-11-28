@@ -153,10 +153,11 @@ async function clickTab(page: Page, name: RegExp) {
     const apH1 = await page.locator("h1").allTextContents();
     record("/case-studies/andhra-pradesh-2024", "One h1", "client", "exactly one h1", apH1.join(" | "), apH1.length === 1);
     const apBody = await page.locator("body").innerText();
-    const apCards = ["Opinion poll", "Exit poll", "Post-poll (Live tracking)", "Social Media"].map((label) => apBody.includes(label));
+    const apBodyFlat = apBody.replace(/\s+/g, " ");
+    const apCards = ["Opinion poll", "Exit poll", "Post-poll", "Social Media"].map((label) => apBody.includes(label));
     record("/case-studies/andhra-pradesh-2024", "Top cards", "client", "Opinion, Exit, Post-poll, Social", apCards.join(", "), apCards.every(Boolean));
-    record("/case-studies/andhra-pradesh-2024", "Opinion values", "client", "NDA 55.9, YSRCP 41.4, seats 154–21", apBody.includes("NDA 55.9%") && apBody.includes("YSRCP 41.4%") && apBody.includes("seats 154–21") ? "visible" : "missing", apBody.includes("NDA 55.9%") && apBody.includes("YSRCP 41.4%") && apBody.includes("seats 154–21"));
-    record("/case-studies/andhra-pradesh-2024", "Post-poll card", "client", "latest projection 42–133", apBody.includes("NDA 45.5%") && apBody.includes("YSRCP 51.9%") && apBody.includes("seats 42–133") ? "visible" : "missing", apBody.includes("NDA 45.5%") && apBody.includes("YSRCP 51.9%") && apBody.includes("seats 42–133"));
+    record("/case-studies/andhra-pradesh-2024", "Opinion values", "client", "NDA 55.9, YSRCP 41.4, seats 154–21", apBodyFlat.includes("NDA 55.9%") && apBodyFlat.includes("YSRCP 41.4%") && apBodyFlat.includes("154–21 seats") ? "visible" : "missing", apBodyFlat.includes("NDA 55.9%") && apBodyFlat.includes("YSRCP 41.4%") && apBodyFlat.includes("154–21 seats"));
+    record("/case-studies/andhra-pradesh-2024", "Post-poll card", "client", "latest projection 42–133", apBodyFlat.includes("NDA 45.5%") && apBodyFlat.includes("YSRCP 51.9%") && apBodyFlat.includes("42–133 seats") ? "visible" : "missing", apBodyFlat.includes("NDA 45.5%") && apBodyFlat.includes("YSRCP 51.9%") && apBodyFlat.includes("42–133 seats"));
     for (const width of [1024, 1180, 1280, 1440, 1920]) {
       await page.setViewportSize({ width, height: 1000 });
       await page.waitForTimeout(220);
@@ -172,6 +173,24 @@ async function clickTab(page: Page, name: RegExp) {
         return { boxes, hits };
       })()`) as { boxes: Record<string, { h: number } | null>; hits: string[] };
       record("/case-studies/andhra-pradesh-2024", `Social card overlap ${width}`, "client", "title, subtitle, icons and sparkline do not intersect", JSON.stringify(overlap.boxes), overlap.hits.length === 0 && (overlap.boxes.title?.h ?? 99) < 32 && (overlap.boxes.subtitle?.h ?? 99) < 28);
+      const periodCards = await page.evaluate(`(() => {
+        const hit = (a, b) => Boolean(a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
+        const cards = Array.from(document.querySelectorAll(".tn-period-card"));
+        const heights = cards.map((card) => Math.round(card.getBoundingClientRect().height));
+        const overlaps = [];
+        for (const card of cards) {
+          const ps = card.querySelectorAll("p");
+          const title = ps[0] ? ps[0].getBoundingClientRect() : null;
+          const numbers = ps[1] ? ps[1].getBoundingClientRect() : null;
+          const chip = card.querySelector("div > span") ? card.querySelector("div > span").getBoundingClientRect() : null;
+          if (hit(title, chip)) overlaps.push("title/chip");
+          if (hit(title, numbers)) overlaps.push("title/numbers");
+          if (hit(chip, numbers)) overlaps.push("chip/numbers");
+        }
+        return { heights, overlaps, overflow: cards.filter((card) => card.scrollWidth > card.clientWidth + 1).length };
+      })()`) as { heights: number[]; overlaps: string[]; overflow: number };
+      record("/case-studies/andhra-pradesh-2024", `Period card heights ${width}`, "client", "84 to 92 pixels and equal in the row", periodCards.heights.join(", "), periodCards.heights.length === 4 && periodCards.heights.every((height) => height >= 84 && height <= 92));
+      record("/case-studies/andhra-pradesh-2024", `Period card overlap ${width}`, "client", "title, chip and numbers do not intersect", `${periodCards.overlaps.length} overlaps / ${periodCards.overflow} overflow`, periodCards.overlaps.length === 0 && periodCards.overflow === 0);
       const overflow = await page.evaluate(() => ({ page: document.documentElement.scrollWidth - document.documentElement.clientWidth, body: document.body.scrollWidth - document.body.clientWidth }));
       record("/case-studies/andhra-pradesh-2024", `No page overflow ${width}`, "client", "no horizontal page scroll", JSON.stringify(overflow), overflow.page <= 1);
     }
@@ -284,9 +303,10 @@ async function clickTab(page: Page, name: RegExp) {
     const tnH1 = await page.locator("h1").allTextContents();
     record("/case-studies/tamil-nadu", "One h1", "client", "exactly one h1", tnH1.join(" | "), tnH1.length === 1);
     const partyBody = await page.locator("body").innerText();
+    const partyBodyFlat = partyBody.replace(/\s+/g, " ");
     record("/case-studies/tamil-nadu", "Party cards", "client", "5 expected cards", partyCards.filter((label) => partyBody.includes(label)).length + " / 5", partyCards.every((label) => partyBody.includes(label)));
     record("/case-studies/tamil-nadu", "Updated response total", "client", "117,131 responses", partyBody.includes("1,17,131 responses") || partyBody.includes("117,131 responses") ? "visible" : "missing", partyBody.includes("1,17,131 responses") || partyBody.includes("117,131 responses"));
-    record("/case-studies/tamil-nadu", "Updated opinion values", "client", "TVK 38.6, DMK+ 21.5, AIADMK+ 31.9", partyBody.includes("TVK 38.6%") && partyBody.includes("DMK+ 21.5%") && partyBody.includes("AIADMK+ 31.9%") ? "visible" : "missing", partyBody.includes("TVK 38.6%") && partyBody.includes("DMK+ 21.5%") && partyBody.includes("AIADMK+ 31.9%"));
+    record("/case-studies/tamil-nadu", "Updated opinion values", "client", "TVK 38.6, DMK+ 21.5, AIADMK+ 31.9", partyBodyFlat.includes("TVK 38.6%") && partyBodyFlat.includes("DMK+ 21.5%") && partyBodyFlat.includes("AIADMK+ 31.9%") ? "visible" : "missing", partyBodyFlat.includes("TVK 38.6%") && partyBodyFlat.includes("DMK+ 21.5%") && partyBodyFlat.includes("AIADMK+ 31.9%"));
     record("/case-studies/tamil-nadu", "Lead bar removed", "client", "no leads-by card or stacked bar", partyBody.includes("leads by") || await page.locator("[data-bar-party]").count() ? "found" : "clean", !partyBody.includes("leads by") && (await page.locator("[data-bar-party]").count()) === 0);
     record("/case-studies/tamil-nadu", "Removed copy", "client", "no title, dates, note or method", [!partyBody.includes("Opinion, Exit & Result Survey Analysis"), !partyBody.includes("28 Mar 2026 to 07 May 2026"), !partyBody.includes("actual vs prediction"), !partyBody.includes("Method & caveats")].join(", "), !partyBody.includes("Opinion, Exit & Result Survey Analysis") && !partyBody.includes("28 Mar 2026 to 07 May 2026") && !partyBody.includes("actual vs prediction") && !partyBody.includes("Method & caveats"));
     const removedPhrases = ["Coverage:", "groups under 30 answers are hidden", "Each cell shows the actual 2021", "Runner-up", "234 of 234 seats", "majority 118", "Projection: TVK", "The projected winner matches", "Projected winner calls compared"];
@@ -375,7 +395,7 @@ async function clickTab(page: Page, name: RegExp) {
       if (chartBox) { await page.mouse.move(chartBox.x + chartBox.width * 0.55, chartBox.y + chartBox.height * 0.5); await page.waitForTimeout(250); }
       const chartTip = await chart.locator("xpath=..").locator('[role="tooltip"]').isVisible().catch(() => false);
       record("/case-studies/tamil-nadu", "Chart hover", "client", "tooltip, 0 survey requests", `${surveyRequests - beforeChart} requests/${chartTip ? "tooltip" : "no tooltip"}`, surveyRequests === beforeChart && chartTip);
-      await page.getByRole("button", { name: /^Opinion poll/ }).filter({ hasText: "accuracy" }).first().click();
+      await page.getByRole("button", { name: /^Opinion poll/ }).first().click();
       await page.waitForTimeout(900);
     }
     await page.locator('[data-profile-tab="zone"]').click();

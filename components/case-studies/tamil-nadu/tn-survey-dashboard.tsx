@@ -466,28 +466,52 @@ export default function TnSurveyDashboard({
           <p className={cn("w-full text-[15px] font-medium text-[color:var(--theme-text-2)] sm:w-auto sm:text-right", owner ? "sm:ml-0" : "sm:ml-auto")}>{int(model.n_total)} responses</p>
         </header>
 
-        <div className={cn("mt-4 grid grid-cols-2 gap-2 sm:gap-3", model.cards.length + 1 >= 4 ? "min-[900px]:grid-cols-2 min-[1100px]:grid-cols-4" : "min-[900px]:grid-cols-3")}>
-          {model.cards.map((card) => (
-            <button key={card.key} type="button" aria-pressed={view === card.key} onMouseEnter={() => prefetch(card.key, card.key === "rd" ? postPollDefault : "all")} onClick={() => { setDistrict(null); setAcNo(null); navigate({ view: card.key, slot: card.key === "rd" ? postPollDefault : "all", profile: "", filter: null }); }}
-              className={cn("tn-card flex min-h-[132px] flex-col justify-center rounded-2xl border-2 p-3 text-left transition-all sm:min-h-[124px] sm:p-4", view === card.key ? "border-[color:var(--theme-selected)] bg-[color:var(--theme-selected)] text-white shadow-[0_0_0_2px_var(--theme-surface),0_0_0_4px_var(--theme-selected)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface-2)] text-[color:var(--theme-text)] hover:-translate-y-0.5 hover:border-[color:var(--theme-border)]")}>
-              <p className="whitespace-nowrap text-[15px] font-bold leading-tight sm:text-[17px]">
-                <span className="sm:hidden">{card.label.replace(" (Live tracking)", "")}</span>
-                <span className="hidden sm:inline">{card.label}</span>
-                {card.label.includes("Live tracking") && <span className="ml-1 rounded-full bg-[color:var(--theme-positive-soft)] px-1.5 py-0.5 align-middle text-[12px] font-bold uppercase tracking-[0.04em] text-[color:var(--theme-positive)] sm:hidden">Live</span>}
+        <div className={cn("mt-4 grid grid-cols-2 gap-3", model.cards.length + 1 >= 4 ? "min-[768px]:grid-cols-2 min-[1280px]:grid-cols-4" : "min-[768px]:grid-cols-2 min-[1280px]:grid-cols-3")}>
+          {model.cards.map((card) => {
+            const selected = view === card.key;
+            const label = card.label.replace(" (Live tracking)", "");
+            const shortLabel = label.replace(/ poll$/i, "");
+            const lead = leaderOf(card.expected, parties) ?? config.parties[0];
+            const live = card.key === "rd";
+            return (
+              <button key={card.key} type="button" aria-pressed={selected} onMouseEnter={() => prefetch(card.key, card.key === "rd" ? postPollDefault : "all")} onClick={() => { setDistrict(null); setAcNo(null); navigate({ view: card.key, slot: card.key === "rd" ? postPollDefault : "all", profile: "", filter: null }); }}
+                className="tn-period-card group relative flex min-h-[84px] flex-col px-2 py-[14px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--period-selected)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--theme-surface)] sm:px-4">
+                {selected && <span aria-hidden className="absolute inset-x-[1px] top-[1px] h-[3px] rounded-t-[14px]" style={{ background: colour(lead) }} />}
+                <div className="flex items-center justify-between gap-2">
+                  <p className={cn("min-w-0 whitespace-nowrap text-[15px] font-semibold leading-tight", selected ? "text-[color:var(--period-selected)]" : "text-[color:var(--theme-text)]")}>
+                    <span className="sm:hidden">{shortLabel}</span>
+                    <span className="hidden sm:inline">{label}</span>
+                  </p>
+                  {live ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[color:var(--theme-positive-soft)] px-1.5 py-[2px] text-[12px] font-bold leading-none text-[color:var(--theme-positive)]"><span className="tn-live-dot size-1.5 rounded-full bg-current" aria-hidden />Live</span>
+                  ) : card.showAccuracy !== false ? (
+                    <span className="inline-flex shrink-0 items-center rounded-full bg-[color:var(--theme-positive-soft)] px-1.5 py-[2px] text-[12px] font-bold leading-none text-[color:var(--theme-positive)]">{(card.accuracy ?? 0).toFixed(1)}% accurate</span>
+                  ) : null}
+                </div>
+                <p className="mt-1.5 flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-[13px] tabular-nums text-[color:var(--theme-text-3)]">
+                  {parties.slice(0, config.cardStyle === "ap" ? 2 : 3).map((party, index) => (
+                    <span key={party} className={cn("inline-flex items-center gap-1", index === 2 && "hidden sm:inline-flex")}>
+                      <span className="size-1.5 shrink-0 rounded-full" style={{ background: colour(party) }} aria-hidden />
+                      {party} <span>{(card.expected[party] ?? 0).toFixed(1)}<span className="hidden sm:inline">%</span></span>
+                    </span>
+                  ))}
+                  {config.cardStyle === "ap" && card.seats && <span className="hidden sm:inline">· {int(card.seats[config.actualParties[0]] ?? 0)}–{int(card.seats[config.actualParties[1]] ?? 0)} seats</span>}
+                </p>
+              </button>
+            );
+          })}
+          <button type="button" aria-pressed={view === "social"} data-social-card className={cn("tn-period-card group relative flex min-h-[84px] flex-col px-2 py-[14px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--period-selected)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--theme-surface)] sm:px-4", model.cards.length + 1 === 3 && "col-span-2 min-[1280px]:col-span-1")} onMouseEnter={() => prefetchSocial()} onPointerDown={() => prefetchSocial()} onFocus={() => prefetchSocial()} onClick={() => openSocial()}>
+            {view === "social" && <span aria-hidden className="absolute inset-x-[1px] top-[1px] h-[3px] rounded-t-[14px]" style={{ background: colour(leaderOf(model.cards[0]?.expected ?? {}, parties) ?? config.parties[0]) }} />}
+            <div className="flex items-center justify-between gap-2">
+              <p data-social-title className={cn("flex min-w-0 items-center whitespace-nowrap text-[15px] font-semibold leading-tight", view === "social" ? "text-[color:var(--period-selected)]" : "text-[color:var(--theme-text)]")}>
+                <span className="sm:hidden">Social</span><span className="hidden sm:inline">Social Media</span>
               </p>
-              <p className={cn("mt-1.5 text-[12px] font-semibold leading-snug sm:text-[14px]", view === card.key ? "text-white/90" : "text-[color:var(--theme-text-2)]")}>{parties.slice(0, config.cardStyle === "ap" ? 2 : 3).map((party) => `${party} ${pct(card.expected[party])}`).join(" · ")}{config.cardStyle === "ap" && card.seats ? ` · seats ${int(card.seats[config.actualParties[0]] ?? 0)}–${int(card.seats[config.actualParties[1]] ?? 0)}` : ""}</p>
-              {card.showAccuracy !== false && <p className={cn("mt-1.5 text-[12px] font-bold sm:text-[14px]", view === card.key ? "text-[#4ade80]" : "text-[color:var(--theme-positive)]")}>accuracy {(card.accuracy ?? 0).toFixed(1)}%</p>}
-            </button>
-          ))}
-          <button type="button" aria-pressed={view === "social"} data-social-card className={cn("tn-card group flex min-h-[132px] flex-col justify-center rounded-2xl border-2 p-3 text-left transition-all sm:min-h-[124px] sm:p-4", model.cards.length + 1 === 3 && "col-span-2 min-[900px]:col-span-1", view === "social" ? "border-[#1877F2] bg-[color:var(--theme-selected)] text-white shadow-[0_0_0_2px_var(--theme-surface),0_0_0_4px_var(--theme-selected)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface-2)] text-[color:var(--theme-text)] hover:-translate-y-0.5 hover:border-[color:var(--theme-border)]")} onMouseEnter={() => prefetchSocial()} onPointerDown={() => prefetchSocial()} onFocus={() => prefetchSocial()} onClick={() => openSocial()}>
-            <div className="flex min-w-0 items-center justify-between gap-2">
-              <p data-social-title className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[15px] font-bold sm:gap-2 sm:text-[17px]"><Megaphone className="size-4 shrink-0 sm:size-5" /> Social Media</p>
-              <TrendChart data={model.socialMonthly} series={[{ metric: "reach", label: "Reach", color: "var(--theme-chart-reach)" }]} height={34} label="Monthly reach" className={cn("h-8 w-24", model.cards.length + 1 === 3 ? "block" : "hidden min-[1280px]:block")} />
+              <TrendChart data={model.socialMonthly} series={[{ metric: "reach", label: "Reach", color: "var(--theme-chart-reach)" }]} height={20} label="Monthly reach" className="h-5 w-[72px] shrink-0" />
             </div>
-            <p data-social-subtitle className={cn("mt-1 whitespace-nowrap text-[12px] font-semibold sm:text-[13px]", view === "social" ? "text-white/80" : "text-[color:var(--theme-text-2)]")}><span className="sm:hidden">Ads · reach</span><span className="hidden sm:inline">Ads · reach & engagement</span></p>
-            <span data-social-icons className="mt-2 flex items-center">
-              <SocialCluster iconSize={18} tileSize={28} columns={4} />
-            </span>
+            <div className="mt-1.5 flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap">
+              <span data-social-icons className="flex items-center"><SocialCluster iconSize={20} tileSize={22} columns={4} /></span>
+              <p data-social-subtitle className="text-[12px] font-medium text-[color:var(--theme-text-3)] sm:text-[13px]"><span className="sm:hidden">Ads</span><span className="hidden sm:inline">Ads · reach & engagement</span></p>
+            </div>
           </button>
         </div>
 
