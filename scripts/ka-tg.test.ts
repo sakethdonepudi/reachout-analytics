@@ -12,7 +12,7 @@ import { parseSurveyUpload } from "../lib/survey/parse";
 import { kaClientModel } from "../lib/survey/ka-view-dto";
 import { tgClientModel } from "../lib/survey/tg-view-dto";
 import { latestMonthFromData } from "../lib/survey/post-poll";
-import { partyBrand } from "../lib/tamil-nadu/party-brand";
+import { partyBrand, partyDisplayName } from "../lib/tamil-nadu/party-brand";
 
 let pass = 0;
 const check = (name: string, fn: () => void) => { fn(); pass += 1; console.log(`  ✓ ${name}`); };
@@ -58,6 +58,14 @@ for (const config of [KA_CONFIG, TG_CONFIG]) {
 }
 check("KA shows JD(S) everywhere the code is displayed", () => {
   assert.equal(KA_CONFIG.partyLabels?.JDS, "JD(S)");
+  assert.equal(partyDisplayName("JDS"), "JD(S)");
+});
+check("bare JDS is banned from visible UI copy", () => {
+  const files = ["components/case-studies/tamil-nadu/tn-survey-dashboard.tsx", "components/case-studies/tamil-nadu/tn-profile-table.tsx", "components/case-studies/tamil-nadu/party-badge.tsx"];
+  for (const file of files) {
+    const source = readFileSync(file, "utf8");
+    assert.ok(!/>\s*JDS\s*</.test(source), `${file} renders bare JDS`);
+  }
 });
 check("every KA and TG party has a logo", () => {
   for (const config of [KA_CONFIG, TG_CONFIG]) {

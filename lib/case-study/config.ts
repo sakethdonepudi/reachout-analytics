@@ -24,6 +24,8 @@ export type CaseStudyConfig = {
   neutralHeader?: string;
   sortPartyCards?: boolean;
   profileHeading?: string;
+  /** Accent used by the PROFILE filter chips. */
+  profileAccent?: string;
   showCampaignLinks?: boolean;
   summaryCard?: boolean;
   partyLabels?: Record<string, string>;
@@ -115,7 +117,7 @@ export const TN_CONFIG: CaseStudyConfig = {
   seatParties: ["TVK", "DMK+", "AIADMK+", "NTK"],
   actualParties: ["TVK", "DMK+", "AIADMK+"],
   cardKeys: ["op", "ex"], cardStyle: "tn", defaultView: "op", mapPeriod: "op", apiBase: "/api/survey/tn", socialState: "tamil-nadu",
-  periodLabels: { op: "Month", ex: "Day" }, monthLabel: "Month",
+  periodLabels: { op: "Month", ex: "Day" }, monthLabel: "Month", profileAccent: "var(--tn-party-tvk)",
   profileOrder: {
     op: ["age", "caste", "prof", "zone", "dist", "ac", "v21", "app", "form"],
     ex: ["zone", "dist", "ac", "v21", "age", "caste", "prof", "form", "religion", "app"],
@@ -140,7 +142,7 @@ export const AP_CONFIG: CaseStudyConfig = {
   parties: ["NDA", "YSRCP", "INC", "Others"],
   seatParties: ["NDA", "YSRCP"], actualParties: ["NDA", "YSRCP"],
   cardKeys: ["op", "ex", "rd"], cardStyle: "ap", defaultView: "op", mapPeriod: "op", apiBase: "/api/survey/ap", socialState: "andhra-pradesh-2024",
-  periodLabels: { op: "Month", ex: "Month", rd: "Year" }, monthLabel: "Month",
+  periodLabels: { op: "Month", ex: "Month", rd: "Year" }, monthLabel: "Month", profileAccent: "var(--ap-party-nda)",
   profileOrder: {
     op: ["zone", "area", "dist", "ac"],
     ex: ["zone", "area", "dist", "ac"],
@@ -178,7 +180,7 @@ export const KA_CONFIG: CaseStudyConfig = {
   seatParties: ["INC", "BJP", "JDS", "Others"],
   actualParties: ["INC", "BJP", "JDS", "Others"],
   cardKeys: ["rd"], cardStyle: "ap", actualYear: "2023", defaultView: "rd", mapPeriod: "rd", apiBase: "/api/survey/ka", socialState: "karnataka",
-  periodLabels: { rd: "Month" }, monthLabel: "Month", latestSlot: "month",
+  periodLabels: { rd: "Month" }, monthLabel: "Month", latestSlot: "month", profileAccent: "var(--theme-text)",
   profileOrder: { rd: ["zone", "area", "dist", "ac", "month", "v23", "caste", "age", "cm", "issue"] },
   profileGroups: { rd: [{ label: "Region", keys: ["zone", "area", "dist", "ac"] }, { label: "Survey", keys: ["month"] }, { label: "Voter", keys: ["v23", "caste", "age", "cm", "issue"] }] },
   profileThresholds: { zone: 30, area: 30, month: 30, v23: 30, dist: 10, ac: 10, caste: 10, age: 10, cm: 10, issue: 10 },
@@ -217,7 +219,7 @@ export const TG_CONFIG: CaseStudyConfig = {
   seatParties: ["BRS", "INC", "BJP", "AIMIM", "Others"],
   actualParties: ["BRS", "INC", "BJP", "AIMIM", "Others"],
   cardKeys: ["rd"], cardStyle: "ap", actualYear: "2023", defaultView: "rd", mapPeriod: "rd", apiBase: "/api/survey/tg", socialState: "telangana",
-  periodLabels: { rd: "Month" }, monthLabel: "Month", latestSlot: "month",
+  periodLabels: { rd: "Month" }, monthLabel: "Month", latestSlot: "month", profileAccent: "var(--theme-text)",
   profileOrder: { rd: ["zone", "area", "dist", "ac", "v23", "age"] },
   profileGroups: { rd: [{ label: "Region", keys: ["zone", "area", "dist", "ac"] }, { label: "Voter", keys: ["v23", "age"] }] },
   profileThresholds: { zone: 30, area: 30, dist: 10, ac: 10, v23: 10, age: 10 },

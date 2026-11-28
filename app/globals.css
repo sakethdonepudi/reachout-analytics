@@ -2180,22 +2180,27 @@ html { scroll-padding-top: 96px; }
 .tn-fade-slide { animation: tn-fade-slide 220ms ease-out backwards; }
 .tn-crossfade { animation: tn-fade-slide 240ms ease-out backwards; }
 .tn-period-card {
-  --period-selected: var(--theme-selected);
-  min-height: 84px;
+  min-height: 88px;
   border: 1px solid var(--theme-border);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--theme-surface);
-  transition: transform 150ms ease-out, border-color 150ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out;
+  transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
 }
-.tn-period-card:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06); }
-.tn-period-card:active { transform: scale(0.99); }
+.tn-period-card:hover:not([aria-pressed="true"]) { border-color: var(--theme-border-strong); }
 .tn-period-card[aria-pressed="true"] {
-  border: 1.5px solid var(--period-selected);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--period-selected) 15%, transparent);
+  border-width: 1.5px;
+  border-color: var(--theme-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.05);
 }
-.tn-period-card[aria-pressed="true"]:hover { transform: none; }
-[data-theme="dark"] .tn-period-card { --period-selected: var(--theme-link); }
-[data-theme="dark"] .tn-period-card:hover { box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); }
+[data-theme="dark"] .tn-period-card[aria-pressed="true"] {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+@media (max-width: 639px) {
+  .period-rail {
+    -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 22px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 22px), transparent 100%);
+  }
+}
 @keyframes tn-live-pulse {
   0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--theme-positive) 30%, transparent); }
   50% { opacity: 0.55; transform: scale(0.85); box-shadow: 0 0 0 3px transparent; }
@@ -2314,6 +2319,7 @@ html { scroll-padding-top: 96px; }
   --theme-surface-2: #f7f8fa;
   --theme-surface-3: #fafafa;
   --theme-border: #c9c8c2;
+  --theme-border-strong: #a9a8a2;
   --theme-grid: #ebeae6;
   --theme-text: #000000;
   --theme-text-2: #2b2a27;
@@ -2385,6 +2391,7 @@ html { scroll-padding-top: 96px; }
   --theme-surface-2: #222220;
   --theme-surface-3: #262624;
   --theme-border: #2e2e2c;
+  --theme-border-strong: #4a4a46;
   --theme-grid: #262624;
   --theme-text: #f0efec;
   --theme-text-2: #c3c2b7;
@@ -2610,9 +2617,8 @@ body { transition: background-color 150ms ease, color 150ms ease; }
 .target-ring { position: relative; }
 .target-ring::after { content: ""; position: absolute; inset: -17px; border-radius: 999px; }
 
-/* Dark party fills are lighter, so every selected pill uses dark ink. */
-[data-theme="dark"] [data-pill-party][data-pill-selected="true"],
-[data-theme="dark"] [data-slot-active="true"] {
+/* Active month pills keep their dark ink in the dark theme. */
+[data-theme="dark"] [data-month-pill][data-slot-active="true"] {
   color: #0B0B0C !important;
   text-shadow: none !important;
 }
@@ -2824,14 +2830,50 @@ body { transition: background-color 150ms ease, color 150ms ease; }
   50% { opacity: 0.36; transform: scale(1.04); }
 }
 html[data-tab-hidden="true"] .live-anim,
-html[data-tab-hidden="true"] .live-shimmer::before,
+html[data-tab-hidden="true"] .live-shimmer-layer::before,
 html[data-tab-hidden="true"] .live-number-wrap .live-shimmer-layer::after {
   animation-play-state: paused;
 }
 @media (prefers-reduced-motion: reduce) {
-  .live-ping, .live-state-ring, .live-number-wrap::after, .live-shimmer::before { animation: none !important; }
+  .live-ping, .live-state-ring, .live-shimmer-layer::before, .live-number-wrap .live-shimmer-layer::after { animation: none !important; }
   .live-ping { opacity: 0; }
-  .live-shimmer::before { opacity: 0; }
+  .live-shimmer-layer::before { opacity: 0; }
   .live-state-ring { opacity: 0.4; transform: none; }
   .live-number-wrap .live-shimmer-layer::after { opacity: 0.12; transform: none; }
+}
+
+/* Filter chips. One border only, quiet until selected. */
+.case-chip {
+  border-width: 1px;
+  border-color: var(--theme-border);
+  background: var(--theme-surface);
+  color: var(--theme-text-2);
+}
+.case-chip:hover[data-selected="false"] {
+  border-color: var(--theme-border-strong);
+}
+.case-chip[data-selected="true"][data-variant="party"] {
+  background: color-mix(in srgb, var(--chip-color) 14%, var(--theme-surface));
+  border-width: 1.5px;
+  border-color: var(--chip-color);
+  color: color-mix(in srgb, var(--chip-color) 55%, #0b0b0c);
+}
+[data-theme="dark"] .case-chip[data-selected="true"][data-variant="party"] {
+  color: color-mix(in srgb, var(--chip-color) 55%, #ffffff);
+}
+.case-chip[data-selected="true"][data-variant="profile"] {
+  background: color-mix(in srgb, var(--chip-color) 14%, var(--theme-surface));
+  border-width: 1.5px;
+  border-color: var(--chip-color);
+  color: var(--theme-text);
+}
+.case-chip[data-selected="true"][data-variant="all"] {
+  background: #18181b;
+  border-color: #18181b;
+  color: #f4f4f5;
+}
+[data-theme="dark"] .case-chip[data-selected="true"][data-variant="all"] {
+  background: #f4f4f5;
+  border-color: #f4f4f5;
+  color: #18181b;
 }

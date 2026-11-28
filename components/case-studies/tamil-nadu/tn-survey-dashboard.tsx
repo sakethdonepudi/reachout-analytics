@@ -212,6 +212,38 @@ export default function TnSurveyDashboard({
   const expected = slot.expected[config.stateName] ?? {};
   const actual = model.actual[config.stateName] ?? {};
   const cardParties = config.sortPartyCards ? [...parties].sort((a, b) => (expected[b] ?? 0) - (expected[a] ?? 0)) : parties;
+  const topMonthCards = config.singleTabBar ? slots.filter((item) => !item.subKey && item.key !== "all") : [];
+  const cardCount = model.cards.length + topMonthCards.length + 1;
+  const desktopGrid = config.singleTabBar ? "min-[1280px]:grid-cols-[1.4fr_1fr_1fr_1fr]" : cardCount >= 4 ? "min-[1280px]:grid-cols-4" : "min-[1280px]:grid-cols-3";
+  const shareLine = (share: SurveyShare) => (
+    <p className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1">
+      {parties.slice(0, 3).map((party) => (
+        <span key={party} className="inline-flex items-center gap-1 rounded-full bg-[color:var(--theme-surface-2)] px-2 py-0.5 text-[12.5px] tabular-nums text-[color:var(--theme-text-2)]">
+          <PartyBadge party={party} size={16} />
+          <span>{partyLabel(party)}</span>
+          <span className="text-[color:var(--theme-text-3)]">{(share[party] ?? 0).toFixed(1)}%</span>
+        </span>
+      ))}
+    </p>
+  );
+  const seatLine = (seatMap: Record<string, number>) => {
+    const order = [...parties].sort((a, b) => Number(seatMap[b] ?? 0) - Number(seatMap[a] ?? 0));
+    const leader = order[0];
+    const leaderSeats = Number(seatMap[leader] ?? 0);
+    return (
+      <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] tabular-nums text-[color:var(--theme-text-3)] sm:text-[12.5px]">
+        <span className="font-semibold text-[color:var(--theme-text-2)]">Seats</span>
+        {leaderSeats >= config.map.majority ? (
+          <span className="inline-flex items-center gap-1 whitespace-nowrap"><PartyBadge party={leader} size={16} />{partyLabel(leader)} {int(leaderSeats)} of {config.map.totalSeats}</span>
+        ) : (
+          <>
+            {order.slice(0, 3).map((party, index) => <span key={party} className="inline-flex items-center gap-1 whitespace-nowrap">{index > 0 && <span aria-hidden>·</span>}<PartyBadge party={party} size={16} />{partyLabel(party)} {int(Number(seatMap[party] ?? 0))}</span>)}
+            <span className="whitespace-nowrap">· No majority</span>
+          </>
+        )}
+      </p>
+    );
+  };
   const seats = slot.seats ?? {};
   const leadParty = leaderOf(expected, parties);
   const profiles = useMemo(() => {
@@ -302,12 +334,12 @@ export default function TnSurveyDashboard({
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      const nodes = document.querySelectorAll<HTMLElement>("[data-slot-active='true']");
-      const node = nodes[nodes.length - 1];
-      const strip = node?.closest<HTMLElement>(".no-scrollbar");
-      if (!node || !strip) return;
-      const sr = strip.getBoundingClientRect(), br = node.getBoundingClientRect();
-      strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "auto" });
+      for (const node of document.querySelectorAll<HTMLElement>("[data-slot-active='true']")) {
+        const strip = node.closest<HTMLElement>(".no-scrollbar");
+        if (!strip) continue;
+        const sr = strip.getBoundingClientRect(), br = node.getBoundingClientRect();
+        strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "auto" });
+      }
     });
     return () => cancelAnimationFrame(frame);
   }, [slotKey, view]);
@@ -457,136 +489,85 @@ export default function TnSurveyDashboard({
     <main className={cn("tn-dashboard relative min-h-0 bg-[color:var(--theme-surface)] text-[16px] text-[var(--p-ink)]", config.slug === "karnataka" ? "ka-theme" : config.slug === "telangana" ? "tg-theme" : undefined)}>
       <div className={cn("fixed left-0 top-0 z-50 h-0.5 bg-[color:var(--theme-text)] transition-all duration-200", slowLoad ? "w-full opacity-100" : "w-0 opacity-0")} aria-hidden />
       <div className="mx-auto w-full max-w-[1680px] px-4 pb-20 pt-20 sm:px-6 sm:pt-20 xl:px-8">
-        <header className="flex flex-wrap items-center gap-3">
-          <Link href="/case-studies" className="tap-44 inline-flex min-h-11 shrink-0 items-center">
-            <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3 text-[12.5px] text-[color:var(--theme-text-3)] transition-colors hover:border-[color:var(--theme-text)] hover:text-[color:var(--theme-text)]">
-              <ArrowLeft className="size-3.5" /><span className="hidden sm:inline">Back to Case Studies</span><span className="sm:hidden">Back</span>
-            </span>
-          </Link>
-          {config.neutralHeader ? (
-            <LiveHeader
-              stateShort={config.stateShort}
-              title={config.neutralHeader}
-              total={model.n_total}
-              withVote={Number(model.meta?.n28 ?? model.cards[0]?.n ?? 0)}
-              first={String(model.meta?.first ?? "")}
-              last={String(model.meta?.last ?? "")}
-            />
-          ) : (
-            <div className="inline-flex min-h-11! shrink-0 items-center gap-2 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] py-1.5 pl-1.5 pr-4">
-              <span data-identity-logo className="grid size-11 place-items-center rounded-full bg-[color:var(--party-badge-surface)] ring-1 ring-black/5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={config.identity.logo} alt={`${config.identity.name} symbol`} width={40} height={27} className="h-auto w-10 object-contain" />
+        <header className="flex w-full flex-wrap items-center gap-3">
+          <div className="order-2 min-w-0 min-[900px]:order-1">
+            {config.neutralHeader ? (
+              <LiveHeader
+                stateShort={config.stateShort}
+                title={config.neutralHeader}
+                total={model.n_total}
+                withVote={Number(model.meta?.n28 ?? model.cards[0]?.n ?? 0)}
+                first={String(model.meta?.first ?? "")}
+                last={String(model.meta?.last ?? "")}
+              />
+            ) : (
+              <div className="inline-flex min-h-11! shrink-0 items-center gap-2 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] py-1.5 pl-1.5 pr-4">
+                <span data-identity-logo className="grid size-11 place-items-center rounded-full bg-[color:var(--party-badge-surface)] ring-1 ring-black/5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={config.identity.logo} alt={`${config.identity.name} symbol`} width={40} height={27} className="h-auto w-10 object-contain" />
+                </span>
+                <span className="leading-tight">
+                  <span className="block text-[17px] font-bold text-[color:var(--theme-text)]">{config.identity.name}</span>
+                  <span className="block text-[14px] text-[color:var(--theme-text-3)]">{config.identity.state}</span>
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="order-1 flex w-full flex-wrap items-center gap-2 min-[900px]:order-2 min-[900px]:ml-auto min-[900px]:w-auto">
+            <Link href="/case-studies" className="tap-44 inline-flex min-h-11 shrink-0 items-center">
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3 text-[12.5px] text-[color:var(--theme-text-3)] transition-colors hover:border-[color:var(--theme-text)] hover:text-[color:var(--theme-text)]">
+                <ArrowLeft className="size-3.5" /><span className="hidden sm:inline">Back to Case Studies</span><span className="sm:hidden">Back</span>
               </span>
-              <span className="leading-tight">
-                <span className="block text-[17px] font-bold text-[color:var(--theme-text)]">{config.identity.name}</span>
-                <span className="block text-[14px] text-[color:var(--theme-text-3)]">{config.identity.state}</span>
-              </span>
-            </div>
-          )}
-          {owner && (
-            <button type="button" onClick={() => void download()} disabled={downloading} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[color:var(--theme-text)] px-4 text-[13px] font-semibold text-[color:var(--theme-text)] hover:bg-[color:var(--theme-text)] hover:text-[color:var(--theme-surface)] disabled:opacity-50 sm:ml-auto">
-              <ArrowDownToLine className="size-4" /> {downloading ? "Preparing..." : "Download data"}
-            </button>
-          )}
-          {!config.neutralHeader && <p className={cn("w-full text-[15px] font-medium text-[color:var(--theme-text-2)] sm:w-auto sm:text-right", owner ? "sm:ml-0" : "sm:ml-auto")}>{int(model.n_total)} responses</p>}
+            </Link>
+            {!config.neutralHeader && <p className="text-[15px] font-medium tabular-nums text-[color:var(--theme-text-2)]">{int(model.n_total)} responses</p>}
+            {owner && (
+              <button type="button" onClick={() => void download()} disabled={downloading} className="inline-flex min-h-11! items-center gap-1.5 rounded-full border border-[color:var(--theme-text)] px-4 text-[13px] font-semibold text-[color:var(--theme-text)] hover:bg-[color:var(--theme-text)] hover:text-[color:var(--theme-surface)] disabled:opacity-50">
+                <ArrowDownToLine className="size-4" /> {downloading ? "Preparing..." : "Download data"}
+              </button>
+            )}
+          </div>
         </header>
 
-        <div className={cn("mt-4 grid grid-cols-2 gap-3", config.singleTabBar ? "min-[900px]:grid-cols-3 min-[1280px]:grid-cols-[1.4fr_1fr_1fr_1fr_1.15fr]" : model.cards.length + 1 >= 4 ? "min-[1280px]:grid-cols-4" : model.cards.length + 1 === 3 ? "min-[1280px]:grid-cols-3" : "min-[1280px]:grid-cols-2")}>
+        <div className={cn("period-rail no-scrollbar -mx-4 mt-4 flex snap-x items-stretch gap-3 overflow-x-auto px-4 pb-1 min-[640px]:mx-0 min-[640px]:grid min-[640px]:grid-cols-2 min-[640px]:overflow-visible min-[640px]:px-0", desktopGrid)}>
           {model.cards.map((card) => {
-            const selected = view === card.key;
+            const selected = view === card.key && (!config.singleTabBar || slot.key === "all");
             const label = card.label.replace(" (Live tracking)", "");
-            const shortLabel = label.replace(/ poll$/i, "");
-            const lead = leaderOf(card.expected, parties) ?? config.parties[0];
-            const live = card.key === "rd";
+            const liveTracking = config.singleTabBar && card.key === "rd";
             return (
-              <button key={card.key} type="button" aria-pressed={selected} onMouseEnter={() => prefetch(card.key, card.key === "rd" ? postPollDefault : "all")} onClick={() => { setDistrict(null); setAcNo(null); navigate({ view: card.key, slot: card.key === "rd" ? postPollDefault : "all", profile: "", filter: null }); }}
-                className="tn-period-card group relative flex min-h-[84px] flex-col px-2 py-[14px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--period-selected)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--theme-surface)] sm:px-4">
-                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                  <p className={cn("min-w-0 whitespace-nowrap text-[15px] font-semibold leading-tight", selected ? "text-[color:var(--period-selected)]" : "text-[color:var(--theme-text)]")}>
-                    <span className="sm:hidden">{shortLabel}</span>
-                    <span className="hidden sm:inline">{label}</span>
+              <button key={card.key} type="button" data-period-card={card.key} data-slot-active={selected ? "true" : undefined} aria-pressed={selected} onMouseEnter={() => prefetch(card.key, card.key === "rd" ? postPollDefault : "all")} onClick={() => { setDistrict(null); setAcNo(null); navigate({ view: card.key, slot: config.singleTabBar && card.key === "rd" ? "all" : card.key === "rd" ? postPollDefault : "all", profile: "", filter: null }); }}
+                className="tn-period-card group relative flex min-h-[88px] min-w-[260px] shrink-0 snap-start flex-col px-4 py-[14px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--theme-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--theme-surface)] min-[640px]:min-w-0">
+                <div className="flex w-full items-center justify-between gap-2">
+                  <p className="flex min-w-0 items-center gap-1.5 text-[14px] font-semibold leading-tight text-[color:var(--theme-text)]">
+                    {liveTracking && <span className="relative grid size-2 shrink-0 place-items-center"><span aria-hidden className="live-ping live-anim absolute inset-0 rounded-full border border-[color:var(--live-green)]" /><span aria-hidden className="size-1.5 rounded-full bg-[color:var(--live-green)]" /></span>}
+                    <span className="min-w-0">{label}</span>
                   </p>
-                  {live ? (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[color:var(--theme-positive-soft)] px-1.5 py-[2px] text-[12px] font-bold leading-none text-[color:var(--theme-positive)]">{config.neutralHeader ? <span className="relative grid size-2 place-items-center"><span aria-hidden className="live-ping live-anim absolute inset-0 rounded-full border border-[color:var(--live-green)]" /><span aria-hidden className="size-1.5 rounded-full bg-[color:var(--live-green)]" /></span> : <span className="tn-live-dot size-1.5 rounded-full bg-current" aria-hidden />}Live</span>
-                  ) : card.showAccuracy !== false ? (
-                    <span className="inline-flex shrink-0 items-center rounded-full bg-[color:var(--theme-positive-soft)] px-1.5 py-[2px] text-[12px] font-bold leading-none text-[color:var(--theme-positive)]">{(card.accuracy ?? 0).toFixed(1)}% accurate</span>
-                  ) : null}
+                  <span className="shrink-0 text-[11px] font-medium tabular-nums text-[color:var(--theme-text-3)]">{int(card.n)} responses</span>
                 </div>
-                {card.summaryLine ? (
-                  <>
-                    <p className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] tabular-nums text-[color:var(--theme-text-3)] sm:text-[12.5px]">
-                      {parties.slice(0, 3).map((party) => (
-                        <span key={party} className="inline-flex items-center gap-1 whitespace-nowrap">
-                          <PartyBadge party={party} size={16} />
-                          {partyLabel(party)} <span>{(card.expected[party] ?? 0).toFixed(1)}<span className="hidden sm:inline">%</span></span>
-                        </span>
-                      ))}
-                    </p>
-                    <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] tabular-nums text-[color:var(--theme-text-3)] sm:text-[12.5px]">
-                      <span className="font-semibold text-[color:var(--theme-text-2)]">Seats:</span>
-                      {(() => {
-                        const seatMap = card.seats ?? {};
-                        const order = [...parties].sort((a, b) => Number(seatMap[b] ?? 0) - Number(seatMap[a] ?? 0));
-                        const leader = order[0];
-                        const leaderSeats = Number(seatMap[leader] ?? 0);
-                        if (leaderSeats >= config.map.majority) return <span className="inline-flex items-center gap-1 whitespace-nowrap"><PartyBadge party={leader} size={16} />{partyLabel(leader)} {int(leaderSeats)} of {config.map.totalSeats}</span>;
-                        return <>
-                          {order.slice(0, 3).map((party, index) => <span key={party} className="inline-flex items-center gap-1 whitespace-nowrap">{index > 0 && <span aria-hidden>·</span>}<PartyBadge party={party} size={16} />{partyLabel(party)} {int(Number(seatMap[party] ?? 0))}</span>)}
-                          <span className="whitespace-nowrap">· no majority</span>
-                        </>;
-                      })()}
-                    </p>
-                  </>
-                ) : (
-                <p className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] tabular-nums text-[color:var(--theme-text-3)] sm:text-[13px]">
-                  {parties.slice(0, config.cardStyle === "ap" ? 2 : 3).map((party, index) => (
-                    <span key={party} className={cn("inline-flex items-center gap-1 whitespace-nowrap", index === 2 && "hidden sm:inline-flex")}>
-                      <span className="size-1.5 shrink-0 rounded-full" style={{ background: colour(party) }} aria-hidden />
-                      {party} <span>{(card.expected[party] ?? 0).toFixed(1)}<span className="hidden sm:inline">%</span></span>
-                    </span>
-                  ))}
-                  {config.cardStyle === "ap" && card.seats && <span className="hidden whitespace-nowrap sm:inline">· {int(card.seats[config.actualParties[0]] ?? 0)}–{int(card.seats[config.actualParties[1]] ?? 0)} seats</span>}
-                </p>
-                )}
+                {shareLine(card.expected)}
+                {config.singleTabBar && card.seats ? seatLine(card.seats) : null}
               </button>
             );
           })}
-          {config.singleTabBar && slots.filter((item) => !item.subKey).map((item) => {
-            const selected = view !== "social" && slot.key === item.key;
-            const itemLead = leaderOf(item.expected[config.stateName] ?? {}, parties) ?? config.parties[0];
+          {topMonthCards.map((item) => {
+            const selected = view !== "social" && (slot.key === item.key || slot.monthKey === item.key);
             const itemExpected = item.expected[config.stateName] ?? {};
             const subs = slots.filter((candidate) => candidate.subKey && candidate.monthKey === item.key);
             const hint = `${int(item.n)} answers${item.from ? ` · ${item.from} to ${item.to}` : ""}${subs.length ? ` · ${subs.map((sub) => weekLabel(sub.from, sub.to, sub.n)).join(", ")}` : ""}`;
             return (
-              <button key={`month-${item.key}`} type="button" aria-pressed={selected} data-month-card title={hint} onMouseEnter={() => prefetch(periodKey, item.key)} onClick={() => { setDistrict(null); setAcNo(null); navigate({ slot: item.key, profile: "" }); }}
-                className="tn-period-card group relative flex min-h-[84px] flex-col px-2 py-[14px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--period-selected)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--theme-surface)] sm:px-4">
-                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                  <p className={cn("min-w-0 text-[13px] font-semibold leading-tight sm:text-[15px]", selected ? "text-[color:var(--period-selected)]" : "text-[color:var(--theme-text)]")}>{item.buttonLabel}</p>
-                  <span className="inline-flex shrink-0 items-center rounded-full bg-[color:var(--theme-surface-2)] px-1.5 py-[2px] text-[11px] font-semibold leading-none text-[color:var(--theme-text-3)]">{int(item.n)}</span>
+              <button key={`month-${item.key}`} type="button" data-month-card data-slot-active={selected ? "true" : undefined} aria-pressed={selected} title={hint} onMouseEnter={() => prefetch(periodKey, item.key)} onClick={() => { setDistrict(null); setAcNo(null); navigate({ slot: item.key, profile: "" }); }}
+                className="tn-period-card group relative flex min-h-[88px] min-w-[260px] shrink-0 snap-start flex-col px-4 py-[14px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--theme-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--theme-surface)] min-[640px]:min-w-0">
+                <div className="flex w-full items-center justify-between gap-2">
+                  <p className="min-w-0 text-[14px] font-semibold leading-tight text-[color:var(--theme-text)]">{item.buttonLabel}</p>
+                  <span className="shrink-0 text-[11px] font-medium tabular-nums text-[color:var(--theme-text-3)]">{int(item.n)} responses</span>
                 </div>
-                <p className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] tabular-nums text-[color:var(--theme-text-3)] sm:text-[13px]">
-                  {parties.slice(0, config.cardStyle === "ap" ? 2 : 3).map((party, index) => (
-                    <span key={party} className={cn("inline-flex items-center gap-1", index === 2 && "hidden sm:inline-flex")}>
-                      <PartyBadge party={party} size={16} />
-                      {partyLabel(party)} <span>{(itemExpected[party] ?? 0).toFixed(1)}<span className="hidden sm:inline">%</span></span>
-                    </span>
-                  ))}
-                </p>
+                {shareLine(itemExpected)}
               </button>
             );
           })}
-          <button type="button" aria-pressed={view === "social"} data-social-card className={cn("tn-period-card group relative flex min-h-[84px] flex-col px-2 py-[14px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--period-selected)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--theme-surface)] sm:px-4", config.singleTabBar ? "col-span-2 min-[900px]:col-span-1" : model.cards.length + 1 === 3 && "col-span-2 min-[1280px]:col-span-1")} onMouseEnter={() => prefetchSocial()} onPointerDown={() => prefetchSocial()} onFocus={() => prefetchSocial()} onClick={() => openSocial()}>
-            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-              <p data-social-title className={cn("flex min-w-0 items-center whitespace-nowrap text-[14px] font-semibold leading-tight", view === "social" ? "text-[color:var(--period-selected)]" : "text-[color:var(--theme-text)]")}>
-                <span className="sm:hidden">Social</span><span className="hidden sm:inline">{config.socialCardTitle ?? "Social Media"}</span>
-              </p>
-              <TrendChart data={model.socialMonthly} series={[{ metric: "reach", label: "Reach", color: "var(--theme-chart-reach)" }]} height={20} label="Monthly reach" className="h-5 w-[72px] shrink-0" />
-            </div>
-            <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
-              <span data-social-icons className="flex items-center"><SocialCluster iconSize={20} tileSize={22} columns={2} /></span>
-              <p data-social-subtitle className="text-[12px] font-medium text-[color:var(--theme-text-3)] sm:text-[13px]"><span className="sm:hidden">Ads · reach</span><span className="hidden sm:inline">{config.socialCardSubtitle ?? "Ads · reach & engagement"}</span></p>
-            </div>
+          <button type="button" aria-pressed={view === "social"} data-social-card className={cn("tn-period-card group relative flex min-h-[88px] min-w-[260px] shrink-0 snap-start flex-col px-4 py-[14px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--theme-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--theme-surface)] min-[640px]:min-w-0", !config.singleTabBar && cardCount === 3 && "min-[640px]:col-span-2 min-[1280px]:col-span-1")} onMouseEnter={() => prefetchSocial()} onPointerDown={() => prefetchSocial()} onFocus={() => prefetchSocial()} onClick={() => openSocial()}>
+            <p data-social-title className="flex min-w-0 items-center text-[14px] font-semibold leading-tight text-[color:var(--theme-text)]">{config.socialCardTitle ?? "Social Media Dissemination"}</p>
+            <span data-social-icons className="mt-1.5 flex items-center"><SocialCluster iconSize={18} tileSize={20} columns={2} /></span>
+            <p data-social-subtitle className="mt-1 text-[12.5px] font-medium text-[color:var(--theme-text-3)]">Ad campaigns · reach & engagement</p>
           </button>
         </div>
 
@@ -599,7 +580,7 @@ export default function TnSurveyDashboard({
               const subs = slots.filter((candidate) => candidate.subKey && candidate.monthKey === item.key);
               return (
                 <div key={item.key} className="relative shrink-0 snap-start">
-                  <button type="button" data-slot-active={slot.key === item.key || slot.monthKey === item.key ? "true" : undefined} aria-pressed={slot.key === item.key || slot.monthKey === item.key} onMouseEnter={() => prefetch(periodKey, item.key)} onClick={(event) => {
+                  <button type="button" data-month-pill data-slot-active={slot.key === item.key || slot.monthKey === item.key ? "true" : undefined} aria-pressed={slot.key === item.key || slot.monthKey === item.key} onMouseEnter={() => prefetch(periodKey, item.key)} onClick={(event) => {
                       navigate({ slot: item.key, profile: "" });
                       const strip = event.currentTarget.closest(".no-scrollbar") as HTMLElement | null;
                       if (strip) {
@@ -607,7 +588,7 @@ export default function TnSurveyDashboard({
                         strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "smooth" });
                       }
                     }}
-                    className={cn("min-h-11! rounded-full border px-4 text-[14px] font-semibold transition-all active:scale-[0.98]", slot.key === item.key || slot.monthKey === item.key ? "border-[color:var(--theme-selected)] shadow-[0_0_0_2px_var(--theme-surface),0_0_0_3.5px_var(--theme-selected)]" : "border-[color:var(--theme-border)] hover:border-[color:var(--theme-text)]")}
+                    className={cn("min-h-11! rounded-full border px-4 text-[14px] font-semibold transition-colors duration-[120ms]", slot.key === item.key || slot.monthKey === item.key ? "border-[1.5px] border-[color:var(--theme-text)] shadow-[0_1px_2px_rgba(0,0,0,0.06),0_4px_12px_rgba(0,0,0,0.05)]" : "border-[color:var(--theme-border)] hover:border-[color:var(--theme-border-strong)]")}
                     style={{ background: slot.key === item.key || slot.monthKey === item.key ? colour(itemLead) : `color-mix(in srgb, ${colour(itemLead)} 16%, var(--theme-surface))`, color: slot.key === item.key || slot.monthKey === item.key ? (needsWhite(itemLead) ? "#fff" : "#0B0B0C") : "var(--theme-text)" }}>
                     {item.buttonLabel}{subs.length ? <ChevronDown className="ml-1 inline size-4" /> : null}
                   </button>
@@ -672,8 +653,8 @@ export default function TnSurveyDashboard({
                             <Pill
                               key={key}
                               selected={activeProfile === key}
-                              colour={colour(profileLead)}
-                              party={profileLead}
+                              colour={config.profileAccent ?? colour(profileLead)}
+                              variant="profile"
                               profileTab={key}
                               label={slot.demoCatalog[key]?.label ?? key}
                               onClick={(event) => {
@@ -696,7 +677,7 @@ export default function TnSurveyDashboard({
                 <div className="mt-3">
                   <LazyMount minHeight={540}>
                     {!demo && activeProfile === "ac" ? <div className="rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface-3)] p-6 text-[14px] text-[color:var(--theme-text-3)]">Loading assembly table...</div> :
-                      demo ? <div key={`${slot.key}:${activeProfile}`} className="tn-fade-slide"><TnProfileTable demo={demo} parties={parties} profileKey={activeProfile} periodKey={view} slotLabel={slot.label} average={average} slotLeader={leadParty ?? parties[0] ?? ""} targetParty={activeTargetParty} targetMode={targetMode} targetPillParty={config.target?.pillParty ?? config.parties[0]} targetTooltip={config.target ? (targetMode === "gap" ? config.target.tooltipGap ?? config.target.tooltipGeo : ["zone", "area", "dist", "ac"].includes(activeProfile) ? config.target.tooltipGeo : config.target.tooltipOther) : ""} allowTarget={Boolean(config.target?.periods.includes(view))} showCampaignsLink={config.showCampaignLinks ?? config.cardStyle !== "ap"} threshold={activeThreshold} countBelowThreshold={Boolean(config.countBelowThreshold)}
+                      demo ? <div key={`${slot.key}:${activeProfile}`} className="tn-fade-slide"><TnProfileTable demo={demo} parties={parties} profileKey={activeProfile} periodKey={view} slotLabel={slot.label} average={average} slotLeader={leadParty ?? parties[0] ?? ""} targetParty={activeTargetParty} targetMode={targetMode} targetPillParty={config.target?.pillParty ?? config.parties[0]} targetTooltip={config.target ? (targetMode === "gap" ? config.target.tooltipGap ?? config.target.tooltipGeo : ["zone", "area", "dist", "ac"].includes(activeProfile) ? config.target.tooltipGeo : config.target.tooltipOther) : ""} allowTarget={Boolean(config.target?.periods.includes(view))} showCampaignsLink={config.showCampaignLinks ?? config.cardStyle !== "ap"} threshold={activeThreshold} countBelowThreshold={Boolean(config.countBelowThreshold)} partyLabels={config.partyLabels}
                         onTarget={(payload) => openSocial({ match: "target", kind: payload.kind, place: payload.place, label: `${payload.label} · ${payload.place} · ${activeTargetParty} ${targetMode === "leads" ? "leads" : `${payload.value.toFixed(1)}% (average ${payload.average.toFixed(1)})`}`, value: String(payload.value), average: String(payload.average) })}
                         onCampaigns={(payload) => openSocial({ match: "campaigns", kind: payload.kind, place: payload.place, label: payload.place })}
                         onGroup={(group) => openSocial({ match: "group", group, label: group })}
