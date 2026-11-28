@@ -19,6 +19,7 @@ import { partyBorder, partyColour, partyNeedsWhiteInk, TN_GROUP_KEY } from "@/li
 import { projectedMajority } from "@/lib/tamil-nadu/majority";
 import { swingLabel, swingTone } from "@/lib/tamil-nadu/swing";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
+import { latestMonthFromSlots } from "@/lib/survey/post-poll";
 import { cn } from "@/lib/utils";
 import { SocialCluster } from "./social-icons";
 import { TrendChart } from "./trend-chart";
@@ -139,51 +140,6 @@ function LazyMount({ children, minHeight = 420 }: { children: React.ReactNode; m
   return <div ref={ref} style={{ minHeight: shown ? undefined : minHeight }}>{shown ? children : null}</div>;
 }
 
-function VoteShareHero({ expected, parties, slotKey, label }: { expected: SurveyShare; parties: string[]; slotKey: string; label: string }) {
-  const reduced = usePrefersReducedMotion();
-  const [grown, setGrown] = useState(reduced);
-  useEffect(() => {
-    if (reduced) { setGrown(true); return; }
-    setGrown(false);
-    const frame = requestAnimationFrame(() => requestAnimationFrame(() => setGrown(true)));
-    return () => cancelAnimationFrame(frame);
-  }, [reduced, slotKey]);
-  const ranked = [...parties].sort((a, b) => (expected[b] ?? 0) - (expected[a] ?? 0));
-  const lead = ranked[0];
-  const runner = ranked[1];
-  const margin = (expected[lead] ?? 0) - (expected[runner] ?? 0);
-  return (
-    <div className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.035)] sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <PartyBadge party={lead} size={28} />
-          <div>
-            <p className="font-display text-[22px] font-semibold leading-none tracking-[-0.02em] text-[color:var(--theme-text)]">{lead} leads by {margin.toFixed(1)} pts</p>
-          </div>
-        </div>
-        <p className="text-[13px] font-semibold text-[color:var(--theme-text-3)]">{label}</p>
-      </div>
-      <div className="mt-4 flex h-10 w-full overflow-hidden rounded-full bg-[color:var(--theme-surface-2)] ring-1 ring-inset ring-black/5" role="img" aria-label="Vote share distribution">
-        {parties.map((party) => {
-          const value = Math.max(0, expected[party] ?? 0);
-          return (
-            <span key={party} data-bar-party={party} title={`${party} ${pct(expected[party])}`} className="flex min-w-0 items-center justify-center overflow-hidden whitespace-nowrap text-[12px] font-bold transition-[width] duration-300 ease-out" style={{ width: grown ? `${value}%` : "0%", background: colour(party), color: partyNeedsWhiteInk(party) ? "#fff" : "#0B0B0C", textShadow: partyNeedsWhiteInk(party) ? "0 1px 2px rgba(0,0,0,.45)" : "none" }}>
-              {value >= 14 ? <span className="hidden items-center gap-1.5 lg:inline-flex"><PartyBadge party={party} size={20} />{party} {value.toFixed(1)}%</span> : ""}
-            </span>
-          );
-        })}
-      </div>
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-[color:var(--theme-text-3)] lg:hidden">
-        {parties.map((party) => (
-          <span key={party} className="inline-flex items-center gap-1.5">
-            <PartyBadge party={party} size={20} />{party} {pct(expected[party])}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function TnSurveyDashboard({
   model,
   owner,
@@ -231,6 +187,7 @@ export default function TnSurveyDashboard({
   const targetMode = view === "rd" && config.target.postPollMode ? config.target.postPollMode : config.target.mode;
   const activeTargetParty = targetMode === "gap" ? config.target.pillParty : config.target.party;
   const slots = model.slots[periodKey] ?? [];
+  const postPollDefault = latestMonthFromSlots(model.slots.rd ?? []);
   const slot: TnSlotModel = slots.find((item) => item.key === slotKey) ?? slots[0];
   const mapKey = `${periodKey}:${slot.key}`;
   const map = mapCache.current.get(mapKey) ?? model.initialMap;
@@ -281,9 +238,10 @@ export default function TnSurveyDashboard({
   useEffect(() => {
     const onPop = () => {
       const params = new URLSearchParams(window.location.search);
-      const nextView = params.get("view") === "social" ? "social" : params.get("view") === "ex" ? "ex" : "op";
+      const rawView = params.get("view");
+      const nextView = rawView === "social" ? "social" : rawView === "ex" ? "ex" : rawView === "rd" ? "rd" : "op";
       setView(nextView);
-      setSlotKey(params.get("slot") ?? "all");
+      setSlotKey(params.get("slot") ?? (nextView === "rd" ? postPollDefault : "all"));
       setProfileKey(params.get("profile") ?? "");
       setSocialFilter(params.get("match") ? {
         match: params.get("match") as SocialFilter["match"],
@@ -297,7 +255,7 @@ export default function TnSurveyDashboard({
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, []);
+  }, [postPollDefault]);
 
   const fetchMap = useCallback(async (period: string, key: string) => {
     const cacheKey = `${period}:${key}`;
@@ -324,10 +282,15 @@ export default function TnSurveyDashboard({
   }, [view]);
 
   useEffect(() => {
-    const node = document.querySelector<HTMLElement>("[data-slot-active='true']");
-    const strip = node?.parentElement;
-    if (!node || !strip) return;
-    strip.scrollTo({ left: node.offsetLeft - strip.clientWidth / 2 + node.offsetWidth / 2, behavior: "auto" });
+    const frame = requestAnimationFrame(() => {
+      const nodes = document.querySelectorAll<HTMLElement>("[data-slot-active='true']");
+      const node = nodes[nodes.length - 1];
+      const strip = node?.closest<HTMLElement>(".no-scrollbar");
+      if (!node || !strip) return;
+      const sr = strip.getBoundingClientRect(), br = node.getBoundingClientRect();
+      strip.scrollTo({ left: strip.scrollLeft + br.left - sr.left - (strip.clientWidth - br.width) / 2, behavior: "auto" });
+    });
+    return () => cancelAnimationFrame(frame);
   }, [slotKey, view]);
 
   useEffect(() => {
@@ -505,7 +468,7 @@ export default function TnSurveyDashboard({
 
         <div className={cn("mt-4 grid grid-cols-2 gap-2 sm:gap-3", model.cards.length + 1 >= 4 ? "min-[900px]:grid-cols-2 min-[1100px]:grid-cols-4" : "min-[900px]:grid-cols-3")}>
           {model.cards.map((card) => (
-            <button key={card.key} type="button" aria-pressed={view === card.key} onMouseEnter={() => prefetch(card.key, "all")} onClick={() => { setDistrict(null); setAcNo(null); navigate({ view: card.key, slot: "all", profile: "", filter: null }); }}
+            <button key={card.key} type="button" aria-pressed={view === card.key} onMouseEnter={() => prefetch(card.key, card.key === "rd" ? postPollDefault : "all")} onClick={() => { setDistrict(null); setAcNo(null); navigate({ view: card.key, slot: card.key === "rd" ? postPollDefault : "all", profile: "", filter: null }); }}
               className={cn("tn-card flex min-h-[132px] flex-col justify-center rounded-2xl border-2 p-3 text-left transition-all sm:min-h-[124px] sm:p-4", view === card.key ? "border-[color:var(--theme-selected)] bg-[color:var(--theme-selected)] text-white shadow-[0_0_0_2px_var(--theme-surface),0_0_0_4px_var(--theme-selected)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-surface-2)] text-[color:var(--theme-text)] hover:-translate-y-0.5 hover:border-[color:var(--theme-border)]")}>
               <p className="whitespace-nowrap text-[15px] font-bold leading-tight sm:text-[17px]">
                 <span className="sm:hidden">{card.label.replace(" (Live tracking)", "")}</span>
@@ -554,7 +517,7 @@ export default function TnSurveyDashboard({
             })}
             {slots.filter((candidate) => candidate.subKey && candidate.monthKey === (slot.monthKey ?? "")).map((item) => {
               const subLead = leaderOf(item.expected[config.stateName] ?? {}, parties) ?? config.parties[0];
-              return <Pill key={item.key} selected={slot.key === item.key} colour={colour(subLead)} party={subLead} label={item.buttonLabel} onMouseEnter={() => prefetch(periodKey, item.key)} onClick={(event) => {
+              return <Pill key={item.key} selected={slot.key === item.key} dataActive={slot.key === item.key} colour={colour(subLead)} party={subLead} label={item.buttonLabel} onMouseEnter={() => prefetch(periodKey, item.key)} onClick={(event) => {
                 navigate({ slot: item.key, profile: "" });
                 const strip = event.currentTarget.closest(".no-scrollbar") as HTMLElement | null;
                 if (strip) {
@@ -586,10 +549,6 @@ export default function TnSurveyDashboard({
                 );
               })}
             </div>
-
-            <div className="mt-3"><VoteShareHero expected={expected} parties={parties} slotKey={slot.key} label={config.shareLabel[view] ?? "Vote share"} /></div>
-
-
 
             {profiles.length > 0 && (
               <Section title={`Voter profile · ${slot.buttonLabel}`} className="mt-3">

@@ -2561,14 +2561,9 @@ body { transition: background-color 150ms ease, color 150ms ease; }
 .target-ring { position: relative; }
 .target-ring::after { content: ""; position: absolute; inset: -17px; border-radius: 999px; }
 
-/* Dark party fills are lighter, so blue and green need dark ink for AA. */
-/* Dark party fills are lighter, so every selected pill and bar uses dark ink. */
+/* Dark party fills are lighter, so every selected pill uses dark ink. */
 [data-theme="dark"] [data-pill-party][data-pill-selected="true"],
 [data-theme="dark"] [data-slot-active="true"] {
-  color: #0B0B0C !important;
-  text-shadow: none !important;
-}
-[data-theme="dark"] [data-bar-party] {
   color: #0B0B0C !important;
   text-shadow: none !important;
 }

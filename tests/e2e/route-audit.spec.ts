@@ -181,10 +181,16 @@ async function clickTab(page: Page, name: RegExp) {
     record("/case-studies/andhra-pradesh-2024", "Opinion tabs", "client", "Zone, Area, District, Assembly constituency only", apOpTabs.join(", "), JSON.stringify(apOpTabs) === JSON.stringify(["Zone", "Area", "District", "Assembly constituency"]));
     const apPartyCards = ["NDA · expected", "YSRCP · expected", "INC · expected", "Others · expected"];
     record("/case-studies/andhra-pradesh-2024", "Party cards", "client", "4 expected cards", String(apPartyCards.filter((label) => apBody.includes(label)).length), apPartyCards.every((label) => apBody.includes(label)));
+    record("/case-studies/andhra-pradesh-2024", "Lead bar removed", "client", "no leads-by card or stacked bar", apBody.includes("leads by") || await page.locator("[data-bar-party]").count() ? "found" : "clean", !apBody.includes("leads by") && (await page.locator("[data-bar-party]").count()) === 0);
     const apGroups = await page.getByRole("group", { name: "Voter profile" }).innerText();
     record("/case-studies/andhra-pradesh-2024", "Profile groups", "client", "Region only on opinion", apGroups.replace(/\n+/g, ", "), /region/i.test(apGroups) && !/vote & feedback/i.test(apGroups));
     record("/case-studies/andhra-pradesh-2024", "Target absent in opinion", "client", "no YSRCP lead row", String(await page.locator('button[aria-label^="Target Campaign"]:visible').count()), (await page.locator('button[aria-label^="Target Campaign"]:visible').count()) === 0);
-    await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd&profile=govt`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: /Post-poll/ }).click();
+    await page.waitForTimeout(1000);
+    const cardRdUrl = new URL(page.url());
+    const cardRdActive = await page.locator("[data-slot-active='true']").allInnerTexts();
+    record("/case-studies/andhra-pradesh-2024", "Post-poll card default", "client", "slot=2026-10 with Oct 2026 selected", `${cardRdUrl.searchParams.get("slot")} / ${cardRdActive.join(", ")}`, cardRdUrl.searchParams.get("slot") === "2026-10" && cardRdActive.some((text) => text.includes("Oct 2026")));
+    await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd&slot=all&profile=govt`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2600);
     await page.locator("section[aria-label^='Voter profile']").scrollIntoViewIfNeeded();
     await page.waitForTimeout(900);
@@ -214,6 +220,11 @@ async function clickTab(page: Page, name: RegExp) {
     await page.waitForTimeout(900);
     await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2600);
+    const directRdUrl = new URL(page.url());
+    const directRdActive = await page.locator("[data-slot-active='true']").allInnerTexts();
+    record("/case-studies/andhra-pradesh-2024", "Post-poll direct default", "client", "?view=rd redirects to slot=2026-10", `${directRdUrl.searchParams.get("slot")} / ${directRdActive.join(", ")}`, directRdUrl.searchParams.get("slot") === "2026-10" && directRdActive.some((text) => text.includes("Oct 2026")));
+    await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd&slot=all`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2200);
     const apSlots = (await page.getByRole("group", { name: "Survey time slot" }).innerText()).replace(/\n+/g, ", ");
     const apRdTabs = await page.locator("[data-profile-tab]").allTextContents();
     record("/case-studies/andhra-pradesh-2024", "Post-poll tabs", "client", "13 HTML tabs only", apRdTabs.join(", "), JSON.stringify(apRdTabs) === JSON.stringify(["Zone", "Area", "District", "Assembly constituency", "2024 vote", "Govt performance", "MLA performance", "Better schemes", "Super Six", "Corruption", "Preferred leader", "Top expectation", "Social category"]));
@@ -248,7 +259,7 @@ async function clickTab(page: Page, name: RegExp) {
     await page.waitForTimeout(900);
     record("/case-studies/andhra-pradesh-2024", "Map credit removed", "client", "no map credit line", String(await page.getByRole("link", { name: /Map: DataMeet/ }).count()), (await page.getByRole("link", { name: /Map: DataMeet/ }).count()) === 0);
     for (const [tab, expected] of [["zone", 2], ["area", 1], ["dist", 3], ["govt", 2]] as const) {
-      await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd&profile=${tab}`, { waitUntil: "domcontentloaded" });
+      await page.goto(`${BASE}/case-studies/andhra-pradesh-2024?view=rd&slot=all&profile=${tab}`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(1600);
       await page.locator("section[aria-label^='Voter profile']").scrollIntoViewIfNeeded();
       await page.waitForTimeout(700);
@@ -276,7 +287,7 @@ async function clickTab(page: Page, name: RegExp) {
     record("/case-studies/tamil-nadu", "Party cards", "client", "5 expected cards", partyCards.filter((label) => partyBody.includes(label)).length + " / 5", partyCards.every((label) => partyBody.includes(label)));
     record("/case-studies/tamil-nadu", "Updated response total", "client", "117,131 responses", partyBody.includes("1,17,131 responses") || partyBody.includes("117,131 responses") ? "visible" : "missing", partyBody.includes("1,17,131 responses") || partyBody.includes("117,131 responses"));
     record("/case-studies/tamil-nadu", "Updated opinion values", "client", "TVK 38.6, DMK+ 21.5, AIADMK+ 31.9", partyBody.includes("TVK 38.6%") && partyBody.includes("DMK+ 21.5%") && partyBody.includes("AIADMK+ 31.9%") ? "visible" : "missing", partyBody.includes("TVK 38.6%") && partyBody.includes("DMK+ 21.5%") && partyBody.includes("AIADMK+ 31.9%"));
-    record("/case-studies/tamil-nadu", "Hero lead", "client", "leads by", partyBody.includes("leads by") ? "visible" : "missing", partyBody.includes("leads by"));
+    record("/case-studies/tamil-nadu", "Lead bar removed", "client", "no leads-by card or stacked bar", partyBody.includes("leads by") || await page.locator("[data-bar-party]").count() ? "found" : "clean", !partyBody.includes("leads by") && (await page.locator("[data-bar-party]").count()) === 0);
     record("/case-studies/tamil-nadu", "Removed copy", "client", "no title, dates, note or method", [!partyBody.includes("Opinion, Exit & Result Survey Analysis"), !partyBody.includes("28 Mar 2026 to 07 May 2026"), !partyBody.includes("actual vs prediction"), !partyBody.includes("Method & caveats")].join(", "), !partyBody.includes("Opinion, Exit & Result Survey Analysis") && !partyBody.includes("28 Mar 2026 to 07 May 2026") && !partyBody.includes("actual vs prediction") && !partyBody.includes("Method & caveats"));
     const removedPhrases = ["Coverage:", "groups under 30 answers are hidden", "Each cell shows the actual 2021", "Runner-up", "234 of 234 seats", "majority 118", "Projection: TVK", "The projected winner matches", "Projected winner calls compared"];
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));

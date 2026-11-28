@@ -23,7 +23,6 @@ export type CaseStudyConfig = {
   mapPeriod: string;
   apiBase: string;
   socialState: string;
-  shareLabel: Record<string, string>;
   periodLabels: Record<string, string>;
   monthLabel: "Month" | "Year";
   profileOrder: Record<string, string[]>;
@@ -89,7 +88,7 @@ export const TN_CONFIG: CaseStudyConfig = {
   parties: ["TVK", "DMK+", "AIADMK+", "NTK", "Others"],
   seatParties: ["TVK", "DMK+", "AIADMK+", "NTK"],
   actualParties: ["TVK", "DMK+", "AIADMK+"],
-  cardKeys: ["op", "ex"], cardStyle: "tn", defaultView: "op", mapPeriod: "op", apiBase: "/api/survey/tn", socialState: "tamil-nadu", shareLabel: { op: "2026 vote share", ex: "2026 vote share" },
+  cardKeys: ["op", "ex"], cardStyle: "tn", defaultView: "op", mapPeriod: "op", apiBase: "/api/survey/tn", socialState: "tamil-nadu",
   periodLabels: { op: "Month", ex: "Day" }, monthLabel: "Month",
   profileOrder: {
     op: ["age", "caste", "prof", "zone", "dist", "ac", "v21", "app", "form"],
@@ -114,7 +113,7 @@ export const AP_CONFIG: CaseStudyConfig = {
   identity: { party: "TDP", name: "TDP", state: "Andhra Pradesh", logo: "/parties/tdp.png" },
   parties: ["NDA", "YSRCP", "INC", "Others"],
   seatParties: ["NDA", "YSRCP"], actualParties: ["NDA", "YSRCP"],
-  cardKeys: ["op", "ex", "rd"], cardStyle: "ap", defaultView: "op", mapPeriod: "op", apiBase: "/api/survey/ap", socialState: "andhra-pradesh-2024", shareLabel: { op: "2024 vote share", ex: "2024 vote share", rd: "2029 projection" },
+  cardKeys: ["op", "ex", "rd"], cardStyle: "ap", defaultView: "op", mapPeriod: "op", apiBase: "/api/survey/ap", socialState: "andhra-pradesh-2024",
   periodLabels: { op: "Month", ex: "Month", rd: "Year" }, monthLabel: "Month",
   profileOrder: {
     op: ["zone", "area", "dist", "ac"],

@@ -8,6 +8,7 @@ import { requirePageSession } from "@/lib/require-session";
 import { caseAllowed } from "@/lib/session-scope";
 import { getSurveyCached } from "@/lib/survey/store";
 import { apClientModel } from "@/lib/survey/ap-view-dto";
+import { latestMonthFromData } from "@/lib/survey/post-poll";
 import { AP_CONFIG } from "@/lib/case-study/config";
 import type { SocialFilter } from "@/lib/survey/social-types";
 
@@ -40,7 +41,21 @@ export default async function AndhraPradeshCaseStudyPage({
   const owner = session.role === "owner";
   const record = await getSurveyCached("andhra-pradesh-2024");
   const initialView = resolveView(params.view, params.period);
-  const model = record ? apClientModel(record.data, initialView, params.slot ?? "all") : null;
+  if (record && initialView === "rd" && !params.slot) {
+    const latest = latestMonthFromData(record.data, "rd");
+    if (latest !== "all") {
+      const query = new URLSearchParams();
+      for (const key of ["profile", "match", "kind", "place", "label", "value", "average", "group"] as const) {
+        const value = params[key];
+        if (value) query.set(key, value);
+      }
+      query.set("view", "rd");
+      query.set("slot", latest);
+      redirect(`/case-studies/andhra-pradesh-2024?${query.toString()}`);
+    }
+  }
+  const initialSlot = params.slot ?? (record && initialView === "rd" ? latestMonthFromData(record.data, "rd") : "all");
+  const model = record ? apClientModel(record.data, initialView, initialSlot) : null;
   const socialFilter: SocialFilter | null = params.match
     ? { match: params.match as SocialFilter["match"], kind: params.kind, place: params.place, label: params.label, value: params.value, average: params.average, group: params.group }
     : null;
@@ -59,7 +74,7 @@ export default async function AndhraPradeshCaseStudyPage({
   return (
     <>
       <h1 className="sr-only">TDP · Andhra Pradesh</h1>
-      <TnSurveyDashboard model={model} owner={owner} config={AP_CONFIG} initialView={initialView} initialSlot={params.slot ?? "all"} initialProfile={params.profile ?? ""} initialSocialFilter={socialFilter} />
+      <TnSurveyDashboard model={model} owner={owner} config={AP_CONFIG} initialView={initialView} initialSlot={initialSlot} initialProfile={params.profile ?? ""} initialSocialFilter={socialFilter} />
     </>
   );
 }

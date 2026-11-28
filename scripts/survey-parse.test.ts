@@ -12,7 +12,9 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { assertAdsSection, parseSurveyHtml, parseSurveyUpload } from "../lib/survey/parse";
-import type { SurveyDistrictSeat } from "../lib/survey/types";
+import type { SurveyData, SurveyDistrictSeat } from "../lib/survey/types";
+import type { TnSlotModel } from "../lib/survey/tn-view-model";
+import { latestMonthFromData, latestMonthFromSlots } from "../lib/survey/post-poll";
 import { buildSurveyMap } from "../lib/tamil-nadu/survey-map";
 import { surveySlots } from "../lib/survey/tn-shared";
 import { canonicalDistrictName, splitAcLabel } from "../lib/tamil-nadu/aliases";
@@ -138,5 +140,44 @@ for (const item of realFiles) {
     assert.throws(() => parseSurveyUpload(source, wrong), /Tamil Nadu|Andhra Pradesh/);
   });
 }
+
+console.log("\n3. Post-poll default follows the newest month");
+const synthetic = {
+  parties: [],
+  regions: [],
+  actual: {},
+  ads: { label: "", range: "" },
+  n_total: 50,
+  periods: {
+    rd: {
+      label: "Post-poll",
+      n: 50,
+      expected: {},
+      seats: {},
+      months: {
+        "2025": { label: "2025", n: 10, expected: {}, seats: {}, sub: { "2025-12": { label: "Dec 2025", n: 10, expected: {}, seats: {} } } },
+        "2026": { label: "2026 (till date)", n: 40, expected: {}, seats: {}, sub: { "2026-01": { label: "Jan 2026", n: 5, expected: {}, seats: {} }, "2026-11": { label: "Nov 2026", n: 35, expected: {}, seats: {} } } },
+      },
+    },
+  },
+} as unknown as SurveyData;
+check("latest month from data is the newest month key", () => {
+  assert.equal(latestMonthFromData(synthetic, "rd"), "2026-11");
+});
+const syntheticSlots = [
+  { key: "all", label: "All years", buttonLabel: "All years", n: 50 },
+  { key: "2025", label: "2025", buttonLabel: "2025", monthKey: "2025", n: 10 },
+  { key: "2025-12", label: "Dec 2025", buttonLabel: "Dec 2025", monthKey: "2025", subKey: "2025-12", n: 10 },
+  { key: "2026", label: "2026 (till date)", buttonLabel: "2026 (till date)", monthKey: "2026", n: 40 },
+  { key: "2026-11", label: "Nov 2026", buttonLabel: "Nov 2026", monthKey: "2026", subKey: "2026-11", n: 35 },
+].map((slot) => ({ ...slot, from: "", to: "", expected: {}, seats: {}, demoCatalog: {}, profiles: {}, lazyProfiles: [] })) as TnSlotModel[];
+check("latest serialized slot is the newest month key", () => {
+  assert.equal(latestMonthFromSlots(syntheticSlots), "2026-11");
+});
+check("a later synthetic month moves the default", () => {
+  const later = structuredClone(synthetic);
+  later.periods.rd.months!["2026"].sub!["2026-12"] = { label: "Dec 2026", n: 2, expected: {}, seats: {} };
+  assert.equal(latestMonthFromData(later, "rd"), "2026-12");
+});
 
 console.log(`\nSURVEY PARSE ${passed} passed`);
