@@ -2368,6 +2368,11 @@ html { scroll-padding-top: 96px; }
   --tn-soft-rose: #fff1f2;
   --party-badge-surface: #ffffff;
   --party-badge-ink: #0b0b0c;
+  --live-green: #1fa36f;
+  --live-green-soft: #e9f8f1;
+  --live-green-ink: #0b4f38;
+  --live-shimmer: rgba(31, 163, 111, 0.20);
+  --live-glow: rgba(31, 163, 111, 0.28);
   --party-badge-muted: #555555;
   --state-map-neighbour: #eeece5;
   --state-map-inset: #e4e2da;
@@ -2407,6 +2412,11 @@ html { scroll-padding-top: 96px; }
   --theme-chart-clicks: #5eead4;
   --theme-chart-explorer: #8fb0ff;
   --party-badge-surface: #f1f1ed;
+  --live-green: #3fd69a;
+  --live-green-soft: #16352a;
+  --live-green-ink: #e6fff4;
+  --live-shimmer: rgba(63, 214, 154, 0.20);
+  --live-glow: rgba(63, 214, 154, 0.42);
   --state-map-neighbour: #3a3a37;
   --state-map-inset: #2e2e2c;
   --tn-party-tvk: #e8b923;
@@ -2736,4 +2746,92 @@ body { transition: background-color 150ms ease, color 150ms ease; }
   background-image: linear-gradient(to right, var(--theme-border) 1px, transparent 1px);
   background-size: 25% 100%;
   opacity: .55;
+}
+
+/* Live header: radar ping, synced state ring and a readable text sheen. */
+.live-pill {
+  background: var(--live-green-soft);
+  border-color: color-mix(in srgb, var(--live-green) 38%, transparent);
+  color: var(--live-green-ink);
+}
+.live-state-ring {
+  animation: live-state-ring 1.6s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes live-state-ring {
+  0%, 100% { opacity: 0.28; transform: scale(1); }
+  50% { opacity: 0.68; transform: scale(1.08); }
+}
+.live-ping {
+  opacity: 0;
+  animation: live-ping 1.6s cubic-bezier(0.2, 0.55, 0.4, 1) infinite;
+  transform-origin: center;
+}
+@keyframes live-ping {
+  0% { opacity: 0.55; transform: scale(0.7); }
+  72% { opacity: 0; transform: scale(2.35); }
+  100% { opacity: 0; transform: scale(2.35); }
+}
+.live-shimmer {
+  position: relative;
+  display: inline-block;
+  isolation: isolate;
+  vertical-align: baseline;
+}
+.live-shimmer-layer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.live-shimmer-layer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 18%, var(--live-shimmer) 50%, transparent 82%);
+  transform: translateX(-140%);
+  animation: live-sweep 3s ease-in-out infinite;
+}
+.live-shimmer-text {
+  position: relative;
+  z-index: 1;
+}
+@keyframes live-sweep {
+  0% { transform: translateX(-140%); }
+  26% { transform: translateX(140%); }
+  100% { transform: translateX(140%); }
+}
+.live-number {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+.live-number-wrap .live-shimmer-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(ellipse at center, var(--live-glow) 0%, transparent 68%);
+  opacity: 0.08;
+  transform: scale(0.96);
+  animation: live-breathe 3s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes live-breathe {
+  0%, 100% { opacity: 0.08; transform: scale(0.96); }
+  50% { opacity: 0.36; transform: scale(1.04); }
+}
+html[data-tab-hidden="true"] .live-anim,
+html[data-tab-hidden="true"] .live-shimmer::before,
+html[data-tab-hidden="true"] .live-number-wrap .live-shimmer-layer::after {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-ping, .live-state-ring, .live-number-wrap::after, .live-shimmer::before { animation: none !important; }
+  .live-ping { opacity: 0; }
+  .live-shimmer::before { opacity: 0; }
+  .live-state-ring { opacity: 0.4; transform: none; }
+  .live-number-wrap .live-shimmer-layer::after { opacity: 0.12; transform: none; }
 }

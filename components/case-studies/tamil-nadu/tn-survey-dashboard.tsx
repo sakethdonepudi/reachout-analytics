@@ -19,6 +19,7 @@ import { usePrefersReducedMotion } from "@/components/case-studies/telangana/cha
 import { latestMonthFromSlots } from "@/lib/survey/post-poll";
 import { cn } from "@/lib/utils";
 import { SocialCluster } from "./social-icons";
+import LiveHeader from "./live-header";
 import { TrendChart } from "./trend-chart";
 import { Pill, PillRow } from "@/components/case-studies/shared/pill-row";
 import { useTheme } from "@/components/site/theme";
@@ -463,13 +464,14 @@ export default function TnSurveyDashboard({
             </span>
           </Link>
           {config.neutralHeader ? (
-            <div className="inline-flex min-h-11! min-w-0 shrink items-center gap-2 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] py-1.5 pl-1.5 pr-4">
-              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[color:var(--party-badge-surface)] text-[11px] font-bold uppercase tracking-[0.08em] text-[#0b0b0c] ring-1 ring-black/5">{config.stateShort}</span>
-              <span className="min-w-0 leading-tight">
-                <span className="block text-[15px] font-bold leading-tight text-[color:var(--theme-text)] sm:text-[17px]">{config.neutralHeader}</span>
-                <span className="mt-0.5 block text-[11px] leading-snug text-[color:var(--theme-text-3)] sm:text-[12px]">{int(model.n_total)} unique responses · {int(Number(model.meta?.n28 ?? model.cards[0]?.n ?? 0))} with a 2028 vote · {String(model.meta?.first ?? "")} to {String(model.meta?.last ?? "")}</span>
-              </span>
-            </div>
+            <LiveHeader
+              stateShort={config.stateShort}
+              title={config.neutralHeader}
+              total={model.n_total}
+              withVote={Number(model.meta?.n28 ?? model.cards[0]?.n ?? 0)}
+              first={String(model.meta?.first ?? "")}
+              last={String(model.meta?.last ?? "")}
+            />
           ) : (
             <div className="inline-flex min-h-11! shrink-0 items-center gap-2 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] py-1.5 pl-1.5 pr-4">
               <span data-identity-logo className="grid size-11 place-items-center rounded-full bg-[color:var(--party-badge-surface)] ring-1 ring-black/5">
@@ -506,7 +508,7 @@ export default function TnSurveyDashboard({
                     <span className="hidden sm:inline">{label}</span>
                   </p>
                   {live ? (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[color:var(--theme-positive-soft)] px-1.5 py-[2px] text-[12px] font-bold leading-none text-[color:var(--theme-positive)]"><span className="tn-live-dot size-1.5 rounded-full bg-current" aria-hidden />Live</span>
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[color:var(--theme-positive-soft)] px-1.5 py-[2px] text-[12px] font-bold leading-none text-[color:var(--theme-positive)]">{config.neutralHeader ? <span className="relative grid size-2 place-items-center"><span aria-hidden className="live-ping live-anim absolute inset-0 rounded-full border border-[color:var(--live-green)]" /><span aria-hidden className="size-1.5 rounded-full bg-[color:var(--live-green)]" /></span> : <span className="tn-live-dot size-1.5 rounded-full bg-current" aria-hidden />}Live</span>
                   ) : card.showAccuracy !== false ? (
                     <span className="inline-flex shrink-0 items-center rounded-full bg-[color:var(--theme-positive-soft)] px-1.5 py-[2px] text-[12px] font-bold leading-none text-[color:var(--theme-positive)]">{(card.accuracy ?? 0).toFixed(1)}% accurate</span>
                   ) : null}
