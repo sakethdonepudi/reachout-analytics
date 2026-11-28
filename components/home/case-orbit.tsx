@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { PARTIES, type PartyId } from "@/lib/parties";
 import { usePrefersReducedMotion } from "@/components/case-studies/telangana/chart-motion";
 
-export type OrbitCase = { slug: string; party: PartyId; stateName: string };
+export type OrbitCase = { slug: string; party?: PartyId; projectedLead?: { parties: PartyId[]; label: string }; stateName: string; year: number };
 
 const TICKS = Array.from({ length: 180 }, (_, index) => index * 2);
 const NODES = [
@@ -138,7 +138,8 @@ export default function CaseOrbit({ cases }: { cases: OrbitCase[] }) {
       <div className="absolute inset-0" aria-hidden={false}>
         {cases.map((item, index) => {
           const position = positions[index];
-          const party = PARTIES[item.party];
+          const leadParty = item.party ?? item.projectedLead?.parties[0];
+          const party = leadParty ? PARTIES[leadParty] : null;
           const dx = ((position.x - 50) / 100) * size;
           const dy = ((position.y - 50) / 100) * size;
           const scale = position.featured ? 1 : 0.44;
@@ -148,7 +149,7 @@ export default function CaseOrbit({ cases }: { cases: OrbitCase[] }) {
               href={`/case-studies/${item.slug}`}
               prefetch={false}
               ref={(node) => { anchorRefs.current[index] = node; }}
-              aria-label={`Open ${item.party} · ${item.stateName} case study`}
+              aria-label={`Open ${item.projectedLead?.label ?? item.party ?? item.stateName} case study`}
               data-featured={position.featured || undefined}
               onKeyDown={(event) => {
                 if (event.key === "ArrowRight" || event.key === "ArrowDown") { event.preventDefault(); moveFocus(active + 1); }
@@ -164,17 +165,17 @@ export default function CaseOrbit({ cases }: { cases: OrbitCase[] }) {
               <span data-party-mark="true" className="case-disc-face flex aspect-square w-full flex-col items-center justify-center rounded-full border border-[color:var(--theme-border)] bg-[color:var(--party-badge-surface)] text-center">
                 <span className="flex w-full items-center justify-center" style={{ height: position.featured ? "46%" : "68%" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  {party && <img
                     src={party.logo}
                     alt=""
                     width={party.width}
                     height={party.height}
                     className="max-h-full max-w-[62%] object-contain"
                     draggable={false}
-                  />
+                  />}
                 </span>
                 <span className={position.featured ? "mt-1 block px-3" : "sr-only"}>
-                  <span className="block whitespace-nowrap text-[clamp(11px,1.35vw,17px)] font-semibold leading-tight text-[color:var(--party-badge-ink)]">{item.party} · {item.stateName}</span>
+                  <span className="block whitespace-nowrap text-[clamp(11px,1.35vw,17px)] font-semibold leading-tight text-[color:var(--party-badge-ink)]">{item.projectedLead?.label ?? item.party ?? item.stateName}</span>
                   <span className="case-disc-view mt-1 block text-[clamp(9px,1vw,13px)] text-[color:var(--party-badge-muted)] underline underline-offset-2" />
                 </span>
               </span>

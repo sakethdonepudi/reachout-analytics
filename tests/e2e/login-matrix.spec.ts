@@ -387,7 +387,7 @@ function buildEntries(): Entry[] {
     "/case-studies/telangana",
     "/case-studies/gujarat",
     "/case-studies/bihar",
-    "/case-studies/karnataka-2023",
+    "/case-studies/karnataka",
     "/case-studies/north-east-elections",
     "/case-studies/andhra-pradesh-2024",
     "/case-studies/tamil-nadu?view=social",

@@ -10,16 +10,18 @@ export function PillRow({
   children,
   ariaLabel,
   className,
+  wrap = false,
 }: {
   label: string;
   children: ReactNode;
   ariaLabel?: string;
   className?: string;
+  wrap?: boolean;
 }) {
   return (
-    <div className={cn("flex flex-col items-start gap-2 min-[640px]:flex-row min-[640px]:items-center", className)}>
+    <div className={cn("flex flex-col items-start gap-2 min-[640px]:flex-row", wrap ? "min-[640px]:items-start" : "min-[640px]:items-center", className)}>
       <span className="shrink-0 text-[12px] font-bold uppercase tracking-[0.12em] text-[color:var(--theme-warning)]">{label}</span>
-      <div className="edge-fade-right no-scrollbar flex w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1 snap-x min-[640px]:w-auto min-[640px]:flex-1" role="group" aria-label={ariaLabel ?? label}>
+      <div className={cn("no-scrollbar flex w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1 snap-x", wrap ? "min-[640px]:flex-wrap min-[640px]:overflow-visible" : "edge-fade-right min-[640px]:w-auto min-[640px]:flex-1")} role="group" aria-label={ariaLabel ?? label}>
         {children}
       </div>
     </div>

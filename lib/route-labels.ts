@@ -5,7 +5,7 @@ const CASE_LABELS: Record<string, string> = {
   "andhra-pradesh-2024": "Opening Andhra Pradesh",
   gujarat: "Opening Gujarat",
   bihar: "Opening Bihar",
-  "karnataka-2023": "Opening Karnataka",
+  "karnataka": "Opening Karnataka",
 };
 
 const ROUTE_LABELS: [string, string][] = [

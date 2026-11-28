@@ -10,12 +10,12 @@ import { Sheet } from "@/components/ui/sheet";
 import { useIdle } from "@/components/auth/idle-provider";
 import { announceOpening } from "@/lib/use-navigate";
 import { broadcastLogout } from "@/lib/session-channel";
-import { NavIcon, NavPartyMark } from "@/components/site/nav-icon";
+import { NavCaseMarks, NavIcon, NavPartyMark } from "@/components/site/nav-icon";
 import { useSlidingUnderline } from "@/components/ui/use-sliding-underline";
 import { ACCOUNT_ITEMS, CLIENT_NAV, LOGIN, PUBLIC_NAV, type NavItem } from "@/lib/nav";
 import type { PartyId } from "@/lib/parties";
 
-export type HomeCase = { slug: string; party: PartyId; stateName: string; comingSoon?: boolean };
+export type HomeCase = { slug: string; party?: PartyId; projectedLead?: { parties: PartyId[]; label: string }; stateName: string; year: number; comingSoon?: boolean };
 
 function idleLabel(ms: number) {
   const seconds = Math.max(0, Math.round(ms / 1000));
@@ -105,8 +105,8 @@ export default function HomeHeader({
                           <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--theme-text-3)]">{state}</p>
                           {rows.map((row) => (
                             <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} role="menuitem" onClick={() => setCasesOpen(false)} className="flex min-h-11! items-center gap-2 rounded-lg px-2 text-[13px] font-medium text-[color:var(--theme-text)] hover:bg-[color:var(--theme-surface-2)]">
-                              <NavPartyMark party={row.party} />
-                              <span className="min-w-0 flex-1 truncate">{row.stateName} · {row.party}</span>
+                              {row.party ? <NavPartyMark party={row.party} /> : <NavCaseMarks parties={row.projectedLead?.parties ?? []} />}
+                              <span className="min-w-0 flex-1 truncate">{row.stateName} · {row.party ?? row.year}</span>
                               {row.comingSoon && <span className="shrink-0 rounded-full border border-[color:var(--theme-border)] px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.06em] text-[color:var(--theme-text-3)]">Coming soon</span>}
                             </Link>
                           ))}
@@ -174,8 +174,8 @@ export default function HomeHeader({
               <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--theme-text-3)]">Case Studies</p>
               {cases.map((row) => (
                 <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[color:var(--theme-text)]">
-                  <NavPartyMark party={row.party} />
-                  <span className="min-w-0 flex-1 truncate">{row.stateName} · {row.party}</span>
+                  {row.party ? <NavPartyMark party={row.party} /> : <NavCaseMarks parties={row.projectedLead?.parties ?? []} />}
+                  <span className="min-w-0 flex-1 truncate">{row.stateName} · {row.party ?? row.year}</span>
                   {row.comingSoon && <span className="shrink-0 rounded-full border border-[color:var(--theme-border)] px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.06em] text-[color:var(--theme-text-3)]">Coming soon</span>}
                 </Link>
               ))}
@@ -193,8 +193,8 @@ export default function HomeHeader({
               <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--theme-text-3)]">Case Studies</p>
               {cases.map((row) => (
                 <Link key={row.slug} href={`/case-studies/${row.slug}`} prefetch={false} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-[14px] font-medium text-[color:var(--theme-text)]">
-                  <NavPartyMark party={row.party} />
-                  <span className="min-w-0 flex-1 truncate">{row.stateName} · {row.party}</span>
+                  {row.party ? <NavPartyMark party={row.party} /> : <NavCaseMarks parties={row.projectedLead?.parties ?? []} />}
+                  <span className="min-w-0 flex-1 truncate">{row.stateName} · {row.party ?? row.year}</span>
                   {row.comingSoon && <span className="shrink-0 rounded-full border border-[color:var(--theme-border)] px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.06em] text-[color:var(--theme-text-3)]">Coming soon</span>}
                 </Link>
               ))}

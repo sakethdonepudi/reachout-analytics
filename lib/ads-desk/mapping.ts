@@ -12,7 +12,7 @@ export const DEFAULT_REGION_MAP: Record<string, string> = {
   tg2025: "telangana",
   bh2025: "bihar",
   gj2027: "gujarat",
-  ka2028: "karnataka-2023",
+  ka2028: "karnataka",
 };
 
 type MapDoc = { _id: string; caseSlug: string; updatedAt: string; updatedBy: string };

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { surveySchema } from "./schema";
-import type { SurveyData, SurveyPeriod } from "./types";
+import { SURVEY_STATES, type SurveyData, type SurveyPeriod } from "./types";
 
 function balancedJsonAt(source: string, start: number): unknown {
   const first = source.indexOf("{", start);
@@ -55,6 +55,35 @@ function extractAp(source: string): unknown {
   return parsePayload(text, idx + 3);
 }
 
+
+function stripHtml(value: string) {
+  return value.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/** The Karnataka summary card carries past-vote weighted rows that are not in the IIFE payload. */
+function extractKarnatakaSummary(source: string): { latestEntry?: string; pastVote: Record<string, unknown> } | undefined {
+  const section = /<section[^>]*id=["']kasum["'][\s\S]*?<\/section>/i.exec(source)?.[0];
+  if (!section) return undefined;
+  const latestEntry = /latest entry is ([^<.]+)/i.exec(section)?.[1]?.trim();
+  const body = /<tbody>([\s\S]*?)<\/tbody>/i.exec(section)?.[1] ?? "";
+  const pastVote: Record<string, unknown> = {};
+  let key = "";
+  for (const row of body.matchAll(/<tr>([\s\S]*?)<\/tr>/gi)) {
+    const cells = [...row[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((match) => stripHtml(match[1]));
+    if (cells.length < 7) continue;
+    if (/^All/i.test(cells[0])) key = "all";
+    else if (/^Nov/i.test(cells[0])) key = "2026-11";
+    else if (/^Oct/i.test(cells[0])) key = "2026-10";
+    if (!key || !/past-vote weighted/i.test(cells[2])) continue;
+    const shares = cells.slice(3, 6).map((value) => Number.parseFloat(value));
+    const seatNumbers = [...cells[6].matchAll(/(\d+)/g)].map((match) => Number(match[1])).slice(0, 4);
+    if (shares.some((value) => !Number.isFinite(value)) || seatNumbers.length !== 4) continue;
+    const majority = /majority\s+([A-Za-z]+)/i.exec(cells[6])?.[1];
+    pastVote[key] = { INC: shares[0], BJP: shares[1], JDS: shares[2], Others: Number((100 - shares.reduce((sum, value) => sum + value, 0)).toFixed(2)), seats: seatNumbers, majority: majority ?? null };
+  }
+  return { latestEntry, pastVote };
+}
+
 function surveyTitle(source: string) {
   return /<title[^>]*>([^<]*)<\/title>/i.exec(source)?.[1]?.trim() ?? "";
 }
@@ -62,17 +91,22 @@ function surveyTitle(source: string) {
 function assertSurveyState(source: string, state: string) {
   const title = surveyTitle(source);
   const tnMarker = /window\.TN_DATA\s*=/.test(source);
-  const tnTitle = /Tamil Nadu/i.test(title);
-  const apTitle = /Andhra Pradesh/i.test(title);
-  if (state === "tamil-nadu" && !tnMarker) {
-    if (apTitle) throw new Error("This is the Andhra Pradesh dashboard. Use the Andhra Pradesh upload card.");
-    throw new Error("This HTML does not contain window.TN_DATA. Upload the Tamil Nadu dashboard HTML.");
+  const detected = tnMarker || /Tamil Nadu/i.test(title)
+    ? "tamil-nadu"
+    : /Andhra Pradesh/i.test(title)
+      ? "andhra-pradesh-2024"
+      : /Karnataka/i.test(title)
+        ? "karnataka"
+        : /Telangana/i.test(title)
+          ? "telangana"
+          : null;
+  if (!detected) {
+    if (state === "tamil-nadu") throw new Error("This HTML does not contain window.TN_DATA. Upload the Tamil Nadu dashboard HTML.");
+    throw new Error("This HTML does not contain the state survey payload. Upload the state dashboard HTML.");
   }
-  if (state === "andhra-pradesh-2024" && tnMarker) {
-    throw new Error("This is the Tamil Nadu dashboard. Use the Tamil Nadu upload card.");
-  }
-  if (state === "andhra-pradesh-2024" && tnTitle && !apTitle) {
-    throw new Error("This is the Tamil Nadu dashboard. Use the Tamil Nadu upload card.");
+  if (detected !== state) {
+    const name = SURVEY_STATES[detected]?.name ?? detected;
+    throw new Error(`This is the ${name} dashboard. Use the ${name} upload card.`);
   }
 }
 
@@ -93,6 +127,11 @@ export function parseSurveyHtml(source: string, state: string): SurveyData {
     if (!period.from) period.from = "";
     if (!period.to) period.to = "";
   }
+  const meta = (data.meta as Record<string, unknown> | undefined) ?? undefined;
+  if (state === "karnataka" && meta) {
+    const summary = extractKarnatakaSummary(source);
+    if (summary) meta.summary = summary;
+  }
   return {
     parties: data.parties as string[],
     regions: Array.isArray(data.regions) ? data.regions as string[] : Object.keys((data.actual as Record<string, unknown>) ?? {}),
@@ -101,6 +140,7 @@ export function parseSurveyHtml(source: string, state: string): SurveyData {
     base: data.base as SurveyData["base"],
     ads: data.ads as SurveyData["ads"],
     n_total: Number(data.n_total ?? 0),
+    meta,
     geo: data.geo,
     zonelabels: data.zonelabels as Record<string, string> | undefined,
   };

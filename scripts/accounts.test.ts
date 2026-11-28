@@ -59,7 +59,7 @@ ok("client case path accepted", safeNextPath("/case-studies/tamil-nadu", "client
 
 console.log("\n4. Case access");
 ok("seven case studies are available", CASES.length === 7);
-ok("every case study is client visible", ["north-east-elections", "tamil-nadu", "telangana", "andhra-pradesh-2024", "gujarat", "bihar", "karnataka-2023"].every((slug) => CASES.some((item) => item.slug === slug)));
+ok("every case study is client visible", ["north-east-elections", "tamil-nadu", "telangana", "andhra-pradesh-2024", "gujarat", "bihar", "karnataka"].every((slug) => CASES.some((item) => item.slug === slug)));
 
 console.log("\n4b. Simple client form");
 const usersForm = readFileSync("app/account/users/users-client.tsx", "utf8");

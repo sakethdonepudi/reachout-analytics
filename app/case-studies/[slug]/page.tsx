@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import PartyCard from "@/components/case-studies/shared/party-card";
 import StateMap from "@/components/case-studies/shared/state-map";
-import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseUrl, isLiveCase, resolveCaseTab, tabsForCase } from "@/lib/cases";
+import { CASES, CAPABILITIES, UPCOMING, caseBySlug, caseTitle, caseUrl, isLiveCase, resolveCaseTab, tabsForCase } from "@/lib/cases";
 import ComingSoon from "@/components/case-studies/shared/coming-soon";
 import { requirePageSession } from "@/lib/require-session";
 import SocialPanel from "@/components/ads-desk/social-panel";
@@ -16,19 +16,11 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-function yearFor(slug: string): number {
-  const match = slug.match(/(20\d{2})/);
-  if (match) return Number(match[1]);
-  if (slug === "telangana") return 2028;
-  if (slug === "north-east-elections") return 2026;
-  return 2026;
-}
-
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const c = caseBySlug(slug);
   const u = UPCOMING.find((x) => x.slug === slug);
-  const title = c ? `${c.party} · ${c.stateName} | ReachOut Analytics` : `${u?.title ?? "Case study"} | ReachOut Analytics`;
+  const title = c ? `${c.party ? `${c.party} · ` : ""}${c.stateName} | ReachOut Analytics` : `${u?.title ?? "Case study"} | ReachOut Analytics`;
   const description = c?.summary ?? "We're preparing for this election cycle. Get in touch to discuss how data can shape your campaign.";
   return {
     title,
@@ -43,7 +35,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
                 url: `https://reachout-analytics.vercel.app/og/${c.slug}.png`,
                 width: 1200,
                 height: 630,
-                alt: `${c.party} · ${c.stateName} case study`,
+                alt: `${c.stateName} case study`,
               },
             ],
           }
@@ -58,13 +50,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function CaseStudyPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ view?: string }> }) {
   const { slug } = await params;
   const { view } = await searchParams;
+  if (slug === "karnataka-2023") redirect(`/case-studies/karnataka${view ? `?view=${encodeURIComponent(view)}` : ""}`);
   const session = await requirePageSession(`/case-studies/${slug}`);
   if (!(await caseAllowed(session, slug))) redirect("/no-access");
   const c = caseBySlug(slug);
   const upcoming = UPCOMING.find((u) => u.slug === slug);
   if (!c && !upcoming) notFound();
   if (c && !isLiveCase(c.slug)) {
-    return <ComingSoon party={c.party} stateName={c.stateName} stateCode={c.state} year={yearFor(c.slug)} />;
+    return <ComingSoon party={c.party ?? c.projectedLead?.parties[0] ?? "BJP"} stateName={c.stateName} stateCode={c.state} year={c.year} />;
   }
   const social = await socialForCase(slug, session.role === "owner");
   const tabs = tabsForCase(c);
@@ -75,11 +68,11 @@ export default async function CaseStudyPage({ params, searchParams }: { params: 
 
   return (
     <>
-      <h1 className="sr-only">{c ? `${c.party} · ${c.stateName}` : upcoming!.title}</h1>
+      <h1 className="sr-only">{c ? caseTitle(c) : upcoming!.title}</h1>
       <CaseStudyTabs
         tabs={tabs}
         initialTab={initialTab}
-        party={c?.party}
+        party={c?.party ?? c?.projectedLead?.parties[0]}
         stateName={c?.stateName}
         panels={{
           ...(tabs.includes("exit") ? { exit: <NotUploaded label="Exit poll data" owner={session.role === "owner"} /> } : {}),
@@ -91,11 +84,11 @@ export default async function CaseStudyPage({ params, searchParams }: { params: 
           </CaseBackLink>
 
           <div className={`mt-8 grid items-start gap-6 ${c ? "lg:grid-cols-[320px_minmax(0,1fr)]" : ""}`}>
-            {c && <StateMap stateCode={c.state} stateName={c.stateName} year={yearFor(c.slug)} party={c.party} />}
+            {c && <StateMap stateCode={c.state} stateName={c.stateName} year={c.year} party={c.party ?? c.projectedLead?.parties[0] ?? "BJP"} />}
             <div>
               {c ? (
                 <>
-                  <PartyCard party={c.party} state={c.stateName} className="max-w-[320px]" />
+                  <PartyCard party={c.party ?? c.projectedLead?.parties[0] ?? "BJP"} state={c.stateName} className="max-w-[320px]" />
                   <p className="mt-5 flex items-center gap-2 text-muted-foreground">
                     <MapPin className="size-4 text-[color:var(--theme-text)]" /> {c.region}
                   </p>

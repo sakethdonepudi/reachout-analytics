@@ -29,6 +29,9 @@ type Props = {
   targetTooltip: string;
   allowTarget: boolean;
   showCampaignsLink: boolean;
+  threshold?: number;
+  countBelowThreshold?: boolean;
+  partyLabels?: Record<string, string>;
   onTarget: (payload: { kind: string; place: string; label: string; value: number; average: number }) => void;
   onCampaigns: (payload: { kind: string; place: string }) => void;
   onGroup: (group: string) => void;
@@ -66,7 +69,8 @@ function SortIcon({ active, asc }: { active: boolean; asc: boolean }) {
   return asc ? <ArrowUp className="size-2.5" aria-hidden /> : <ArrowDown className="size-2.5" aria-hidden />;
 }
 
-function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, average, slotLeader, targetParty, targetMode, targetPillParty, targetTooltip, allowTarget, showCampaignsLink, onTarget, onCampaigns, onGroup }: Props) {
+function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, average, slotLeader, targetParty, targetMode, targetPillParty, targetTooltip, allowTarget, showCampaignsLink, threshold = 30, countBelowThreshold = false, partyLabels, onTarget, onCampaigns, onGroup }: Props) {
+  const partyLabel = (party: string) => partyLabels?.[party] ?? party;
   const { theme } = useTheme();
   const dark = theme === "dark";
   const [sort, setSort] = useState<{ key: string; asc: boolean } | null>(null);
@@ -94,10 +98,10 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
     const targetIndex = parties.indexOf(targetParty);
     if (targetMode !== "gap" || targetIndex < 0) return new Set<string>();
     return selectGapRows(
-      demo.rows.map((row) => ({ key: row.g, value: row.v[targetIndex] ?? 0, n: row.n })),
+      demo.rows.filter((row) => row.n >= threshold).map((row) => ({ key: row.g, value: row.v[targetIndex] ?? 0, n: row.n })),
       average,
     );
-  }, [average, demo.rows, parties, targetMode, targetParty]);
+  }, [average, demo.rows, parties, targetMode, targetParty, threshold]);
 
   const toggle = (party: string) => {
     setLeaving((current) => current.filter((item) => item !== party));
@@ -187,7 +191,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
             }}
           >
             <PartyBadge party={party} size={20} />
-            {party}
+            {partyLabel(party)}
           </Pill>
         ))}
       </PillRow>
@@ -203,7 +207,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                   <th key={`${party}:${active ? "in" : "out"}`} scope="col" className={cn("px-1.5 py-2 text-center font-semibold", active ? "tn-col-in" : "tn-col-out")}>
                     <button type="button" onClick={() => toggleSort(party)} className="inline-flex min-h-[45px]! min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[color:var(--theme-surface)]/10" title={`Sort by ${party}`}>
                       <PartyBadge party={party} size={20} />
-                      {party}
+                      {partyLabel(party)}
                       <SortIcon active={sort?.key === party} asc={Boolean(sort?.asc)} />
                     </button>
                   </th>
@@ -220,6 +224,9 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
             {pageRows.map((row, rowIndex) => {
               const leader = leaderOfRow(row);
               const rowTarget = allowTarget && !leader.tie && (targetMode === "leads" ? leader.index === parties.indexOf(targetParty) : targetMode === "gap" ? gapRows.has(row.g) : false);
+              if (countBelowThreshold && row.n < threshold) {
+                return <tr key={row.g} className="border-t border-[color:var(--theme-border)]"><th scope="row" className="sticky left-0 z-10 h-12 bg-[color:var(--theme-surface)] px-3 py-1 text-left font-semibold text-[color:var(--theme-text-2)]">{row.g} <span className="text-[12px] font-normal text-[color:var(--theme-text-3)]">· {int(row.n)} responses</span></th><td colSpan={visible.length + 1} className="px-3 py-2 text-[13px] text-[color:var(--theme-text-3)]">Too few responses to show</td></tr>;
+              }
               return (
                 <tr
                   key={row.g}
@@ -235,7 +242,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                         <span aria-hidden className="opacity-0 transition-opacity duration-150 group-hover/link:opacity-100">↗</span>
                       </button>
                     ) : row.g}
-                    {row.n < 30 && <span className="ml-1 text-[12px] font-normal text-[color:var(--theme-text-3)]" title={`Only ${row.n} answers – rough signal`}>· {int(row.n)}</span>}
+                    {row.n < threshold && <span className="ml-1 text-[12px] font-normal text-[color:var(--theme-text-3)]" title={`Only ${row.n} answers, too few to show`}>· {int(row.n)}</span>}
                   </th>
                   {visible.map((party) => {
                     const index = parties.indexOf(party);
@@ -283,7 +290,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                     {leader.index >= 0 ? (
                       <span className="mr-1 inline-flex items-center gap-1 align-middle">
                         <PartyBadge party={parties[leader.index]} size={20} />
-                        {leader.tie ? "Tie" : parties[leader.index]}
+                        {leader.tie ? "Tie" : partyLabel(parties[leader.index])}
                       </span>
                     ) : "—"}
                     {geo && showCampaignsLink && (
@@ -305,7 +312,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                   return <td key={`${party}:${selectedSet.has(party) ? "in" : "out"}`} className={cn("px-1 py-2 text-center tabular-nums", selectedSet.has(party) ? "tn-col-in" : "tn-col-out")}>{pct(weighted[index])}</td>;
                 })}
                 <td className="px-2 py-2 text-left">
-                  {totalLeader >= 0 ? <span className="inline-flex items-center gap-1"><PartyBadge party={parties[totalLeader]} size={20} />{parties[totalLeader]}</span> : "—"}
+                  {totalLeader >= 0 ? <span className="inline-flex items-center gap-1"><PartyBadge party={parties[totalLeader]} size={20} />{partyLabel(parties[totalLeader])}</span> : "—"}
                 </td>
               </tr>
             </tfoot>
@@ -326,11 +333,11 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                       {row.g}<span aria-hidden>↗</span>
                     </button>
                   ) : <span className="text-[14px] font-semibold text-[color:var(--theme-text)]">{row.g}</span>}
-                  {row.n < 30 && <span className="text-[12px] font-normal text-[color:var(--theme-text-3)]" title={`Only ${row.n} answers – rough signal`}>· {int(row.n)}</span>}
+                  {row.n < threshold && <span className="text-[12px] font-normal text-[color:var(--theme-text-3)]" title={`Only ${row.n} answers, too few to show`}>· {int(row.n)}</span>}
                 </span>
                 <span className="inline-flex items-center gap-1 text-[12px] text-[color:var(--theme-text-3)]">
                   {leader.index >= 0 && <PartyBadge party={parties[leader.index]} size={20} />}
-                  {leader.tie ? "Tie" : parties[leader.index]}
+                  {leader.tie ? "Tie" : partyLabel(parties[leader.index])}
                 </span>
               </div>
               <div className="mt-2 space-y-1">
@@ -354,7 +361,7 @@ function TnProfileTable({ demo, parties, profileKey, periodKey, slotLabel, avera
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className={cn("inline-flex items-center gap-1.5 text-[12px] font-semibold")} style={{ color: tint.ink }}>
-                          <PartyBadge party={party} size={20} />{party}
+                          <PartyBadge party={party} size={20} />{partyLabel(party)}
                         </span>
                         <span className={cn("text-[13px] tabular-nums", isLead && "font-extrabold")} style={{ color: tint.ink }}>{pct(value)}</span>
                       </div>

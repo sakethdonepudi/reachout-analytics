@@ -1,19 +1,12 @@
 "use client";
 
-import { isLiveCase, orderedCases, type CaseStudy, caseUrl } from "@/lib/cases";
+import { caseLeadParties, caseTitle, isLiveCase, orderedCases, type CaseStudy, caseUrl } from "@/lib/cases";
 import { PartyMark } from "@/components/site/party-mark";
 import Reveal from "@/components/site/reveal";
 import TickRule from "@/components/precision/tick-rule";
 import SectionHeader from "@/components/precision/section-header";
 import { PrecisionCardLink } from "@/components/precision/precision-card";
 import { cn } from "@/lib/utils";
-
-function yearFor(slug: string, title: string): number {
-  const match = `${slug} ${title}`.match(/(20\d{2})/);
-  if (match) return Number(match[1]);
-  if (slug === "telangana") return 2028;
-  return 2026;
-}
 
 function CaseCard({ item, featured }: { item: CaseStudy; featured: boolean }) {
   const live = isLiveCase(item.slug);
@@ -23,29 +16,33 @@ function CaseCard({ item, featured }: { item: CaseStudy; featured: boolean }) {
   return (
     <PrecisionCardLink
       href={caseUrl(item.slug)}
-      label={live ? `Open ${item.party} · ${item.stateName} case study` : `Open ${item.party} · ${item.stateName} coming soon page`}
+      label={live ? `Open ${caseTitle(item)} case study` : `Open ${caseTitle(item)} coming soon page`}
       className={cn("h-full", featured ? "p-6" : "border-dashed p-4")}
     >
       {featured ? (
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <PartyMark party={item.party} size="lg" />
-            <div className="min-w-0">
-              <p className="font-display text-[21px] font-semibold leading-tight tracking-[-0.025em] text-[var(--p-ink)]">{item.party} · {item.stateName}</p>
-              <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-[var(--p-muted)]">{yearFor(item.slug, item.title)}</p>
+        <>
+          <div className="flex items-start gap-3">
+            <span className="flex shrink-0 -space-x-2">{caseLeadParties(item).map((party) => <PartyMark key={party} party={party} size={caseLeadParties(item).length > 1 ? "md" : "lg"} />)}</span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-[20px] font-semibold leading-tight tracking-[-0.025em] text-[var(--p-ink)]">{caseTitle(item)}</p>
+              <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-[var(--p-muted)]">{item.year}</p>
             </div>
           </div>
-          {badge}
-        </div>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            {item.projectedLead ? <p className="text-[11px] font-medium text-[var(--p-muted)]">{item.projectedLead.label}</p> : <span />}
+            {badge}
+          </div>
+        </>
       ) : (
         <div>
           <div className="flex items-start gap-2.5">
-            <PartyMark party={item.party} size="sm" />
-            <div className="min-w-0">
-              <p className="font-display text-[14.5px] font-semibold leading-tight text-[var(--p-ink)]">{item.party} · {item.stateName}</p>
-              <p className="mt-0.5 text-[10.5px] uppercase tracking-[0.1em] text-[var(--p-muted)]">{yearFor(item.slug, item.title)}</p>
+            <span className="flex -space-x-2">{caseLeadParties(item).map((party) => <PartyMark key={party} party={party} size="sm" />)}</span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-[14.5px] font-semibold leading-tight text-[var(--p-ink)]">{caseTitle(item)}</p>
+              <p className="mt-0.5 text-[10.5px] uppercase tracking-[0.1em] text-[var(--p-muted)]">{item.year}</p>
             </div>
           </div>
+          {item.projectedLead && <p className="mt-1 text-[10px] font-medium text-[var(--p-muted)]">{item.projectedLead.label}</p>}
           <div className="mt-2.5">{badge}</div>
         </div>
       )}
@@ -69,12 +66,12 @@ export default function WorkShowcase() {
           <SectionHeader
             eyebrow="Our work"
             title="Campaigns across India"
-            lead="Tamil Nadu and Andhra Pradesh are live. The remaining programmes are being prepared."
+            lead="Tamil Nadu, Andhra Pradesh, Karnataka and Telangana are live. The remaining programmes are being prepared."
           />
           <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--p-muted)]">{live.length} live · {coming.length} coming soon</span>
         </div>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {live.map((item, index) => (
             <Reveal key={item.slug} delay={index * 40} className="h-full">
               <CaseCard item={item} featured />
@@ -82,7 +79,7 @@ export default function WorkShowcase() {
           ))}
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {coming.map((item, index) => (
             <Reveal key={item.slug} delay={(live.length + index) * 35} className="h-full">
               <CaseCard item={item} featured={false} />

@@ -65,3 +65,8 @@ export function NavPartyMark({ party }: { party: PartyId }) {
     </span>
   );
 }
+
+/** One or more small party symbols for a case, including a projected lead. */
+export function NavCaseMarks({ parties }: { parties: PartyId[] }) {
+  return <span className="flex -space-x-1.5">{parties.map((party) => <NavPartyMark key={party} party={party} />)}</span>;
+}

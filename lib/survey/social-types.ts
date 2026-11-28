@@ -29,6 +29,7 @@ export type TnSocialMonth = {
 export type TnSocialOverview = {
   label: string; range: string; asOf?: string; note?: string;
   totals: TnSocialTotals; accounts: TnSocialAccount[]; periods: TnSocialPeriod[]; monthly: TnSocialMonth[];
+  campaignsByAccount?: Record<string, TnSocialCampaign[]>;
 };
 export type TnSocialFiltered = {
   title: string; place?: string; note: string; how: string;

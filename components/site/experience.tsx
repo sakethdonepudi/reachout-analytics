@@ -29,7 +29,7 @@ export default function Experience() {
   }, []);
 
   return (
-    <section ref={sectionRef} id="tour" className="pointer-events-auto relative h-[320vh] bg-[color:var(--theme-bg)]">
+    <section ref={sectionRef} id="tour" className="pointer-events-auto relative h-[420vh] bg-[color:var(--theme-bg)]">
       <div className="sticky top-16 h-[calc(100svh-4rem)] overflow-hidden">
         {mount ? (
           <IndiaMap />

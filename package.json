@@ -30,7 +30,8 @@
     "test:session-loop": "tsx --conditions react-server scripts/session-loop.test.ts",
     "test:heartbeat": "tsx --conditions react-server scripts/heartbeat.test.ts",
     "test:ap-map": "tsx --conditions react-server scripts/ap-map.test.ts",
-    "test:ap-target": "tsx --conditions react-server scripts/ap-target.test.ts"
+    "test:ap-target": "tsx --conditions react-server scripts/ap-target.test.ts",
+    "test:ka-tg": "tsx --conditions react-server scripts/ka-tg.test.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",

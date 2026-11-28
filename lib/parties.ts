@@ -86,5 +86,5 @@ export const POLITICAL_IDENTITIES: PoliticalIdentity[] = [
   { id: "bjp-assam", party: "BJP", state: "Assam", caseSlug: "north-east-elections" },
   { id: "bjp-gujarat", party: "BJP", state: "Gujarat", caseSlug: "gujarat" },
   { id: "jdu-bihar", party: "JD(U)", state: "Bihar", caseSlug: "bihar" },
-  { id: "inc-karnataka", party: "INC", state: "Karnataka", caseSlug: "karnataka-2023" },
+  { id: "inc-karnataka", party: "INC", state: "Karnataka", caseSlug: "karnataka" },
 ];

@@ -6,13 +6,15 @@ import { getActiveSurvey } from "@/lib/survey/store";
 import { getActiveTnMap } from "@/lib/tamil-nadu/map-store";
 import { tnSocialOverview } from "@/lib/survey/tn-view-dto";
 import { apSocialOverview } from "@/lib/survey/ap-view-dto";
+import { kaSocialOverview } from "@/lib/survey/ka-view-dto";
+import { tgSocialOverview } from "@/lib/survey/tg-view-dto";
 import type { SurveyData, SurveyPeriod, SurveyShare } from "@/lib/survey/types";
 
 export const runtime = "nodejs";
 export const preferredRegion = "bom1";
 export const maxDuration = 60;
 
-const STATE_NAMES: Record<string, string> = { "tamil-nadu": "Tamil Nadu", "andhra-pradesh-2024": "Andhra Pradesh" };
+const STATE_NAMES: Record<string, string> = { "tamil-nadu": "Tamil Nadu", "andhra-pradesh-2024": "Andhra Pradesh", karnataka: "Karnataka", telangana: "Telangana" };
 const headers = { "Cache-Control": "private, no-store", Vary: "Cookie" };
 
 function leading(shares: SurveyShare | undefined, parties: string[]) {
@@ -43,7 +45,7 @@ export async function GET(req: NextRequest) {
   const data = record.data;
   const parties = data.parties;
   const map = state === "tamil-nadu" ? await getActiveTnMap() : null;
-  const social = await (state === "andhra-pradesh-2024" ? apSocialOverview(data, true) : tnSocialOverview(data, true));
+  const social = await (state === "telangana" ? tgSocialOverview(data, true) : state === "karnataka" ? kaSocialOverview(data, true) : state === "andhra-pradesh-2024" ? apSocialOverview(data, true) : tnSocialOverview(data, true));
   const workbook = XLSX.utils.book_new();
   const sheet = (name: string, rows: unknown[][]) => XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), name);
 

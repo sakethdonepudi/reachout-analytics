@@ -5,7 +5,7 @@ import { ArrowUpRight } from "lucide-react";
 import * as THREE from "three";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 import { rafLoop } from "@/lib/raf-loop";
-import { CASES, caseUrl, isLiveCase, type CaseStudy } from "@/lib/cases";
+import { CASES, LIVE_CASE_SLUGS, caseLeadParties, caseUrl, type CaseStudy } from "@/lib/cases";
 import { PartyMark } from "@/components/site/party-mark";
 import STATES from "@/lib/data/india-states.json";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ import { useTheme } from "@/components/site/theme";
 
 /* Map outline data: "India" by svg-maps (github.com/VictorCazanave/svg-maps), CC BY 4.0 */
 
-const TOUR = CASES.filter((c) => isLiveCase(c.slug));
+const TOUR = LIVE_CASE_SLUGS.map((slug) => CASES.find((item) => item.slug === slug)).filter(Boolean) as CaseStudy[];
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -398,7 +398,7 @@ export default function IndiaMap() {
       if (tipKey !== lastTip) {
         lastTip = tipKey;
         const c = CASES.find((c) => c.state === tipKey);
-        setTip(tipKey ? { name: states[tipKey].name, sub: c ? `${c.party} · click to open` : undefined } : null);
+        setTip(tipKey ? { name: states[tipKey].name, sub: c ? `${c.party ?? c.projectedLead?.label ?? c.stateName} · click to open` : undefined } : null);
       }
       if (tipRef.current) tipRef.current.style.transform = `translate(${mouse.px + 16}px, ${mouse.py + 16}px)`;
       if (s !== lastStop) { lastStop = s; setActiveStop(s); }
@@ -482,11 +482,11 @@ export default function IndiaMap() {
               </div>
             </div>
             <div className="mb-2.5 flex items-center gap-3">
-              <PartyMark party={cardCase.party} size="md" />
+              <span className="flex -space-x-2">{caseLeadParties(cardCase).map((party) => <PartyMark key={party} party={party} size="md" />)}</span>
               <div className="min-w-0">
                 <h3 className="font-display text-xl font-semibold leading-tight text-[var(--r-ink)]">{cardCase.title}</h3>
                 <p className="flex items-center gap-2 truncate text-xs">
-                  <b className="shrink-0 font-bold text-[color:var(--theme-text)]">{cardCase.party}</b>
+                  <b className="shrink-0 font-bold text-[color:var(--theme-text)]">{cardCase.party ?? cardCase.projectedLead?.label}</b>
                   <span className="truncate text-[var(--r-muted)]">{cardCase.stateName}</span>
                 </p>
               </div>
@@ -528,7 +528,7 @@ export default function IndiaMap() {
           className="absolute left-0 top-0 z-20 whitespace-nowrap rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-3 py-1.5 text-xs font-semibold text-[color:var(--theme-text)] opacity-0 shadow-sm transition-opacity"
           style={{ pointerEvents: "none" }}
         >
-          {c.party} · {c.label}
+          {c.party ? `${c.party} · ${c.label}` : `${c.stateName} · ${c.year}`}
         </button>
       ))}
 

@@ -16,7 +16,7 @@ export default async function Home() {
   const session = await getSessionByToken(jar.get(COOKIE)?.value ?? jar.get(LEGACY_COOKIE)?.value);
   if (session?.role === "owner") redirect("/dashboard");
 
-  const cases = orderedCases().map((item) => ({ slug: item.slug, party: item.party, stateName: item.stateName, comingSoon: !isLiveCase(item.slug) }));
+  const cases = orderedCases().map((item) => ({ slug: item.slug, party: item.party, projectedLead: item.projectedLead, stateName: item.stateName, year: item.year, comingSoon: !isLiveCase(item.slug) }));
 
   return (
     <>

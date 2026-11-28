@@ -80,10 +80,12 @@ function Stat({
   tint,
   mode = "compact",
   chart,
+  display,
 }: {
   label: string;
   value: number;
   note: string;
+  display?: string;
   icon: React.ReactNode;
   tint: string;
   mode?: "int" | "compact";
@@ -95,7 +97,7 @@ function Stat({
         <span className={cn("grid size-8 place-items-center rounded-full", tint)}>{icon}</span>
       </div>
       <p className="mt-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-[color:var(--theme-text-3)]">{label}</p>
-      <p className="mt-1 font-display text-[28px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[color:var(--theme-text)]"><AnimatedNumber value={value} mode={mode} /></p>
+      <p className="mt-1 font-display text-[28px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[color:var(--theme-text)]">{display ?? <AnimatedNumber value={value} mode={mode} />}</p>
       <p className="mt-0.5 text-[12px] text-[color:var(--theme-text-3)]">{note}</p>
       {chart && <TrendChart data={chart.data} series={[{ metric: chart.metric, label, color: chart.color }]} height={34} mode={chart.mode} label={`Monthly ${label.toLowerCase()}`} className="mt-auto h-9 w-full pt-2" />}
     </div>
@@ -166,7 +168,7 @@ function PeriodTimeline({
         <span className="mt-1 text-[14px] font-bold leading-tight text-[color:var(--theme-text)]">{period.name}</span>
         <span className="rounded-full bg-[color:var(--theme-surface)]/70 px-2 py-0.5 text-[12px] text-[color:var(--theme-text-3)]">{period.range}</span>
         <span className="mt-2 font-display text-[28px] font-semibold leading-none tabular-nums text-[color:var(--theme-text)]">{number(period.campaigns)}</span>
-        <span className="text-[12px] text-[color:var(--theme-text-3)]">campaigns</span>
+        <span className="text-[12px] text-[color:var(--theme-text-3)]">campaign{period.campaigns === 1 ? "" : "s"}</span>
         <span className="mt-1 text-[12px] tabular-nums text-[color:var(--theme-text-2)]">Reach {compact(period.reach)}</span>
         <span className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--theme-surface-2)]" aria-hidden>
           <span className="block h-full rounded-full" style={{ width: `${Math.max(2, share)}%`, background: "var(--period-ink)" }} />
@@ -249,6 +251,8 @@ type SortKey = "name" | "campaignCount" | "reach" | "impressions" | "views" | "c
 
 export default function TnSocialMedia({ stateSlug, config, initialFilter, initialOverview, onClose, owner = false }: { stateSlug: string; config?: CaseStudyConfig; initialFilter?: SocialFilter | null; initialOverview?: TnSocialOverview | null; onClose?: () => void; owner?: boolean }) {
   const activeConfig = config ?? TN_CONFIG;
+  const hidden = new Set(activeConfig.hiddenMetrics ?? []);
+  const showMetric = (key: string) => !hidden.has(key as "views" | "engagements");
   const [overview, setOverview] = useState<TnSocialOverview | null>(initialOverview ?? null);
   const [filtered, setFiltered] = useState<TnSocialFiltered | null>(null);
   const [account, setAccount] = useState<TnSocialFiltered | null>(null);
@@ -361,9 +365,14 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
   const pageAccounts = sortedAccounts.slice(currentAccountPage * accountPageSize, currentAccountPage * accountPageSize + accountPageSize);
   const maxAccountReach = Math.max(1, ...allAccounts.map((item) => item.reach));
   const maxAccountEng = Math.max(1, ...allAccounts.map((item) => item.engagements));
-  const explorerAccounts = (filtered?.accounts ?? []) as TnSocialAccount[];
+  const overviewExplorer = activeConfig.explorerOnOverview && !filtered && overview
+    ? { title: "All campaigns", note: "", how: "", accounts: overview.accounts, campaigns: [], campaignsByAccount: overview.campaignsByAccount ?? {}, totalMatching: overview.totals.campaigns } as TnSocialFiltered
+    : null;
+  const explorerData = filtered ?? overviewExplorer;
+  const explorerAccounts = (explorerData?.accounts ?? []) as TnSocialAccount[];
+  const compactExplorer = explorerAccounts.length > 0 && explorerAccounts.length <= 2;
   const explorerSelected = explorerAccount ? explorerAccounts.find((item) => item.key === explorerAccount) ?? null : null;
-  const explorerCampaigns = explorerSelected ? filtered?.campaignsByAccount?.[explorerSelected.key] ?? [] : [];
+  const explorerCampaigns = explorerSelected ? explorerData?.campaignsByAccount?.[explorerSelected.key] ?? [] : [];
   const explorerRows = [...explorerAccounts].sort((left, right) => {
     if (explorerSort.key === "name") return explorerSort.asc ? left.name.localeCompare(right.name) : right.name.localeCompare(left.name);
     const a = accountValue(left, explorerSort.key), b = accountValue(right, explorerSort.key);
@@ -386,13 +395,13 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
   const chartLimit = explorerSelected && !explorerShowAll ? 15 : chartRows.length;
   const visibleChartRows = chartRows.slice(0, chartLimit);
   const chartMax = Math.max(1, ...visibleChartRows.map((item) => explorerSelected ? campaignValue(item as TnSocialCampaign, explorerMetric) : accountValue(item as TnSocialAccount, explorerMetric)));
-  const tableCampaigns = explorerSelected ? explorerCampaigns : filtered?.campaigns ?? [];
+  const tableCampaigns = explorerSelected ? explorerCampaigns : explorerData?.campaigns ?? [];
   const toggleExplorerSort = (key: AccountSortKey) => setExplorerSort((current) => current.key === key ? { key, asc: !current.asc } : { key, asc: key === "name" });
   const chooseExplorerAccount = (key: string | null) => setExplorerAccount((current) => !key || current === key ? null : key);
   const sortLabel: Record<SortKey, string> = { name: "name", campaignCount: "campaigns", reach: "reach", impressions: "impressions", views: "views", clicks: "clicks", engagements: "engagement" };
   const monthly = filtered ? [] : overview?.monthly ?? [];
   const kpis = [
-    { label: "Campaigns", value: totals?.campaigns ?? 0, note: "campaigns", mode: "int" as const, metric: "campaigns" as const, color: "var(--theme-chart-campaigns)", icon: <Megaphone className="size-4" />, tint: "bg-[color:var(--tn-soft-blue)] text-[color:var(--theme-chart-campaigns)]" },
+    { label: "Campaigns", value: totals?.campaigns ?? 0, note: `${number(totals?.campaigns)} campaign${totals?.campaigns === 1 ? "" : "s"}`, mode: "int" as const, metric: "campaigns" as const, color: "var(--theme-chart-campaigns)", icon: <Megaphone className="size-4" />, tint: "bg-[color:var(--tn-soft-blue)] text-[color:var(--theme-chart-campaigns)]" },
     { label: "Impressions", value: totals?.impressions ?? 0, note: number(totals?.impressions), mode: "compact" as const, metric: "impressions" as const, color: "var(--theme-chart-impressions)", icon: <Eye className="size-4" />, tint: "bg-[color:var(--tn-soft-violet)] text-[color:var(--theme-chart-impressions)]" },
     { label: "Views", value: totals?.views ?? 0, note: number(totals?.views), mode: "compact" as const, metric: "views" as const, color: "var(--theme-chart-views)", icon: <BarChart3 className="size-4" />, tint: "bg-[color:var(--theme-warning-soft)] text-[color:var(--theme-chart-views)]" },
     { label: "Clicks", value: totals?.clicks ?? 0, note: number(totals?.clicks), mode: "compact" as const, metric: "clicks" as const, color: "var(--theme-chart-clicks)", icon: <MousePointerClick className="size-4" />, tint: "bg-[color:var(--theme-positive-soft)] text-[color:var(--theme-chart-clicks)]" },
@@ -400,7 +409,7 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
       { label: "Reach", value: totals?.reach ?? 0, note: number(totals?.reach), mode: "compact" as const, metric: "reach" as const, color: "var(--theme-chart-reach)", icon: <Users className="size-4" />, tint: "bg-[color:var(--tn-soft-pink)] text-[color:var(--theme-chart-engagement)]" },
       { label: "Engagement", value: totals?.engagements ?? 0, note: number(totals?.engagements), mode: "compact" as const, metric: "engagements" as const, color: "var(--theme-chart-engagement)", icon: <Heart className="size-4" />, tint: "bg-[color:var(--tn-soft-rose)] text-[color:var(--theme-chart-engagement)]" },
     ] : []),
-  ];
+  ].filter((kpi) => showMetric(kpi.metric));
 
   const toggleSort = (key: SortKey) => {
     setSort((current) => current.key === key ? { key, asc: !current.asc } : { key, asc: key === "name" });
@@ -413,7 +422,7 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
         <div className="rounded-2xl border border-[color:var(--theme-border)] social-filter-hero p-5 shadow-[0_10px_30px_rgba(0,0,0,0.035)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.14em] text-[color:var(--theme-warning)]">{filtered.title.startsWith("Target") && <PartyBadge party={activeConfig.target.party} size={20} />}{filtered.title.startsWith("Target") ? "Target campaign" : "Campaigns"}</p>
+              <p className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.14em] text-[color:var(--theme-warning)]">{filtered.title.startsWith("Target") && <PartyBadge party={activeConfig.target?.party ?? activeConfig.parties[0]} size={20} />}{filtered.title.startsWith("Target") ? "Target campaign" : "Campaigns"}</p>
               <h2 className="mt-1 font-display text-[28px] font-semibold leading-tight tracking-[-0.02em] text-[color:var(--theme-text)]">{filtered.place ?? filtered.title}</h2>
               <p className="mt-1 max-w-[70ch] text-[14px] leading-relaxed text-[color:var(--theme-text-2)]">{filtered.how}. {filtered.note}</p>
             </div>
@@ -431,7 +440,7 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
               <SocialCluster iconSize={24} tileSize={34} columns={2} className="grid sm:hidden" />
               <SocialCluster iconSize={30} tileSize={42} columns={2} className="hidden sm:grid" />
               <div>
-                <h2 className="font-display text-[28px] font-semibold tracking-[-0.02em] text-[color:var(--theme-text)] sm:text-[32px]">Social Media</h2>
+                <h2 className="font-display text-[28px] font-semibold tracking-[-0.02em] text-[color:var(--theme-text)] sm:text-[32px]">{activeConfig.socialCardTitle ?? "Social Media"}</h2>
                 <p className="mt-1 text-[13.5px] text-[color:var(--theme-text-3)]">{overview?.range}{overview?.asOf ? ` · as of ${overview.asOf}` : ""}</p>
               </div>
             </div>
@@ -441,26 +450,28 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
                 <p className="mt-1 font-display text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[color:var(--theme-text)] sm:text-[42px]"><AnimatedNumber value={totals?.reach ?? 0} mode="compact" /></p>
                 <p className="mt-1 text-[12px] tabular-nums text-[color:var(--theme-text-3)]">{number(totals?.reach)}</p>
               </div>
-              <div>
-                <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-[color:var(--theme-text-3)]"><Heart className="size-3.5" /> Engagement</p>
-                <p className="mt-1 font-display text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[color:var(--theme-text)] sm:text-[42px]"><AnimatedNumber value={totals?.engagements ?? 0} mode="compact" /></p>
-                <p className="mt-1 text-[12px] tabular-nums text-[color:var(--theme-text-3)]">{number(totals?.engagements)}</p>
-              </div>
-              <TrendChart data={overview?.monthly ?? []} series={[{ metric: "reach", label: "Reach", color: "var(--theme-chart-reach)" }, { metric: "engagements", label: "Engagement", color: "var(--theme-chart-engagement)" }]} height={56} label="Monthly reach and engagement" className="hidden h-14 w-44 md:block" />
+              {showMetric("engagements") && (
+                <div>
+                  <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-[color:var(--theme-text-3)]"><Heart className="size-3.5" /> Engagement</p>
+                  <p className="mt-1 font-display text-[40px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[color:var(--theme-text)] sm:text-[42px]"><AnimatedNumber value={totals?.engagements ?? 0} mode="compact" /></p>
+                  <p className="mt-1 text-[12px] tabular-nums text-[color:var(--theme-text-3)]">{number(totals?.engagements)}</p>
+                </div>
+              )}
+              <TrendChart data={overview?.monthly ?? []} series={[{ metric: "reach", label: "Reach", color: "var(--theme-chart-reach)" }, ...(showMetric("engagements") ? [{ metric: "engagements" as const, label: "Engagement", color: "var(--theme-chart-engagement)" }] : [])]} height={56} label={showMetric("engagements") ? "Monthly reach and engagement" : "Monthly reach"} className="hidden h-14 w-44 md:block" />
             </div>
           </div>
         </div>
       )}
 
       {totals && (
-        <div className={cn("grid grid-cols-2 gap-2", filtered ? "lg:grid-cols-6" : "lg:grid-cols-4")}>
+        <div className={cn("grid grid-cols-2 gap-2", kpis.length === 2 ? "lg:grid-cols-2" : kpis.length === 3 ? "lg:grid-cols-3" : kpis.length === 5 ? "lg:grid-cols-5" : kpis.length === 6 ? "lg:grid-cols-6" : "lg:grid-cols-4")}>
           {kpis.map((kpi) => (
             <Stat key={kpi.label} label={kpi.label} value={kpi.value} note={kpi.note} mode={kpi.mode} icon={kpi.icon} tint={kpi.tint} chart={monthly.length >= 3 ? { data: monthly, metric: kpi.metric, color: kpi.color, mode: kpi.mode } : undefined} />
           ))}
         </div>
       )}
 
-      {!filtered && overview && (
+      {!filtered && overview && overview.periods.length > 1 && (
         <>
           <PeriodTimeline periods={overview.periods} selected={periodKey} totals={overview.totals} onSelect={setPeriodKey} />
           {selectedPeriod && (
@@ -470,17 +481,17 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
       )}
 
       {active && (
-        filtered ? (
+        explorerData ? (
           <section aria-label="Campaign explorer" className="grid gap-3 lg:grid-cols-[55fr_45fr]">
-            <section className="order-1 flex max-h-[520px] min-h-0 flex-col rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.03)] lg:order-2 lg:h-[560px] lg:max-h-none">
+            <section className={cn("order-1 flex max-h-[520px] min-h-0 flex-col rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.03)] lg:order-2 lg:h-[560px] lg:max-h-none", compactExplorer && "lg:h-auto")}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h3 className="text-[16px] font-semibold text-[color:var(--theme-text)]">{explorerSelected ? `Top campaigns · ${explorerSelected.name}` : `Ad accounts by ${metricLabel.toLowerCase()}`}</h3>
-                  <p className="mt-0.5 text-[12px] text-[color:var(--theme-text-3)]">{explorerSelected ? `${number(explorerCampaigns.length)} campaigns shown · choose All accounts to compare accounts` : `${number(explorerAccounts.length)} accounts · select a row to inspect its campaigns`}</p>
+                  <p className="mt-0.5 text-[12px] text-[color:var(--theme-text-3)]">{explorerSelected ? `${number(explorerCampaigns.length)} campaign${explorerCampaigns.length === 1 ? "" : "s"} shown · choose All accounts to compare accounts` : `${number(explorerAccounts.length)} account${explorerAccounts.length === 1 ? "" : "s"} · select a row to inspect its campaigns`}</p>
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Explorer metric">
-                {EXPLORER_METRICS.filter((item) => !explorerSelected || item.key !== "campaigns").map((item) => (
+                {EXPLORER_METRICS.filter((item) => (!explorerSelected || item.key !== "campaigns") && !(activeConfig.explorerNoCampaigns && item.key === "campaigns") && showMetric(item.key)).map((item) => (
                   <button key={item.key} type="button" aria-pressed={explorerMetric === item.key} onClick={() => setExplorerMetric(item.key)} className={cn("min-h-9 rounded-full border px-3 text-[11.5px] font-semibold transition-colors", explorerMetric === item.key ? "border-[color:var(--theme-selected)] bg-[color:var(--theme-selected)] text-[color:var(--theme-selected-ink)]" : "border-[color:var(--theme-border)] text-[color:var(--theme-text-2)] hover:border-[color:var(--theme-text)] hover:text-[color:var(--theme-text)]")}>{item.label}</button>
                 ))}
               </div>
@@ -511,12 +522,12 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
               )}
             </section>
 
-            <section className="order-2 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] shadow-[0_10px_30px_rgba(0,0,0,0.03)] lg:order-1 lg:h-[560px]">
+            <section className={cn("order-2 flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] shadow-[0_10px_30px_rgba(0,0,0,0.03)] lg:order-1 lg:h-[560px]", compactExplorer && "lg:h-auto")}>
               <div className="min-h-0 flex-1 overflow-auto">
                 <table className="w-full min-w-[680px] border-collapse text-[13px]">
                   <thead className="sticky top-0 z-20 text-left text-[10.5px] uppercase tracking-wide">
                     <tr>
-                      {([{ key: "name", label: "Ad account" }, { key: "reach", label: "Reach" }, { key: "impressions", label: "Impressions" }, { key: "views", label: "Views" }, { key: "clicks", label: "Clicks" }, { key: "engagements", label: "Engagement" }, { key: "campaigns", label: "Campaigns" }] as Array<{ key: AccountSortKey; label: string }>).map((column) => (
+                      {([{ key: "name", label: "Ad account" }, { key: "reach", label: "Reach" }, { key: "impressions", label: "Impressions" }, { key: "views", label: "Views" }, { key: "clicks", label: "Clicks" }, { key: "engagements", label: "Engagement" }, { key: "campaigns", label: "Campaigns" }] as Array<{ key: AccountSortKey; label: string }>).filter((column) => showMetric(column.key)).map((column) => (
                         <th key={column.key} scope="col" aria-sort={explorerSort.key === column.key ? (explorerSort.asc ? "ascending" : "descending") : "none"} className={cn("px-2.5 py-2 font-semibold", column.key === "name" ? "sticky left-0 z-30 bg-[color:var(--theme-selected)]" : column.key === "campaigns" ? "text-right" : "text-right")}>
                           <button type="button" onClick={() => toggleExplorerSort(column.key)} className={cn("inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded px-1 hover:bg-white/10", column.key === "name" ? "text-left" : "justify-end")} title={`Sort by ${column.label}`}>
                             {column.label}
@@ -549,7 +560,7 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
                             </span>
                           </span>
                         </th>
-                        {(["reach", "impressions", "views", "clicks", "engagements", "campaigns"] as ExplorerMetric[]).map((metric) => (
+                        {(["reach", "impressions", "views", "clicks", "engagements", "campaigns"] as ExplorerMetric[]).filter(showMetric).map((metric) => (
                           <td key={metric} className="px-2.5 py-2 text-right tabular-nums">{explorerNumber(accountValue(account, metric), metric)}</td>
                         ))}
                       </tr>
@@ -574,9 +585,9 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
                     <SortHead label="Campaigns" sortKey="campaignCount" sort={sort} onSort={toggleSort} />
                     <SortHead label="Reach" sortKey="reach" sort={sort} onSort={toggleSort} />
                     <SortHead label="Impressions" sortKey="impressions" sort={sort} onSort={toggleSort} />
-                    <SortHead label="Views" sortKey="views" sort={sort} onSort={toggleSort} />
+                    {showMetric("views") && <SortHead label="Views" sortKey="views" sort={sort} onSort={toggleSort} />}
                     <SortHead label="Clicks" sortKey="clicks" sort={sort} onSort={toggleSort} />
-                    <SortHead label="Engagement" sortKey="engagements" sort={sort} onSort={toggleSort} />
+                    {showMetric("engagements") && <SortHead label="Engagement" sortKey="engagements" sort={sort} onSort={toggleSort} />}
                   </tr>
                 </thead>
                 <tbody>
@@ -594,16 +605,16 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
                       <td className="px-3 py-2.5 text-right align-middle tabular-nums">{number(item.campaignCount)}</td>
                       <td className="px-3 py-2.5 text-right align-middle tabular-nums"><CellBar value={item.reach} max={maxAccountReach} /></td>
                       <td className="px-3 py-2.5 text-right align-middle tabular-nums"><Num value={item.impressions} /></td>
-                      <td className="px-3 py-2.5 text-right align-middle tabular-nums"><Num value={item.views} /></td>
+                      {showMetric("views") && <td className="px-3 py-2.5 text-right align-middle tabular-nums"><Num value={item.views} /></td>}
                       <td className="px-3 py-2.5 text-right align-middle tabular-nums"><Num value={item.clicks} /></td>
-                      <td className="px-3 py-2.5 text-right align-middle tabular-nums"><CellBar value={item.engagements} max={maxAccountEng} tone="sky" /></td>
+                      {showMetric("engagements") && <td className="px-3 py-2.5 text-right align-middle tabular-nums"><CellBar value={item.engagements} max={maxAccountEng} tone="sky" /></td>}
                     </tr>
                     {openAccount === item.key && account?.accounts[0]?.key === item.key && (
                       <tr className="border-t border-[color:var(--theme-border)] bg-[color:var(--theme-surface-3)]">
-                        <td colSpan={7} className="p-0">
+                        <td colSpan={5 + (showMetric("views") ? 1 : 0) + (showMetric("engagements") ? 1 : 0)} className="p-0">
                           <div className="tn-expand">
                             <div className="min-h-0 overflow-hidden">
-                              <CampaignTable title={`Campaigns · ${item.name}`} campaigns={account.campaigns} total={account.totalMatching} periodLabel={periodLabel} flush />
+                              <CampaignTable title={`Campaigns · ${item.name}`} campaigns={account.campaigns} total={account.totalMatching} periodLabel={periodLabel} flush hidden={hidden} />
                             </div>
                           </div>
                         </td>
@@ -625,13 +636,13 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
                   <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
                     <div><p className="text-[color:var(--theme-text-3)]">Reach</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(item.reach)}>{compact(item.reach)}</p></div>
                     <div><p className="text-[color:var(--theme-text-3)]">Impressions</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(item.impressions)}>{compact(item.impressions)}</p></div>
-                    <div><p className="text-[color:var(--theme-text-3)]">Views</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(item.views)}>{compact(item.views)}</p></div>
+                    {showMetric("views") && <div><p className="text-[color:var(--theme-text-3)]">Views</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(item.views)}>{compact(item.views)}</p></div>}
                     <div><p className="text-[color:var(--theme-text-3)]">Clicks</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(item.clicks)}>{compact(item.clicks)}</p></div>
-                    <div><p className="text-[color:var(--theme-text-3)]">Engagement</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(item.engagements)}>{compact(item.engagements)}</p></div>
+                    {showMetric("engagements") && <div><p className="text-[color:var(--theme-text-3)]">Engagement</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(item.engagements)}>{compact(item.engagements)}</p></div>}
                     <div><p className="text-[color:var(--theme-text-3)]">Campaigns</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]">{number(item.campaignCount)}</p></div>
                   </div>
                   {openAccount === item.key && account?.accounts[0]?.key === item.key && (
-                    <div className="tn-expand mt-2"><div className="min-h-0 overflow-hidden"><CampaignTable title={`Campaigns · ${item.name}`} campaigns={account.campaigns} total={account.totalMatching} periodLabel={periodLabel} flush /></div></div>
+                    <div className="tn-expand mt-2"><div className="min-h-0 overflow-hidden"><CampaignTable title={`Campaigns · ${item.name}`} campaigns={account.campaigns} total={account.totalMatching} periodLabel={periodLabel} flush hidden={hidden} /></div></div>
                   )}
                 </div>
               ))}
@@ -649,12 +660,13 @@ export default function TnSocialMedia({ stateSlug, config, initialFilter, initia
         )
       )}
 
-      {filtered && <CampaignTable title={explorerSelected ? `Campaigns · ${explorerSelected.name}` : `Top ${Math.min(100, filtered.campaigns.length)} campaigns`} campaigns={tableCampaigns} total={explorerSelected ? tableCampaigns.length : filtered.totalMatching} />}
+      {filtered && <CampaignTable title={explorerSelected ? `Campaigns · ${explorerSelected.name}` : `Top ${Math.min(100, filtered.campaigns.length)} campaigns`} campaigns={tableCampaigns} total={explorerSelected ? tableCampaigns.length : filtered.totalMatching} hidden={hidden} />}
     </section>
   );
 }
 
-function CampaignTable({ title, campaigns, total, periodLabel, flush = false }: { title: string; campaigns: TnSocialCampaign[]; total: number; periodLabel?: string | null; flush?: boolean }) {
+function CampaignTable({ title, campaigns, total, periodLabel, flush = false, hidden = new Set<string>() }: { title: string; campaigns: TnSocialCampaign[]; total: number; periodLabel?: string | null; flush?: boolean; hidden?: Set<string> }) {
+  const showMetric = (key: string) => !hidden.has(key);
   const [page, setPage] = useState(0);
   const rows = periodLabel ? campaigns.filter((campaign) => periodMatches(campaign.period, periodLabel)) : campaigns;
   const pageSize = 25;
@@ -674,10 +686,10 @@ function CampaignTable({ title, campaigns, total, periodLabel, flush = false }: 
       <div className={cn("edge-fade-right hidden min-[640px]:block", flush ? "overflow-x-auto" : "max-h-[520px] overflow-auto")} role="region" aria-label={`${title} table`} tabIndex={0}>
         <table className="tn-long-table w-full min-w-[980px] border-collapse text-[14px]">
           <thead className="sticky top-0 z-10 text-left text-[12px] uppercase tracking-wide">
-            <tr><th scope="col" className="px-4 py-2.5">Campaign</th><th scope="col" className="px-3 py-2.5">Period</th><th scope="col" className="px-3 py-2.5">Status</th><th scope="col" className="px-3 py-2.5">Start</th><th scope="col" className="px-3 py-2.5 text-right">Reach</th><th scope="col" className="px-3 py-2.5 text-right">Impressions</th><th scope="col" className="px-3 py-2.5 text-right">Views</th><th scope="col" className="px-3 py-2.5 text-right">Clicks</th><th scope="col" className="px-3 py-2.5 text-right">Engagement</th></tr>
+            <tr><th scope="col" className="px-4 py-2.5">Campaign</th><th scope="col" className="px-3 py-2.5">Period</th><th scope="col" className="px-3 py-2.5">Status</th><th scope="col" className="px-3 py-2.5">Start</th><th scope="col" className="px-3 py-2.5 text-right">Reach</th><th scope="col" className="px-3 py-2.5 text-right">Impressions</th>{showMetric("views") && <th scope="col" className="px-3 py-2.5 text-right">Views</th>}<th scope="col" className="px-3 py-2.5 text-right">Clicks</th>{showMetric("engagements") && <th scope="col" className="px-3 py-2.5 text-right">Engagement</th>}</tr>
           </thead>
           <tbody>
-            {pageRows.length === 0 && <tr><td colSpan={9} className="px-4 py-6 text-center text-[13px] text-[color:var(--theme-text-3)]">No campaigns in this period.</td></tr>}
+            {pageRows.length === 0 && <tr><td colSpan={7 + (showMetric("views") ? 1 : 0) + (showMetric("engagements") ? 1 : 0)} className="px-4 py-6 text-center text-[13px] text-[color:var(--theme-text-3)]">No campaigns in this period.</td></tr>}
             {pageRows.map((campaign, index) => (
               <tr key={campaign.id ?? `${campaign.name}-${index}`} className="border-t border-[color:var(--theme-border)] transition-colors hover:bg-[color:var(--theme-surface-3)] align-middle">
                 <th scope="row" className="sticky left-0 z-10 bg-[color:var(--theme-surface)] px-4 py-2 text-left font-medium text-[color:var(--theme-text)]">{campaign.href ? <a href={campaign.href} target="_blank" rel="noopener" className="inline-flex min-h-11! items-center gap-1 text-[color:var(--theme-link)] hover:underline">{campaign.name}<ArrowUpRight className="size-3" /></a> : campaign.name}</th>
@@ -686,9 +698,9 @@ function CampaignTable({ title, campaigns, total, periodLabel, flush = false }: 
                 <td className="px-3 py-2 whitespace-nowrap">{campaign.start}</td>
                 <td className="px-3 py-2 text-right align-middle tabular-nums"><CellBar value={campaign.reach} max={maxReach} /></td>
                 <td className="px-3 py-2 text-right align-middle tabular-nums"><Num value={campaign.impressions} /></td>
-                <td className="px-3 py-2 text-right align-middle tabular-nums"><Num value={campaign.views} /></td>
+                {showMetric("views") && <td className="px-3 py-2 text-right align-middle tabular-nums"><Num value={campaign.views} /></td>}
                 <td className="px-3 py-2 text-right align-middle tabular-nums"><Num value={campaign.clicks} /></td>
-                <td className="px-3 py-2 text-right align-middle tabular-nums"><CellBar value={campaign.engagements} max={maxEng} tone="sky" /></td>
+                {showMetric("engagements") && <td className="px-3 py-2 text-right align-middle tabular-nums"><CellBar value={campaign.engagements} max={maxEng} tone="sky" /></td>}
               </tr>
             ))}
           </tbody>
@@ -706,9 +718,9 @@ function CampaignTable({ title, campaigns, total, periodLabel, flush = false }: 
             <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
               <div><p className="text-[color:var(--theme-text-3)]">Reach</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(campaign.reach)}>{compact(campaign.reach)}</p></div>
               <div><p className="text-[color:var(--theme-text-3)]">Impressions</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(campaign.impressions)}>{compact(campaign.impressions)}</p></div>
-              <div><p className="text-[color:var(--theme-text-3)]">Views</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(campaign.views)}>{compact(campaign.views)}</p></div>
+              {showMetric("views") && <div><p className="text-[color:var(--theme-text-3)]">Views</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(campaign.views)}>{compact(campaign.views)}</p></div>}
               <div><p className="text-[color:var(--theme-text-3)]">Clicks</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(campaign.clicks)}>{compact(campaign.clicks)}</p></div>
-              <div><p className="text-[color:var(--theme-text-3)]">Engagement</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(campaign.engagements)}>{compact(campaign.engagements)}</p></div>
+              {showMetric("engagements") && <div><p className="text-[color:var(--theme-text-3)]">Engagement</p><p className="font-semibold tabular-nums text-[color:var(--theme-text)]" title={number(campaign.engagements)}>{compact(campaign.engagements)}</p></div>}
               <div><p className="text-[color:var(--theme-text-3)]">Start</p><p className="font-semibold text-[color:var(--theme-text)]">{campaign.start}</p></div>
             </div>
           </div>

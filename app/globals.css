@@ -2350,6 +2350,15 @@ html { scroll-padding-top: 96px; }
   --ap-party-ysrcp: #1f6fd1;
   --ap-party-inc: #0f7043;
   --ap-party-others: #8c8f96;
+  --ka-party-inc: #12814d;
+  --ka-party-bjp: #e8740c;
+  --ka-party-jds: #1f6fd1;
+  --ka-party-others: #8c8f96;
+  --tg-party-brs: #d10071;
+  --tg-party-inc: #12814d;
+  --tg-party-bjp: #e8740c;
+  --tg-party-aimim: #0b6e4f;
+  --tg-party-others: #8c8f96;
   --tn-x-icon: #000000;
   --tn-soft-violet: #f3e8ff;
   --tn-soft-blue: #eff6ff;
@@ -2410,6 +2419,15 @@ html { scroll-padding-top: 96px; }
   --ap-party-ysrcp: #4f8ef7;
   --ap-party-inc: #1fa36f;
   --ap-party-others: #8f939b;
+  --ka-party-inc: #3fc98a;
+  --ka-party-bjp: #ff9a4d;
+  --ka-party-jds: #6fa6f5;
+  --ka-party-others: #a3a7b0;
+  --tg-party-brs: #ff5aa8;
+  --tg-party-inc: #3fc98a;
+  --tg-party-bjp: #ff9a4d;
+  --tg-party-aimim: #2fb894;
+  --tg-party-others: #a3a7b0;
   --tn-x-icon: #ffffff;
   --tn-soft-violet: #2b1d3a;
   --tn-soft-blue: #16243a;
@@ -2589,6 +2607,19 @@ body { transition: background-color 150ms ease, color 150ms ease; }
   text-shadow: none !important;
 }
 
+.ka-theme {
+  --case-inc: var(--ka-party-inc);
+  --case-bjp: var(--ka-party-bjp);
+  --case-jds: var(--ka-party-jds);
+  --case-others: var(--ka-party-others);
+}
+.tg-theme {
+  --case-brs: var(--tg-party-brs);
+  --case-inc: var(--tg-party-inc);
+  --case-bjp: var(--tg-party-bjp);
+  --case-aimim: var(--tg-party-aimim);
+  --case-others: var(--tg-party-others);
+}
 .tn-dashboard { overflow-anchor: none; }
 
 /* Dark table headers need a dark surface, not the light dark-theme navy token. */

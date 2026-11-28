@@ -10,12 +10,12 @@ import { useIdle } from "@/components/auth/idle-provider";
 import { cn } from "@/lib/utils";
 import { announceOpening } from "@/lib/use-navigate";
 import { broadcastLogout } from "@/lib/session-channel";
-import { NavIcon, NavPartyMark } from "@/components/site/nav-icon";
+import { NavCaseMarks, NavIcon, NavPartyMark } from "@/components/site/nav-icon";
 import ThemeToggle from "@/components/site/theme-toggle";
 import { ACCOUNT_ITEMS, CLIENT_NAV, LOGIN, OWNER_NAV, PUBLIC_NAV, type NavItem } from "@/lib/nav";
 import type { PartyId } from "@/lib/parties";
 
-type CaseItem = { slug: string; title: string; state: string; party: PartyId; year: number; draft: boolean; comingSoon?: boolean };
+type CaseItem = { slug: string; title: string; state: string; party?: PartyId; projectedLead?: { parties: PartyId[]; label: string }; year: number; draft: boolean; comingSoon?: boolean };
 
 export type NavCoreProps = {
   variant: "public" | "client" | "owner";
@@ -50,7 +50,7 @@ function timeLeft(expiresAt: string | null): string {
 
 function Dropdown({ label, items, footer, active, align = "left" }: {
   label: React.ReactNode;
-  items: { href: string; label: string; hint?: string; icon?: React.ReactNode; party?: PartyId; active?: boolean }[];
+  items: { href: string; label: string; hint?: string; icon?: React.ReactNode; party?: PartyId; marks?: PartyId[]; active?: boolean }[];
   footer?: { href: string; label: string; icon?: React.ReactNode };
   active?: boolean;
   align?: "left" | "right";
@@ -85,7 +85,7 @@ function Dropdown({ label, items, footer, active, align = "left" }: {
       <div role="menu" aria-hidden={!open} data-open={open} data-align={align} className={cn("nav-menu site-group absolute top-[calc(100%+8px)] z-[var(--z-dropdown)] w-64 rounded-2xl p-1.5 text-[var(--h-ink)]", align === "right" ? "right-0" : "left-0")}>
           {items.map((item) => (
             <Link key={item.href + item.label} href={item.href} prefetch={false} role="menuitem" onClick={() => setOpen(false)} className={cn("flex min-h-11! items-start gap-2 rounded-xl px-3 py-2 text-[12.5px] font-medium transition-colors hover:bg-[var(--h-surface-inset)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--h-brass)]/45", item.active && "site-group-inset")}>
-              {item.party ? <NavPartyMark party={item.party} /> : item.icon}
+              {item.marks?.length ? <NavCaseMarks parties={item.marks} /> : item.party ? <NavPartyMark party={item.party} /> : item.icon}
               <span className="min-w-0"><span className="block">{item.label}</span>{item.hint && <span className="mt-0.5 block text-[12px] font-normal text-[var(--h-muted)]">{item.hint}</span>}</span>
             </Link>
           ))}
@@ -151,9 +151,10 @@ export default function NavCore({ variant, displayName, username, organisation, 
 
   const caseItems = cases.map((row) => ({
     href: `/case-studies/${row.slug}`,
-    label: `${row.state} · ${row.party}`,
-    hint: row.comingSoon ? `Coming soon · ${row.year}` : `${row.year}${row.draft ? " · Draft" : ""}`,
+    label: row.party ? `${row.state} · ${row.party}` : row.state,
+    hint: row.comingSoon ? `Coming soon · ${row.year}` : row.party ? `${row.year}${row.draft ? " · Draft" : ""}` : `${row.year} · Live`,
     party: row.party,
+    marks: row.party ? [row.party] : row.projectedLead?.parties ?? [],
   }));
 
 
@@ -297,10 +298,10 @@ function MobileLink({ item }: { item: NavItem }) {
   return <Link href={item.href} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold text-[var(--h-muted)]"><NavIcon name={item.icon} /> {item.label}</Link>;
 }
 
-function MobileCaseLink({ item }: { item: { href: string; label: string; hint: string; party: PartyId } }) {
+function MobileCaseLink({ item }: { item: { href: string; label: string; hint: string; party?: PartyId; marks?: PartyId[] } }) {
   return (
     <Link href={item.href} className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold text-[var(--h-muted)]">
-      <NavPartyMark party={item.party} />
+      {item.marks?.length ? <NavCaseMarks parties={item.marks} /> : item.party ? <NavPartyMark party={item.party} /> : null}
       <span className="min-w-0"><span className="block">{item.label}</span><span className="block text-[12px] font-normal">{item.hint}</span></span>
     </Link>
   );

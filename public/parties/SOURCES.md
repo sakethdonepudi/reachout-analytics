@@ -26,3 +26,7 @@ under 5 KB) tinted with the case-study party colour through a CSS mask at run
 time. `aiadmk.png` keeps its supplied colours. No colours, proportions or
 symbols were redrawn. All party symbols remain the property of their
 respective parties.
+
+| `jds.svg` | Janata Dal (Secular) | [Indian election symbol female farmer — Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Indian_election_symbol_female_farmer.svg) (Election Commission symbol, own work uploaded by Abilngeorge, CC BY-SA 4.0). Editor metadata and the Adobe Illustrator comment were removed; the white silhouette is tinted with the JD(S) blue through a CSS mask. Retrieved 28 November 2026. |
+| `aimim.svg` | All India Majlis-e-Ittehadul Muslimeen (AIMIM) | [Indian Election Symbol Kite — Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Indian_Election_Symbol_Kite.svg) (author Junior Jumper, formerly Tæ, CC BY-SA 4.0). Tinted with the AIMIM teal through a CSS mask. Retrieved 28 November 2026. |
+| `others.svg` | Others | Drawn for this site as a neutral grey badge, own work. |

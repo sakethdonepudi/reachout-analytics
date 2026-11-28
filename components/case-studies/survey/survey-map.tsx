@@ -13,6 +13,7 @@ export type TnMapHover = {
   title: string;
   leader: string | null;
   rows: Array<{ party: string; value: number }>;
+  note?: string;
 };
 
 const BOX = 1000;
@@ -47,6 +48,7 @@ export type SurveyMapProps = {
   mobileLabelCount?: number;
   mobileForcedLabels?: string[];
   avoidDistrictCollisions?: boolean;
+  showAcs?: boolean;
   stateTilt?: number;
   stateFit?: number;
   stateCenterZ?: number;
@@ -151,7 +153,7 @@ function blendColor(blend: BlendInfo, t: number): THREE.Color {
   return gradientColor(blend.color1, blend.color2, blend.p1, t);
 }
 
-export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrder, partyColors, partyColorsDark, noDataColor, labelOffset, mobileLabelOffset, districtAlias, fillMode = "gradient", mobileLabelCount = 10, mobileForcedLabels = [], avoidDistrictCollisions = false, stateTilt = 0.82, stateFit = 1, stateCenterZ = 0, mapRotation = 0, district, acNo, year, theme, tooltip, fitKey = 0, onSelectDistrict, onSelectAc, onReset }: Props) {
+export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrder, partyColors, partyColorsDark, noDataColor, labelOffset, mobileLabelOffset, districtAlias, fillMode = "gradient", mobileLabelCount = 10, mobileForcedLabels = [], avoidDistrictCollisions = false, showAcs = false, stateTilt = 0.82, stateFit = 1, stateCenterZ = 0, mapRotation = 0, district, acNo, year, theme, tooltip, fitKey = 0, onSelectDistrict, onSelectAc, onReset }: Props) {
   const AC_FC = acGeo as unknown as FC;
   const D_FC = districtGeo as unknown as DFC;
   const canonicalDistrict = (name: string) => districtAlias[name] ?? name;
@@ -478,7 +480,8 @@ export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrd
         showAccent(activeAC?.no ?? null, !!activeAC);
         const mobileState = typeof window !== "undefined" && window.innerWidth < 640;
         const mobileLabels = new Set([...mobileForcedLabels, ...[...districtsUnits.keys()].sort((aKey, bKey) => (districtRef.current.get(bKey)?.survey.valid ?? 0) - (districtRef.current.get(aKey)?.survey.valid ?? 0)).slice(0, mobileLabelCount)]);
-        const assembly = false;
+        const mobileAcLabels = mobileState ? new Set([...(activeAC ? [activeAC.no] : []), ...[...acUnits.keys()].sort((aNo, bNo) => (acRef.current.get(bNo)?.survey.valid ?? 0) - (acRef.current.get(aNo)?.survey.valid ?? 0)).slice(0, 8)].slice(0, 8)) : null;
+        const assembly = showAcs;
         for (const [name, u] of districtsUnits) {
           const selected = !!activeD && name === activeD.name;
           const acLayerGroup = acLayer.get(name); if (acLayerGroup) acLayerGroup.visible = !!activeD && selected;
@@ -500,7 +503,7 @@ export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrd
           u.cap.emissive.set(acSelected && blend.first ? blend.color1 : "#000000");
           u.cap.emissiveIntensity = acSelected ? MAP_STYLE.surface.selectedEmissive : 0;
           startUnit(u, visible ? 1 : 0, 0, activeD || assembly ? (acSelected ? SELECTED_LIFT : AC_LIFT) : 0, visible);
-          u.label.style.opacity = visible && (activeD || acSelected || !assembly) ? "1" : "0";
+          u.label.style.opacity = visible && (!mobileState || mobileAcLabels?.has(no) || acSelected) && (activeD || acSelected || !assembly) ? "1" : "0";
           const acSize = labelSize(acSelected ? "selectedAssembly" : "assembly", mobileState);
           u.label.style.fontSize = `${acSize.px}px`; u.label.style.fontWeight = String(acSize.weight);
         }
@@ -815,7 +818,7 @@ export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrd
                 ))}
               </ul>
             ) : (
-              <p className="mt-1.5 text-[13px] text-[color:var(--theme-text-3)]">No data / under 30</p>
+              <p className="mt-1.5 text-[13px] text-[color:var(--theme-text-3)]">{tip.card.note ?? "No data / under 30"}</p>
             )}
           </div>
         );
@@ -840,7 +843,7 @@ export default function SurveyMap({ acs, districts, acGeo, districtGeo, partyOrd
                 </li>
               ))}
             </ul>
-          ) : <p className="mt-2 text-[12px] text-[color:var(--theme-text-3)]">No data / under 30</p>}
+          ) : <p className="mt-2 text-[12px] text-[color:var(--theme-text-3)]">{sheet.card.note ?? "No data / under 30"}</p>}
           <button
             type="button"
             onClick={() => { if (sheet.kind === "district") onSelectDistrict(sheet.name); else if (sheet.no != null) onSelectAc(sheet.no); setSheet(null); }}

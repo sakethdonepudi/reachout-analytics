@@ -66,6 +66,8 @@ export type SurveyMapBuild = {
   districtRows: Map<string, SurveyMapRow>;
   acRows: Map<number, SurveyMapRow>;
   resultRows: Map<string, { acs: number; seats: Record<string, number>; total: number }>;
+  regions?: TnDistrict[];
+  regionRows?: Map<string, SurveyMapRow>;
 };
 
 function sharesFromRow(row: { v: number[] }, parties: string[], n: number): { shares: TnShares | null; leader: TnGroup | null; marginPp: number | null } {

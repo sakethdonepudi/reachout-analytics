@@ -9,11 +9,6 @@ import OwnerNavbar from "./owner-navbar";
 
 export const dynamic = "force-dynamic";
 
-function yearFor(slug: string): number {
-  const match = slug.match(/(20\d{2})/);
-  return match ? Number(match[1]) : 2026;
-}
-
 export default async function Navbar() {
   const jar = await cookies();
   const token = jar.get(COOKIE)?.value ?? jar.get(LEGACY_COOKIE)?.value;
@@ -33,7 +28,8 @@ export default async function Navbar() {
       title: item.title,
       state: item.stateName,
       party: item.party,
-      year: bySlug.get(item.slug)?.electionYear ?? yearFor(item.slug),
+      projectedLead: item.projectedLead,
+      year: item.year,
       draft: (bySlug.get(item.slug)?.status ?? "draft") !== "published",
       comingSoon: !isLiveCase(item.slug),
     }));
@@ -54,7 +50,8 @@ export default async function Navbar() {
     title: item.title,
     state: item.stateName,
     party: item.party,
-    year: bySlug.get(item.slug)?.electionYear ?? yearFor(item.slug),
+    projectedLead: item.projectedLead,
+    year: item.year,
     draft: false,
     comingSoon: !isLiveCase(item.slug),
   }));

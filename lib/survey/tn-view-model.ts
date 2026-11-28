@@ -10,6 +10,8 @@ export type TnSerializedMap = {
   districtRows: Record<string, SurveyMapRow>;
   acRows: Record<string, SurveyMapRow>;
   resultRows: Record<string, { acs: number; seats: Record<string, number>; total: number }>;
+  regions?: TnDistrict[];
+  regionRows?: Record<string, SurveyMapRow>;
 };
 
 export type TnSwingSource = { key: string; label: string; expected: Record<string, SurveyShare>; seats: Record<string, unknown>; n: number; base?: Record<string, SurveyShare>; last?: string; target?: string };
@@ -39,6 +41,8 @@ export type TnCardModel = {
   accuracy?: number;
   showAccuracy?: boolean;
   seats?: Record<string, number>;
+  summaryLine?: string;
+  seatsLine?: string;
 };
 
 export type TnClientModel = {
@@ -55,4 +59,5 @@ export type TnClientModel = {
   swing: TnSwingPayload;
   initialMap: TnSerializedMap;
   socialMonthly: TnSocialMonth[];
+  meta?: Record<string, unknown>;
 };

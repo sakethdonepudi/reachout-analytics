@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import SiteFooter from "@/components/site/site-footer";
-import { caseUrl, isLiveCase, orderedCases } from "@/lib/cases";
+import { caseLeadParties, caseTitle, caseUrl, isLiveCase, orderedCases } from "@/lib/cases";
 import { PartyMark } from "@/components/site/party-mark";
 import { requirePageSession } from "@/lib/require-session";
 import { visibleCases } from "@/lib/session-scope";
@@ -15,13 +15,6 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
-
-function yearFor(slug: string, title: string): number {
-  const match = `${slug} ${title}`.match(/(20\d{2})/);
-  if (match) return Number(match[1]);
-  if (slug === "telangana") return 2028;
-  return 2026;
-}
 
 export default async function CaseStudiesIndex() {
   const session = await requirePageSession("/case-studies");
@@ -54,16 +47,17 @@ export default async function CaseStudiesIndex() {
                 <PrecisionCardLink key={item.slug} href={caseUrl(item.slug)} className={`h-full p-5 ${live ? "" : "border-dashed"}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <PartyMark party={item.party} size="md" />
-                      <div className="min-w-0">
-                        <h2 className="font-display text-[17px] font-semibold leading-tight tracking-[-0.02em]">{item.party} · {item.stateName}</h2>
-                        <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-[var(--p-muted)]">{yearFor(item.slug, item.title)}</p>
+                      <span className="flex -space-x-2">{caseLeadParties(item).map((party) => <PartyMark key={party} party={party} size="md" />)}</span>
+                      <div className="min-w-0 flex-1">
+                        <h2 className="font-display text-[17px] font-semibold leading-tight tracking-[-0.02em]">{caseTitle(item)}</h2>
+                        <p className="mt-0.5 text-[11px] uppercase tracking-[0.12em] text-[var(--p-muted)]">{item.year}</p>
                       </div>
                     </div>
-                    <span className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] ${published ? "border-[var(--p-line)] text-[var(--p-ink-2)]" : "border-dashed border-[var(--p-geo)] text-[var(--p-muted)]"}`}>
+                    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] ${published ? "border-[var(--p-line)] text-[var(--p-ink-2)]" : "border-dashed border-[var(--p-geo)] text-[var(--p-muted)]"}`}>
                       {live ? "Live" : "Coming soon"}
                     </span>
                   </div>
+                  {item.projectedLead && <p className="mt-2 text-[11px] font-medium text-[var(--p-muted)]">{item.projectedLead.label}</p>}
                   <p className="mt-4 text-[13px] leading-relaxed text-[var(--p-ink-2)]">{item.summary}</p>
                   <span className="mt-5 flex items-center justify-between border-t border-[var(--p-line)] pt-3 text-[10.5px] font-bold uppercase tracking-[0.14em]">
                     {live ? "Open" : "Coming soon"} <span aria-hidden>↗</span>

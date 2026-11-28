@@ -10,6 +10,9 @@
 import assert from "node:assert/strict";
 import { tnSocialFiltered, tnSocialMonthly, tnSocialOverview } from "@/lib/survey/tn-view-dto";
 import { apSocialFiltered, apSocialOverview } from "@/lib/survey/ap-view-dto";
+import { kaSocialFiltered, kaSocialOverview } from "@/lib/survey/ka-view-dto";
+import { tgSocialFiltered, tgSocialOverview } from "@/lib/survey/tg-view-dto";
+import { clientText } from "@/lib/survey/privacy";
 import type { SurveyData } from "@/lib/survey/types";
 
 let pass = 0;
@@ -119,6 +122,78 @@ const data = {
     assert.ok(Object.values(apFiltered.campaignsByAccount ?? {}).flat().every((campaign) => !("id" in campaign) && !("href" in campaign)));
   });
   check("AP target view labels non-geo audiences", () => assert.match(apFiltered.how, /reuse for retargeting and look-alike/i));
+
+  console.log("\n1c. Karnataka client overview");
+  const kaData = {
+    parties: ["INC", "BJP", "JDS", "Others"],
+    regions: ["Karnataka"],
+    periods: {},
+    actual: { Karnataka: { INC: 42.97 } },
+    ads: {
+      label: "Karnataka 2028", range: "from 27 Oct 2026",
+      total: { n: 1, reach: 867185, impr: 1978908, views: 0, clicks: 115474, eng: 0 },
+      accounts: [{ acct: "screenshot", acct_name: "Karnataka survey campaign", business: "Reachout Analytics", n: 1, reach: 867185, impr: 1978908, views: 0, clicks: 115474, eng: 0 }],
+      camps: { screenshot: [{ id: "", name: "Karnataka swing OCT 27th", st: "Active", start: "2026-10-27", stop: "", per: "Live tracking", reach: 867185, impr: 1978908, views: 0, clicks: 115474, eng: 0, spend: 23048.16, acct: "Karnataka survey campaign" }] },
+      periods: {},
+    },
+    n_total: 8489,
+  } as unknown as SurveyData;
+  const kaOverview = await kaSocialOverview(kaData, false);
+  const kaText = JSON.stringify(kaOverview);
+  check("KA client account becomes Ad account 1", () => assert.equal(kaOverview.accounts[0]?.name, "Ad account 1"));
+  check("KA client payload has no screenshot key, id, business or money", () => {
+    assert.ok(!kaText.includes("screenshot"));
+    assert.ok(!kaText.includes("Reachout Analytics"));
+    assert.ok(!kaText.includes("23048"));
+    assert.ok(!/₹|\bINR\b|\bRs\.?\b|\bspend\b|\bcost\b|\bCPM\b|\bCPC\b/i.test(kaText));
+    assert.ok(!/\d{12,20}/.test(kaText));
+  });
+  const kaFiltered = await kaSocialFiltered(kaData, { match: "target", kind: "zone", place: "Old Mysore", label: "INC below average" }, false);
+  check("KA filtered payload keeps one alias account and one campaign", () => {
+    assert.equal(kaFiltered.accounts.length, 1);
+    assert.equal(kaFiltered.accounts[0]?.name, "Ad account 1");
+    assert.equal(kaFiltered.campaigns.length, 1);
+    assert.ok(!JSON.stringify(kaFiltered).includes("screenshot"));
+  });
+
+  console.log("\n1d. Telangana client overview");
+  const tgData = {
+    parties: ["BRS", "INC", "BJP", "AIMIM", "Others"],
+    regions: ["Telangana"],
+    periods: {},
+    actual: { Telangana: { BRS: 37.35 } },
+    ads: {
+      label: "Telangana 2028", range: "from 16 Jul 2026", asOf: "22 Nov 2026 (Meta Ads Manager screenshots)",
+      total: { n: 3, reach: 3371375, impr: 9907704, views: 0, clicks: 128490, eng: 0, spend: 108053.51 },
+      accounts: [{ acct: "screenshot", acct_name: "Telangana survey campaigns", business: "Reachout Analytics", n: 3, reach: 3371375, impr: 9907704, views: 0, clicks: 128490, eng: 0 }],
+      camps: { screenshot: [
+        { id: "", name: "Telangana July-2027", st: "Off", start: "2026-07-16", per: "Jul 2026", reach: 617079, impr: 1133336, views: 0, clicks: 29993, eng: 0, spend: 13224.37 },
+        { id: "", name: "Telangana Swing Oct 1st tsfeedback.in WPForms form 19148", st: "Active", start: "2026-10-01", per: "Oct – Nov 2026", reach: 2522324, impr: 8423520, views: 0, clicks: 76206, eng: 0, spend: 89510.85 },
+      ] },
+      periods: {},
+    },
+    n_total: 5453,
+  } as unknown as SurveyData;
+  const tgOverview = await tgSocialOverview(tgData, false);
+  const tgText = JSON.stringify(tgOverview);
+  check("TG client account becomes Ad account 1", () => assert.equal(tgOverview.accounts[0]?.name, "Ad account 1"));
+  check("TG client payload has no screenshot key, id, business, money or tooling", () => {
+    assert.ok(!tgText.includes("screenshot"));
+    assert.ok(!tgText.includes("Reachout Analytics"));
+    assert.ok(!tgText.includes("108053"));
+    assert.ok(!/₹|\bINR\b|\bRs\.?\b|\bspend\b|\bcost\b|\bCPM\b|\bCPC\b/i.test(tgText));
+    assert.ok(!/\d{12,20}/.test(tgText));
+    assert.ok(!/WPForms|tsfeedback|form 19148|Reachout Ads Desk|screenshot|Ads Manager/i.test(tgText));
+  });
+  const tgFiltered = await tgSocialFiltered(tgData, { match: "group", group: "Telangana Swing" }, false);
+  check("TG filtered payload has no tooling or domains", () => {
+    assert.ok(!/WPForms|tsfeedback|form 19148|Reachout Ads Desk|screenshot/i.test(JSON.stringify(tgFiltered)));
+  });
+  check("clientText strips tooling, form numbers and domains", () => {
+    assert.equal(clientText("2,899 answers from form 19148 (to 26 Oct) – the current form has no age question"), "2,899 answers (to 26 Oct) – the current form has no age question");
+    assert.equal(clientText("WPForms form 19250 at tsfeedback.in via Reachout Ads Desk"), "");
+    assert.equal(clientText("Karnataka swing OCT 27th ₹23,048.16"), "Karnataka swing OCT 27th");
+  });
 
   console.log("\n2. Client filtered view");
   const filtered = await tnSocialFiltered(data, { match: "group", group: "Vanniyar" }, false);

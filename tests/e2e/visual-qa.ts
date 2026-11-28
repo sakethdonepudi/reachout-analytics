@@ -33,6 +33,8 @@ const PAGES: PageDef[] = [
   { path: "/case-studies", role: "client", name: "chooser" },
   { path: "/case-studies/tamil-nadu", role: "client", name: "tamil-nadu", caseStudy: true },
   { path: "/case-studies/telangana", role: "client", name: "telangana", caseStudy: true },
+  { path: "/case-studies/karnataka", role: "client", name: "karnataka", caseStudy: true },
+  { path: "/case-studies/andhra-pradesh-2024", role: "client", name: "andhra-pradesh", caseStudy: true },
   { path: "/case-studies/gujarat", role: "client", name: "gujarat", caseStudy: true },
   { path: "/no-access", role: "client", name: "no-access" },
   { path: "/dashboard", role: "owner", name: "dashboard" },

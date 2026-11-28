@@ -52,6 +52,7 @@ const base = z.object({
   base: z.record(z.string(), z.record(z.string(), z.number())).optional(),
   ads: z.record(z.string(), z.unknown()),
   n_total: z.number(),
+  meta: z.record(z.string(), z.unknown()).optional(),
   geo: z.unknown().optional(),
   zonelabels: z.record(z.string(), z.string()).optional(),
 });
@@ -60,6 +61,8 @@ const base = z.object({
 export const SURVEY_PERIOD_KEYS: Record<string, string[]> = {
   "tamil-nadu": ["op", "ex", "rs"],
   "andhra-pradesh-2024": ["op", "ex", "rd"],
+  karnataka: ["rd"],
+  telangana: ["rd"],
 };
 
 export function surveySchema(state: string) {
@@ -85,8 +88,8 @@ export function surveySchema(state: string) {
         }
       }
     }
-    if (!value.periods.op && !value.periods.ex) {
-      ctx.addIssue({ code: "custom", path: ["periods"], message: "The survey needs an opinion or exit period." });
+    if (!value.periods.op && !value.periods.ex && !value.periods.rd) {
+      ctx.addIssue({ code: "custom", path: ["periods"], message: "The survey needs an opinion, exit or live tracking period." });
     }
   });
 }

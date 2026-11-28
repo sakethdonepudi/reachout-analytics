@@ -53,6 +53,7 @@ export type SurveyData = {
   base2019?: Record<string, SurveyShare>;
   ads: SurveyAdsSummary;
   n_total: number;
+  meta?: Record<string, unknown>;
   geo?: unknown;
   zonelabels?: Record<string, string>;
 };
@@ -60,6 +61,8 @@ export type SurveyData = {
 export const SURVEY_STATES: Record<string, { slug: string; name: string; file: string }> = {
   "tamil-nadu": { slug: "tamil-nadu", name: "Tamil Nadu", file: "TN-2026-Survey-Dashboard-3.html" },
   "andhra-pradesh-2024": { slug: "andhra-pradesh-2024", name: "Andhra Pradesh", file: "AP_2024_Survey_Dashboard-4.html" },
+  karnataka: { slug: "karnataka", name: "Karnataka", file: "KA_2028_Survey_Dashboard.html" },
+  telangana: { slug: "telangana", name: "Telangana", file: "TG_Survey_Analysis-2.html" },
 };
 
 /** Ads periods are pre/op/ex/post; the survey-only result periods map to post. */

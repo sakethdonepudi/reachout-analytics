@@ -20,11 +20,15 @@ export const TN_PARTY_BRAND: Record<string, TnPartyBrand> = {
   "DMK+": { color: "var(--tn-party-dmk)", logo: "/parties/dmk.svg", mask: true },
   "AIADMK+": { color: "var(--tn-party-aiadmk)", logo: "/parties/aiadmk.png" },
   NTK: { color: "var(--tn-party-ntk)", logo: "/parties/ntk.png" },
-  Others: { color: "var(--tn-party-others)", monogram: "OTH" },
+  Others: { color: "var(--case-others, var(--tn-party-others))", logo: "/parties/others.svg", mask: true },
   NOTA: { color: "var(--tn-party-others)", monogram: "NOTA" },
   NDA: { color: "var(--ap-party-nda)", border: "var(--ap-party-nda-deep)", logo: "/parties/tdp.png" },
   YSRCP: { color: "var(--ap-party-ysrcp)", logo: "/parties/ysrcp.svg", mask: true },
-  INC: { color: "var(--ap-party-inc)", logo: "/parties/inc.png" },
+  INC: { color: "var(--case-inc, var(--ap-party-inc))", logo: "/parties/inc.png" },
+  BJP: { color: "var(--case-bjp, #e8740c)", logo: "/parties/bjp.png" },
+  JDS: { color: "var(--case-jds, #1f6fd1)", logo: "/parties/jds.svg", mask: true },
+  BRS: { color: "var(--case-brs, var(--tg-party-brs))", logo: "/parties/brs.png" },
+  AIMIM: { color: "var(--case-aimim, var(--tg-party-aimim))", logo: "/parties/aimim.svg", mask: true },
 };
 
 /** Light-theme hexes used for maps, bars and contrast calculations. */
@@ -38,6 +42,10 @@ const TN_PARTY_HEX: Record<string, string> = {
   NDA: "#f7a325",
   YSRCP: "#1f6fd1",
   INC: "#0f7043",
+  BJP: "#e8740c",
+  JDS: "#1f6fd1",
+  BRS: "#d10071",
+  AIMIM: "#0b6e4f",
 };
 
 /** Dark-theme hexes. These match the dark map and the party CSS tokens. */
@@ -51,6 +59,10 @@ const TN_PARTY_HEX_DARK: Record<string, string> = {
   NDA: "#ffb340",
   YSRCP: "#4f8ef7",
   INC: "#1fa36f",
+  BJP: "#ff9a4d",
+  JDS: "#6fa6f5",
+  BRS: "#ff5aa8",
+  AIMIM: "#2fb894",
 };
 
 export function partyBrand(party: string): TnPartyBrand {
@@ -107,7 +119,7 @@ export function inkOnTint(party: string, alpha: number, dark: boolean): { backgr
 
 /** True when white type is the readable choice on a near-full party fill. */
 export function partyNeedsWhiteInk(party: string): boolean {
-  if (party === "TVK" || party === "NDA" || party === "Others" || party === "NOTA") return false;
+  if (party === "TVK" || party === "NDA" || party === "BJP" || party === "Others" || party === "NOTA") return false;
   if (party === "YSRCP") return true;
   const hex = (TN_PARTY_HEX[party] ?? "#64748B").replace("#", "");
   if (hex.length !== 6) return false;
